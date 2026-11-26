@@ -23,7 +23,7 @@ controller on this wire that holds still.
   base frame). Nothing else: no part pose, speed, kind or mass, no signal that a part is coming, no credit so far.
 - Reply: `{"action": [26 numbers]}`. The first 23 are one row of the robot's native command at 30 Hz (base velocity 3,
   torso joint targets 4, left arm 7, left gripper 1, right arm 7, right gripper 1; grippers -1 closes, 1 opens). The
-  last 3 are camera flags (head, left wrist, right wrist): above 0.5 puts that camera's frame in the next observation.
+  last 3 are camera flags (head, left wrist, right wrist): above 0.5 requests a frame, delivered after the latency below.
 - A step may be asked more than once with the same `t`; repeated requests do not advance the cell. Answer each from
   the observation it carries. After an aborted shift `run.sh` is started again and must print `READY` again.
 
@@ -35,8 +35,9 @@ The cell runs in simulated time at 30 Hz: one step per action.
 holding their targets and the base stopped, before your next action is applied, and the part keeps moving through all
 of them.
 
-**What you see is late.** A frame does not come back with the next observation. It is taken when its 0.1 s is over
-and reaches you a fixed number of steps later, as a real camera and its processing would: between 0.10 and 0.20 s (3 to
+**What you see is late.** A frame does not come back with the next observation. All cameras requested by one reply
+are captured together after their total cost has elapsed (0.1 s per requested camera).
+The frames reach you a fixed number of steps later, as a real camera and its processing would: between 0.10 and 0.20 s (3 to
 6 steps), the same for every frame of a shift and hidden. Each frame carries `t_capture`, the step it was taken at, and
 the camera's pose at that step; the observation it arrives in carries the current step `t` and the current joint
 readings. A part moving at 0.4 m/s is 4 to 8 cm past where a frame shows it by the time you can act on it. The first
@@ -63,7 +64,7 @@ A graded shift is 20 parts, one at a time, released at moments you are not told.
 different items (cans, boxes, bottles, a bowl, a mug, a drill, scissors, a marker, clamps, a banana, a foam brick and
 others, sizes and masses in `/opt/cell_items/items.json`), each with its real shape, mass and printed surface: round ones roll, flat ones slide, and
 no two sit in a gripper alike. Some are wider than one gripper opens in the pose they come down in: both arms are yours to use, on any part and in
-any way (one hand, or the two together). Three more items
+any way (one hand, or the two together). Two more items
 lie on a side table and are not parts: leave them where they are.
 
 Each shift has its own constants, fixed for the whole shift and hidden: the chute's slope, its surface friction, the

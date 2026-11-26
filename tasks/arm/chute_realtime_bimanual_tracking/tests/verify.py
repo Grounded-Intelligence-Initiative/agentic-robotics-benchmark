@@ -15,6 +15,7 @@ from robotics_grader import (ProbeLock, Solver, SolverAborted, SolverMissing, ra
                              seed_rng, stage_config, write_verdict, zero_verdict)
 from robotics_grader.stage import agent_home  # noqa: E402
 from sim_client import SimClient, SimError  # noqa: E402
+from cpu_meter import CpuMeter  # noqa: E402
 
 CAMERAS = ("head", "left_wrist", "right_wrist")
 STATION = "track"
@@ -41,27 +42,6 @@ def perturbed(obs, lock):
     p = json.loads(json.dumps(obs)); vals = p["proprio"]; p["proprio"] = lock.perturb(vals); return p
 
 
-class CpuMeter(object):
-    """CPU seconds used so far by the controller: every process of its process group (the kit starts it in a session
-    of its own). A reply's deadline is counted in the controller's CPU time, not in wall time: on a loaded grading
-    machine a reply can wait for a core through no fault of the controller, and the same controller must not pass on
-    one machine and fail on the other because of the other tenants."""
-    TICK = float(os.sysconf("SC_CLK_TCK"))
-
-    def __init__(self, pgid): self.pgid, self.pids, self.n = int(pgid), [], 0
-
-    def _stat(self, pid):
-        try:
-            f = open("/proc/{}/stat".format(pid)).read(); x = f[f.rindex(")") + 2:].split()
-            return int(x[2]), (int(x[11]) + int(x[12])) / self.TICK
-        except (OSError, ValueError, IndexError): return None, 0.0
-
-    def seconds(self):
-        if self.n % 40 == 0: self.pids = [d for d in os.listdir("/proc") if d.isdigit() and self._stat(d)[0] == self.pgid]
-        self.n += 1
-        return sum(self._stat(p)[1] for p in self.pids)
-
-
 def run_shift(sim, solver, lock, config, seed, salt=0):
     """One shift. The cell advances only when the controller answers, but the controller must keep pace with it: its own
     time (waiting for its replies) may never exceed the simulated time elapsed plus a fixed allowance. A controller that
@@ -79,8 +59,9 @@ def run_shift(sim, solver, lock, config, seed, salt=0):
         probed = lock.due(); tic = time.monotonic()
         reply = lock.probe(solver, t, obs, perturbed(obs, lock)) if probed else solver.act(t, obs)
         wall = (time.monotonic() - tic) / (2.0 if probed else 1.0)                        # a probed step is asked twice
-        cpu1 = meter.seconds(); took = (cpu1 - cpu0) / (2.0 if probed else 1.0); cpu0 = cpu1; program += took
+        cpu1 = meter.seconds(); took = max(0.0, cpu1 - cpu0) / (2.0 if probed else 1.0); cpu0 = cpu1
         if wall > wall_cap: took = max(took, wall)                # sleeping or waiting on a GPU is not a way round the deadline
+        program += took
         # Every reply has its own deadline, so that no step can be thought over at leisure: a reply later than the
         # deadline is a late reply (the first reply of a shift has a grace), and one more than the allowed number ends
         # the shift. A threshold, never a scored time: within it the score is the same on any machine.
@@ -103,7 +84,8 @@ def run_shift(sim, solver, lock, config, seed, salt=0):
 
 
 def main():
-    config = stage_config(); rng = seed_rng(); anchor, meta = read_anchor()
+    config = stage_config(); anchor, meta = read_anchor()
+    rng = seed_rng()
     hidden = json.load(open(os.path.join(HERE, "hidden", "shifts.json"))); shifts = hidden["seeds"][: int(config.get("shifts", 6))]
     salt = int(hidden.get("salt", 0))      # with it a seed gives a shift the agent's copy of the generator cannot reproduce
     lock = ProbeLock(rng, rate=config.get("probe_rate", 0.01), pass_fraction=config.get("probe_pass_fraction", 0.1), dims=61)

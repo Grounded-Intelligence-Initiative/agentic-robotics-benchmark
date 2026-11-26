@@ -47,3 +47,54 @@ def test_parse_reply():
     for bad in ([0] * 25, [float("inf")] * 26, {"action": [0] * 26}, "abc", None):
         try: V.parse_reply(bad); raise AssertionError(bad)
         except SolverAborted: pass
+
+
+def test_extreme_commands_do_not_reach_physics():
+    from types import SimpleNamespace
+    from cell_env import Cell, R
+    sent = []
+    cell = SimpleNamespace(done=False, R=R, sensors={},
+                           _advance=lambda row, render=False: sent.append(row.copy()),
+                           observe=lambda cameras: {"done": False})
+    row = np.array([float("nan"), 1e300, -1e300] + [1e300] * 11 + [-1e300] + [-1e300] * 7 + [1e300])
+    Cell.step(cell, row)
+    assert len(sent) == 1 and np.isfinite(sent[0]).all()
+    np.testing.assert_array_equal(sent[0][:3], [0, 1, -1])
+    assert sent[0][14] == -1 and sent[0][22] == 1
+    np.testing.assert_array_equal(sent[0][3:14], np.full(11, 6.3))
+    np.testing.assert_array_equal(sent[0][15:22], np.full(7, -6.3))
+    assert np.isnan(row[0])  # Caller-owned commands were not mutated.
+
+
+def test_long_wait_counts_toward_total_budget(monkeypatch):
+    """A low-CPU reply above the documented wall cap must spend shift time too."""
+    from types import SimpleNamespace
+    import verify as V
+
+    class Sim:
+        steps = 0
+        def reset(self, *args, **kwargs):
+            return {"t": 0, "done": False}
+        def step(self, *args):
+            self.steps += 1
+            return {"t": 1, "done": True}
+        def summary(self):
+            return {"score": 0, "frames_charged": 0}
+
+    class Meter:
+        def __init__(self, pgid): pass
+        def seconds(self): return 0.0
+
+    times = iter([0.0, 11.0])
+    monkeypatch.setattr(V, "CpuMeter", Meter)
+    monkeypatch.setattr(V, "oracle_token", lambda: "")
+    monkeypatch.setattr(V.os, "getpgid", lambda pid: pid)
+    monkeypatch.setattr(V.time, "monotonic", lambda: next(times))
+    solver = SimpleNamespace(proc=SimpleNamespace(pid=1), reset=lambda: None,
+                             act=lambda *args: [0.0] * 26)
+    sim = Sim()
+    result = V.run_shift(sim, solver, SimpleNamespace(due=lambda: False), {}, 1)
+    assert result["program_time_s"] == 11.0
+    assert result["fell_behind"] is True
+    assert result["late_replies"] == 1
+    assert sim.steps == 0

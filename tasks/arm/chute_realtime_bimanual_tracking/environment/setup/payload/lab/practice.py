@@ -10,20 +10,9 @@ import argparse, json, os, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 from sim_client import SimClient  # noqa: E402
+from cpu_meter import CpuMeter  # noqa: E402
 
 CAMERAS = ("head", "left_wrist", "right_wrist")
-
-
-def cpu_seconds(pgid, tick=float(os.sysconf("SC_CLK_TCK"))):
-    """CPU seconds used so far by the controller's processes: the grader counts a reply's deadline in CPU time."""
-    total = 0.0
-    for d in os.listdir("/proc"):
-        if not d.isdigit(): continue
-        try:
-            f = open("/proc/{}/stat".format(d)).read(); x = f[f.rindex(")") + 2:].split()
-            if int(x[2]) == pgid: total += (int(x[11]) + int(x[12])) / tick
-        except (OSError, ValueError, IndexError): pass
-    return total
 
 
 def main():
@@ -39,12 +28,12 @@ def main():
         sol.stdin.write(json.dumps(msg) + "\n"); sol.stdin.flush(); return json.loads(sol.stdout.readline())
 
     sim = SimClient(os.path.join(HERE, "cell_server.py"), log_path=os.path.join(a.out, "simulator.log"))
-    t0 = time.time()
+    t0 = time.monotonic()
     try:
-        obs = sim.reset("track", a.seed, a.parts, cameras=CAMERAS); ask({"type": "reset"}); t = 0; program = 0.0; start = int(obs["t"]); behind = False; late = 0; slowest = 0.0; c0 = cpu_seconds(sol.pid)
+        obs = sim.reset("track", a.seed, a.parts, cameras=CAMERAS); ask({"type": "reset"}); t = 0; program = 0.0; start = int(obs["t"]); behind = False; late = 0; slowest = 0.0; meter = CpuMeter(sol.pid); c0 = meter.seconds()
         while not obs["done"] and t < a.max_steps:
-            tic = time.time(); reply = ask({"type": "act", "t": t, "obs": obs}); wall = time.time() - tic
-            c1 = cpu_seconds(sol.pid); took = c1 - c0; c0 = c1; took = max(took, wall) if wall > 10.0 else took; program += took
+            tic = time.monotonic(); reply = ask({"type": "act", "t": t, "obs": obs}); wall = time.monotonic() - tic
+            c1 = meter.seconds(); took = max(0.0, c1 - c0); c0 = c1; took = max(took, wall) if wall > 10.0 else took; program += took
             if took > (0.1 if t > 0 else 5.0): late += 1                                   # the grader's rules: a late reply ...
             slowest = max(slowest, took if t > 0 else 0.0)
             if late > 3 or program > (int(obs["t"]) - start) / 30.0 + 10.0: behind = True; break      # ... the fourth ends the shift
@@ -58,7 +47,7 @@ def main():
         os.killpg(sol.pid, 9)
     json.dump(s, open(os.path.join(a.out, "summary.json"), "w"), indent=1)
     print("part_pickup_score {:.3f}  placed {}  held only {}  bystanders moved {}  ({} actions, {:.0f} s)".format(
-        s["score"], s["placed"], s["held_only"], s["bystanders_moved"], t, time.time() - t0))
+        s["score"], s["placed"], s["held_only"], s["bystanders_moved"], t, time.monotonic() - t0))
     print("program time {:.1f} s for {:.1f} s of simulated time{}".format(program, (int(obs["t"]) - start) / 30.0, "  FELL BEHIND REAL TIME: shift ended" if behind else ""))
     print("late replies (over 0.1 s of CPU time): {} of 3 allowed; slowest reply {:.3f} s".format(late, slowest))
     print("camera latency of this shift: {} steps".format(s.get("camera_latency_steps")))

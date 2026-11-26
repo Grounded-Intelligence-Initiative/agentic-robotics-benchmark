@@ -14,6 +14,7 @@ import numpy as np
 
 import props as PR
 import shift as SH
+from outcomes import inside_tote, layout_offsets, released_and_resting, summarize_credits
 
 HZ = 30
 FRAME_COST_STEPS = 3
@@ -69,7 +70,7 @@ class Cell:
         self.plan = SH.make_shift("A", seed, n_parts, station=station, salt=salt)
         c = self.plan.constants
         c.update(overrides or {})
-        g = np.random.default_rng([21, seed] + ([int(salt)] if salt else []))
+        g, self.low_end, self.yaw, self.tote_at = layout_offsets(seed, salt, LOW_END, TOTE_AT)
         # Camera latency: a frame reaches the controller this many 30 Hz steps after it was taken. Fixed for the shift, hidden,
         # drawn from a stream of its own (the shift's parts and layout are what they were before this constant existed).
         self.latency = int(np.random.default_rng([31, seed] + ([int(salt)] if salt else [])).integers(LATENCY_STEPS[0], LATENCY_STEPS[1] + 1))
@@ -84,9 +85,6 @@ class Cell:
             t_rel += int(gs.uniform(FEED_INTERVAL_S[0], FEED_INTERVAL_S[1]) * HZ)
         self.shift_end = self.release_at[-1] + int(FEED_INTERVAL_S[1] * HZ)
         # Installed layout: nominal plus this shift's hidden offsets.
-        self.low_end = LOW_END + np.array([g.uniform(-0.05, 0.05), g.uniform(-0.08, 0.08), g.uniform(-0.03, 0.03)])
-        self.yaw = float(g.uniform(-0.15, 0.15))
-        self.tote_at = TOTE_AT + np.array([g.uniform(-0.05, 0.05), g.uniform(-0.05, 0.05), 0.0])
         self.slope = math.radians(c.get("track_slope_deg", 7.0)); self.friction = float(c.get("track_friction", 0.05))
         self.belt_speed = float(c.get("belt_speed", 0.3))
         tmp = Path(tempfile.mkdtemp(prefix="cell_props_"))
@@ -186,8 +184,7 @@ class Cell:
         return bool(RigidContactAPI.is_in_contact(scene_idx=self.scene.idx, query_set=set(query), with_set=list(with_set), ignore_set=None, current_only=True))
 
     def _in_tote(self, pos):
-        local = rot(self._quat(self.tote)).T @ (np.asarray(pos) - self._pos(self.tote)); (a, b, h) = PR.TOTE["inner"]
-        return bool(abs(local[0]) < a / 2 and abs(local[1]) < b / 2 and -0.01 < local[2] < h + 0.30)      # up to 0.3 m above the rim: twenty parts pile up
+        return inside_tote(pos, self._pos(self.tote), rot(self._quat(self.tote)), PR.TOTE["inner"])
 
     # -------------------------------------------------------------------- events
     def _next_event(self):
@@ -216,8 +213,8 @@ class Cell:
         self.rec = {"index": self.event_i, "item": self.item_names[self.event_i], "kind": ev.kind, "start_step": self.step_id}
 
     def _deadline(self):
-        """The step at which the current part's event is over whatever its state: one step before the next part is put on."""
-        k = self.event_i      # the next part always gets its full 1 to 3 s at the top of the chute, so this one ends when that one is put on
+        """The step at which the current part's event is over whatever its state: one step before the next part goes on."""
+        k = self.event_i
         return (self.staged_at[k + 1] - 1) if k + 1 < len(self.staged_at) else self.shift_end
 
     def _end_event(self, outcome, reason):
@@ -269,7 +266,7 @@ class Cell:
         if self.held_run >= HOLD_STEPS: self.was_held = True
         in_tote = self._in_tote(pos)
         speed = float(np.linalg.norm(part.get_linear_velocity().cpu().numpy()))
-        if in_tote and not any(any(f) for f in fing.values()) and speed < REST_SPEED: return self._end_event("placed", "in_tote")
+        if released_and_resting(in_tote, any(any(f) for f in fing.values()), speed, REST_SPEED): return self._end_event("placed", "in_tote")
         if floor: return self._end_event("lost", "hit_floor")
         # Jam: a part that stands still on the feed surface for a second without being held blocks the line. This is
         # what rules out parking a hand in the part's way and picking it up at leisure: it must be taken while it moves.
@@ -407,11 +404,7 @@ class Cell:
     def summary(self):
         n = len(self.plan.events); credit = [0.0] * n
         for r in self.records: credit[r["index"]] = r["credit"]
-        pen = 0.5 * sum(self.bystander_hit)
-        third = max(1, n // 3)
         return {"station": self.station, "seed": self.plan.seed, "parts": n, "events_done": len(self.records), "steps": self.step_id,
-                "frames_charged": self.frames_charged, "score": max(0.0, (sum(credit) - pen) / n), "placed": sum(c >= 1.0 for c in credit),
-                "held_only": sum(c == 0.5 for c in credit), "bystanders_moved": int(sum(self.bystander_hit)),
-                "score_first_third": sum(credit[:third]) / third, "score_last_third": sum(credit[-third:]) / third,
+                "frames_charged": self.frames_charged, **summarize_credits(credit, sum(self.bystander_hit)),
                 "mass_errors": self.mass_errors, "records": self.records, "camera_latency_steps": self.latency,
                 "constants": {k: v for k, v in self.plan.constants.items() if not isinstance(v, (list, dict))}}

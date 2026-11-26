@@ -47,12 +47,13 @@ ENV OMNIGIBSON_DATA_PATH=/opt/og_data
 ENV OMNIGIBSON_APPDATA_PATH=/tmp/og-appdata
 ENV OMNI_KIT_ACCEPT_EULA=YES
 ENV ACCEPT_EULA=Y
+COPY fetch_robot_assets.py /tmp/fetch_robot_assets.py
 RUN mkdir -p /opt/og_data \
-    && /opt/sim/bin/python -c "from omnigibson.utils.asset_utils import download_omnigibson_robot_assets as d; d()" \
+    && /usr/bin/python3 -I /tmp/fetch_robot_assets.py /opt/og_data/omnigibson-robot-assets \
     && chmod -R a+rX /opt/og_data
 
 # Stock Isaac assets from NVIDIA's public bucket, fetched at build time so every stage runs without network.
-COPY mirror_assets.py /tmp/mirror_assets.py
+COPY mirror_assets.py nvidia-assets.json /tmp/
 RUN python3 -I /tmp/mirror_assets.py /opt/isaac_assets Isaac/Props/YCB/Axis_Aligned/ Isaac/Environments/Simple_Room/ \
     && mkdir -p /opt/isaac_assets/NVIDIA && chmod -R a+rX /opt/isaac_assets
 
@@ -77,3 +78,9 @@ ENV MPLBACKEND=Agg
 RUN python3 -c "import sys; assert sys.version_info >= (3, 12); import numpy, PIL; print('[image] python3', sys.version.split()[0])" \
     && test -s /opt/cell_items/items.json && test -s "$CELL_ROOM" && test -d /opt/og_data/omnigibson-robot-assets/models/r1pro \
     && runuser -u user -- /opt/sim/bin/python -c "import isaacsim, numpy, PIL; print('[image] agent-UID isaacsim import OK')"
+
+# The port references this custom experience; a git diff of tracked upstream files
+# alone omits it. Keep it in the build context and check the launch selection as user.
+COPY omnigibson_6_1_0.kit /opt/BEHAVIOR-1K/OmniGibson/omnigibson/omnigibson_6_1_0.kit
+COPY check_sim_assets.py /opt/cell-check-sim-assets.py
+RUN runuser -u user -- /opt/sim/bin/python -I /opt/cell-check-sim-assets.py

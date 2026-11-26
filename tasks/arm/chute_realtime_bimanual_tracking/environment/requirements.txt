@@ -4,7 +4,7 @@ numpy==2.3.1
 pillow==12.3.0
 scipy==1.17.0
 # build_items.py (image build only)
-usd-core>=24.11
+usd-core==26.11
 trimesh==4.11.1
 coacd==1.0.7
 opencv-python-headless==5.0.0.93

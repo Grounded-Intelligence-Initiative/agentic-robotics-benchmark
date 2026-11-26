@@ -101,7 +101,7 @@ class Dual:
                 self.high_q=self.ready_q.copy();self.qpref=self.high_q.copy()
                 self.plan_ps=self.plan_low_ps;self.plan_stage='low';self.plan_iter=0
                 self.plan_q=self.high_q.copy();self.plan_best=(float('inf'),self.high_q.copy())
-            else:self.plan_stage='done' 
+            else:self.plan_stage='done'
 
     def grasps(self,tr,n):
         """Local edge/handle pinches, assigned to the nearest side of the robot."""

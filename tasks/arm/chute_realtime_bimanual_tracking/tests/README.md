@@ -36,3 +36,14 @@
 - Grasping is physical for a controller (finger friction only). The reference's token gives it, besides ground truth and
   what is coming, OmniGibson's assisted grasping (the simulator attaches a part held by both fingers for 0.3 s). The
   anchor is therefore the score of a controller with these three privileges; say so when comparing.
+- `cpu_meter.py` is the one CPU meter of the grader and of the practice runner (`lab/practice.py`): it reads the
+  controller's process group on every sample and also counts the CPU time of workers already waited for, so a helper
+  that is started and reaped between two replies still spends the budget. `review/test_cpu_meter.py` runs live, reaped
+  and nested workers against it (Linux only).
+- `outcomes.py` holds the scene's random layout draws and the scoring predicates (inside the tote, released and at
+  rest, the credit summary) that `cell_env.py` uses; same draws and same numbers as before they were factored out.
+- `review/test_build_assets.py` checks the image's asset lists (`environment/nvidia-assets.json`, the robot model
+  fetcher) without a network. `NOTICE.md` and `licenses/` carry the licence texts of the task and of the kit.
+- Image: built from `environment/Dockerfile` on 2026-11-26 (rootless build, then run through Apptainer on an RTX 5000
+  Ada): the simulator starts as the agent's user, the CPU checks of the wire pass, a shift runs on the GPU. That was an
+  author's check on a cluster without Docker, not `ale validate`.
