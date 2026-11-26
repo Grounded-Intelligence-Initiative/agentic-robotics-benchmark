@@ -81,10 +81,12 @@ ENV OPENBLAS_CORETYPE=Haswell OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 
 # Fail the build early if the venv is broken, prove the agent account can use it and that the cell's account can
 # load the cell's code, and that the agent account cannot read the service (then leave the agent's home as the
-# agent's: nothing root-owned in it). No GPU at build time: the simulator itself is first started by setup.
+# agent's: nothing root-owned in it). No GPU at build time: the simulator itself is first started by setup. The
+# modules that use USD (scene, cell, server) are compiled, not imported: Isaac Sim's pxr modules (PhysxSchema among
+# them) are loaded by its extensions, so they import only inside a running SimulationApp.
 RUN HOME=/tmp/selfcheck python3 -c "import isaacsim, cv2, numpy, scipy; print('[image] isaacsim ok, numpy', numpy.__version__, 'cv2', cv2.__version__)" \
     && runuser -u user -- python3 -c "import isaacsim, cv2, numpy, scipy; print('[image] agent-UID import OK')" \
-    && runuser -u packcell -- /opt/venv/bin/python3 -I -s -c "import sys; sys.path.insert(0, '/opt/packcell-commission'); import packcell.series, packcell.rules, packcell.wire, packcell.kin, packcell.scene, packcell.sensors; print('[image] the cell imports for its account')" \
+    && runuser -u packcell -- /opt/venv/bin/python3 -I -s -c "import sys; sys.path.insert(0, '/opt/packcell-commission'); import packcell.series, packcell.rules, packcell.wire, packcell.kin, packcell.sensors, packcell.cellproc; [compile(open('/opt/packcell-commission/packcell/%s.py' % m).read(), m, 'exec') for m in ('scene', 'cell', 'server')]; print('[image] the cell imports for its account')" \
     && test -f /opt/assets/isaac/Isaac/Robots/UniversalRobots/ur20/ur20.usd \
     && ! runuser -u user -- ls /opt/packcell-commission > /dev/null 2>&1 \
     && ! runuser -u user -- cat /opt/packcell-commission/dev_packs.json > /dev/null 2>&1 \
