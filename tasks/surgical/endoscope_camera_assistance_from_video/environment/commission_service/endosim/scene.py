@@ -121,6 +121,11 @@ def _box(stage, path, size, centre, material):
     return c
 
 
+def _size(look):
+    """An instrument look's scale against the 5 mm instrument the geometry below is written for."""
+    return float(look.get("shaft_mm", 5)) / 5.0
+
+
 class Scene(object):
     """One procedure's stage. `apply(state)` poses it for a frame."""
 
@@ -282,11 +287,15 @@ class Scene(object):
         can = UsdGeom.Xform.Define(stage, "/World/Inst_%s/Cannula" % role)
         rec["cannula_op"] = can.AddTranslateOp(UsdGeom.XformOp.PrecisionDouble)
         plastic = _material(stage, "/World/Looks/cannula_" + role, rgb=(0.78, 0.80, 0.82), roughness=0.35)
-        _cyl(stage, "/World/Inst_%s/Cannula/Sleeve" % role, 0.0042, -0.030, 0.010, plastic)
+        widest = max([_size(self.spec["instrument_looks"][lid]) for lid in look_ids] or [1.0])
+        _cyl(stage, "/World/Inst_%s/Cannula/Sleeve" % role, 0.0042 * widest, -0.030, 0.010, plastic)
         for lid in look_ids:
             look = self.spec["instrument_looks"][lid]
             base = "/World/Inst_%s/Look%d" % (role, lid)
             grp = UsdGeom.Xform.Define(stage, base)
+            if _size(look) != 1.0:
+                # a 10 mm instrument is a 5 mm one built twice as large about its tip (shaft, wrist, jaws, bands)
+                grp.AddScaleOp(UsdGeom.XformOp.PrecisionDouble).Set(Gf.Vec3d(_size(look), _size(look), _size(look)))
             mp = "/World/Looks/%s_%d_" % (role, lid)
             shaft = _material(stage, mp + "shaft", rgb=look["shaft_rgb"], metallic=look["shaft_metallic"], roughness=look["shaft_rough"])
             # blood and tissue on the working end: the wrist and the jaws go from bare metal towards a wet dark red

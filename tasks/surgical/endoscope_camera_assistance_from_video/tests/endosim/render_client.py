@@ -20,7 +20,7 @@ class RendererError(Exception):
 
 class Renderer(object):
     def __init__(self, package_dir, python=None, prefix=None, env=None, log_path=None, start_timeout=1800.0,
-                 render_timeout=120.0, max_restarts=3, cwd=None):
+                 render_timeout=120.0, max_restarts=3, cwd=None, around_restart=None):
         self.package_dir = package_dir          # the folder that holds the `endosim` package
         self.python = python or sys.executable
         self.prefix = list(prefix or [])
@@ -33,11 +33,16 @@ class Renderer(object):
         self.start_timeout, self.render_timeout = float(start_timeout), float(render_timeout)
         self.max_restarts, self.restarts = int(max_restarts), 0
         self.cwd = cwd or package_dir
+        # (before, after): called around every restart, `after` also once the first start is up (the grader stops the
+        # agent's processes before a restart and seals the new renderer's shared memory before it lets them go on)
+        self.around_restart = around_restart
         self.proc = None
         self.spec = None
         self.started = None
         self.render_ms, self.frames, self.extra_renders = 0.0, 0, 0
         self._start()
+        if self.around_restart:
+            self.around_restart[1]()
 
     # -- process -----------------------------------------------------------------------------------------------------
     def _start(self):
@@ -112,8 +117,14 @@ class Renderer(object):
         if self.restarts >= self.max_restarts:
             raise RendererError("the renderer failed {} times; last: {}".format(self.restarts + 1, exc))
         self.restarts += 1
-        self._stop()
-        self._start()
+        if self.around_restart:
+            self.around_restart[0]()
+        try:
+            self._stop()
+            self._start()
+        finally:
+            if self.around_restart:
+                self.around_restart[1]()
         if self.spec is not None:
             self._call({"cmd": "load", "spec": self.spec}, 600.0)
 

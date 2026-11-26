@@ -35,7 +35,7 @@ KINDS = ("dissection", "suturing", "exploration", "clip_and_cut")
 HANDS = ("left", "right")
 ROLES = ("left", "right", "assistant")
 JAWS = ("grasper", "scissors", "hook", "needle_driver", "clip_applier", "suction")
-GENERATOR_VERSION = "endosim-procedure/0.2"
+GENERATOR_VERSION = "endosim-procedure/0.3"
 
 
 class Rng(object):
@@ -121,6 +121,24 @@ _PALETTES = (  # (name, base, dark, pale, fat, vessel); the first DEV_PALETTES a
     ("dusky", (0.46, 0.20, 0.27), (0.27, 0.09, 0.15), (0.64, 0.40, 0.44), (0.78, 0.68, 0.42), (0.22, 0.04, 0.10)),
 )
 DEV_PALETTES = 3
+
+
+RIG_SHAFTS = 6                # shaft sizes drawn per procedure: one per instrument look (3, plus one per exchange)
+P_TEN_MM = 0.35               # the chance that an instrument is a 10 mm one (otherwise 5 mm), for every instrument
+
+
+def draw_rig(rng):
+    """The camera chain and the instruments' sizes of one procedure (holder_manual.md, sections 4 and 5): the angle at
+    which the camera head is clamped on the eyepiece, uniform within +-HEAD_ANGLE_MAX_DEG; the video chain's latency,
+    uniform over LATENCY_STEPS; each instrument's shaft, 10 mm with probability P_TEN_MM, else 5 mm. The fixed sets
+    draw it once, from a key of its own (tests/review/draw_rigs.py), and record it in the set's file."""
+    head = rng.uniform(-model.HEAD_ANGLE_MAX_DEG, model.HEAD_ANGLE_MAX_DEG)
+    latency = model.LATENCY_STEPS[min(len(model.LATENCY_STEPS) - 1, int(rng.random() * len(model.LATENCY_STEPS)))]
+    shafts = [10 if rng.chance(P_TEN_MM) else 5 for _ in range(RIG_SHAFTS)]
+    return {"head_deg": round(float(head), 3), "latency_steps": int(latency), "shaft_mm": shafts}
+
+
+NOMINAL_RIG = {"head_deg": 0.0, "latency_steps": 1, "shaft_mm": [5] * RIG_SHAFTS}   # a procedure whose set names none
 
 
 def draw_scene_look(rng, pool="all"):
@@ -483,11 +501,13 @@ class Procedure(object):
                 "palette": self.scene_look["palette"], "shafts": [k["shaft"] for k in self.looks], "clutter": len(self.clutter),
                 "fine_fraction": round(float(self.fine[1:].mean()), 3),
                 "both_active_fraction": round(float((self.active["left"][1:] & self.active["right"][1:]).mean()), 3),
-                "generator": GENERATOR_VERSION}
+                "head_deg": float(self.rig["head_deg"]), "latency_steps": int(self.latency),
+                "shafts_mm": [int(k["shaft_mm"]) for k in self.looks], "generator": GENERATOR_VERSION}
 
 
 def generate(seed, factors=None, steps=800, pool="all"):
-    """The procedure of `seed`. `factors` may pin: kind, scope, exchanges (0-2), assistant (bool), smoke (bool).
+    """The procedure of `seed`. `factors` may pin: kind, scope, exchanges (0-2), assistant (bool), smoke (bool), and
+    `rig` (draw_rig's record: the camera head's angle, the video latency, the shafts' sizes; NOMINAL_RIG without it).
     `pool`: "all" for a graded procedure, "dev" for a development procedure, whose looks come from the narrower
     development pool (fewer shaft finishes and tissue colourings, lighter staining, less clutter): the graded
     procedures show things the development set does not."""
@@ -564,6 +584,10 @@ def generate(seed, factors=None, steps=800, pool="all"):
             b.hold(site, k, g.uniform(1.0, 2.0))
         k += 1
 
+    rig = dict(f.get("rig") or NOMINAL_RIG)
+    for i, lk in enumerate(looks):
+        lk["shaft_mm"] = int(rig["shaft_mm"][i]) if i < len(rig["shaft_mm"]) else 5
+
     tip, jaw, active, present, look, site_of_step = b.arrays()
     a_tip, a_present, a_jaw = _assistant(Rng(seed, "assistant"), tissue, trocars["assistant"], sites, site_of_step, tip, total,
                                          assistant)
@@ -585,4 +609,5 @@ def generate(seed, factors=None, steps=800, pool="all"):
                      smoke_on=smoke_on, tissue=tissue, trocars=trocars, looks=looks, scene_look=scene_look, clutter=clutter, pool=pool,
                      tip=tip, jaw=jaw, active=active, present=present, look=look, smoke=smoke,
                      fine=_fine_flags(tip, active), site_of_step=site_of_step, sites_xy=[list(map(float, s.c[:2])) for s in sites],
-                     path_m=path, gestures=b.gestures)
+                     path_m=path, gestures=b.gestures, rig=rig, head=math.radians(float(rig["head_deg"])),
+                     latency=int(rig["latency_steps"]))

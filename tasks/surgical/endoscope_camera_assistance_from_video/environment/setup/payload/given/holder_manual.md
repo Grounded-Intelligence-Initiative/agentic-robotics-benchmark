@@ -23,12 +23,15 @@ Joints `q = [pan, tilt, insertion, roll]`:
 ```
 R_WS = Ry(-pan) . Rx(tilt)          the scope's axis is a = R_WS . (0, 0, -1)
 p    = insertion * a                the lens: `insertion` metres past the RCM along the scope
-R_WC = R_WS . Rz(roll) . Rx(-d)     the camera's axes in W; d = the scope's direction of view (0 or 30 degrees)
+R_WC = R_WS . Rz(roll) . Rx(-d) . Rz(h)
+                                    the camera's axes in W; d = the scope's direction of view (0 or 30 degrees),
+                                    h = the camera head's angle on the scope's eyepiece (section 4)
 ```
 
 * At pan = tilt = 0 the scope points straight down (-z). Positive pan swings it towards +x, positive tilt towards +y.
 * Roll turns the scope and its camera head together about the scope's axis. Positive roll turns the camera
-  counter-clockwise as seen from behind it (the picture turns clockwise).
+  counter-clockwise as seen from behind it (the picture turns clockwise). The camera head's own angle on the
+  eyepiece, h, turns the picture about the view direction; it is set by hand (section 4) and no joint moves it.
 * The camera frame C is the graphics one: x right in the image, y up in the image, the camera looks along -z. A world
   point P has camera coordinates `pc = R_WC^T (P - p)`, depth `-pc.z` along the view direction, and falls on the pixel
   `u = cx + fx * pc.x / depth`, `v = cy - fy * pc.y / depth` (u to the right, v down, origin at the top-left corner).
@@ -71,9 +74,20 @@ motion.
 Which scope is fitted is decided by the surgical team for each procedure and is not reported to the holder: the two
 are told apart by how the picture moves when the holder does.
 
-The video chain has a latency of one control step: the frame in an observation shows the scene and the holder as they
-were one control step earlier (the very first observation of a procedure shows the start). The joint readings in
-the same observation are current.
+**The camera head.** The camera head is clamped onto the scope's eyepiece by hand when the scope is set up for a
+procedure, at whatever angle the scrub nurse leaves it: its angle h on the eyepiece is anywhere within +-40 degrees of
+the eyepiece's reference mark (`holder_model.HEAD_ANGLE_MAX_DEG`; spread evenly over that range in the installations we
+know), the same for the whole procedure, and not reported to the holder. It turns the picture about the view
+direction (`R_WC` above, `holder_model.camera_pose(q, scope, head)`), so it decides which way the picture moves when
+a joint does, and where the horizon is: the roll that levels the picture is `holder_model.level_roll(pan, tilt, scope,
+head)`. It is identified, like the scope, from how the picture moves when the holder does.
+
+**The video chain.** The latency from the lens to the holder depends on the operating room's video equipment (camera
+control unit, routing, recording): 1, 2 or 3 control steps (0.1 to 0.3 s; `holder_model.LATENCY_STEPS`), each about
+equally common, the same for the whole procedure, and not reported. The frame in an observation shows the scene and
+the holder as they were that many control steps earlier (early in a procedure, a frame from before the start shows
+the start). The joint readings in the same observation are current. The latency shows in when the picture starts to
+move after a commanded motion.
 
 ## 5. The set-up in the operating room
 
@@ -88,9 +102,12 @@ the same observation are current.
   nominal place. The left hand's instrument is the "left" instrument, the right hand's the "right" one.
 * The assistant's trocar, when there is an assistant's instrument, is on one flank, nominally at (+-0.125, 0.070) m,
   on either side.
-* Every instrument has a straight shaft 5 mm in diameter that pivots in its trocar. Its tip is the far end of the
-  instrument on the shaft's axis (the end of the closed jaws, of a hook, of a suction tube). The instruments work at
-  the tissue: a tip is often partly sunk into it, or hidden when the tissue rises with a breath.
+* Every instrument has a straight shaft that pivots in its trocar, 5 mm or 10 mm in diameter. A 10 mm instrument is
+  built like a 5 mm one at twice the size: shaft, wrist, jaws and marker bands. About one instrument in three is a
+  10 mm one, of any kind and any finish, and nothing reports which: an instrument's apparent size alone does not tell
+  how far away it is. An instrument brought in by an exchange may be of the other size. Its tip is the far end of
+  the instrument on the shaft's axis (the end of the closed jaws, of a hook, of a suction tube). The instruments work
+  at the tissue: a tip is often partly sunk into it, or hidden when the tissue rises with a breath.
 * Things lie in the field: gauze swabs (white, or soaked with blood) and metal clips, on the tissue near the work.
 
 ## 6. When a view is usable
@@ -100,13 +117,15 @@ instruments and of the holder, never on the picture.
 
 1. **Safe zone.** Every counting tip lies in front of the lens and inside the central safe zone of the image:
    `|u - cx| <= 0.30 * 640 = 192 px` and `|v - cy| <= 0.30 * 480 = 144 px`.
-2. **Zoom band.** Every counting instrument's apparent size, the diameter its shaft shows at the tip,
-   `fx * 0.005 m / depth`, is between 22 and 44 px (with fx = 480 that is a depth between 109 and 55 mm).
+2. **Zoom band.** Every counting tip is at a working distance at which a 5 mm shaft shows between 22 and 44 px at
+   the tip: `fx * 0.005 m / depth` within 22 to 44 px, with `depth` the tip's distance along the view direction (with
+   fx = 480 that is a depth between 109 and 55 mm). The rule is a working distance and is the same for a 10 mm
+   instrument, whose shaft then shows twice as wide (44 to 88 px).
 3. **Horizon.** The display's up reference is `r = (0, cos 45, sin 45)` in W: half-way between "towards the
    patient's head" and "towards the ceiling". The horizon error is the signed angle between the image's up direction
-   and r's projection into the image, `e = atan2(r . x_C, r . y_C)` with x_C and y_C the first two columns of R_WC;
-   it must stay within +-15 degrees. `holder_model.level_roll(pan, tilt)` is the roll at which e = 0; it does not
-   depend on the scope.
+   and r's projection into the image, `e = atan2(r . x_C, r . y_C)` with x_C and y_C the first two columns of R_WC
+   (the camera head's angle included); it must stay within +-15 degrees. `holder_model.level_roll(pan, tilt, scope,
+   head)` is the roll at which e = 0; with the camera head at 0 it does not depend on the scope.
 4. **Steadiness during fine work.** The surgeon is doing fine work at step t when, over the last 1.0 s (steps t-10
    to t), every counting tip has stayed within 9 mm of its own mean position over that time, and no instrument has
    started or stopped counting in it. During fine work the camera must not move the picture of the working point
@@ -132,7 +151,8 @@ instruments move (dissection with short strokes, suturing with bites and pulls, 
 place to place, clipping and cutting); which instruments are used and what they look like (graspers, scissors, hooks,
 needle drivers, clip appliers, suction tubes; black, grey, steel, white or coloured shafts, with or without marker
 bands); the tissue (its colours, fat, vessels, how wet it shines); smoke from energy devices, sometimes dense;
-highlights; the scope (0 or 30 degrees) and its light; whether instruments are exchanged, and when; whether the
+highlights; the scope (0 or 30 degrees) and its light; the camera head's angle and the video chain's latency
+(section 4); which instruments are 10 mm ones (section 5); whether instruments are exchanged, and when; whether the
 assistant has a third instrument in the field, where it comes from, and what it does (it holds near the work, it
 stays behind when the work moves on, it reaches into the middle of the field now and then). The graded procedures are
 not among the development procedures, and they differ from them in all of this.
@@ -150,13 +170,18 @@ Ten recorded development procedures, `dev01` to `dev10`, each a folder:
 * `frames/<step>.jpg`: the endoscope's frame of every second control step (the frame as captured at that step: a
   recording has no latency);
 * `labels.jsonl`: one JSON object per recorded frame, describing the state the frame shows;
-* `meta.json`: the scope and its intrinsics, the step length, the kind of procedure.
+* `meta.json`: the scope and its intrinsics, the step length, the kind of procedure, and the two things of the camera
+  chain that were measured in the lab for that recording: `camera_head_deg` (the camera head's angle h) and
+  `video_latency_steps` (the latency of the video chain it was recorded through; the frames on file are as captured,
+  without it, and the commissioning service plays the procedure with it).
 
 A label holds: `step`; `joints` (the holder's joints at that step); `scope`; `lens_smeared`; `fine_work` (rule 4);
 `horizon_error_deg`; `usable` and `failed` (how section 6 judges this step, and which rules it fails: `zone`, `zoom`,
 `horizon`, `motion`, `lens`); and `instruments`, one entry per instrument with `role` (`left`, `right`,
 `assistant`), `present` (inside the cavity), `tip_px` ([u, v], also when it falls outside the picture), `depth` (m
-along the view direction), `in_image`, `apparent_px` (rule 2) and `active` (whether it counts).
+along the view direction), `in_image`, `apparent_px` (rule 2's size: what a 5 mm shaft would show at that depth),
+`shaft_mm` (the instrument's catalogue size, 5 or 10) and `active` (whether it counts). A label also repeats
+`camera_head_deg`.
 
 The camera in these recordings was held by an ordinary assistant, not by a good controller: it reacts late, lets the
 work drift before it corrects, and in some recordings touches tissue with the lens and has to clean it. The
@@ -169,8 +194,9 @@ appears in it when all ten recordings are there.
 ## 9. The commissioning service
 
 A service in your sandbox runs the holder on the same ten development procedures for your own controller: it plays a
-procedure from its first step, sends the observations the grader will send (same picture, same latency, same joint
-readings), and applies your rate commands with the same servo and the same lens. It gives **no ground truth, no
+procedure from its first step, sends the observations the grader will send (same picture, same joint readings, the
+recording's own camera head and video latency), and applies your rate commands with the same servo and the same
+lens. It gives **no ground truth, no
 labels and no judgement of the view**, and it never plays a graded procedure.
 
 * `~/given/endocam_client.py`: the client (`Commissioning`, `decode_image`).

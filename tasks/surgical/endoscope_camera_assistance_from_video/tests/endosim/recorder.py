@@ -8,7 +8,7 @@ truth for the frame they belong to (episode.Episode.annotation): every instrumen
 instruments count, whether the surgeon is doing fine work, whether the lens is smeared, and how the view rules judge
 the frame.
 
-Used by the commissioning service's set-up (environment/commission_service/record_dev.py); the grader never records.
+Used by the commissioning service's set-up (environment/commission_service/commissiond.py); the grader never records.
 """
 
 import json
@@ -43,7 +43,7 @@ class Assistant(object):
         ep, scope = self.ep, self.ep.scope
         q = ep.holder.q
         k = model.SCOPES[scope]
-        roll_err = model.level_roll(q[0], q[1]) - q[3]
+        roll_err = model.level_roll(q[0], q[1], scope, ep.head) - q[3]
         roll = float(np.clip(1.5 * roll_err, -model.RATE_MAX[3], model.RATE_MAX[3])) if abs(roll_err) > self.roll_band else 0.0
         # the lens: an accident (the scope driven at the tissue under the work), some time to notice it, the
         # withdrawal, the wait in the cannula
@@ -96,7 +96,7 @@ class Assistant(object):
         k = model.SCOPES[scope]
 
         def view(qq):
-            return model.project(target[None, :], model.camera_pose(np.array([qq[0], qq[1], qq[2], q[3]]), scope), scope)[0]
+            return model.project(target[None, :], model.camera_pose(np.array([qq[0], qq[1], qq[2], q[3]]), scope, ep.head), scope)[0]
 
         now = view(q[:3])
         err = np.array([k["cx"] - now[0], k["cy"] - now[1], want_depth - now[2]])
@@ -141,6 +141,9 @@ def record(procedure, renderer, out_dir, name, every=2, operator_seed=0, touch=F
         "name": name, "scope": procedure.scope, "view_deg": k["view_deg"], "intrinsics": {"fx": k["fx"], "fy": k["fy"], "cx": k["cx"], "cy": k["cy"]},
         "image": [model.IMAGE_W, model.IMAGE_H], "step_s": model.DT, "steps": procedure.steps, "recorded_every": every,
         "procedure_kind": procedure.kind,
+        "camera_head_deg": float(procedure.rig["head_deg"]), "video_latency_steps": int(procedure.latency),
+        "rig": "measured in the lab for this recording: the camera head's angle on the eyepiece and the video chain's latency "
+               "(the frames here are as captured, without it; the commissioning service plays this procedure with it)",
         "camera": "held by a scripted assistant; its view was usable on {:.0%} of the steps".format(summary["useful_view_fraction"]),
         "labels": "labels.jsonl: one JSON object per recorded frame, for the state the frame shows (holder_manual.md, section 8)",
     }

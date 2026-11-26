@@ -40,7 +40,6 @@ STATE_DIR = os.environ.get("ENDOCAM_STATE_DIR", "/var/lib/endocam")
 SOCKET = os.environ.get("ENDOCAM_SOCKET", "/run/endocam/commission.sock")
 PYTHON = os.environ.get("ENDOCAM_PYTHON", "/opt/venv/bin/python3")
 IDLE_S = 120.0
-FRAME_DELAY = 1
 PROBE_RNG = random.Random()   # which other step a probe copy borrows the instruments' motion from
 
 
@@ -162,7 +161,7 @@ class Service(object):
                         self.save()
                     item = self.items[name]
                     proc = procedure.generate(item["seed"], item.get("factors"), steps=self.steps, pool="dev")
-                    session = Session(proc, self.renderer, frame_delay=FRAME_DELAY, privileged=False)
+                    session = Session(proc, self.renderer, privileged=False)      # the procedure's own video latency
                     log("session", number, name, "started")
                     reply({"ok": True, "session": number, "sessions_left": left - 1, "steps": self.steps, "t": 0, "obs": session.observation()})
                 elif cmd == "step":

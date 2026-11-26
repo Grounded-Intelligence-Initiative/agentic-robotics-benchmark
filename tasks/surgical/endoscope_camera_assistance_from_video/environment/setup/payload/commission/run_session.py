@@ -20,6 +20,7 @@ import base64
 import json
 import os
 import queue
+import select
 import random
 import subprocess
 import sys
@@ -61,10 +62,29 @@ class Wire(object):
             raise RuntimeError("the controller closed its stdout")
         return line
 
+    def _send(self, data, deadline):
+        """Write one request without blocking, under the request's own deadline (as the grader does: an observation
+        is larger than a pipe holds, and a controller that stops reading must not hang the launcher)."""
+        fd = self.proc.stdin.fileno()
+        os.set_blocking(fd, False)
+        view = memoryview(data)
+        while view:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                raise RuntimeError("the controller missed its reply deadline (it did not read its request)")
+            _, ready, _ = select.select([], [fd], [], min(left, 1.0))
+            if not ready:
+                continue
+            try:
+                view = view[os.write(fd, view):]
+            except BlockingIOError:
+                continue
+            except OSError as exc:
+                raise RuntimeError("the controller closed its stdin: {}".format(exc))
+
     def ask(self, message):
-        deadline = time.monotonic() + STEP_TIMEOUT_S
-        self.proc.stdin.write(json.dumps(message) + "\n")
-        self.proc.stdin.flush()
+        deadline = time.monotonic() + STEP_TIMEOUT_S        # one deadline for the write and the reply
+        self._send((json.dumps(message) + "\n").encode("utf-8"), deadline)
         while True:
             line = self._line(deadline, "reply").strip()
             if line:
@@ -125,8 +145,8 @@ def main():
     times, probes, changed, t, ended = [], 0, 0, 0, "the procedure is complete"
     try:
         while obs is not None:
-            t0 = time.monotonic()
             copy = service.probe_copy() if rng.random() < a.probe_rate else None
+            t0 = time.monotonic()                     # the controller's time only (the copy's render is the service's)
             if copy is not None:
                 if rng.random() < 0.5:
                     other = action_of(wire.ask({"type": "act", "t": t, "obs": copy}))

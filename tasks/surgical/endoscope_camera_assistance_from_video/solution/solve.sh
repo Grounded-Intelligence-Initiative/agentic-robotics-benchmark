@@ -5,7 +5,8 @@
 # it computes with (a copy of ~/given/holder_model.py, which setup staged), and the 256-bit reference token as
 # .oracle_token. The grader compares the token's sha256 with tests/hidden/oracle_token.sha256 and, on a match, adds
 # `privileged` to every observation: what a perfect perception system would have read from the same delayed frame
-# (the scope fitted, whether the lens is smeared, each instrument's tip in the camera frame). The reference controller
+# (the scope fitted, the camera head's angle, the video latency, whether the lens is smeared, each instrument's tip in
+# the camera frame). The reference controller
 # reads that in place of the picture and moves the holder only by the rate commands every submission uses.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"

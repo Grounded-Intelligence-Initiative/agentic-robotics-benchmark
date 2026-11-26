@@ -7,8 +7,11 @@ working instruments in a view the surgeon can work in.
 
 Your controller gets, at every control step (0.1 s), **only the endoscope's RGB frame and the holder's own four joint
 readings**, and answers with joint rates. It is never told where the instruments are, which instruments are in the
-field, what the surgeon is doing or about to do, or which of the two scopes (0 or 30 degrees) is fitted. The frame it
-gets is one control step old.
+field, what the surgeon is doing or about to do, which of the two scopes (0 or 30 degrees) is fitted, at what angle
+the camera head is clamped on the scope (within +-40 degrees; it turns the picture), how old the frame is (1, 2 or 3
+control steps: the operating room's video chain), or which instruments are 5 mm and which 10 mm ones (a 10 mm one is
+the same instrument at twice the size). Each of these is fixed for a procedure and differs between procedures
+(`~/given/holder_manual.md`, sections 4 and 5, states them as a datasheet would).
 
 ## What a usable view is
 
@@ -16,8 +19,9 @@ A control step's view is usable when (`~/given/holder_manual.md`, section 6, has
 
 1. both of the surgeon's instrument tips are inside the central safe zone of the image (the middle 60 % of its width
    and of its height);
-2. the instruments' apparent size is inside the zoom band (the shaft, 5 mm thick, shows 22 to 44 px wide at the tip);
-3. the horizon is level within 15 degrees;
+2. the tips are at a working distance inside the zoom band (where a 5 mm shaft shows 22 to 44 px wide at the tip; a
+   10 mm shaft shows twice that);
+3. the horizon of the picture as the surgeon sees it is level within 15 degrees;
 4. while the surgeon does fine work (the tips stay put), the camera does not move the picture faster than 48 px/s;
 5. the lens is clean. A lens that touches tissue is smeared: the picture is blurred and stained and no view is usable
    until the scope has been held withdrawn in its cannula for 4 s. Nothing reports a smeared lens but the picture.
@@ -28,9 +32,10 @@ is back at its place); the assistant's third instrument, when there is one, neve
 **Your score is the fraction of control steps with a usable view, over 12 recorded procedures you have not seen**
 (800 steps each). There are no other terms. Every procedure starts with the scope withdrawn at the home pose, and the
 place where the surgeon works travels through the cavity: a camera that stays where it is sees almost nothing usable.
-The procedures differ in kind (dissection, suturing, exploration, clipping and cutting), in the instruments and
-their look, in the tissue, in smoke and highlights, in the scope fitted, in whether instruments are exchanged, and in
-whether an assistant's instrument is in the field (manual, section 7). The graded procedures show instrument
+The procedures differ in kind (dissection, suturing, exploration, clipping and cutting), in the instruments, their
+look and their size, in the tissue, in smoke and highlights, in the scope fitted, the camera head's angle and the
+video latency, in whether instruments are exchanged, and in whether an assistant's instrument is in the field
+(manual, section 7). The graded procedures show instrument
 finishes, tissue colourings, blood-stained instruments and clutter that the development set does not show.
 
 ## What you produce
@@ -67,13 +72,15 @@ program's **stdout is the wire**: print `READY` when you are ready, then only re
   the repeated requests count). The grader's clock runs only while it waits for you: the procedure does not move
   while you compute, but when the total is used up the holder is commanded to stand still for everything that is
   left, and those steps are judged as they are.
-* A reply that is late, malformed or missing ends your control of that procedure: its remaining steps run with the
-  holder standing still and are judged as they are. Before the next procedure the grader restarts your program
-  (`run.sh` again, `READY` again), at most three times in the evaluation; after that the remaining procedures run
-  with the holder standing still.
+* A reply that is late, missing or not a JSON object with an `action` ends your control of that procedure: its
+  remaining steps run with the holder standing still and are judged as they are, and before the next procedure the
+  grader restarts your program (`run.sh` again, `READY` again), at most three times in the evaluation; after that the
+  remaining procedures run with the holder standing still. An `action` that is not four finite numbers also ends
+  your control of that procedure, but your program is not restarted: it gets the next procedure's `reset`. The reply
+  that uses up the total time is still applied; control stops after it.
 * Your program runs in a fresh copy of this environment that holds nothing of yours but `/home/user/submission`: no
-  `~/given`, no commissioning service, no file you left elsewhere, no network. The same GPU and the same Python are
-  there. Keep the folder small (model weights included), load quickly, and write scratch files under `/tmp` only.
+  `~/given`, no commissioning service, no file you left elsewhere, no network (your program is started under a
+  filter that lets it open local Unix sockets only). A GPU of the same models and the same Python are there. Keep the folder small (model weights included), load quickly, and write scratch files under `/tmp` only.
 
 ## What you are given
 
@@ -81,13 +88,14 @@ program's **stdout is the wire**: print `READY` when you are ready, then only re
 |---|---|
 | `~/given/holder_manual.md` | the holder's kinematics and servo, the two scopes and their intrinsics, the operating-room set-up, the exact view rules, what varies between procedures, the development set's format, the commissioning service |
 | `~/given/holder_model.py` | the reference implementation of the manual: kinematics, projection, the horizon, the servo, every constant (the grader computes with this same file) |
-| `~/given/dev_procedures/` | the development set: ten recorded procedures as endoscope video (a frame every second control step) with labels (every instrument's tip in the image, which instruments count, fine work, a smeared lens, how the rules judge the frame). It is written during the first minutes of your session; `COMPLETE` appears when it is whole |
+| `~/given/dev_procedures/` | the development set: ten recorded procedures as endoscope video (a frame every second control step) with labels (every instrument's tip in the image, its size, which instruments count, fine work, a smeared lens, how the rules judge the frame) and each recording's camera head angle and video latency as measured in the lab. It is written during the first minutes of your session; `COMPLETE` appears when it is whole |
 | `~/given/endocam_client.py` | the client of the commissioning service |
 | `~/commission/run_session.py` | runs a controller folder through one commissioning session the way the grader will run it |
 | `~/example/` | a minimal controller that speaks the wire and holds the camera still (it scores about 0): a starting point |
 
 The **commissioning service** plays the ten development procedures for your controller, with the grader's
-observations, latency, servo and lens, and gives no ground truth, no labels and no judgement of the view. You have 12
+observations, servo and lens and each recording's own camera head and latency, and gives no ground truth, no labels
+and no judgement of the view. You have 12
 sessions, one at a time, each one procedure long at most. The graded procedures are not among the development
 procedures.
 

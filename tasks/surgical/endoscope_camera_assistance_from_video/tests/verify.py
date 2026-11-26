@@ -37,6 +37,7 @@ import json
 import os
 import pwd
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -48,12 +49,15 @@ sys.path.insert(0, HERE)
 from endosim import model, procedure  # noqa: E402
 from endosim.render_client import Renderer, RendererError  # noqa: E402
 from endosim.session import Session  # noqa: E402
+from robotics_grader.stage import secure_exec_path  # noqa: E402
 from robotics_grader import (  # noqa: E402
     ProbeLock,
     Solver,
     SolverAborted,
     SolverMissing,
+    VerifierDeadline,
     agent_user,
+    clear_agent_account,
     fail,
     ratio_rewards,
     read_anchor,
@@ -67,6 +71,8 @@ RENDER_USER = "endosim"
 RENDER_ROOT = "/opt/endosim-verify"       # the renderer account's own folder (0700), outside /opt/ale
 KIT_SHARED = "/opt/venv/lib/python3.12/site-packages/isaacsim/kit"   # Kit's cache / logs / data folders
 RENDER_FILES = ("__init__.py", "model.py", "tissue.py", "looks.py", "scene.py", "post.py", "render_server.py")
+NONET = os.path.join(HERE, "nonet_exec.py")   # tasks/swarm/hazard_bay_build's launcher, byte for byte (run as root)
+LIVE = {"records": [], "session": None, "lock": None, "steps": 0}   # what the deadline's verdict is made of
 
 
 def log(*parts):
@@ -78,12 +84,37 @@ class BudgetExhausted(Exception):
 
 
 class TimedSolver(Solver):
-    """The kit's Solver with one budget of reply time for the whole evaluation."""
+    """The kit's Solver with one budget of reply time for the whole evaluation, its program started through
+    `nonet_exec.py`: no_new_privs, a seccomp filter under which socket() and socketpair() work for AF_UNIX only (no
+    network, as the instruction promises), then the agent's account and a fixed environment (PATH
+    /opt/venv/bin:/usr/local/bin:/usr/bin:/bin, HOME /home/user, LANG C.UTF-8). Where the filter cannot be installed
+    (the self-test before the first start fails) the program starts through the kit's own launcher, and the metrics
+    say so (`network_filter` 0)."""
 
     budget_s = float("inf")
     used_s = 0.0
     requests = 0
     slowest_s = 0.0
+    filtered = None
+
+    def _spawn(self):
+        cls = TimedSolver
+        if cls.filtered is None:
+            cls.filtered = egress_self_test()
+            log("the controller's network filter: {}".format("on" if cls.filtered else "could not be installed"))
+        if not cls.filtered:
+            return super()._spawn()
+        secure_exec_path()
+        if self.clear_account:
+            clear_agent_account()
+        pw = pwd.getpwnam(agent_user())
+        cmd = [sys.executable, "-I", NONET, "--uid", str(pw.pw_uid), "--gid", str(pw.pw_gid), "--cwd", self.submission, "--",
+               "bash", self.entry]
+        try:
+            return subprocess.Popen(cmd, cwd=self.submission, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                    universal_newlines=True, bufsize=1, start_new_session=True, env={"PATH": "/usr/bin:/bin"})
+        except OSError as exc:
+            raise SolverAborted("the controller could not be started: {}".format(exc))
 
     def act(self, t, obs):
         cls = TimedSolver                 # one account for every subclass (a maintainer's local launcher included)
@@ -97,6 +128,31 @@ class TimedSolver(Solver):
             cls.used_s += took
             cls.requests += 1
             cls.slowest_s = max(cls.slowest_s, took)
+
+
+def egress_self_test():
+    """True if a program started through the launcher, as the agent's account, cannot open an internet socket and can
+    open a Unix one."""
+    probe = ("import socket,sys\n"
+             "bad=0\n"
+             "for fam in (socket.AF_INET, socket.AF_INET6, 40):\n"
+             "    try:\n"
+             "        socket.socket(fam, socket.SOCK_STREAM).close(); bad=1\n"
+             "    except OSError:\n"
+             "        pass\n"
+             "try:\n"
+             "    socket.socket(socket.AF_UNIX, socket.SOCK_STREAM).close()\n"
+             "except OSError:\n"
+             "    bad=1\n"
+             "sys.exit(3 if bad else 0)\n")
+    try:
+        pw = pwd.getpwnam(agent_user())
+        r = subprocess.run([sys.executable, "-I", NONET, "--uid", str(pw.pw_uid), "--gid", str(pw.pw_gid), "--cwd", "/", "--",
+                            sys.executable, "-I", "-c", probe], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60,
+                           env={"PATH": "/usr/bin:/bin"})
+        return r.returncode == 0
+    except (OSError, KeyError, subprocess.SubprocessError):
+        return False
 
 
 def canonical_action(action):
@@ -155,6 +211,22 @@ def _seal_shm(user):
             pass
 
 
+def _signal_account(user, sig):
+    """Send `sig` to every process of `user` (the agent's account: stopped while a new renderer comes up)."""
+    try:
+        uid = pwd.getpwnam(user).pw_uid
+    except KeyError:
+        return
+    for name in os.listdir("/proc"):
+        if not name.isdigit():
+            continue
+        try:
+            if os.stat("/proc/" + name).st_uid == uid:
+                os.kill(int(name), sig)
+        except OSError:
+            pass
+
+
 def engine_renderer(config):
     """The renderer as its own account, from a copy of the renderer's files that only that account can read."""
     try:
@@ -193,8 +265,11 @@ def engine_renderer(config):
     renderer = Renderer(RENDER_ROOT, python="/opt/venv/bin/python3", prefix=prefix, env=env,
                         log_path=log_path, start_timeout=float(config.get("renderer_start_timeout_s", 2400)),
                         render_timeout=float(config.get("render_timeout_s", 120)), max_restarts=int(config.get("renderer_restarts", 3)),
-                        cwd=os.path.join(RENDER_ROOT, "home"))
-    _seal_shm(RENDER_USER)
+                        cwd=os.path.join(RENDER_ROOT, "home"),
+                        # Kit creates its /dev/shm entries open to all at every start: the agent's processes are
+                        # stopped before a restart and go on only once the new renderer's entries are sealed
+                        around_restart=(lambda: _signal_account(agent_user(), signal.SIGSTOP),
+                                        lambda: (_seal_shm(RENDER_USER), _signal_account(agent_user(), signal.SIGCONT))))
     return renderer, log_path
 
 
@@ -218,7 +293,8 @@ def check_canary(result, config):
 def run_procedure(index, item, steps, solver, renderer, lock, config, privileged, state):
     """One hidden procedure. Returns its record; never raises for anything the controller does."""
     proc = procedure.generate(item["seed"], item.get("factors"), steps=steps)
-    session = Session(proc, renderer, frame_delay=int(config.get("frame_delay_steps", 1)), privileged=privileged)
+    session = Session(proc, renderer, privileged=privileged)          # the procedure's own video latency (its rig)
+    LIVE["session"] = session
     rng = lock.rng
     reason = None
     try:
@@ -250,6 +326,7 @@ def run_procedure(index, item, steps, solver, renderer, lock, config, privileged
         log("procedure {} aborted at step {} ({}); the remaining {} steps ran with the holder stopped".format(index, at, reason[:200], steps - at))
     rec = session.episode.summary()
     rec.update(index=index, aborted=reason is not None, abort_reason=reason, facts=proc.facts())
+    LIVE["session"] = None
     log("procedure {} ({} scope {}): useful_view_fraction {:.4f} | failed: lens {:.3f} zone {:.3f} zoom {:.3f} horizon {:.3f} motion {:.3f} | "
         "lens contacts {} cleanings {}".format(index, proc.kind, proc.scope, rec["useful_view_fraction"], rec["failed_lens"], rec["failed_zone"],
                                                rec["failed_zoom"], rec["failed_horizon"], rec["failed_motion"], rec["lens_contacts"],
@@ -287,6 +364,7 @@ def grade(submission, config, make_solver, make_renderer, only=None):
         solver = make_solver(float(config.get("step_timeout_s", 10)))          # raises SolverMissing / SolverAborted
         state = {"budget_exhausted": False}
         records = []
+        LIVE.update(records=records, lock=lock, steps=steps * len(items))
         try:
             for i, item in enumerate(items):
                 records.append(run_procedure(i, item, steps, solver, renderer, lock, config, privileged, state))
@@ -317,6 +395,7 @@ def grade(submission, config, make_solver, make_renderer, only=None):
         budget_exhausted=float(state["budget_exhausted"]), privileged=float(privileged),
         controller_seconds=round(TimedSolver.used_s, 1), controller_requests=float(TimedSolver.requests),
         controller_slowest_reply_s=round(TimedSolver.slowest_s, 3), solver_restarts=float(solver.restarts),
+        network_filter=float(bool(TimedSolver.filtered)),
         lens_contacts=float(sum(r["lens_contacts"] for r in records)), lens_cleanings=float(sum(r["lens_cleanings"] for r in records)),
         renderer_restarts=float(renderer.restarts), render_ms_per_frame=round(renderer.render_ms / n, 1),
         extra_renders_per_frame=round(renderer.extra_renders / n, 3), renderer_start_s=float(started.get("start_s", 0.0)),
@@ -351,10 +430,31 @@ def score(records, lock, extra, diagnostic, config, anchor, meta, path=None):
     return verdict
 
 
+def deadline_verdict(config, anchor, meta):
+    """The verdict when grading runs out of time ([verifier] timeout_sec): the steps judged so far count as judged,
+    every step not reached counts as unusable, and the lock is judged on the pairs it has seen."""
+    def write(elapsed):
+        done = list(LIVE["records"])
+        usable = sum(r["usable_steps"] for r in done)
+        if LIVE["session"] is not None:
+            usable += LIVE["session"].episode.usable
+        lock = LIVE["lock"]
+        measured = usable / max(1, LIVE["steps"])
+        verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5),
+                                higher_is_better=meta.get("direction", "higher") == "higher",
+                                metric_name=meta.get("metric", "useful_view_fraction"), locks_ok=bool(lock is not None and lock.ok),
+                                extra={"deadline_expired": 1.0, "procedures_finished": float(len(done)), "elapsed_s": round(elapsed, 1)},
+                                full_at=meta.get("full_at", 1.0))
+        write_verdict(verdict, diagnostic="grading ran out of time after {:.0f} s: {} procedures finished; every step not reached "
+                                          "counts as unusable".format(elapsed, len(done)))
+    return write
+
+
 def main():
     config = stage_config()
     anchor, meta = read_anchor()
     submission = os.path.join(os.environ.get("ALE_HOME", "/home/user"), "submission")
+    VerifierDeadline(float(config.get("verifier_deadline_s", 8400)), deadline_verdict(config, anchor, meta)).arm()
     try:
         records, lock, extra, diagnostic = grade(submission, config, lambda timeout: TimedSolver(step_timeout=timeout), engine_renderer)
     except (SolverMissing, SolverAborted) as exc:

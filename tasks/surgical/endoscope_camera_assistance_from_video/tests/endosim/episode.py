@@ -36,6 +36,7 @@ class Episode(object):
     def __init__(self, procedure):
         self.proc = procedure
         self.scope = procedure.scope
+        self.head = float(getattr(procedure, "head", 0.0))     # the camera head's angle on the eyepiece (rad)
         self.holder = model.Holder()
         self.t = 0
         self.smeared = False
@@ -48,7 +49,7 @@ class Episode(object):
         self.first_usable = None
         self.smear_serial = 0
         self.trace = []                       # per judged step: (usable, failed criteria bitmask)
-        self._pose = model.camera_pose(self.holder.q, self.scope)
+        self._pose = model.camera_pose(self.holder.q, self.scope, self.head)
         self._prev_pose = self._pose
 
     # -- state ----------------------------------------------------------------------------------------------------
@@ -110,7 +111,7 @@ class Episode(object):
                     self.cleanings += 1
             else:
                 self.clean_s = 0.0
-        self._pose = model.camera_pose(self.holder.q, self.scope)
+        self._pose = model.camera_pose(self.holder.q, self.scope, self.head)
         self._prev_pose = prev_pose
         return self._judge(prev_pose)
 
@@ -137,7 +138,7 @@ class Episode(object):
                     fail.add("motion")
         else:
             fail.add("zone")
-        if abs(model.horizon_error(self.holder.q, scope)) > math.radians(model.HORIZON_LIMIT_DEG):
+        if abs(model.horizon_error(self.holder.q, scope, self.head)) > math.radians(model.HORIZON_LIMIT_DEG):
             fail.add("horizon")
         ok = not fail
         self.judged += 1
@@ -179,16 +180,16 @@ class Episode(object):
         }
 
     def privileged(self):
-        """What a perfect perception system would report at the current step: the scope fitted, whether the lens is
-        smeared, and each instrument's tip in the camera frame and in the image. Not the future, not which
-        instruments count, not whether the surgeon is doing fine work."""
+        """What a perfect perception system would report at the current step: the scope fitted, the camera head's angle,
+        whether the lens is smeared, and each instrument's tip in the camera frame and in the image. Not the future,
+        not which instruments count, not whether the surgeon is doing fine work."""
         t = self.t
         items = []
         for r in ROLES:
             item = {"role": r, "present": bool(self.proc.present[r][t])}
             item.update(tip_view(self.proc.tip[r][t], self._pose, self.scope))
             items.append(item)
-        return {"scope": self.scope, "lens_smeared": bool(self.smeared), "instruments": items}
+        return {"scope": self.scope, "camera_head_deg": math.degrees(self.head), "lens_smeared": bool(self.smeared), "instruments": items}
 
     def annotation(self):
         """A development recording's label for the current step (the dev set only; never on a graded wire)."""
@@ -200,9 +201,10 @@ class Episode(object):
             item["in_image"] = bool(item["present"] and item["depth"] > 0 and 0 <= u < model.IMAGE_W and 0 <= v < model.IMAGE_H)
             item["apparent_px"] = float(model.apparent_diameter(item["depth"], self.scope)) if item["depth"] > 0 else None
             item["active"] = bool(self.proc.active[r][t])
+            item["shaft_mm"] = int(self.proc.looks[int(self.proc.look[r][t])]["shaft_mm"]) if item["present"] else None
             del item["tip_cam"]
         out.update(step=int(t), joints=self.joints(), fine_work=bool(self.proc.fine[t]),
-                   horizon_error_deg=math.degrees(model.horizon_error(self.holder.q, self.scope)),
+                   horizon_error_deg=math.degrees(model.horizon_error(self.holder.q, self.scope, self.head)),
                    usable=None if t == 0 else not self.trace[-1], failed=[] if t == 0 else list(self.trace[-1]))
         return out
 

@@ -5,9 +5,10 @@ controller meets the same observations everywhere:
 
     obs = {"image": <base64 JPEG, 640 x 480>, "joints": [pan, tilt, insertion, roll]}
 
-The image is `frame_delay` control steps old (the video chain's latency); the joint readings are current. A session
-opened with `privileged=True` (the grader does this for the reference submission only) adds `obs["privileged"]`: what a
-perfect perception system would have read from that same delayed frame.
+The image is `frame_delay` control steps old (the video chain's latency: the procedure's own, 1 to 3 steps, unless a
+caller sets it); the joint readings are current. A session opened with `privileged=True` (the grader does this for the
+reference submission only) adds `obs["privileged"]`: what a perfect perception system would have read from that same
+delayed frame, and the latency.
 
 `probe_copy` gives the match lock its second observation of a step, built the way an observation is built: the frame
 the observation shows, rendered again at the same moment from the same camera pose (the joint readings are the same),
@@ -43,10 +44,10 @@ class NullRenderer(object):
 
 
 class Session(object):
-    def __init__(self, procedure, renderer, frame_delay=1, privileged=False):
+    def __init__(self, procedure, renderer, frame_delay=None, privileged=False):
         self.episode = Episode(procedure)
         self.renderer = renderer
-        self.delay = int(frame_delay)
+        self.delay = int(getattr(procedure, "latency", 1) if frame_delay is None else frame_delay)
         self.with_privileged = bool(privileged)
         self._serial = 0
         self._frames = collections.deque(maxlen=self.delay + 1)   # (serial, jpeg, privileged, state, step) per step
@@ -77,7 +78,7 @@ class Session(object):
         _, jpeg, priv, _, _ = self._frames[0]   # the oldest kept frame: `delay` steps old once the run is under way
         obs = {"image": base64.b64encode(jpeg).decode("ascii"), "joints": self.episode.joints()}
         if priv is not None:
-            obs["privileged"] = priv
+            obs["privileged"] = dict(priv, latency_steps=self.delay)
         return obs
 
     def shown_serial(self):
@@ -135,7 +136,7 @@ class Session(object):
         out = dict(obs)
         out["image"] = base64.b64encode(self.renderer.render(moved)).decode("ascii")
         if priv is not None:
-            p = copy.deepcopy(priv)
+            p = copy.deepcopy(obs.get("privileged", priv))
             for item in p["instruments"]:
                 if item["role"] in tips:
                     item.update(tip_view(tips[item["role"]], pose, scope))

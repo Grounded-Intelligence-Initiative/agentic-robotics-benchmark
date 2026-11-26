@@ -12,8 +12,11 @@ Joints q = [pan, tilt, insertion, roll]:
     R_WS = Ry(-pan) . Rx(tilt)          the scope's axis is a = R_WS . (0, 0, -1): straight down at pan = tilt = 0,
                                         towards +x for pan > 0, towards +y for tilt > 0
     p    = insertion * a                the lens, `insertion` metres past the RCM along the scope
-    R_WC = R_WS . Rz(roll) . Rx(-d)     d = the scope's direction of view (0 or 30 degrees): a 30 degree scope looks
-                                        30 degrees below its own axis (towards -y of the rolled scope)
+    R_WC = R_WS . Rz(roll) . Rx(-d) . Rz(h)
+                                        d = the scope's direction of view (0 or 30 degrees): a 30 degree scope looks
+                                        30 degrees below its own axis (towards -y of the rolled scope); h = the angle at
+                                        which the camera head is clamped on the scope's eyepiece (set by hand for each
+                                        procedure, not reported: it turns the picture about the view direction)
 
 Pure numpy.
 """
@@ -39,7 +42,12 @@ SCOPES = {
     "0": {"view_deg": 0.0, "fx": 480.0, "fy": 480.0, "cx": 320.0, "cy": 240.0},
     "30": {"view_deg": 30.0, "fx": 456.0, "fy": 456.0, "cx": 320.0, "cy": 240.0},
 }
-SHAFT_DIAMETER = 0.005        # m, every instrument's shaft
+SHAFT_DIAMETER = 0.005        # m, the zoom band's reference shaft (rule 2 is a working distance stated for a 5 mm shaft)
+SHAFT_DIAMETERS = (0.005, 0.010)   # m, the instruments' shafts: 5 or 10 mm, the whole instrument built to its size
+
+# what differs from one procedure to the next in the camera chain and is not reported (holder_manual.md, section 4)
+HEAD_ANGLE_MAX_DEG = 40.0     # the camera head is clamped on the eyepiece at any angle within +-this
+LATENCY_STEPS = (1, 2, 3)     # the video chain's latency, in control steps
 
 # the view rules (instruction.md, holder_manual.md section 6)
 SAFE_ZONE = 0.30              # a tip is inside when |u - cx| <= 0.30 W and |v - cy| <= 0.30 H
@@ -76,11 +84,12 @@ def scope_rotation(q):
     return ry(-float(q[0])) @ rx(float(q[1]))
 
 
-def camera_pose(q, scope):
-    """(R_WC, p): the camera's axes as columns in W, and the lens position."""
+def camera_pose(q, scope, head=0.0):
+    """(R_WC, p): the camera's axes as columns in W, and the lens position. `head`: the camera head's angle on the
+    eyepiece, rad."""
     r_ws = scope_rotation(q)
     p = float(q[2]) * (r_ws @ np.array([0.0, 0.0, -1.0]))
-    r_wc = r_ws @ rz(float(q[3])) @ rx(-math.radians(SCOPES[scope]["view_deg"]))
+    r_wc = r_ws @ rz(float(q[3])) @ rx(-math.radians(SCOPES[scope]["view_deg"])) @ rz(float(head))
     return r_wc, p
 
 
@@ -110,17 +119,27 @@ def horizon_reference():
     return np.array([0.0, math.cos(a), math.sin(a)])
 
 
-def horizon_error(q, scope):
+def horizon_error(q, scope, head=0.0):
     """Signed angle (rad) between the image's up direction and the projection of the display's up reference."""
-    r_wc, _ = camera_pose(q, scope)
+    r_wc, _ = camera_pose(q, scope, head)
     r = horizon_reference()
     return math.atan2(float(r @ r_wc[:, 0]), float(r @ r_wc[:, 1]))
 
 
-def level_roll(pan, tilt):
-    """The roll at which the horizon error is zero for this pan and tilt (the same for both scopes)."""
+def level_roll(pan, tilt, scope="0", head=0.0):
+    """The roll at which the horizon error is zero for this pan and tilt. With the camera head at 0 it is the same
+    for both scopes (closed form); otherwise it is solved for (Newton's method from the 0 degree scope's answer)."""
     w = scope_rotation([pan, tilt, 0.0, 0.0]).T @ horizon_reference()
-    return math.atan2(-w[0], w[1])
+    roll = math.atan2(-w[0], w[1]) - float(head)
+    if float(head) == 0.0 or SCOPES[scope]["view_deg"] == 0.0:
+        return math.atan2(math.sin(roll), math.cos(roll))
+    for _ in range(20):
+        e = horizon_error([pan, tilt, 0.0, roll], scope, head)
+        if abs(e) < 1e-12:
+            break
+        de = (horizon_error([pan, tilt, 0.0, roll + 1e-6], scope, head) - horizon_error([pan, tilt, 0.0, roll - 1e-6], scope, head)) / 2e-6
+        roll -= e / (de if abs(de) > 1e-6 else 1.0)
+    return math.atan2(math.sin(roll), math.cos(roll))
 
 
 def apparent_diameter(depth, scope):

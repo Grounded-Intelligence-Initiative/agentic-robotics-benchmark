@@ -35,7 +35,7 @@ class Idle(object):
         return [0.0, 0.0, 0.0, 0.0]
 
 
-def run(proc, controller, probe_rate=0.0, rng=None, frame_delay=1, verbose=False):
+def run(proc, controller, probe_rate=0.0, rng=None, frame_delay=None, verbose=False):
     rng = rng or random.Random(0)
     sess = Session(proc, NullRenderer(), frame_delay=frame_delay, privileged=True)
     controller.reset()
