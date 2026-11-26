@@ -16,9 +16,12 @@ import sys
 import tempfile
 import time
 
-from . import scoring, seeds, solver as solver_mod, stage
+from . import account, scoring, seeds, solver as solver_mod, stage
 
 FAILURES = []
+
+
+_START_NICE = os.getpriority(os.PRIO_PROCESS, 0)
 
 
 def check(label, condition, detail=""):
@@ -291,6 +294,13 @@ def test_verdict():
 # --------------------------------------------------------------------------- #
 def test_probe_lock():
     print("[probe lock]")
+    check("two replies of different lengths do not differ", not solver_mod.replies_differ([0.0, 1.0], [0.0, 1.0, 2.0]))
+    check("replies that differ by more than the tolerance do", solver_mod.replies_differ([0.0, 1.0], [0.0, 1.001]))
+    from . import probe as probe_mod
+    check("a probe copy keeps the older positions' offset",
+          probe_mod.stale_copy(lambda q: q, [1.0, 2.0], [1.5, 2.5], [1.6, 2.4]) == [1.1, 1.9]
+          or all(abs(a - b) < 1e-12 for a, b in zip(
+              probe_mod.stale_copy(lambda q: q, [1.0, 2.0], [1.5, 2.5], [1.6, 2.4]), [1.1, 1.9])))
     lock = solver_mod.ProbeLock(seeds.seed_rng(entropy=7))
     for _ in range(10):
         lock.record([0.5], [0.5])          # a constant policy: probe == real
@@ -338,6 +348,16 @@ def test_probe_lock():
     check("deeply nested actions do not crash the grader", lock.record(deep, [0.4]))
 
     lock = solver_mod.ProbeLock(seeds.seed_rng(entropy=7))
+    check("two replies that differ only in shape do not pass the lock",
+          not lock.record([0.5, 0.0], [0.5]) and not lock.record([0.5], [[0.5], [0.0, 0.0]])
+          and lock.total == 2 and lock.passed == 0)
+
+    lock = solver_mod.ProbeLock(seeds.seed_rng(entropy=7),
+                                canonical=lambda action: (list(action) + [0.0, 0.0])[:2])
+    check("a task's canonical form decides what is compared",
+          not lock.record([0.5], [0.5, 0.0]) and lock.record([0.5], [0.5, 0.3]))
+
+    lock = solver_mod.ProbeLock(seeds.seed_rng(entropy=7))
     try:
         lock.record(["ab"], [0.5])
         check("a non-numeric action aborts the episode", False, "no exception")
@@ -349,11 +369,13 @@ def test_probe_lock():
 # solver wire (real subprocesses; UID drop excluded — see the module docstring)
 # --------------------------------------------------------------------------- #
 class _LocalSolver(solver_mod.Solver):
-    """Same wire, spawned in-process instead of through `runuser`."""
+    """Same wire, spawned in-process instead of through `runuser`. The agent's account is left
+    as it is (`clear_account=False`): a self-test clears nothing, wherever it runs."""
 
-    def __init__(self, script, step_timeout=5.0):
+    def __init__(self, script, step_timeout=5.0, clear_account=False):
         super(_LocalSolver, self).__init__(
-            step_timeout, submission=os.path.dirname(script), entry=os.path.basename(script)
+            step_timeout, submission=os.path.dirname(script), entry=os.path.basename(script),
+            clear_account=clear_account,
         )
 
     def _spawn(self):
@@ -519,6 +541,31 @@ for line in sys.stdin:
     time.sleep(30)
 '''
 
+# Answers the reset, then never reads again: a request longer than the pipe cannot be
+# written in full, and the close message cannot be delivered.
+_DEAF_SOLVER = '''\
+import json, sys, time
+print("READY", flush=True)
+sys.stdin.readline()
+print(json.dumps({"ok": True}), flush=True)
+time.sleep(60)
+'''
+
+# Answers everything; leaves a file when it is asked to close.
+_CLOSE_NOTE_SOLVER = '''\
+import json, sys
+print("READY", flush=True)
+for line in sys.stdin:
+    req = json.loads(line.strip() or "{}")
+    if req.get("type") == "close":
+        open("closed", "w").close()
+        print(json.dumps({"ok": True}), flush=True); break
+    if req.get("type") == "act":
+        print(json.dumps({"action": [float(len(req["obs"]))]}), flush=True)
+    else:
+        print(json.dumps({"ok": True}), flush=True)
+'''
+
 # Prints READY, resets, then answers each act with an endless trickle of blank lines —
 # one every (step_timeout / 4), never a real reply. The single per-request deadline must
 # abort within one step_timeout; a per-line deadline would let it run forever.
@@ -593,6 +640,16 @@ def test_solver_wire():
             check("a well-behaved solver answers", abs(action[0] - 0.6) < 1e-9)
             second = solver.act(1, [10.0])
             check("the wire survives many exchanges", abs(second[0] - 1.0) < 1e-9)
+            check("the solver runs at the lowest nice value",
+                  os.getpriority(os.PRIO_PROCESS, solver.proc.pid) == solver_mod.LOWEST_NICE,
+                  "nice {}".format(os.getpriority(os.PRIO_PROCESS, solver.proc.pid)))
+            threads = [os.getpriority(os.PRIO_PROCESS, int(t)) for t in os.listdir("/proc/self/task")]
+            check("the grader keeps its own priority, on every thread",
+                  all(n == _START_NICE for n in threads), "nice {} (started at {})".format(threads, _START_NICE))
+            later = subprocess.run(["sh", "-c", "cut -d' ' -f19 /proc/$$/stat"], stdout=subprocess.PIPE,
+                                   universal_newlines=True)
+            check("what the grader starts afterwards runs at the grader's priority",
+                  later.stdout.strip() == str(_START_NICE), later.stdout.strip())
 
     with tempfile.TemporaryDirectory() as tmp:
         with _LocalSolver(_write(tmp, _NOISY_SOLVER)) as solver:
@@ -716,6 +773,45 @@ def test_solver_wire():
                       "restarts=%d took %.2fs" % (solver.restarts, time.time() - began))
             check("a solver that stalls every episode is never scored", outcomes == ["aborted"] * 5,
                   str(outcomes))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        solver = _LocalSolver(_write(tmp, _STALL_SOLVER), step_timeout=0.3)
+        for _ in range(4):
+            try:
+                solver.reset()
+                solver.act(0, [0.0])
+            except solver_mod.SolverAborted:
+                pass
+        last = solver.proc.pid
+        try:
+            solver.reset()
+        except solver_mod.SolverAborted:
+            pass
+        check("a solver that is given up on is stopped, not left running",
+              solver._dead and not _alive(last), "pid %d" % last)
+        solver.close()
+
+    with tempfile.TemporaryDirectory() as tmp:
+        solver = _LocalSolver(_write(tmp, _DEAF_SOLVER), step_timeout=0.5)
+        solver.reset()
+        began = time.time()
+        try:
+            solver.act(0, [0.0] * 400000)         # far more than a pipe holds
+            check("a request the solver does not read aborts at the deadline", False, "no exception")
+        except solver_mod.SolverAborted:
+            check("a request the solver does not read aborts at the deadline",
+                  0.4 < time.time() - began < 2.0, "took %.2fs" % (time.time() - began))
+        pid, began = solver.proc.pid, time.time()
+        solver.close()
+        check("close does not wait on a solver that stopped reading",
+              time.time() - began < 3.0 and not _alive(pid), "took %.2fs" % (time.time() - began))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        with _LocalSolver(_write(tmp, _CLOSE_NOTE_SOLVER), step_timeout=2.0) as solver:
+            solver.reset()
+            solver.act(0, [0.0] * 400000)
+        check("a solver that reads gets a long request whole, and the close message",
+              os.path.exists(os.path.join(tmp, "closed")))
 
     with tempfile.TemporaryDirectory() as tmp:
         solver = _LocalSolver(_write(tmp, _HELPER_SOLVER), step_timeout=2.0)
@@ -887,7 +983,8 @@ def test_exec_hardening():
 
     stage.subprocess.Popen = fake_popen
     try:
-        stage.deprivileged(["bash", "run.sh"])
+        # clear_account=False: this is a self-test, wherever it runs; the account stays as it is.
+        stage.deprivileged(["bash", "run.sh"], clear_account=False)
     finally:
         stage.subprocess.Popen = saved
     argv = captured.get("argv", [])
@@ -946,6 +1043,83 @@ def _stat_namedtuple():
     return collections.namedtuple("_Info", "st_uid st_gid st_mode")
 
 
+def test_account_clearing():
+    print("[account clearing]")
+    # The rewrite of a supervisord configuration file: every program off, the rest untouched.
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "30-gnome.conf")
+        original = ("[program:gnome]\n"
+                    "command=/usr/local/bin/start-gnome.sh ; the session\n"
+                    "autostart=true\n"
+                    "autorestart=true\n"
+                    "user=user\n"
+                    'environment=HOME="/home/user",DISPLAY=":1"\n'
+                    "\n"
+                    "[group:desk]\n"
+                    "programs=gnome\n")
+        with open(path, "w") as handle:
+            handle.write(original)
+        check("a program supervisord would start is found", account.enabled_programs(path) == ["program:gnome"])
+        check("the rewrite names the section it switched off", account.disable_programs(path) == ["program:gnome"])
+        parser = account._read_config(path)
+        check("the program neither starts nor restarts afterwards",
+              parser.get("program:gnome", "autostart") == "false"
+              and parser.get("program:gnome", "autorestart") == "false")
+        check("its command and environment are untouched",
+              parser.get("program:gnome", "command") == "/usr/local/bin/start-gnome.sh"
+              and parser.get("program:gnome", "environment") == 'HOME="/home/user",DISPLAY=":1"'
+              and parser.get("group:desk", "programs") == "gnome")
+        with open(path) as handle:
+            rewritten = handle.read()
+        check("a second rewrite changes nothing", account.disable_programs(path) == [] and
+              open(path).read() == rewritten)
+        check("no draft file is left behind", os.listdir(tmp) == ["30-gnome.conf"])
+
+    # Only what the caller did not start counts as the account's processes.
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    try:
+        others = account.account_processes(os.getuid())
+        check("the caller and what it started are not the account's strays",
+              os.getpid() not in others and child.pid not in others)
+    finally:
+        child.kill()
+        child.wait()
+
+    # It acts only as root inside the engine's verify stage; a self-test must never clear anything.
+    saved = os.environ.pop("ALE_VERIFY_PYTHON", None)
+    ran = []
+    real = account._clear
+    account._clear = lambda *args, **kwargs: ran.append(1) or real(*args, **kwargs)
+    try:
+        report = account.clear_agent_account()
+    finally:
+        account._clear = real
+        if saved is not None:
+            os.environ["ALE_VERIFY_PYTHON"] = saved
+    check("outside the verify stage the clearing is skipped", bool(report["skipped"]) and not ran
+          and report["cleared"] is False, str(report))
+
+    # Solver clears before its first start (so a subclass with its own launcher gets it), once.
+    calls = []
+    saved_clear = solver_mod.clear_agent_account
+    solver_mod.clear_agent_account = lambda: calls.append("clear")
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            script = _write(tmp, "import sys\nprint('READY', flush=True)\n"
+                                 "for line in sys.stdin:\n    print('{\"ok\": true}', flush=True)\n")
+            solver = _LocalSolver(script, clear_account=True)
+            solver._broken = True
+            solver.reset()
+            solver.close()
+            quiet = _LocalSolver(script)
+            quiet.close()
+    finally:
+        solver_mod.clear_agent_account = saved_clear
+    check("Solver clears the account once, before its first start, not on a restart",
+          calls == ["clear"] and solver.restarts == 1, str(calls))
+    check("Solver(clear_account=False) leaves the account alone", quiet.clear_account is False)
+
+
 def main():
     print("robotics_grader selftest (python {}.{})".format(*sys.version_info[:2]))
     test_seeds()
@@ -956,6 +1130,7 @@ def main():
     test_probe_wire()
     test_stage_identity()
     test_exec_hardening()
+    test_account_clearing()
     print()
     if FAILURES:
         print("FAILED: {}".format(", ".join(FAILURES)))
