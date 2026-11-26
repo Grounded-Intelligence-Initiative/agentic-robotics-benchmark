@@ -30,7 +30,7 @@ For a full rollout omit `--steps`. Try both `box_to_pad` and `cylinder_to_pad` w
 
 ## Process and actions
 
-The host starts `bash run.sh` in your submission directory as an unprivileged user. Print the literal line `READY` and flush it within 60 seconds. Then read one JSON request per line from stdin, emit one JSON reply per line within 15 seconds, and flush stdout after each reply. Keep each reply under 64 KiB. Send diagnostics to stderr.
+The host starts `bash run.sh` in your submission directory as an unprivileged user. Print the literal line `READY` and flush it within 60 seconds. Then read one JSON request per line from stdin, emit one JSON reply per line within 15 seconds, and flush stdout after each reply. A reply may contain up to 65,536 decoded characters including the newline. Send diagnostics to stderr.
 
 | Request | Reply |
 | --- | --- |
