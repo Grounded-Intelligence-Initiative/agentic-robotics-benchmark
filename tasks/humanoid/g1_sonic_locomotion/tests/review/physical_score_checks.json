@@ -1,0 +1,19 @@
+{
+  "standing_reason": "time_limit",
+  "correct_turn_reason": "success",
+  "complementary_left_turn_reason": "path_violation",
+  "drift_reason": "path_violation",
+  "corridor_reason": "path_violation",
+  "fall_precedence": "fall",
+  "terminal_event_s": 0.75,
+  "charged_row_s": 0.76,
+  "native_row_count": 38,
+  "scalar_code_count": 2432,
+  "adjacent_coordinate_changes": 37,
+  "eligible_coordinate_comparisons": 2368,
+  "joint_acceleration_samples": 986,
+  "joint_acceleration_rms_rad_s2": 2.0,
+  "interrupted_braking_event_s": 1.35,
+  "sustained_left_unloads": 1,
+  "sustained_left_reloads": 1
+}
