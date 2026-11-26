@@ -7,7 +7,7 @@ Each episode contains one box or one cylinder. The starting object position, pad
 - **Lift.** Raise the object at least 4 cm. For 40 consecutive ms, two parts of the same hand must make opposing contacts (the palm can count as one). The hands must carry at least half the object's weight, and other supports at most 5%.
 - **Place.** Release the object fully inside the green pad. Either end of the box or cylinder can face up. For 250 consecutive ms the object must stay nearly vertical and still, with no hand contact, while the pad carries at least half its weight.
 
-An episode ends on successful placement, a fall or at 750 control ticks (15 simulated seconds). The raw metric is the fraction of episodes with a successful placement. The verifier also checks that your body codes respond to the observations.
+An episode ends on successful placement, a fall or at 750 control ticks (15 simulated seconds). The raw metric is the fraction of episodes with a successful placement. The verifier also checks that your body codes respond reproducibly to the observations. Failing that check gives zero reward for the panel even when physical placements were recorded.
 
 ## Start here
 
@@ -37,6 +37,8 @@ The host starts `bash run.sh` in your submission directory as an unprivileged us
 | `{"type":"reset"}` | `{"ok":true}` and clear per-episode state |
 | `{"type":"act","t":t,"obs":obs}` | `{"action":{"rows":[...]}}` |
 | `{"type":"close"}` | `{"ok":true}`, then exit |
+
+The reset reply must have exactly the key `ok` with the JSON boolean `true`. The act reply must have exactly the key `action`.
 
 Each action row has exactly two fields. `codes` is a length-64 list of integers in `[0,31]`. Each code `c` becomes the native finite scalar quantization (FSQ) value `(c - 16) / 16`; code 16 is zero. `hand` is `[left,right]`, each in `[0,1]` from open to fully closed. For example, this Python expression builds one valid neutral reply:
 
