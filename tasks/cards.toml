@@ -261,7 +261,7 @@ stages = ["assembly"]
 title = "Follow walking commands revealed at each stop"
 summary = "A Unitree G1 must stop at a waypoint, wait for its turn direction, pivot and stop, then walk a newly specified distance using native SONIC motion tokens."
 platforms = ["humanoid"]
-stages = ["behavior", "control"]
+stages = ["behavior"]
 
 [humanoid_leg_cad_design_from_photos]
 title = "Model a humanoid leg in CAD"
