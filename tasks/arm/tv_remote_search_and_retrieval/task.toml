@@ -3,7 +3,7 @@
 # that lies in one of a chest's drawers, in a basket on the chest under a book, on the floor under
 # the chest, or on the floor under the settee, where only a clothes hanger reaches it) and take
 # it out, from two RGB-D cameras, joint readings and a wrist force sensor.
-# The grader drives the agent's controller over a stdio wire on a fixed hidden set of 12 episodes.
+# The grader drives the agent's controller over a stdio wire on a fixed hidden set of 10 episodes.
 
 schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]
@@ -27,11 +27,11 @@ memory_mb = 12288
 timeout_sec = 21600
 network_mode = "no-network"
 
-# 12 episodes of at most 4800 control steps. Measured on the authoring host (one core, CPU
+# 10 episodes of at most 4800 control steps. Measured on the authoring host (one core, CPU
 # rendering): about 5 ms a control step and 30 ms an image, so about 20 s of simulation for an
 # episode; the reference's whole verify takes under 5 minutes. Worst case: the controller's
 # budget of 900 s an episode (its replies plus 0.2 s charged for an image; grader_config.json)
-# and a slow host at five times those costs: 12 x (900 + 100 + 4800 x 0.15) = 20640 s. The
+# and a slow host at five times those costs: 10 x (900 + 100 + 4800 x 0.15) = 17200 s. The
 # grader's own wall cap (12000 s) ends the run with a verdict before the stage's limit.
 [verifier]
 timeout_sec = 14400

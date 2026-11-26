@@ -1,5 +1,5 @@
 {
- "rule": "first 2 of 8 os.urandom candidates per spot that the reference retrieves, also in 3 replays with the loose things nudged by 1e-5",
+ "rule": "first 2 (one for each seat pad) of 8 os.urandom candidates per spot that the reference retrieves, also in 3 replays with the loose things nudged by 1e-5",
  "candidates": [
   {
    "spot": "left_cushion",
@@ -25,7 +25,8 @@
     1.0,
     1.0
    ],
-   "selected": true
+   "selected": false,
+   "note": "retrieved, and selected until the two seat pads became one place with one episode each"
   },
   {
    "spot": "left_cushion",
@@ -114,7 +115,8 @@
     1.0,
     1.0
    ],
-   "selected": true
+   "selected": false,
+   "note": "retrieved, and selected until the two seat pads became one place with one episode each"
   },
   {
    "spot": "right_cushion",

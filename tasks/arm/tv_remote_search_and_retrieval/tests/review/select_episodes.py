@@ -2,7 +2,7 @@
 
 For each hiding spot, candidate seeds are drawn from os.urandom and the reference controller of
 solution/ plays each candidate once, in process, on the simulator of tests/remote_env.py. The first
-`PER_SPOT` candidates of a spot in which the reference retrieves the remote, and retrieves it
+`per_spot(spot)` candidates of a spot in which the reference retrieves the remote, and retrieves it
 again in `REPLAYS` replays with the loose things nudged by a hair (pouring a basket out does not
 come out the same on every machine's arithmetic), are the spot's graded episodes. Every candidate and its outcome is recorded in tests/hidden/selection.json, so the
 reference's own failure rate on unselected draws is on record.
@@ -27,6 +27,13 @@ import remote_env as E  # noqa: E402
 from reference import Reference  # noqa: E402
 
 PER_SPOT = 2
+# The two seat pads are one place, "under a seat pad", with one episode on each side, so that
+# the place weighs as much in the result as any other.
+ONE_EACH = ("left_cushion", "right_cushion")
+
+
+def per_spot(spot):
+    return 1 if spot in ONE_EACH else PER_SPOT
 CANDIDATES = 8
 REPLAYS = 3            # a candidate is graded only if the reference also retrieves in this many nudged replays
 # A candidate in which more than HIDDEN_PIXELS pixels of the remote show in either camera at the
@@ -66,22 +73,23 @@ def main():
                 continue
             score, steps, ended = play(env, R.make_episode(E, seed, spot))
             replays = []
-            if score >= 1.0 and len(chosen[spot]) < PER_SPOT:
+            if score >= 1.0 and len(chosen[spot]) < per_spot(spot):
                 replays = [play(env, R.make_episode(E, seed, spot), jitter=k)[0] for k in range(REPLAYS)]
-            picked = score >= 1.0 and len(chosen[spot]) < PER_SPOT and all(r >= 1.0 for r in replays)
+            picked = score >= 1.0 and len(chosen[spot]) < per_spot(spot) and all(r >= 1.0 for r in replays)
             if picked:
                 chosen[spot].append(seed)
             record.append({"spot": spot, "seed": seed, "reference_score": score, "steps": steps,
                            "ended": ended, "replays": replays, "selected": picked})
             print(record[-1], flush=True)
-        if len(chosen[spot]) < PER_SPOT:
+        if len(chosen[spot]) < per_spot(spot):
             raise SystemExit("too few episodes for " + spot)
-    # Graded order: the spots in turn, twice.
-    episodes = [{"seed": chosen[spot][i], "spot": spot} for i in range(PER_SPOT) for spot in R.HIDING_SPOTS]
+    # Graded order: the spots in turn, twice (a seat pad only the first time).
+    episodes = [{"seed": chosen[spot][i], "spot": spot} for i in range(PER_SPOT) for spot in R.HIDING_SPOTS
+                if i < per_spot(spot)]
     with open(os.path.join(TASK, "tests", "hidden", "episodes.json"), "w") as handle:
         json.dump({"episodes": episodes}, handle, indent=1)
     with open(os.path.join(TASK, "tests", "hidden", "selection.json"), "w") as handle:
-        json.dump({"rule": "first {} of {} os.urandom candidates per spot that the reference retrieves, also in {} replays with the loose things nudged by 1e-5".format(
+        json.dump({"rule": "first {} (one for each seat pad) of {} os.urandom candidates per spot that the reference retrieves, also in {} replays with the loose things nudged by 1e-5".format(
             PER_SPOT, CANDIDATES, REPLAYS), "candidates": record}, handle, indent=1)
     played = [r for r in record if "reference_score" in r]
     solved = sum(1 for r in played if r["reference_score"] >= 1.0)

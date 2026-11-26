@@ -4,7 +4,7 @@ Runs as root in a separate verifier sandbox, after the agent is gone. It owns it
 living room (remote_env.py, byte-identical to the copy the agent developed against) and the rule
 for where the remote is (episodes.py, which the agent never had: its simulator puts the remote
 wherever its caller says). It plays the fixed hidden episodes of hidden/episodes.json in order
-(each a seed and a hiding spot: two per spot, twelve in all), drives the agent's controller over
+(each a seed and a hiding spot: two per place, the two seat pads counting as one place: ten in all), drives the agent's controller over
 the stdio wire at the agent's UID (`robotics_grader.Solver`) and scores every episode from its
 own simulator state (`Env.score`): 1 when the remote was retrieved, 0.4 for laying it open, 0.2
 for getting it into an image the controller asked for, else 0. The metric is the mean over the
