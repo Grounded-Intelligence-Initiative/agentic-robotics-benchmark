@@ -132,6 +132,10 @@ def summarize(rows, cfg):
                 "max_lift_m", "unique_code_rows", "base_xy_acceleration_rms_m_s2", "target_step_rms_rad",
                 "left_foot_rise_m", "right_foot_rise_m", "single_support_phases"):
         result["mean_"+key] = total(key) / n
+    denominator = total("joint_accel_samples")
+    result["joint_acceleration_samples"] = denominator
+    result["joint_accel_square_sum"] = total("joint_accel_square_sum")
+    result["joint_accel_rms_rad_s2"] = math.sqrt(result["joint_accel_square_sum"] / denominator) if denominator else 0.
     result["coordinate_change_fraction"] = total("changed_coordinates") / max(1, total("code_transition_slots"))
     for key in ("walk_s", "dock_s", "first_contact_s", "lift_s", "place_s"):
         times = [r[key] for r in rows if r[key] is not None]
@@ -162,7 +166,8 @@ def verify():
                 metrics, _ = run_panel(solver, cfg, seed_rng())
         except (SolverAborted, SolverMissing) as exc:
             write_verdict(zero_verdict(str(exc), anchor is not None, extra={"episodes": cfg["episodes"],
-                          "episodes_aborted": cfg["episodes"], METRIC: 0.0, "strict_mobile_placements": 0}))
+                          "episodes_aborted": cfg["episodes"], METRIC: 0.0, "strict_mobile_placements": 0,
+                          "joint_acceleration_samples": 0, "joint_accel_square_sum": 0., "joint_accel_rms_rad_s2": 0.}))
             return
         metrics.update(numerics_ok=1, offline_launcher_ok=1, agent_account_cleared=1)
         value = metrics["strict_mobile_placements"] / metrics["episodes"]
