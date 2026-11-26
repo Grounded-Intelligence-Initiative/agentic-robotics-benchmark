@@ -54,7 +54,7 @@ The host may ask about several observations at the **same** tick, in either orde
 
 | Field | Contents |
 | --- | --- |
-| `observation.q`, `observation.dq` | 29 body joint positions (radians) and velocities (rad/s) in Unitree hardware order. |
+| `observation.q`, `observation.dq` | 29 body joint positions (radians) and velocities (rad/s) in Unitree hardware order. Import `BODY_JOINTS` from `sonic_sim.physics` for the names in that exact order. |
 | `observation.base_pos`, `observation.torso_pos`, `observation.left_hand_pos`, `observation.right_hand_pos` | World-frame positions in metres; the hand positions are the grasp sites. |
 | `observation.base_quat`, `observation.torso_quat` | Unit quaternions in `[w,x,y,z]` order. |
 | `observation.base_gyro`, `observation.gravity_body` | Pelvis angular velocity in rad/s and the unit gravity direction, in pelvis coordinates. |

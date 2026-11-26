@@ -16,7 +16,8 @@ from sonic_io import HORIZON, LiveEpisode, stamp_observation, validate_action
 from sonic_sim import BenchSession
 
 
-REPEAT_TICKS = (0, 25, 100)
+# Include later contact and transfer decisions as well as the initial posture.
+REPEAT_TICKS = (0, 25, 245, 415)
 
 
 class WireError(Exception):
