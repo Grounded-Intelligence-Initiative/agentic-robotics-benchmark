@@ -6,8 +6,7 @@ import sys
 import pytest
 
 
-PAYLOAD = (Path(__file__).resolve().parents[1] / "tasks" / "humanoid" / "g1_sonic_locomotion"
-           / "environment" / "setup" / "payload")
+PAYLOAD = Path(__file__).resolve().parents[2] / "environment" / "setup" / "payload"
 spec = importlib.util.spec_from_file_location("locomotion_practice_wire", PAYLOAD / "practice_wire.py")
 wire = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(wire)
