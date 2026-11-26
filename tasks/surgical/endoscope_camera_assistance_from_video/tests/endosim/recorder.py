@@ -119,7 +119,7 @@ def record(procedure, renderer, out_dir, name, every=2, operator_seed=0, touch=F
     root = os.path.join(out_dir, name)
     os.makedirs(os.path.join(root, "frames"), exist_ok=True)
     renderer.load(procedure.scene_spec())
-    ep = Episode(procedure)
+    ep = Episode(procedure, takeovers=False)
     op = Assistant(operator_seed, ep, touch=touch)
     marker = Rng(operator_seed, "annotator")
     serial, labelled = 0, 0

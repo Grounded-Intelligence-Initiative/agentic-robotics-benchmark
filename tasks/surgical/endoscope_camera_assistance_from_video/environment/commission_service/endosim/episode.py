@@ -40,8 +40,9 @@ def tip_view(tip, pose, scope):
 
 
 class Episode(object):
-    def __init__(self, procedure):
+    def __init__(self, procedure, takeovers=True):
         self.proc = procedure
+        self.takeovers = bool(takeovers)      # False for a development recording: nobody took the camera from its assistant
         self.scope = procedure.scope
         self.head_at = getattr(procedure, "head_at", None)      # the camera head's angle on the eyepiece per step (rad)
         if self.head_at is None:
@@ -58,6 +59,8 @@ class Episode(object):
         self.first_usable = None
         self.smear_serial = 0
         self.takeover = None                  # why the surgeon took the camera back, once it happened (version 0.3)
+        self.touches = 0                      # separate contacts of the lens with the tissue
+        self._touching = False
         self.takeover_step = None
         self.critical = list(getattr(procedure, "critical", None) or [])   # [start, end, kind] of each critical action
         self.critical_seen = []               # per critical action judged: the share of its steps with a usable view
@@ -87,7 +90,7 @@ class Episode(object):
         return self.takeover is not None
 
     def _take_over(self, why):
-        if self.takeover is None:
+        if self.takeovers and self.takeover is None:
             self.takeover, self.takeover_step = why, self.t
 
     def joints(self):
@@ -115,14 +118,18 @@ class Episode(object):
             q, v = self.holder.tick(command, h)
             now = self.time_s() + (k + 1) * h
             new_clear = tissue.clearance(model.lens_position(q), now, grips)
-            if new_clear < model.LENS_CLEARANCE:
+            touching = new_clear < model.LENS_CLEARANCE
+            if touching and not self._touching:
+                self.touches += 1                    # a new contact: the lens was clear of the tissue before
+            self._touching = touching
+            if touching:
                 # the lens meets tissue: the scope stops where it was, and the lens is smeared. Driven into it (closing
-                # faster than LENS_INJURY_SPEED), or touching it again after a cleaning, it ends the holder's procedure
+                # faster than LENS_INJURY_SPEED), or touching it a second time, it ends the holder's procedure
                 old_clear = tissue.clearance(model.lens_position(self.holder.q), now - h, grips)
                 closing = (old_clear - new_clear) / h
                 if closing > model.LENS_INJURY_SPEED and old_clear >= model.LENS_CLEARANCE:
                     self._take_over("lens_injury")
-                elif not self.smeared and self.smear_serial >= model.LENS_CONTACTS_TOLERATED:
+                elif self.touches > model.LENS_CONTACTS_TOLERATED:
                     self._take_over("second_contact")
                 if tissue.clearance(model.lens_position(self.holder.q), now, grips) < model.LENS_CLEARANCE:
                     # the breathing tissue rose onto a lens held too close: back the scope off along its own axis
@@ -286,7 +293,8 @@ class Episode(object):
     def summary(self):
         n = max(1, self.judged)
         out = {"steps": int(self.judged), "usable_steps": int(self.usable), "useful_view_fraction": self.usable / n,
-               "lens_contacts": int(self.contacts), "lens_smears": int(self.smear_serial), "lens_cleanings": int(self.cleanings),
+               "lens_contacts": int(self.contacts), "lens_touches": int(self.touches), "lens_smears": int(self.smear_serial),
+               "lens_cleanings": int(self.cleanings),
                "first_usable_step": self.first_usable, "takeover": self.takeover, "takeover_step": self.takeover_step,
                "critical_actions": len(self.critical_seen),
                "critical_min_seen": round(min(self.critical_seen), 4) if self.critical_seen else None}
