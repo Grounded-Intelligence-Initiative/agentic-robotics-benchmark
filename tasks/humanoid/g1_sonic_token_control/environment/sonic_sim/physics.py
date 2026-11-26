@@ -1,6 +1,7 @@
 """G1/Dex3 tabletop pick-and-place with MuJoCo dynamics and substep contact scoring."""
 from collections import OrderedDict
 from dataclasses import dataclass, replace
+import hashlib
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -51,19 +52,31 @@ TASKS = {
 TASKS.update({f"{task}_challenge": config for task, config in tuple(TASKS.items())})
 
 
+def _uniform(seed, task, field, low, high):
+    """A 53-bit uniform draw keyed by the uint64 episode seed and named field."""
+    digest = hashlib.blake2b(
+        (task + "/" + field).encode("ascii"),
+        key=seed.to_bytes(8, "little"), person=b"g1sonic.scene.v1", digest_size=8,
+    ).digest()
+    fraction = (int.from_bytes(digest, "little") >> 11) * 2.0**-53
+    return low + (high - low) * fraction
+
+
 def challenge_config(task, seed):
-    """Deterministic scene from an unsigned seed, independent of episode execution."""
+    """Draw the original physical ranges with independent keyed field domains."""
     config = TASKS[task]
-    rng = np.random.default_rng(seed)
-    # x is at least 2.3 cm from nominal on either side. Direction and sign of
-    # the lateral transfer are task-specific so every seed starts off the pad.
-    x = config.object_xy[0] + rng.choice((-1., 1.)) * rng.uniform(.023, .048)
-    y = config.object_xy[1] + rng.uniform(-.03, .03)
-    sign = -1. if config.shape == "box" else 1.
-    goal = (rng.uniform(.272, .355), y + sign * rng.uniform(.143, .200))
-    yaw = rng.choice((-1., 1.)) * rng.uniform(np.deg2rad(12.), np.deg2rad(42.))
+    def draw(field, low, high):
+        return _uniform(seed, task, field, low, high)
+
+    x_sign = -1. if draw("object-x-sign", 0., 1.) < .5 else 1.
+    x = config.object_xy[0] + x_sign * draw("object-x-offset", .023, .048)
+    y = config.object_xy[1] + draw("object-y-offset", -.03, .03)
+    direction = -1. if config.shape == "box" else 1.
+    goal = (draw("pad-x", .272, .355), y + direction * draw("pad-y-offset", .143, .200))
+    yaw_sign = -1. if draw("yaw-sign", 0., 1.) < .5 else 1.
+    yaw = yaw_sign * draw("yaw", np.deg2rad(12.), np.deg2rad(42.))
     return replace(config, object_xy=(x, y), pad_xy=goal, yaw=yaw,
-                   mass=config.mass * rng.uniform(.80, 1.45), friction=rng.uniform(.60, 1.15))
+                   mass=config.mass * draw("mass-scale", .80, 1.45), friction=draw("friction", .60, 1.15))
 
 
 TABLE_TOP = .730
@@ -245,7 +258,8 @@ class G1Task:
             half_yaw = .5*self.config.yaw
             d.qpos[self.object_qadr+3:self.object_qadr+7] = (np.cos(half_yaw), 0, 0, np.sin(half_yaw))
         else:
-            d.qpos[self.object_qadr:self.object_qadr+2] += np.random.default_rng(self.seed).uniform(-.003,.003, 2)
+            offsets = [_uniform(seed, task, field, -.003, .003) for field in ("jitter-x", "jitter-y")]
+            d.qpos[self.object_qadr:self.object_qadr+2] += offsets
         mujoco.mj_forward(m, d)
         # Set the lowest native sole sphere just above the floor at default angles.
         feet = [g for g in range(m.ngeom) if m.geom_group[g] == 3
