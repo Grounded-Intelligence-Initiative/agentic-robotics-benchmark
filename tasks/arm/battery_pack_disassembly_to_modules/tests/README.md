@@ -264,7 +264,9 @@ cell's messages).
   the whole sandbox without a bound, links not followed, `/proc` and `/sys` left out), every SysV IPC object of it
   (`/proc/sysvipc`, IPC_RMID), and the submission folder restored from a root-only copy taken when it was staged. So
   nothing of the submission is left when the fresh cell starts: neither its files on a disk nor shared memory held
-  against the sandbox's memory, nor notes about the pack for a second attempt. A second failure on that pack is
+  against the sandbox's memory, nor notes about the pack for a second attempt (a clean-up that itself fails, or a
+  submission that could not be copied at staging, is logged; the first makes the retry count as the controller's).
+  A second failure on that pack is
   scored when it came after the controller was started again (its GPU memory, memory, disk or load beside the
   cell) or when the controller could not be stopped completely: the pack counts 0 (`ended` `cell_failed`) and
   grading goes on. A second failure with nothing of the submission left is a task error (the disk-charge rule of
@@ -288,9 +290,11 @@ submission carries a 256-bit token, the grader then adds `truth` (every part's p
 fastener's head and seat, the harness' path, the exact commanded targets) to its observations. With that it skips
 perception and state estimation: it works through the public actions, pays for every tool and bit exchange, presses
 and turns every fastener under the same rules, and decides from the nutrunner's torque and angle that a fastener is
-stalled (and raises the torque limit, as the manual says for corroded fasteners); that a fastener is out
-(`captured`), which parts are locked or have left their seat, whether the pack is isolated and its waypoints' exact
-targets it takes from `truth` (its displacements are taken from the observation it answers, so the lock is honest).
+stalled (and raises the torque limit, as the manual says for corroded fasteners; since 2026-11-26 to the highest that
+harms nothing, below the shear torque, and works a seized fastener loose with the manual's cycles); that a fastener
+is out (`captured`), how long to work a seized one (its breakaway), which module is swollen (it stays in its seat),
+which parts are locked or have left their seat, whether the pack is isolated and its waypoints' exact targets it
+takes from `truth` (its displacements are taken from the observation it answers, so the lock is honest).
 Its order: a harness on the lid, the lid's bolts by head type, the lid to its stand (a half turn of the first
 joint), the service disconnect and the plugs, the wait for isolation, a harness on the busbars, the busbar and
 bracket bolts, the busbars, brackets and modules. Transfers go round the base by a turn of the first joint (a straight line near the base's axis runs the arm
@@ -1155,6 +1159,76 @@ confirmation `ale validate` on the commit of this entry follows; its `ok` line g
 description. Not exercised: an agent phase in the engine (the commissioning sessions through the agent's client;
 a frontier episode on this host follows), any cloud GPU model, a host with a CPU quota.
 
+**2026-11-26, from 07:52. The second hardening round, after a frontier episode scored 0.84, and the re-review's
+findings** (the user chose another round and the fixes in one pass; session `battery-harder2`, GPU 3 of the server
+only, after the endoscope session's runs).
+
+*The episode* (`4c00590b`, Claude Opus 5.5, claude-code 2.1.309, effort high, no web tools, on `33ce4599`; its
+trajectory read in full). Reward 0.84 (`mean_pack_credit` 0.795; packs 0.785, 0.892, 0.888, 0.438, 0.884, 0.885; 100
+protective stops, one stripped head, lock 114 of 114) in 70 of its 360 minutes. One interactive session on a
+development pack gave it, within 22 minutes, both cameras' calibration from the plates (0.1 to 0.2 px), the lid's
+outline in depth and the variant from the ribs, each head found and typed in one close wrist frame, and the torque
+trace's engagement test; nine runs of `run_session.py` went to bugs. It ran every fastener at the "highest safe
+torque" (M6 20.5, M8 44.4 N m), lifted every module, and its own list of what it never ran on the cell holds the
+extractor and the blind try at a fastener it cannot see. Every lever of the first round was one identification step
+with a documented recipe; the program barely managed parts that stayed held (a missed lid bolt lost a development
+pack; 100 stops in grading came from lifts against held parts).
+
+*The levers* (section 2, "The second round"; rules 5 to 7 of `review/select_set.py`, committed in `24ab841c` before
+their keys were drawn in `9215ee1a`; nothing redrawn): seized fasteners with the shank's shear torque and working
+cycles; swollen modules that stay in their seats; foam pads over fasteners; the hidden packs combining them as the
+development packs do not (hidden: seized 2 to 4 a pack, 15 in all, 5 of them lid bolts; swollen modules in packs
+0, 1, 3, 4; pads over 7 fasteners in 5 packs, 6 of them lid bolts. Development: one seized fastener each, swollen
+modules in packs 1 and 2, pads over L03 in packs 0 and 2). Why each, and what was not used and why: section 2.
+Simulator-free checks: `review/test_rules.py` checks 16 to 23 (the shear torque either way, working, the Torx bit at
+a stall, the head's limit both ways, the swollen module's vent and credit, the draws' statistics, a leak test: no
+key or seed of the new rules in a file the agent can read).
+
+*N1 to N3 and the nits of the re-review of `33ce4599`.* N1: `wire._num` and `packcell_client._num` treat a JSON integer
+too large for a float as a malformed number (both copies; `test_rules.py` check 21 on `check_action`, `canonical`,
+`is_idle` and the client; `test_grader.py`: a 400-digit integer applied and in a probe pair ends the pack as
+malformed, never an `OverflowError`); no other numeric parsing on the wire had the hole (`ticks` is an integer
+compared exactly). N2: option (a) of the review: before a cell retry the grader empties the account (every file of
+it outside the submission, without a bound; its SysV IPC objects) and restores the submission from a root-only copy
+taken at staging; the disk-charge branch is gone; a clean-up that fails counts the retry as the controller's.
+N3: `GuardedSolver.request` counts the account's processes before every request (as `cable_routing_through_clips`).
+Nits: the deadline is disarmed after the last verdict; `controller_restarts` leaves out the grader's own
+(`grader_restarts`); the instruction states that a controller that cannot be stopped scores the pack 0 and, at the
+end, the run 0; the PR draft's frontier row, folder size and `full_at` claim corrected.
+
+*A lever corrected after a development run.* The baseline's calibration failed on development pack 2: a pad over L03
+overhung the lid's long edge by up to 28 mm, and seen from the overhead camera its top covered inner rows of the near
+calibration plate, where the interface document says the camera sees both plates whenever the arm is out of the way.
+Since `e4927a6e` a pad on the lid is drawn cut off at the lid's outline (`scene.clip_rect`, as the grime is); no
+drawn value changed, every head and hole under a pad stays hidden, and the manual says so. In the hidden set no lid
+pad had overhung toward a plate's rows (from the drawn outlines).
+
+*Simulator-free checks of the new code* (outside the repository): the stage built with plain `pxr` for all ten packs
+(pads under their parts, every module's bump at its drawn height); a kinematic stub of the nutrunner with the real
+`rules.Rules`: the reference's and the baseline's `unscrew` took every fastener of the hidden set out unharmed (167
+clean, 14 corroded, 15 seized), and the baseline's touch routine found or ruled out and typed all 142 lid and busbar
+fasteners, centre within 0.30 mm.
+
+*The reference* (GPU 3, shared with another job of the account from 12:55). `final1` on `87ad1f2d`:
+`mean_pack_credit` 1.00000, every pack 1.0 (steps 919, 843, 1067, 1062, 1149, 1208; 584 to 823 s simulated), lock 85
+of 85 (52 idle), no stop, nothing stripped or sheared, no vent, 34 working cycles in all, the swollen modules counted
+in their seats. REF2
+
+*The frozen Opus program* (`4c00590b`'s submission, rebuilt from its trajectory: every write into `~/submission`
+replayed in order; all nine files have the sizes of the episode's last listing and `mission.py` matches the three
+reads the episode made of it, line for line). Development packs, cell of `83b7da4e`: pack 0 credit 0.054 (it runs
+M6 at 20.5 N m: the seized lid bolt L06 sheared, the program logged it "freed", the lid stayed), pack 2 0.802 (the
+seized bracket bolt R3bf stripped by its extractor; bracket R3b and the swollen M3 stayed held, so M3 was never
+lifted). Hidden set, cell of `83b7da4e` (before the pad cut, which no hidden pad's overhang touched): **`mean_pack_credit`
+0.16489, reward 0.174** (0.795 and 0.84 on `33ce4599`): packs 0.067, 0.419, 0.062, 0.326, 0.053, 0.062; in four packs
+a seized lid bolt sheared and the lid stayed; in two the lid came off, a seized busbar and a bracket bolt sheared,
+and lifting the swollen M1 vented it; 9 sheared, 3 stripped, 718 protective stops, lock 54 of 54. OPUS2 This proxy
+overstates the effect (in round 1 the old baseline fell to 0 and a fresh model reached 0.84): every failure here
+is one a fresh agent avoids by reading section 5 and section 7 of the manual. What a fresh agent has to build is
+judged in the PR draft's difficulty notes.
+
+*The revised baseline* (`review/perception_baseline/`, its README's "The third version"). BASE
+
 ## 7. Final report (2026-11-24, 16:30 EST)
 
 **Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00"),
@@ -1185,6 +1259,10 @@ Then (the entry "2026-11-26, from 03:54") the first `ale validate`, on an RTX 30
 corrected (it imported a module that needs the running simulator), the renderer's driver check off for that host's
 driver; untouched 0.0, oracle 1.0, the reference's packs in the native steps. The anchor's source is that run, and
 everything below that says the engine has not run is superseded by it.
+Then (the entry "2026-11-26, from 07:52") a second hardening round after a frontier episode scored 0.84 on
+`33ce4599`: seized fasteners with the shank's shear torque, swollen modules that stay in their seats, foam pads
+over fasteners, and the re-review's N1 to N3; the reference 1.00000 again, the frozen frontier program 0.165. The
+validate and frontier numbers above and below are `33ce4599`'s: a new `ale validate` and a new episode follow.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
