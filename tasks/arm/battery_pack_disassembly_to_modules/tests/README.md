@@ -124,6 +124,45 @@ the hall's light: `sensors.measure` takes the colour image back to the nominal l
 bright surfaces (an active sensor lights the scene itself), and the interface document says so. A program has to
 read colours relative to their surroundings, under a light it does not know.
 
+**The second round (since 2026-11-26): seized fasteners, swollen modules, foam pads.** One Claude Opus 5.5 episode
+on the four-lever tree scored reward 0.84 (`mean_pack_credit` 0.795) in 70 minutes of its six hours (section 6, the
+entry "2026-11-26, from 07:52"): every lever of the first round was one identification step with a documented
+recipe, and it found and ran each in minutes (plates, ribs, a close wrist frame per head, the torque trace). It ran
+every fastener at the "highest safe torque", lifted every module, and never ran its blind path for a fastener it
+could not see. The second round asks for what that episode did not have to master: closed-loop work where the plain
+strategy is irreversible, a two-sided judgement on a sub-millimetre measurement, and work on fasteners no camera
+sees; all three are stated in the documents as a service manual states them, each drawn under a rule of its own
+committed before its draw (`review/select_set.py`, rules 5 to 7):
+
+- *Seized fasteners and the shank's strength* (`series.SEIZED`, `series.WORK`; rules only). A thread has a shear
+  torque (M6 20, M8 46 N m): a fully engaged bit that holds it either way twists the shank off; the head rides out on
+  the bit and the stub holds its part for good (`rules._shear`). Clean and corroded fasteners break away below it.
+  The head's limit now holds when loosening too, and a Torx bit cams out at a stall when it is not pressed hard
+  enough for the torque it holds. A development pack has one seized fastener, a hidden pack two to four (any group,
+  a bracket's twice as likely, clean-looking or rusty as drawn): its breakaway is 1.15 to 1.6 times the shear torque,
+  and it comes loose only by working (a loosening stall at 85 % of the shear torque or more for 0.5 s, then a
+  tightening stall at the assembly torque or more for 0.25 s; each cycle multiplies the breakaway's excess over a
+  clean one's by the fastener's factor, 0.55 to 0.80; one to five cycles). The episode's program runs M6 at 20.5 N m:
+  it now shears every seized M6 fastener (a seized lid bolt keeps the lid, and the pack is lost).
+- *Swollen modules* (`series.SWOLLEN`; a drawn-only bump, rules). Every module's top plate carries a smooth bump
+  h (1 - rho^2)^2: a healthy one's crown of 0 to 0.25 mm, a swollen one's bulge of 0.6 to 3.0 mm; the criterion is
+  0.4 mm above the plate's rim. Two development packs and four hidden packs carry one. A swollen module stays in its
+  seat (freed of its brackets and busbars it counts 8); moved 5 mm it vents and the pack ends (`rules.vent_check`,
+  checked every tick); a healthy module left in the tray counts nothing. The overhead camera's noise (2.5 mm a
+  pixel) and the handle strap over the bump's middle make it a measurement for the wrist camera close by and a
+  plane fitted to the plate's rim. The episode's program lifts every module.
+- *Foam pads* (`series.FOAM`; drawn only). Some lid and busbar fasteners (development packs 1, 0, 1, 0; hidden
+  packs 2, 1, 1, 2, 0, 1) are under a pad of soft foam, 40 to 60 mm across, 10 to 14 mm high, glued to the part the
+  fastener holds: the head, or the empty hole of a missing fastener, is invisible to both cameras, and the bit goes
+  through the pad. Where the fastener is (its nominal place, within 2 mm), whether it is there and which head it has
+  are found by touch (the spindle's stroke where the bit rests: a head's height above the seat) and by trial (a bit
+  that does not fit turns freely). Four of the six hidden packs have a pad over a lid bolt.
+- *Composition.* The development packs show each condition, not the combinations and numbers of the hidden packs
+  (rules 5 to 7 fix how often each appears in each set; the documents state ranges that cover both).
+- *Not used, with reasons:* a wider fixture tolerance (a lid-outline fit meets any placement: one more identification
+  step), adhesive on the lid or modules (a force ramp is a recipe, and the cell's protective stops already teach it),
+  pre-damaged heads (little at stake: the extractor frees the part), bit wear (a counter is a recipe).
+
 **What is rule-based (the stated simplifications).**
 
 - *Fasteners are rule-based constraints.* A fastener's body sits on its seat (its head is a real collider the bit
@@ -135,7 +174,11 @@ read colours relative to their surroundings, under a light it does not know.
   at most, so one let go into a pile settles on it instead of being thrown off: section 5). A loose bit (a 13 mm socket on a 10 mm hexagon, a
   T30 in a T40 recess), an engagement outside the tolerances (up to 3.5 / 2.5 mm, 8 degrees), a cammed-out Torx bit
   and a tightening run above the head's limit wear the head; at wear 1 it is stripped and only the extractor bit
-  removes it. Thread engagement, the fastener rising as it turns and the socket sliding over the head are not
+  removes it. Since 2026-11-26 a fully engaged bit that holds the thread's shear torque (either way, the extractor
+  too) twists the shank off (the head is captured, the stub keeps the part held, neither counts), a stall above the
+  head's limit wears the head when loosening as well, a Torx bit cams out at a stall when the force is short of the
+  torque it holds, and a seized fastener's breakaway falls only by working cycles (`rules._work`). Thread
+  engagement, the fastener rising as it turns and the socket sliding over the head are not
   simulated: the bit's collider is a capsule whose round end stands on the head's flat top (a flat-ended
   cylinder on a head of nearly its own radius was thrown off sideways now and then: section 6), and that contact
   has a high friction (3.0, combine mode max), which stands in for the socket closing over the head. A part whose
@@ -156,6 +199,11 @@ read colours relative to their surroundings, under a light it does not know.
 - *A dropped module* is a free, unheld module moving down faster than 0.7 m/s.
 - *The harness remnant* is one rigid body (capsules along a polyline), kinematic where it lies until it is first
   gripped; a turning bit pressed on it marks it damaged.
+- *A swollen module* (since 2026-11-26) differs from a healthy one only in its drawn bump and in two rules: its
+  place is its seat (within 5 mm, level within 5 degrees, freed), and its body more than 5 mm from the seat ends the
+  pack (`module_vented`). The bump has no collider; the handle and the grip are as on any module.
+- *Foam pads* (since 2026-11-26) are drawn only (a prism on the lid or the busbar, a child of that part's body): no
+  collider, no mass, the bit passes through; they leave with their part.
 - *Sealant over a head* (since 2026-11-25) is drawn only: a dome mesh under the fastener's body, no collider and no
   mass, so a bit seats on the head as it would without it, and the dab leaves with its fastener. It is soft sealant
   in the manual's words; what it does is hide part of the head from the cameras (below).
@@ -210,17 +258,24 @@ cell's messages).
   about half the pixels (mean absolute difference 0.36 of 255).
 - A failure of the cell itself (`cellproc.CellError`): the controller is stopped with its process group (as root,
   every process of its account) before a fresh cell starts, and the pack runs once more with a restarted
-  controller; that restart is the grader's, not one of the controller's three. A second failure on that pack is
-  scored when the submission can have caused it: it came after the controller was started again (its GPU memory,
-  memory, disk or load beside the cell), or the controller could not be stopped completely, or (as root) the
-  account holds 64 MiB or more of files while a disk the cell writes to has less than 1 GiB (or a tenth) free. The
-  pack then counts 0 (`ended` `cell_failed`) and grading goes on. Only a second failure with nothing of the
-  submission running is a task error. This follows `longtail_manipulation_recovery` (a kitchen that cannot be built
-  because the controller's files filled the disk is a score, any other simulator failure a task error) and
-  `kitchen_appliance_tending` (an unstable simulation ends the episode as a score; a renderer failure, which its
-  paused controller cannot cause, is a task error). `review/test_grader.py` checks it against a stub cell.
-- More than 64 processes of the agent's account (the kit Solver's `max_processes`, counted at every reset and every
-  64 requests) end the pack as a score and restart the controller. Threads are not counted (section 5).
+  controller; that restart is the grader's, not one of the controller's three (`grader_restarts` in the metrics;
+  `controller_restarts` counts the controller's own). Since 2026-11-26 (the re-review's N2), as root, the account is
+  also emptied before the retry (`verify.scrub_account`): every file of it outside the submission folder (a walk of
+  the whole sandbox without a bound, links not followed, `/proc` and `/sys` left out), every SysV IPC object of it
+  (`/proc/sysvipc`, IPC_RMID), and the submission folder restored from a root-only copy taken when it was staged. So
+  nothing of the submission is left when the fresh cell starts: neither its files on a disk nor shared memory held
+  against the sandbox's memory, nor notes about the pack for a second attempt. A second failure on that pack is
+  scored when it came after the controller was started again (its GPU memory, memory, disk or load beside the
+  cell) or when the controller could not be stopped completely: the pack counts 0 (`ended` `cell_failed`) and
+  grading goes on. A second failure with nothing of the submission left is a task error (the disk-charge rule of
+  2026-11-26 03:50 is gone with the reason it existed). This follows `longtail_manipulation_recovery` (a kitchen
+  that cannot be built because the controller's files filled the disk is a score, any other simulator failure a task
+  error) and `kitchen_appliance_tending` (an unstable simulation ends the episode as a score; a renderer failure,
+  which its paused controller cannot cause, is a task error). `review/test_grader.py` checks it against a stub cell
+  (the account's files and its SysV memory removed, the submission restored, links not followed).
+- More than 64 processes of the agent's account (the kit Solver's `max_processes`; since 2026-11-26 counted before
+  every request by `GuardedSolver.request`, as upstream `cable_routing_through_clips` does) end the pack as a score
+  and restart the controller. Threads are not counted (section 5).
 - The kit's `VerifierDeadline`, armed at the start with `verifier_deadline_s` (20,400 s, 1,200 s inside
   `[verifier] timeout_sec`): if grading is still running then, the verdict is written from the packs graded so far,
   the others count 0, and `verifier_deadline_expired` is 1. `review/test_grader.py` runs `verify.main` with the
@@ -334,12 +389,16 @@ value, in the same steps, as every native run on the author's server.
   and come back with the other for the heads that did not turn. That costs a second pass, not credit. Since
   2026-11-26 the instruction and `task.toml` say so (the review's S9); making a wrong family harmful would not be
   true to the tools. Left as it is for the owner to decide.
-- **Levers if frontier models turn out to do too well.** Four are used since 2026-11-25 (section 2, "The cameras",
+- **Levers if frontier models turn out to do too well.** Seven are used. Since 2026-11-25 (section 2, "The cameras",
   "Sealant" and "A pack's look"): the cameras' poses on file are nominal and each cell's own mounting offset has to
   be identified; the depth is an active-stereo sensor's; fastener heads are partly hidden by sealant; the hall's
-  light, grime, dust and labels vary from pack to pack. Not used: a wider placement tolerance of the fixture (a
-  program that finds the pack from its silhouette meets it anyway). All are perception or engineering, none a
-  penalty.
+  light, grime, dust and labels vary from pack to pack. Since 2026-11-26 (section 2, "The second round"), after a
+  frontier episode scored 0.84: seized fasteners with a shear torque below the plain strategy's limit (worked loose
+  under torque control), a swollen module that must stay in its seat (a sub-millimetre measurement), foam pads that
+  hide fasteners from both cameras (found by touch), with the hidden packs combining them as the development packs
+  do not. Not used: a wider placement tolerance of the fixture (a program that finds the pack from its silhouette
+  meets it anyway), adhesive, pre-damaged heads, bit wear (section 2 gives the reasons). All are perception or
+  engineering, none a penalty.
 - **GPU models.** The task has run on two models: natively, on the author's RTX 6000 Ada with driver 570 (DLSS
   falls back to an older denoiser preset there), and in `ale validate` on an RTX 3090 with driver 535, below
   Omniverse RTX's R550 floor, with the renderer's driver check off (`--/rtx/verifyDriverVersion/enabled=false` in

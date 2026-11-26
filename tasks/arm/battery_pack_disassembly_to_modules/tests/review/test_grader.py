@@ -184,7 +184,12 @@ def check(name, ok, detail=""):
 def test_process_cap(work, packs, config):
     reset_stub()
     sub = submission(work, "forks")
-    base = len([p for p in os.listdir("/proc") if p.isdigit() and os.stat("/proc/" + p).st_uid == os.getuid()])
+    def mine(p):
+        try:
+            return os.stat("/proc/" + p).st_uid == os.getuid()
+        except OSError:                          # a process that ended while /proc was read
+            return False
+    base = len([p for p in os.listdir("/proc") if p.isdigit() and mine(p)])
     V.GuardedSolver.max_processes = base + 15
     real_uid = V.GuardedSolver._uid
     V.GuardedSolver._uid = lambda self: os.getuid()        # outside the engine the agent account does not exist
