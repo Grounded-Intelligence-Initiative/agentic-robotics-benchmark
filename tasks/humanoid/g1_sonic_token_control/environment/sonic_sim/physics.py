@@ -178,6 +178,9 @@ class TaskScore:
         self.upright = True
 
     def update(self, *, dt, object_pos, object_velocity, object_rotation, goal_pos, contacts, upright):
+        # The first terminal substep owns the verdict reported at the next 50 Hz boundary.
+        if self.placed or not self.upright:
+            return
         self.contacts = contacts
         self.upright = bool(upright)
         lift = float(object_pos[2] - self.initial_z)
@@ -269,7 +272,7 @@ class G1Task:
         d.qpos[2] += .0002 - floor_gap
         mujoco.mj_forward(m, d)
         self.score = TaskScore(float(d.xpos[self.object_body,2]), self.config)
-        self._sample(0., ContactSample())
+        self._sample(0., ContactSample(), d.qvel[self.object_vadr:self.object_vadr+6])
         self._renderers = OrderedDict()
 
     def contacts(self):
@@ -301,11 +304,11 @@ class G1Task:
                     sample.pad_force_z += fz
         return sample
 
-    def _sample(self, dt, contacts):
+    def _sample(self, dt, contacts, object_velocity):
         d = self.data
         p = self.pelvis
         self.score.update(dt=dt, object_pos=d.xpos[self.object_body],
-                          object_velocity=d.qvel[self.object_vadr:self.object_vadr+6],
+                          object_velocity=object_velocity,
                           object_rotation=d.xmat[self.object_body].reshape(3,3),
                           goal_pos=self.goal_pos, contacts=contacts,
                           upright=d.xpos[p,2]>.45 and d.xmat[p,8]>.55)
@@ -319,8 +322,11 @@ class G1Task:
         d.ctrl[self.actuator_ids] = targets
         d.ctrl[self.f_actuator_ids] = ftargets
         for _ in range(SUBSTEPS):
+            # mj_step computes contacts and world poses at the beginning of the
+            # interval, then integrates qvel/qpos. Score the matching velocity.
+            velocity = d.qvel[self.object_vadr:self.object_vadr+6].copy()
             mujoco.mj_step(m, d)
-            self._sample(PHYSICS_DT, self.contacts())
+            self._sample(PHYSICS_DT, self.contacts(), velocity)
         mujoco.mj_forward(m, d)
 
     def observe(self):
