@@ -323,6 +323,12 @@ summary = "Write the autonomous program of a cabin free-flyer that finds a block
 platforms = ["space"]
 stages = ["behavior"]
 
+[g1_sonic_token_control]
+title = "Pick and place with G1 motion tokens"
+summary = "A free-standing Unitree G1 must grasp, lift and release a box or cylinder onto a pad using calibrated RGB, proprioception and the released SONIC token decoder."
+platforms = ["humanoid"]
+stages = ["behavior"]
+
 [hazard_bay_build]
 title = "Rebuild a hazard bay, design and run its fleet"
 summary = "Rebuild a plant's hazard bay in Isaac Sim from photos, design a fleet of flying and ground robots from a catalog, and program it through the job."
