@@ -9,7 +9,7 @@ Write a controller for a free-standing G1 with 29 body joints and two Dex3 hands
 | Lift | Raise the object at least 4 cm while two parts of the same hand make opposing contacts. The hands must support at least half its weight, with other supports carrying at most 5%, continuously for 40 ms. |
 | Place | Keep the whole object footprint inside the green pad for 250 ms. The object must be nearly vertical, nearly still and clear of both hands. The pad must bear at least half its weight and other supports at most 5%. Either end may face up. |
 
-One action row advances 20 ms. The episode ends on a strict placement, a fall, an approach violation or after 1,100 rows (22 simulated seconds). The raw score is the number of strict placements divided by 16 independent evaluation episodes, eight per shape. Each episode contributes one or zero. The verifier checks that the first row of body codes responds reproducibly to different observations; motion efficiency and intermediate stages are diagnostics. The final reward uses the benchmark's measured reference score.
+One action row advances 20 ms. The episode ends on a strict placement, a fall, an approach violation or after 1,100 rows (22 simulated seconds). The raw score is the number of strict placements divided by 16 independent evaluation episodes, eight per shape. Each episode contributes one or zero. The verifier checks that the first row of body codes responds reproducibly to different observations; motion efficiency and intermediate stages are diagnostics. A failed observation-response check gives zero reward for the entire panel, even when the verifier records strict placements. The verifier normalizes this fraction against a positive reference score after calibration. During calibration it records the raw outcome and returns zero reward.
 
 ## Start here
 
@@ -40,6 +40,8 @@ The host starts `bash run.sh` in your submission directory as an unprivileged us
 | `{"type":"reset"}` | `{"ok":true}` and clear per-episode state |
 | `{"type":"act","t":t,"obs":obs}` | `{"action":{"rows":[...]}}` |
 | `{"type":"close"}` | `{"ok":true}`, then exit |
+
+The reset reply must have exactly the key `ok` with the JSON boolean `true`. The act reply must have exactly the key `action`.
 
 Each action row has exactly two fields. `codes` is a length-64 list of integers in `[0,31]`. Each code `c` becomes the native finite scalar quantization (FSQ) value `(c - 16) / 16`; code 16 is zero. `hand` is `[left,right]`, each in `[0,1]` from open to fully closed. For example, this Python expression builds one valid neutral reply:
 

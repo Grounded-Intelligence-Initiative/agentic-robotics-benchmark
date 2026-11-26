@@ -101,7 +101,9 @@ def solver(directory):
         try:
             wire = Wire(process)
             wire.ready()
-            wire.request({"type": "reset"})
+            ack = wire.request({"type": "reset"})
+            if set(ack) != {"ok"} or ack["ok"] is not True:
+                raise WireError("reset requires a true acknowledgment")
             yield wire
             wire.request({"type": "close"})
             with suppress(subprocess.TimeoutExpired):
@@ -126,8 +128,10 @@ def inspect(episode, out):
 def ask(wire, obs, horizon):
     tick = obs["tick"]
     reply = wire.request({"type": "act", "t": tick, "obs": obs})
+    if set(reply) != {"action"}:
+        raise WireError(f"tick {tick} requires a single action")
     try:
-        return validate_action(reply.get("action"), tick, horizon)
+        return validate_action(reply["action"], tick, horizon)
     except ValueError as exc:
         raise WireError(f"invalid action at tick {tick}: {exc}") from exc
 

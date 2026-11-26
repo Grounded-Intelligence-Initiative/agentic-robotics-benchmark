@@ -1,4 +1,4 @@
-"""Minimal JSONL submission. Launch with exec python3 -u /home/user/starter.py."""
+"""Minimal JSONL submission. Copy into your submission and launch with exec python3 -u controller.py."""
 
 import json
 import sys
