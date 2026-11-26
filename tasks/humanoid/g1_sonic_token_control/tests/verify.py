@@ -1,4 +1,5 @@
 """Trusted ALE verifier for a native G1 pick-and-place episode."""
+from collections import deque
 import hashlib
 import math
 import os
@@ -119,6 +120,48 @@ def advance_shadow(shadow, rows):
         shadow.step(token, *row["hand"])
 
 
+class MeasuredSession:
+    """Record the token and measured velocity after each successful real step."""
+    def __init__(self, session, reset_velocity):
+        self.session = session
+        self.velocities = deque([reset_velocity], maxlen=5)
+        self.previous_token = None
+        self.body_code_changes = 0
+        self.acceleration_squared_sum = 0.0
+
+    def __getattr__(self, name):
+        return getattr(self.session, name)
+
+    def step(self, token, left_hand, right_hand):
+        state = self.session.step(token, left_hand, right_hand)
+        # LiveEpisode maps a 0..31 bin exactly to (bin - 16) / 16 in float32.
+        if self.previous_token is not None:
+            self.body_code_changes += int(np.count_nonzero(token != self.previous_token))
+        self.previous_token = token
+        velocity = state["observation"]["dq"]
+        if len(self.velocities) == 5:
+            acceleration = (velocity - self.velocities[0]) / 0.1
+            self.acceleration_squared_sum += float(np.sum(acceleration ** 2))
+        self.velocities.append(velocity)
+        return state
+
+
+def motion_metrics(rows):
+    ticks = sum(row["ticks"] for row in rows)
+    comparisons = 64 * sum(max(0, row["ticks"] - 1) for row in rows)
+    changes = sum(row["body_code_changes"] for row in rows)
+    samples = sum(max(0, row["ticks"] - 4) for row in rows)
+    metrics = dict(simulated_seconds=ticks / 50, executed_fsq_scalars=64 * ticks,
+                   body_code_comparisons=comparisons, body_code_changes=changes,
+                   joint_acceleration_samples=samples)
+    if comparisons:
+        metrics["body_code_churn_fraction"] = changes / comparisons
+    if samples:
+        square_sum = sum(row["acceleration_squared_sum"] for row in rows)
+        metrics["joint_acceleration_rms_rad_s2"] = math.sqrt(square_sum / (29 * samples))
+    return metrics
+
+
 def episode(solver, shape, seeds, rng, config, assets):
     horizon = config["horizon"]
     task = shape + "_to_pad_challenge"
@@ -127,12 +170,15 @@ def episode(solver, shape, seeds, rng, config, assets):
     lock = ProbeLock(rng, canonical=first_codes, tolerance=0.5)
     report = dict(shape=shape, ticks=0, reason="aborted", placed=0, lifted=0,
                   probes=0, sensitive=0, duplicates=0, noisy=0, opportunities_lost=0)
+    measured = None
     try:
         solver.reset()
         with (BenchSession(task, seeds[0], assets, horizon) as real,
               BenchSession(task, seeds[1], assets, horizon) as shadow):
-            live = LiveEpisode(real)
-            while not real.state["done"]:
+            state = real.state
+            measured = MeasuredSession(real, state["observation"]["dq"])
+            live = LiveEpisode(measured)
+            while not state["done"]:
                 actual = live.observe()
                 tick = actual["tick"]
                 if tick in probe_ticks and not shadow.state["done"]:
@@ -157,7 +203,7 @@ def episode(solver, shape, seeds, rng, config, assets):
                 applied = live.advance(action, actual["observation_id"])
                 advance_shadow(shadow, action["rows"][:applied])
                 report["ticks"] += applied
-            state = real.state
+                state = real.state
             metrics = state["metrics"]
             require(bool(metrics["success"]) == bool(metrics["placed"]), "native terminal mismatch")
             report.update(reason=state["reason"], placed=int(metrics["placed"]),
@@ -167,6 +213,9 @@ def episode(solver, shape, seeds, rng, config, assets):
     except SolverAborted:
         pass
     report.update(probes=lock.total, sensitive=lock.passed)
+    report["body_code_changes"] = measured.body_code_changes if measured is not None else 0
+    report["acceleration_squared_sum"] = measured.acceleration_squared_sum if measured is not None else 0.0
+    report.update(motion_metrics([report]))
     return report
 
 
@@ -204,6 +253,7 @@ def run_panel(solver, config, rng, assets=ASSETS):
                    probes_passed=total("sensitive"), duplicate_probes=duplicates,
                    duplicate_changes=total("noisy"), missed_reached_probe_opportunities=total("opportunities_lost"),
                    probe_change_fraction=signal, duplicate_change_fraction=noise, match_lock_ok=int(ok))
+    metrics.update(motion_metrics(rows))
     completed = [r for r in rows if r["reason"] != "aborted"]
     for name in ("max_lift_m", "goal_error_xy_m", "release_hold_s"):
         if completed:

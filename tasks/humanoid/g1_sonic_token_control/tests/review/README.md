@@ -50,3 +50,11 @@ A successful validation produces an untouched reward of 0.0 and an oracle reward
 ## Assets and reproducibility
 
 The runtime uses the unmodified NVIDIA body decoder and the Unitree G1/Dex3 description from MuJoCo Menagerie. The Docker build checks every model and mesh against the committed hashes and includes the original licenses. The simulator samples object and pad layouts from named, keyed draws over a 64-bit episode seed. Pick a practice seed to reproduce a layout in this task version. Input frames are rendered at each advertised resolution. The scorer tests forces, footprint and motion at 2 ms intervals; control rows last 20 ms. [Asset notice](../../environment/NOTICE) · [Checksums](../../environment/public_assets.sha256)
+
+## Motion diagnostics
+
+Each applied body row contributes 0.02 to `simulated_seconds` and 64 to `executed_fsq_scalars`. Counts include partial episodes through their last executed step.
+
+`body_code_changes` counts changed coordinates between adjacent applied body rows within each episode. `body_code_churn_fraction` divides this count by `body_code_comparisons`, the total number of coordinates compared.
+
+`joint_acceleration_rms_rad_s2` pools measured angular accelerations across all 29 G1 body joints in hardware order and all eligible real ticks. At every tick $t\ge5$, the verifier takes $(dq_t-dq_{t-5})/0.1$ using native joint velocities in rad/s and the reset velocity for $dq_0$. It reports the square root of the mean squared acceleration in rad/s². `joint_acceleration_samples` counts eligible ticks. A zero denominator omits the corresponding fraction or RMS. These diagnostics describe the executed motion and carry zero scoring weight.
