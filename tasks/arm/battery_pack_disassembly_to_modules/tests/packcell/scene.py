@@ -274,6 +274,32 @@ class Builder(object):
         return rb
 
 
+def clip_rect(poly, x0, x1, y0, y1):
+    """A convex polygon cut to the rectangle [x0, x1] x [y0, y1] (Sutherland-Hodgman)."""
+    def cut(pts, inside, cross):
+        out = []
+        for i, b in enumerate(pts):
+            a = pts[i - 1]
+            if inside(b):
+                if not inside(a):
+                    out.append(cross(a, b))
+                out.append(b)
+            elif inside(a):
+                out.append(cross(a, b))
+        return out
+
+    def at_x(x):
+        return lambda a, b: (x, a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]))
+
+    def at_y(y):
+        return lambda a, b: (a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]), y)
+    pts = list(poly)
+    for inside, cross in ((lambda q: q[0] >= x0, at_x(x0)), (lambda q: q[0] <= x1, at_x(x1)),
+                          (lambda q: q[1] >= y0, at_y(y0)), (lambda q: q[1] <= y1, at_y(y1))):
+        pts = cut(pts, inside, cross) if pts else pts
+    return pts
+
+
 def hex_outline(af):
     r = af / math.sqrt(3.0)          # across corners / 2
     return [(r * math.cos(math.radians(60 * k)), r * math.sin(math.radians(60 * k))) for k in range(6)]
@@ -569,6 +595,11 @@ def build(stage, pack, robot_usd, render=True):
             ca, sa, h = math.cos(pad["angle"]), math.sin(pad["angle"]), pad["side"] / 2
             cx, cy = pad["x"] - part["pos"][0], pad["y"] - part["pos"][1]
             sq = [(cx + u * ca - v * sa, cy + u * sa + v * ca) for u, v in ((-h, -h), (h, -h), (h, h), (-h, h))]
+            if part["kind"] == "lid":
+                # glued to the lid, it ends at the lid's edge (as the grime does): nothing of it hangs beyond the pack
+                # into the overhead camera's view of a calibration plate
+                lx, ly = S.TRAY["size"]
+                sq = clip_rect(sq, -lx / 2, lx / 2, -ly / 2, ly / 2)
             z0 = pad["z"] - part["pos"][2]
             b.prism(path + "/pad%d" % i, sq, z0, z0 + pad["thick"], look="foam")
         index["parts"][pid] = path

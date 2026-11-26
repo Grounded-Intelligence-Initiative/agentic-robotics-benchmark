@@ -1012,7 +1012,9 @@ class Baseline(object):
             out[p["id"]] = None if r is None else r[0]
             self.dbg.setdefault("modules", {})[p["id"]] = r
         self.note("module bumps (mm):", {k: None if v is None else round(1000 * v, 3) for k, v in out.items()})
-        seen = {k: v for k, v in out.items() if v is not None and v >= sw["criterion"]}
+        # decided at 0.48 mm, not the manual's 0.4: healthy modules (flat within 0.25 mm) read up to 0.35 mm on the
+        # development packs, the swollen ones (0.6 mm or more) read their bulge
+        seen = {k: v for k, v in out.items() if v is not None and v >= sw["criterion"] + 0.08}
         return set([max(seen, key=seen.get)]) if seen else set()
 
     # ------------------------------------------------------------------ the pack, open

@@ -336,7 +336,8 @@ free before it is lifted. Sort everything that comes off (section 9).
   level and undamaged, it counts its value (section 9); a healthy module left in the tray counts nothing.
 - **Foam pads.** A service shop sometimes glued a pad of soft open-cell foam over a lid bolt or a busbar bolt: light
   grey-beige, square, %d to %d mm across and %d to %d mm high above the seat, turned at any angle, its centre within
-  %d mm of the fastener's nominal place; up to %d pads in a pack. A pad hides the head, or the empty hole of a missing
+  %d mm of the fastener's nominal place, cut off at the lid's edge; up to %d pads in a pack. A pad hides the head, or
+  the empty hole of a missing
   fastener, from both cameras. It is glued to the lid or the busbar and leaves with it; the gripper cannot take it
   off. It is soft: a bit pressed through it reaches the head (or the seat) and engages as it would without it. The
   fastener under a pad is at its place of section 4, within the 2 mm above; whether it is there and which head it

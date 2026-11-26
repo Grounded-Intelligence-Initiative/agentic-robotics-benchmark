@@ -481,7 +481,9 @@ def module_bump(cams, pose, centre, top_z, plate=(0.28, 0.11), rim=0.005, a=(0.0
         px, py = P[:, 0] - X, P[:, 1] - Y
         u = c * px + s * py - centre[0]
         v = -s * px + c * py - centre[1]
-        keep = (np.abs(u) < plate[0] / 2 - 0.001) & (np.abs(v) < plate[1] / 2 - 0.001) & (np.abs(P[:, 2] - top_z) < 0.005)
+        # the plate's outer 2 mm left out: the depth there is pulled down by the plate's 2 mm step (the sensor's lateral
+        # smoothing), which on the development packs read every healthy module 0.02 to 0.14 mm too high
+        keep = (np.abs(u) < plate[0] / 2 - 0.002) & (np.abs(v) < plate[1] / 2 - 0.002) & (np.abs(P[:, 2] - top_z) < 0.005)
         pts.append(np.stack([u[keep], v[keep], P[keep, 2]], axis=1))
     if not pts:
         return None
