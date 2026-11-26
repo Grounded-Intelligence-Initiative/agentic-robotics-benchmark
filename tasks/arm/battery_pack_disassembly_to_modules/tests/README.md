@@ -225,13 +225,17 @@ through its shoulder singularity). It answers a repeated step from the observati
 function of an observation, and every displacement is a planned waypoint minus that observation's commanded pose.
 
 **A perception-based baseline** (`review/perception_baseline/`, maintainers' evidence; nothing runs it in grading)
-does the same job from what a submission gets: no token, no `truth`, only the frames with the published
-calibration, the manual's tables, the cell's messages and the nutrunner's readings. It keeps the reference's motion
-skills and order and replaces every value the reference reads from `truth`: the variant from the lid's ribs, the
-pack's placement from the silhouette of its top, each fastener's place, presence and head from the overhead and
-wrist depth frames (a head's height above its seat tells its type), the harness from its blue cable, "out" from the
-nutrunner's trace. On the hidden set it scored `mean_pack_credit` 1.00000, as the reference does, in 24 to 28 % more
-steps (section 6, the entry "2026-11-25, 10:00 to 11:35").
+does the same job from what a submission gets: no token, no `truth`, only the frames, the cell's published numbers
+(the cameras' intrinsics, nominal mounting and data sheets, the calibration plates), the manual's tables, the cell's
+messages and the nutrunner's readings. It keeps the reference's motion skills and order and replaces every value
+the reference reads from `truth`: this cell's cameras from the calibration plates (PnP for the overhead camera;
+whole-board wrist views and the robot's kinematics for the wrist camera's mounting; the plates' white for the hall's
+light), the variant from the lid's ribs, the pack's placement from the hull of its top's silhouette, each fastener
+from six averaged overhead frames and one close wrist frame (the head's flat top gives its type; its outline,
+fitted to its rim, its centre where sealant or a neighbour hides part of it), the harness from its blue cable, "out"
+from the nutrunner's trace. Its first version, written for exact depth and exact calibration, scored 1.00000 on the
+hidden set (section 6, the entry "2026-11-25, 10:00 to 11:35"); it scores 0.00000 on the cell as it is now. The
+revised version, for the cell as it is now, scored `mean_pack_credit` 1.00000 on the hidden set (reward 1.0; one run of a program frozen on the development packs before it) (section 6, the entry "2026-11-25, 13:50 to 21:30").
 
 The anchor and its spread: see the status log (section 6) for the measured runs. `tests/anchor.json` holds the
 value measured natively on the author's server, outside the engine; it has to be re-measured through `ale validate`.
@@ -246,20 +250,60 @@ value measured natively on the author's server, outside the engine; it has to be
   perception and engineering (millimetre localisation from RGB-D, per-fastener head classification, torque-trace
   logic, the isolation order, a long horizon with limited commissioning), not through penalties; whether it lands
   there, and whether it is too hard, is open until `ale run`.
-- **The job can be done without the privileged view** (since 2026-11-25; section 6, the entry "2026-11-25, 10:00 to
-  11:35"). `review/perception_baseline/` takes every pack apart from what a tested agent is given and scored
-  `mean_pack_credit` 1.00000 on the hidden set without the token (one run, of a program frozen on the development
-  packs before it), as the reference does. What made that straightforward is a finding about the difficulty: the
-  depth frames are exact (0.1 mm steps, no noise), so a head's type follows from its height above its seat alone
-  (4.5 against 6 mm, 6 against 8 mm), its centre from the depth points of its top face in one wrist frame (0.44 mm at
-  worst on the development packs; the Torx bits need 1.2 mm), and the pack's placement from the silhouette of its top
-  (0.44 mm, 0.001 degrees); the parts sit at the manual's places in the pack's frame; the nutrunner's trace separates
-  breakaway, stall and run-out cleanly. The baseline was written in about an hour by the task's author, with a tool a
-  tested agent does not have (the development packs' truth to compare with) and the reference's motion code to start
-  from, so it shows that the task is solvable, not how hard it is for an agent with six hours, ten sessions and no
-  truth: that is still for `ale run` (the bullet above). If frontier models turn out to do too well, noise on the
-  depth frames is the lever this baseline points to first, next to those listed below; whether to use it is the
-  owner's decision.
+- **The job can be done without the privileged view, and it takes engineering** (section 6, the entries "2026-11-25,
+  10:00 to 11:35" and "2026-11-25, 13:50 to 21:30"). The first perception baseline scored 1.00000 on the hidden set in
+  about an hour of work, through two shortcuts: exact depth (a head typed by its height in one overhead frame) and
+  cameras exactly at their published poses. Both are closed (a sensor's depth, each cell's own camera mounting), and
+  two more levers were added because a revised baseline still found the job easy (sealant over heads, a pack's
+  look). The first version, unchanged, scores 0.00000. The revised version scored `mean_pack_credit` 1.00000 on the hidden set (reward 1.0; one run of a program frozen on the development packs before it). It needed: calibration of
+  both cameras from the plates in every pack (PnP; a hand-eye from whole-board views and the robot's kinematics; a
+  robust mean; detector variants against the renderer's colour wash), six averaged overhead frames, a fit of each
+  head's outline to its rim at the wrist, white balance from the plates, a safe transfer height, and 29 development
+  sessions over about five hours of an author who designed the levers and had the development truth and the
+  reference's motion code to start from. A tested agent has none of that, six hours and ten sessions. How hard that
+  is for a frontier model is for `ale run`.
+- **What a validator would check, checked natively** (2026-11-25, no Docker; as upstream #165's review did):
+  1. *Numbers.* `review/check_numbers.py` holds every number of the hand-written instruction (tolerances, the
+     cameras' mounting ranges and noise, deadlines, budgets, the set, the sessions, the values) to the code, and
+     the generated documents (`service_manual.md`, `tool_catalog.md`, `cell_interface.md`, `cell.json`) to what
+     `make_documents.py` writes from the code now: 15 statements, 4 documents, no difference.
+  2. *Commissioning against grading.* The blind replay of the reference's recorded actions on hidden pack 2 ran once
+     through the grader (the small checks) and once through a commissioning daemon whose one development pack was set
+     to that pack (a copy of the service's folder, natively), with `run_session.py` and its own repeated steps: 1040
+     steps, 730 s of simulated time and no protective stop both ways (the service shows no credit by design).
+     `run_session.py` puts one 30 s deadline on each request, as the kit does, and counts repeated steps without
+     comparing their replies, so there is no second rule for probe pairs.
+  3. *Nothing hidden within reach.* The hidden set and every key (`key_hex`, `cells_key_hex`, `sealant_key_hex`,
+     `appearance_key_hex`) are only in `tests/hidden/`, which never enters the image; the development packs' values
+     are in the commissioning service's folder, which the image installs for the account `packcell` alone and
+     checks at build time that the agent account can neither list nor read; no offset value and no seed appears in
+     a visible file (`review/test_sensors.py`); without the token an observation carries no `truth` and the
+     reference ends at once with 0 (the small checks); the service's wire refuses `truth` and `score`. What rests on
+     file modes and the verify stage's root-only paths is unexercised until the image is built (below).
+  4. *The credit's edge cases.* `review/test_rules.py` (check 12): nothing in place 0, everything 1, a stripped
+     fastener loses its 0.5, a module held or beside its bay its 8, a missing fastener is not in the denominator.
+  5. *The probe's copy under the sensor model.* A copy carries the true observation's pictures, so its depth has
+     the same noise and dropouts by construction, and no rule on the pictures alone tells the two apart; on the
+     poses, the true observation had the larger residual in 63 of 136 copies (the same on every tree; chance is
+     68). See the next bullet for what remains.
+  6. *Every hidden quantity can be recovered from what a program sees.* The revised baseline's estimates against
+     the development truth (its README; section 6): the pack's placement within 0.92 mm, the variant 4 of 4, the
+     overhead camera so that a lid point is within 1.05 mm, the wrist camera's mounting within 0.19 mm at 0.35 m,
+     every seated head typed right and found within 0.14 to 0.24 mm (median) at the wrist, every missing fastener
+     seen as a hole, the harness found where it lies, under every light the development packs have.
+- **A probe's copy keeps the true observation's pictures** (unchanged by this revision; the brief kept the probe
+  lock as it is). A program that locates its wrist camera in a frame (on a calibration plate, say) could notice
+  that a copy's reported pose, from joints shifted by up to 0.01 rad, does not match the picture, on the steps
+  whose observation carries a wrist frame (at most 400 of a pack's frames). Rendering a copy's wrist frame from the
+  shifted pose would close it; it was not done.
+- **The new looks are drawn only.** Sealant, grime, dust and labels have no colliders and no mass (a bit engages
+  under sealant as without it, the manual says so); the hall's light changes only the colour image. The depth's
+  dropouts on dark and bright surfaces are decided on the colour image taken back to the nominal light through an
+  approximation of the renderer's display curve (good to about two levels of 255), so a surface keeps its readings
+  under any light to that accuracy.
+- **Rendering is not repeatable, so neither is a perception program's order of work.** A head read one way in one
+  run and another way in the next changes which bolt comes out last; one such order exposed a fault of the revised
+  baseline's own (section 6). A program that is right only for one order can score differently from run to run.
 - **The head type can also be found by trial.** A bit that does not fit a head turns freely and harms nothing
   (only the two loose combinations and a bad alignment wear a head), so a program can run one bit over a whole group
   and come back with the other for the heads that did not turn. That costs a second pass, not credit. The brief's
@@ -747,6 +791,127 @@ task is therefore solvable from what a tested agent is given, by a program of ab
 of perception. How hard that is for an agent without the development truth and without the reference's code to
 start from is not measured here (section 5).
 
+**2026-11-25, 13:50 to 21:30. The baseline's shortcuts closed: a sensor's depth, each cell's own camera mounting,
+sealant over heads, a pack's look (trees `7c6441a` to `9f20b46`; GPU 3 of the author's server only, one Isaac process
+at a time).** The perception baseline of the entry above took the job apart through two shortcuts no real cell
+offers: exact depth (a head typed by its height in one overhead frame) and cameras exactly at their published poses.
+Both were closed, and two more levers of section 5 were added after a revised baseline showed that the job stayed
+easy for an expert each time (section 2 describes each change and why it is there; this entry records the order,
+the draws and the measurements).
+
+*The order of the work, each rule committed before its values were drawn* (keys of their own in
+`hidden/selection.json`, `review/select_set.py`'s docstring):
+
+| step | commit | what |
+|---|---|---|
+| rule 2 and the sensor | `7c6441a` | `packcell/sensors.py` and its data sheet; cameras' poses on file nominal, `MOUNT_TOL`; the two calibration plates; `review/test_sensors.py` |
+| draw 2 | `0ae4b4a` | each hidden and development cell's camera offsets; through the nominal poses a point on the fixture is 23 to 60 mm off (overhead), a point 0.35 m in front of the wrist camera 4.5 to 8.6 mm |
+| rule 3 | `1352c44` | sealant over heads (`SEALANT`) |
+| draw 3 | `6b259e7` | per-pack sealant seeds; sealed fasteners per hidden pack 9, 10, 8, 11, 12, 7 |
+| photographs | `578582a` | the manual's photographs again (plates in view, three sealed heads) |
+| rule 4 | `38b809d`, `2f5ce83`, `ed97bd4` | a pack's look (`APPEARANCE`), its ranges in `cell.json` |
+| draw 4 | `601152a` | per-pack appearance seeds |
+| drawing fix | `b833cfd` | a grime patch near the lid's edge overhung the lid in the drawing (seen in a development survey): cut at the edge; the drawn values are unchanged |
+| sensor fix | `9f20b46` | the dark and bright dropouts were decided on the colour divided by the light's gain, which over-brightens a tone-mapped render: in a dim hall the plated heads lost 28 % of their readings against 11 % under the nominal light. The colour is now taken back to the nominal light through the display curve (2.2 gamma and the ACES approximation; it predicts a dimmed render within about two levels) |
+| validator tooling | `9b8152b` | `review/check_numbers.py`, a missing fastener's credit, the image's import check of the sensor model |
+| the revised baseline | `9cc3b1c` | frozen after its fifth development round |
+
+*That the calibration can be identified* was measured before rule 2 was committed, on a probe cell with offsets
+picked by hand (not drawn): both plates in one overhead frame give the overhead camera by PnP to 0.3 to 0.6 mm on the
+lid; whole-board wrist views give the wrist camera's mounting to 0.2 mm. On the development cells (surveys with the
+truth beside the frames): the lid within 0.3 to 0.74 mm from every overhead frame in which both plates were found;
+the wrist mounting from 15 to 16 views, robustly averaged, to 0.14 to 0.34 mm (0.16 to 0.18 mm at a point 0.35 m
+ahead). One renderer effect matters for it: the denoiser can wash a nearby colour (the blue harness) over part of a
+plate, which the red channel or the darkest channel sees through.
+
+*The reference* (native verify stage, the six hidden packs, a clean export of the commit):
+
+| tree | `mean_pack_credit` | steps per pack | lock | stage |
+|---|---|---|---|---|
+| `21e2d44` (sensor, mounting) | 1.00000 | 921, 852, 1040, 1066, 1151, 1185 | 83 of 83 (53 idle) | 1599 s |
+| `6b259e7` (+ sealant) | 1.00000 | the same | 83 of 83 (53 idle) | 1993 s |
+| `9cc3b1c` (+ the look; the final tree) | 1.00000 | the same | 83 of 83 (53 idle) | 2031 s |
+
+The reference asks for no frame and nothing it touches collides with the new drawings, so its packs run step for step
+as on every tree since `21ac344`. `tests/anchor.json` is unchanged (1.0, `full_at` 0.95). The probe's copies balance
+as before (63 of 136 with the larger residual on the true observation).
+
+*The small checks on the final tree* (`9cc3b1c`): none (an empty submission folder): "no usable submission", reward
+0.0; the reference without its token (hidden pack 2): no `truth`, it ends at once, credit 0; the reference with its
+applied actions recorded (hidden pack 2): credit 1.0 (59 of 59) in 1040 steps, the lock 10 of 10 (6 idle); a blind
+replay of those actions: the same credit in the same 1040 steps, and the lock fails, 0 of 10: reward 0.0; the example
+program: credit 0 on every pack, reward 0.0. The commissioning service (natively, as the author's account): the
+example program through `run_session.py` (2 steps, 1 frame); an interactive session on development pack 1 right
+after: no `truth` in an observation, both cameras decode (overhead 1440 x 1080, wrist 960 x 720), a malformed action
+refused, `truth` and `score` unknown requests; two sessions counted, eight left.
+
+*The first perception baseline, frozen at `82e5f2f`, unchanged* (its six program files): on `21e2d44` (sensor and
+mounting only) it scores **0.0 on each of the four development packs** and **`mean_pack_credit` 0.00000 on the
+hidden set** (reward 0.0, lock 30 of 30). On seven of the ten packs it finds no pack in its first overhead frame (the
+noisy depth seen through the nominal pose) and ends after 4 steps; on the other three it works for 600 to 1400 steps
+and places nothing (on the development pack among them it had the pack 2 cm and 1.9 degrees off, and every bit
+missed its head).
+
+*The revised baseline* (`review/perception_baseline/`, its README says what changed): developed on the development
+packs only, under the same information rules as the first (only what a tested agent has; the development truth only
+in the separate measurement tools of `dev/`; no `tests/`, no token).
+
+| round | tree | program | dev 1 (P4, harness on busbars) | dev 2 (P5, lid harness) | dev 3 (P6) | dev 4 (P6, lid harness) |
+|---|---|---|---|---|---|---|
+| nb1 | `21e2d44` | calibration from the plates, six overhead frames averaged, a head from one wrist frame (hull of what stands above the seat) | 0.06 (below) | 1.0 | 1.0 | 1.0 |
+| nb2 | `6b259e7` | + the head's outline fitted to its rim (a circle of the pan head's radius, a hexagon of its width), the hull only when its area is a bare head's, up to three sides | 1.0 | 1.0 | 1.0 | 1.0 |
+| nb4 | `9f20b46` | + white balance from the plates' white, the lid's silhouette from its convex hull | 0.06 | 0.06 | 1.0 | 1.0 |
+| nb5 | `9f20b46` | + tool and bit exchanges cross the cell with the tool's centre at -0.10 m | 1.0 | 1.0 | 1.0 | 0.995 |
+
+The 0.06 of nb1 and nb4 (all lid bolts out, then "the gripper did not close on lid") was the program's own fault. A
+trace of the cell's truth showed the freed lid travelling with the nutrunner to the other side of the cell; a copy of
+the program that forced the order of the failing runs reproduced it: when the last lid bolt out was one re-typed at
+the wrist (and so left to the end), it was ejected into the left fasteners bin, and the swing toward the tool stand
+at the dock's approach height (the tool's centre 0.18 m above the table) caught the freed lid's handle (0.206 m)
+and dragged the lid off its tray. Rendering is not repeatable, so which bolt came out last changed from run to run.
+With the higher transfer and that order forced, the pack scored 1.0. The 0.995 of nb5 is one busbar bolt that
+bounced off a fasteners bin's wall onto the table. One more round (nb3, the nb2 program on an intermediate tree of
+the look) was stopped after its first pack when a sensor-model artefact was found and fixed (`9f20b46`, above).
+
+Perception in round nb5 against the development truth (`dev/compare.py`): placement within 0.92 mm and 0.02
+degrees; variant 4 of 4; the overhead camera so that a point on the lid is 0.48 to 1.05 mm off at most; the wrist
+camera's mounting so that a point 0.35 m ahead is 0.18 to 0.19 mm off; fasteners from the averaged overhead frames
+median 0.52 to 1.18 mm (at most 2.78 mm), from the wrist frame median 0.14 to 0.24 mm (at most 2.20 mm, a socket
+head); every seated head typed right and taken out, every missing one seen as a hole.
+
+*The hidden set, run once* (frozen at `9cc3b1c`; staged as the reference is, a clean export, no token): 
+
+| pack | variant, harness, sealed heads, hall light | credit | steps (reference) | simulated s | frames | program s | placed |
+|---|---|---|---|---|---|---|---|
+| 0 | P4, lid, 9, 0.80 x nominal, 5108 K | 1.0000 | 1309 (921) | 893 | 64 | 15.9 | 49/49 |
+| 1 | P4, busbars, 10, 1.29 x, 6377 K | 1.0000 | 1224 (852) | 832 | 60 | 13.6 | 48/48 |
+| 2 | P5, none, 8, 1.14 x, 5115 K | 1.0000 | 1432 (1040) | 937 | 61 | 14.8 | 59/59 |
+| 3 | P5, lid, 11, 1.26 x, 5372 K | 1.0000 | 1459 (1066) | 979 | 69 | 16.8 | 58/58 |
+| 4 | P6, busbars, 12, 0.98 x, 5207 K | 1.0000 | 1628 (1151) | 1075 | 75 | 17.8 | 67/67 |
+| 5 | P6, none, 7, 1.07 x, 6221 K | 1.0000 | 1605 (1185) | 1011 | 68 | 15.3 | 69/69 |
+
+`mean_pack_credit` **1.00000**, ratio 1.000, **reward 1.0**; the probe lock 100 of 100 counted pairs (90 idle pairs
+not counted); no protective stop, no stripped fastener, no live contact, no dropped module; the program's own time
+94 s for the six packs; stage 2211 s. Of the 190 probe copies the true observation had the larger residual in 101
+(0.9 standard deviations above half). There was no second run: nothing failed.
+
+*The effort.* About five hours of development (14:10 to 19:05, interleaved with the work on the cell), of which about
+three went into the program: the calibration from the plates (about 40 minutes, with the detector variants the
+renderer's colour wash called for), perception for noisy depth (30), the rim fit for sealed heads (30), white balance
+and the hull silhouette (20), and the diagnosis and fix of the dragged lid (40). 29 development cell sessions against
+the agent's ten. The first baseline took about an hour. Both were written by the task's author, who designed every
+lever, had the first version's 950-line controller and the reference's motion code to start from, and the development
+truth in the survey and trace tools; a tested agent has none of that.
+
+*What it says about difficulty.* The shortcuts are closed: the first baseline, unchanged, scores 0.00000, and the job
+now needs what a real cell needs (calibrating both cameras in every cell, averaging noisy depth, telling a head from
+sealant by its geometry, reading colours under an unknown light) on top of the long manipulation program it always
+needed. An expert program still takes every pack apart, so the task stays solvable from what is given. Whether a
+frontier model lands near the target of 0.3 is not something this server can measure: an agent has to write the whole
+program (about 1,700 lines here: 1,070 of control, 450 of perception, 200 of calibration) in six hours with ten
+sessions and no truth, and the expert's effort, five hours with every advantage, is the only proxy available here.
+The frontier-model runs (`ale run`) decide it.
+
 ## 7. Final report (2026-11-24, 16:30 EST)
 
 **Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00"),
@@ -760,6 +925,11 @@ Then a perception-based baseline (`review/perception_baseline/`, the entry "2026
 `mean_pack_credit` 1.00000 on the hidden set without the token, reward 1.0, lock 96 of 96: the task can be solved
 from what a tested agent is given (this supersedes "A human-expert, perception-based solution. None exists" below).
 The task's files, the reference and the anchor are unchanged.
+Then (the entry "2026-11-25, 13:50 to 21:30") the first baseline's shortcuts were closed and two more levers added:
+a sensor's depth, each cell's own camera mounting identified from calibration plates, sealant over heads, a pack's
+look. The reference scored 1.00000 on every new tree in the same steps (the anchor is unchanged); the first
+baseline, unchanged, scores 0.00000; the revised baseline scored `mean_pack_credit` 1.00000 on the hidden set (reward 1.0; one run of a program frozen on the development packs before it). The validator's checks that need no Docker
+are in section 5.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops

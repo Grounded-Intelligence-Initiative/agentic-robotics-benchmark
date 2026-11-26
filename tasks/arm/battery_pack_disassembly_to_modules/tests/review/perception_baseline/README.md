@@ -92,7 +92,29 @@ into `/home/user/submission/`. The measurement tools need Isaac Sim and the cell
 
 ## Results
 
-RESULTS_HIDDEN
+**Hidden set** (this version, frozen at `9cc3b1c`, run once on 2026-11-25 through the native verify stage, staged as
+the reference is: a clean export of the commit, the seven program files in `home/submission`, no token):
+
+| pack | variant, harness | credit | steps | simulated s | frames | program s |
+|---|---|---|---|---|---|---|
+| 0 | P4, lid | 1.0 | 1309 | 893 | 64 | 15.9 |
+| 1 | P4, busbars | 1.0 | 1224 | 832 | 60 | 13.6 |
+| 2 | P5, none | 1.0 | 1432 | 937 | 61 | 14.8 |
+| 3 | P5, lid | 1.0 | 1459 | 979 | 69 | 16.8 |
+| 4 | P6, busbars | 1.0 | 1628 | 1075 | 75 | 17.8 |
+| 5 | P6, none | 1.0 | 1605 | 1011 | 68 | 15.3 |
+
+`mean_pack_credit` 1.00000, reward 1.0 (the reference took 852 to 1185 steps on these packs, this program 38 to 44 %
+more); the probe lock 100 of 100 counted pairs; no protective stop, nothing stripped; 94 s of the program's own time
+for the six packs.
+
+**The first version** (`82e5f2f`, unchanged) on the cell with a sensor's depth and each cell's own camera mounting
+(`21e2d44`): 0.0 on each development pack, `mean_pack_credit` 0.00000 on the hidden set. On seven of the ten packs it
+found no pack in its first overhead frame (the noisy depth seen through the nominal camera pose) and ended after four
+steps; on the other three it worked for 600 to 1400 steps without taking anything off (on the development pack among
+them it had placed the pack 2 cm and 1.9 degrees off, and every bit missed its head). Its results on the cell it was
+written for (exact depth and calibration): 1.0 on every development pack, `mean_pack_credit` 1.00000 on the hidden
+set (`tests/README.md`, section 6, the entry "2026-11-25, 10:00 to 11:35").
 
 ## What it does not do
 
