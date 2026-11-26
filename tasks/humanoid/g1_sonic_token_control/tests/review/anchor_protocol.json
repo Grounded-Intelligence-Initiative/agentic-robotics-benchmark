@@ -1,0 +1,17 @@
+{
+  "registered_utc": "2026-11-26T10:15:40.713376+00:00",
+  "verifier_commit": "b439ab6dad43f4eb47a5dc482080884d91befedf",
+  "prior_gate_registration_sha256": "7d0f6f7a53a7c9f3453f424c54dc2a91d3fd8b68ed2809c9250ca7e16a5931d4",
+  "metric": "fraction of all 16 native episodes ending in strict physical placement; eight box and eight cylinder starts; aborted and timed-out episodes count as zero",
+  "policy": "Public V4 solve.sh through the same Solver, strict wire validation, sensory sensitivity and independent MuJoCo worlds used by the scorer.",
+  "cohorts": {
+    "N0": "one official ale validate with null anchor, use oracle strict placements as denominator count",
+    "N1,N2,N3": "three independent fresh-seed ALE oracle panels with null anchor, no performance retries",
+    "G0,G1": "two independent ale validate invocations after anchor freeze; report all outcomes."
+  },
+  "value": "N0_placements / 16",
+  "full_at": "max(1, min(N0_placements, N1_placements, N2_placements, N3_placements) - 1) / N0_placements",
+  "interpretation": "One whole episode (1/16) of sampling allowance below the observed minimum; report the resulting required successful episodes and all four individual counts.",
+  "zero_denominator": "Stop and report an unusable anchor if N0_placements equals zero.",
+  "notes": "Pre-keyed interface pilot and separate keyed V4/P1/open-loop diagnostics contribute no calibration observations. Neither G0 nor G1 changes value, full_at or the probe gate."
+}
