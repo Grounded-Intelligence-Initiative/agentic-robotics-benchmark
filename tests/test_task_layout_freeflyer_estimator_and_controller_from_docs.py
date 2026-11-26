@@ -31,7 +31,7 @@ LIST = ENV / "assets.sha256"
 FETCHER = REPO / "shared" / "task_assets" / "fetch_assets.py"
 PLACEHOLDER = "0" * 40
 # False until the commit that pins the dataset commit; that commit sets it to True
-PINNED = False
+PINNED = True
 # the given records: their number and the sha256 of the asset list's rows ("<sha256>  <path>" lines, as
 # scripts/task_assets.py list writes them, each ending with a newline)
 ROWS = 106
