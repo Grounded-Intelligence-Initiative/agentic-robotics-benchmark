@@ -41,7 +41,21 @@ The one-metre course supplies the graded task. The five-metre course is optional
 
 The one-metre CPU Mesa practice invocation reached a stable release at tick 757 (15.14 s) for the public cylinder at seed 19. The dock qualified at tick 176, hand contact first occurred at 481, and the supported lift qualified at 520. A separately recorded canonical film of the same start also docked at 176 and placed at 757. That recording first contacted at 484 and qualified its lift at 518. The public box at the same seed walked, docked and lifted, then reached the horizon without a strict placement. Treat these as two visible software examples. The verifier counts strict placements across its own 16 fresh starts and separately measures action sensitivity on matched, repeated-time observations.
 
-The high-level submission sees calibrated images and robot proprioception. World object and pad poses, support forces and stage flags are available on the host for scoring. The practice summary exposes final metrics after the physical run. Use `practice.py inspect --out DIR --task cylinder_to_pad --seed 19` to save the three initial camera PNGs and their calibration. The run command’s short `--steps` mode is for debugging and reports `step_limit` when that cutoff ends a nonterminal run.
+The high-level submission sees calibrated images and robot proprioception. World object and pad poses, support forces and stage flags are available on the host for scoring. The practice summary exposes final metrics after the physical run. The run command’s short `--steps` mode reports `step_limit` when that cutoff ends a nonterminal run.
+
+To inspect the seed-19 cylinder at reset, run this command from the checkout root after building the image above. It writes `overview.png`, `hand.png`, `side.png` and `calibration.json` to a new host directory and prints its path. The container uses your Linux user and group IDs so you own the exported files. On a shared host, you can set `G1_CAMERA_CPUSET` to an available logical CPU.
+
+```bash
+task=tasks/humanoid/g1_sonic_mobile_pick_place
+camera_dir=$(mktemp -d "$PWD/g1-mobile-cameras.XXXXXX")
+docker run --rm --network none --user "$(id -u):$(id -g)" --env HOME=/tmp --workdir /tmp \
+  --cpus=1 --cpuset-cpus "${G1_CAMERA_CPUSET:-}" --memory=8g \
+  --mount "type=bind,src=$PWD/$task/environment/setup/payload,dst=/review/practice,readonly" \
+  --mount "type=bind,src=$camera_dir,dst=/review/output" \
+  g1-sonic-mobile-review /opt/venv/bin/python3 /review/practice/practice.py inspect \
+    --out /review/output --task cylinder_to_pad --seed 19
+printf '%s\n' "$camera_dir"
+```
 
 
 ## Physical smoothness
