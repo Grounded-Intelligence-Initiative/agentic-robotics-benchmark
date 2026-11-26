@@ -4,6 +4,8 @@ This humanoid task evaluates whether a submitted program can control a free-stan
 
 **For the participant**, [instruction.md](../../instruction.md) is the complete task prompt, including a runnable starter, the action and observation formats, camera calibration and a local decoder example. This README is for contributors and reviewers.
 
+The interactive companion explains the scoring rule, contrasts feedback control with a successful open-loop replay, and shows four synchronized native rollouts. Use the language switch in its upper-right corner to read it in English or Chinese. [Interactive report](https://zi-ang-cao.github.io/agentic-robotics-benchmark/g1-sonic-token-control/)
+
 ## Reproduce a practice rollout
 
 Run these commands from the benchmark repository root on a Linux x86-64 host with Docker and an AVX2/FMA-capable CPU. Building fetches the pinned public model, robot assets and Python wheels. The resulting image runs the task offline using Mesa software rendering.
