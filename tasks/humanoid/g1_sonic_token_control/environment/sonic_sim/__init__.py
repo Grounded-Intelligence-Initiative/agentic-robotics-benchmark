@@ -34,7 +34,7 @@ class BenchSession:
         """Start a fresh seeded episode with independently reset decoder history."""
         if not isinstance(task, str) or task not in TASKS:
             raise ValueError(f"unknown task {task!r}")
-        _integer(seed, "seed", 0, 2**32 - 1)
+        _integer(seed, "seed", 0, 2**64 - 1)
         scene = G1Task(task, seed, self._robot_root)
         self.close()
         self._scene = scene
