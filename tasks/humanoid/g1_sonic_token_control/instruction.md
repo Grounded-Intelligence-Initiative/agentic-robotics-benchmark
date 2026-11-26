@@ -48,6 +48,8 @@ One row advances one physical tick. You may send one to five rows, up to the nex
 
 The host may ask about several observations at the **same** tick, in either order. Produce an action for each input from the same pre-tick state. If your policy carries recurrent memory, cache each candidate next state by `obs["observation_id"]`. When `t` advances, `obs["last_observation_id"]` identifies which candidate the host applied. At reset it is `null`. A timeout, malformed action or crash aborts the episode and it counts as a failed placement. The host can restart your process up to three times for subsequent episodes. It must print `READY` on each launch.
 
+The feedback check compares changes in the **first row's body codes** across two observations with changes on identical repeated inputs. If your controller samples actions, reusing the random draw for all observations at one tick lets the check distinguish your response to the scene from sampling noise.
+
 ## Observations
 
 `obs["protocol"]` is `g1-sonic-rgb/1`. `obs["task"]` identifies the shape (`box_to_pad` or `cylinder_to_pad`), and `obs["tick"]` equals the request's `t`. The remaining fields are:
