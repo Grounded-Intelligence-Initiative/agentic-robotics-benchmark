@@ -18,4 +18,16 @@ cmp /tmp/approach_codes.npy approach_codes.npy
 | NVIDIA GEAR-SONIC V1 encoder | `013ab0287236aa2721e13f1e936d699db982302d0de0bfcdae76d5c3245362d3` |
 | NVIDIA GEAR-SONIC V1 decoder | `c7241a123eaa36b5d64bad19540efde93cac1ad443bd4572fd12ca99898118ed` |
 
-The V4 checkpoint and its preprocessing come from the public G1 SONIC tabletop task. Walking uses the synthetic motion defined in `make_approach.py`. The native simulator grades the approach, dock, supported lift and stable release independently of the reference policy.
+## V4 checkpoint provenance
+
+The SONIC token-control project trained the tabletop actor by behavior cloning. Its direct and recovery teachers generated body codes and hand closures in MuJoCo. Mixed student/teacher rollouts added corrections on states visited by the student (DAgger). The final fit used 495,343 motor ticks from 878 trials for training and 54,962 ticks from 96 whole-seed validation trials. The model also received auxiliary geometry, contact and teacher-phase supervision during training. At runtime V4 receives the RGB, proprioception and recurrent inputs described above.
+
+| Source record in the SONIC token-control project | Identity |
+| --- | --- |
+| Demonstration collection | `899880dcb8564376e90ae33f5b4e2b0d8f81c69e` |
+| Model and training implementation | `2a50e7c163dbf31ae3b3f96355c779a5b1e5d9cc` |
+| Integer ONNX export implementation | `5404dbfa7fe6bfcaa2d8b03016733d9598a8cd85` |
+| Frozen rich1, epoch 38, manifest | `8d5200e2b01ae87d05447332e700012842fda21b`, `pixel_policy_v4/weights/freeze.json` |
+| Training checkpoint SHA-256 | `d9df4905599acb3cf058eea4145e98679a99ca2e0a5dbc6deab2f722791e4af4` |
+
+The frozen manifest records the distributed integer ONNX hash in the artifact table above. Git attributes the collection, training, export and freeze commits to Zi-ang Cao. The research snapshot has no separate V4 model-license file. The NVIDIA Open Model License accompanies the original GEAR-SONIC V1 encoder and decoder fetched by the task image. [Environment notices](../environment/NOTICE)
