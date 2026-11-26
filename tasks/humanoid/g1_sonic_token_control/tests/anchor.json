@@ -1,0 +1,8 @@
+{
+  "metric": "strict_placement_fraction",
+  "direction": "higher",
+  "value": null,
+  "full_at": 1.0,
+  "source": "Public V4 controller rollout under the task's native contact, lift, release and support scorer. Measurement pending.",
+  "reference_commit": null
+}
