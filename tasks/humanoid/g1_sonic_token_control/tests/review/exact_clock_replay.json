@@ -1,0 +1,236 @@
+{
+  "format": "ale-exact-clock-diagnostic-v1",
+  "diagnostic_key": 766704383,
+  "scope": "All four publicly keyed V4 diagnostic tapes, original reset order and ticks. An intentionally known-roster control isolates the feedback lock; earlier unseen-transfer tapes placed 0/4.",
+  "agent_inputs": [
+    "reset ordinal",
+    "request tick"
+  ],
+  "solver_python": "import json\nfrom pathlib import Path\nimport sys\n\ntapes = [[json.loads(row) for row in Path(f'{i}.jsonl').read_text().splitlines()] for i in range(4)]\nordinal = -1\nprint('READY', flush=True)\nfor line in sys.stdin:\n    message = json.loads(line)\n    kind = message['type']\n    if kind == 'reset':\n        ordinal += 1\n        if ordinal >= len(tapes):\n            raise ValueError('unexpected reset')\n        reply = {'ok': True}\n    elif kind == 'act':\n        tick = message['t']\n        tape = tapes[ordinal]\n        if ordinal < 0 or not 0 <= tick < len(tape):\n            raise ValueError('clock outside tape')\n        reply = {'action': {'rows': tape[tick:tick + 5 - tick % 5]}}\n    elif kind == 'close':\n        reply = {'ok': True}\n    else:\n        raise ValueError('unknown operation')\n    print(json.dumps(reply, separators=(',',':'), allow_nan=False), flush=True)\n    if kind == 'close':\n        break\n",
+  "loaded_verifier_revision": "b439ab6dad43f4eb47a5dc482080884d91befedf",
+  "verifier_sha256": "8048153893bf6895021838f55e84f6c93571195fab57377707529504ac68d4f7",
+  "offline_exec_sha256": "41dd444561ab008d51d2c976baabd4e41af3f6f0bf7d2439f9e3705efcad819d",
+  "ratio_rewards_source_sha256": "9353682eb3536df264b3cb5ec3bf2be24a410f88af5b20cf86cb31796930a83b",
+  "source_calibration_sha256": "fb12d4a4a0364184dbde66d8ae7f71784a9fc3d300df626b0d058b9bdb0e885e",
+  "source_v4_result_sha256": "aaa62761df104ed5b0325568e714397cd0e5cf8228af7ee5e7ed3dcfcb157125",
+  "asset_manifest_sha256": "b338356c81f3a66a55fb8c73b93dc7eda3f8c0689fcd0caee0aee6be65fbfedc",
+  "public_asset_files_verified": 53,
+  "runtime": {
+    "python": "3.10.12",
+    "packages": {
+      "numpy": "1.26.4",
+      "mujoco": "3.3.4",
+      "onnxruntime": "1.22.1",
+      "Pillow": "11.2.1",
+      "scipy": "1.15.3"
+    },
+    "egl_device": 0,
+    "workers": 1,
+    "uid": 1000,
+    "clear_account": false
+  },
+  "config": {
+    "episodes": 4,
+    "horizon": 750,
+    "step_timeout_s": 15,
+    "verifier_deadline_s": 3450,
+    "probe_windows": [
+      [
+        25,
+        85
+      ],
+      [
+        85,
+        145
+      ],
+      [
+        145,
+        205
+      ],
+      [
+        205,
+        265
+      ],
+      [
+        265,
+        325
+      ],
+      [
+        325,
+        385
+      ],
+      [
+        385,
+        445
+      ],
+      [
+        445,
+        505
+      ]
+    ],
+    "minimum_probe_fraction": 0.12,
+    "minimum_probe_opportunities_per_episode": 1,
+    "scoring_cap": 1.5
+  },
+  "applied_row_encoding": "Each 64-coordinate body row is serialized as uint8. Each finger pair is little-endian IEEE-754 float64. The combined JSONL uses compact sorted keys and LF.",
+  "verification": "Every consumed replay row is byte-identical to its archived V4 row. The full native terminal and all reported per-episode physical measurements equal V4.",
+  "per_start": [
+    {
+      "ordinal": 0,
+      "shape": "box",
+      "real_seed": "7508743693422497910",
+      "shadow_seed": "160432807584435636",
+      "ticks": 624,
+      "reason": "success",
+      "placed": 1,
+      "lifted": 1,
+      "max_lift_m": 0.16386562621676637,
+      "goal_error_xy_m": 0.013725653211685025,
+      "release_hold_s": 0.25000000000000017,
+      "rows": 624,
+      "body_u8_sha256": "b9c16ab943d66c272045e7b36f197b7c415a22820d05b644e35c174a2b4f93e8",
+      "hands_f64le_sha256": "547bf09ce32d9bd6196471d1e6ccfb1479216eeeb80bbfa5b962ab573e30bddf",
+      "combined_jsonl_sha256": "8b6a6daad5ddf8cd67eddea22ca82ac22b5ee1e1736bbd2ee09b07b8cf586e57",
+      "v4_changed_probes": 5,
+      "replay_changed_probes": 0,
+      "probes": 8
+    },
+    {
+      "ordinal": 1,
+      "shape": "cylinder",
+      "real_seed": "15036975329485500346",
+      "shadow_seed": "13205978184824829019",
+      "ticks": 553,
+      "reason": "success",
+      "placed": 1,
+      "lifted": 1,
+      "max_lift_m": 0.16627507460213553,
+      "goal_error_xy_m": 0.033105796277004836,
+      "release_hold_s": 0.25000000000000017,
+      "rows": 553,
+      "body_u8_sha256": "146e51a63838a22c6981c67afc34543be743c7b160550db5ef9b197ce4fec1d4",
+      "hands_f64le_sha256": "19e1d0dc523591e70b396c2f4ba662691724d914681f088a78581f3696eed4f1",
+      "combined_jsonl_sha256": "896644a1a15547e34b1ea8b158d470622a1fab114fe8baa8620fd6a8085b7804",
+      "v4_changed_probes": 7,
+      "replay_changed_probes": 0,
+      "probes": 8
+    },
+    {
+      "ordinal": 2,
+      "shape": "box",
+      "real_seed": "17986018588492809808",
+      "shadow_seed": "11627654662521119470",
+      "ticks": 509,
+      "reason": "success",
+      "placed": 1,
+      "lifted": 1,
+      "max_lift_m": 0.1611191664331768,
+      "goal_error_xy_m": 0.024815794176090908,
+      "release_hold_s": 0.25000000000000017,
+      "rows": 509,
+      "body_u8_sha256": "5c7306f0b30c268c5116a679e67200da488af0f92fa20573ade2be553a764342",
+      "hands_f64le_sha256": "cc4b7fdb47bfae1319dce96ee9b83aeb80fa407465946f8fb27bcda75a7d0751",
+      "combined_jsonl_sha256": "a31c87f5e7a26d8185146d79a62683037b09acecb0d5a286a374623582a6864d",
+      "v4_changed_probes": 5,
+      "replay_changed_probes": 0,
+      "probes": 8
+    },
+    {
+      "ordinal": 3,
+      "shape": "cylinder",
+      "real_seed": "5233805742826165917",
+      "shadow_seed": "14685581559697487039",
+      "ticks": 500,
+      "reason": "success",
+      "placed": 1,
+      "lifted": 1,
+      "max_lift_m": 0.16389187669663008,
+      "goal_error_xy_m": 0.027381196730292368,
+      "release_hold_s": 0.25000000000000017,
+      "rows": 500,
+      "body_u8_sha256": "ab1bc6cf4f76c8ae407b8ccddf876f3309f480c22a6287329f3e7f70caa2d1c4",
+      "hands_f64le_sha256": "0c7715c37b1cef4882f19da9448a5443e50dea0cadd10abde2fdda2a6c9b12be",
+      "combined_jsonl_sha256": "df1d7b862a7b167f0a419bc7a4e4989635061359181a43a89ff4e1a5ec7310e6",
+      "v4_changed_probes": 7,
+      "replay_changed_probes": 0,
+      "probes": 8
+    }
+  ],
+  "v4_metrics": {
+    "episodes": 4,
+    "placed": 4,
+    "lifted": 4,
+    "falls": 0,
+    "episodes_aborted": 0,
+    "time_limits": 0,
+    "applied_native_rows": 2186,
+    "probes_total": 32,
+    "probes_passed": 24,
+    "duplicate_probes": 4,
+    "duplicate_changes": 0,
+    "missed_reached_probe_opportunities": 0,
+    "probe_change_fraction": 0.75,
+    "duplicate_change_fraction": 0.0,
+    "match_lock_ok": 1,
+    "mean_max_lift_m": 0.1637879359871772,
+    "mean_goal_error_xy_m": 0.024757110098768284,
+    "mean_release_hold_s": 0.25000000000000017,
+    "box_episodes": 2,
+    "box_placed": 2,
+    "cylinder_episodes": 2,
+    "cylinder_placed": 2
+  },
+  "replay_metrics": {
+    "episodes": 4,
+    "placed": 4,
+    "lifted": 4,
+    "falls": 0,
+    "episodes_aborted": 0,
+    "time_limits": 0,
+    "applied_native_rows": 2186,
+    "probes_total": 32,
+    "probes_passed": 0,
+    "duplicate_probes": 4,
+    "duplicate_changes": 0,
+    "missed_reached_probe_opportunities": 0,
+    "probe_change_fraction": 0.0,
+    "duplicate_change_fraction": 0.0,
+    "match_lock_ok": 0,
+    "mean_max_lift_m": 0.1637879359871772,
+    "mean_goal_error_xy_m": 0.024757110098768284,
+    "mean_release_hold_s": 0.25000000000000017,
+    "box_episodes": 2,
+    "box_placed": 2,
+    "cylinder_episodes": 2,
+    "cylinder_placed": 2
+  },
+  "wall_seconds": 36.368,
+  "scoring": {
+    "anchor_kind": "Public four-start V4 diagnostic fraction, used only for this isolated positive-anchor test.",
+    "measured": 1.0,
+    "anchor": 1.0,
+    "cap": 1.5,
+    "full_at": 1.0,
+    "metric_name": "strict_placement_fraction",
+    "with_observed_lock_false": {
+      "rewards": {
+        "reward": 0.0
+      },
+      "metrics": {
+        "ratio": 0.0,
+        "anchor_recorded": 1.0,
+        "strict_placement_fraction": 1.0
+      }
+    },
+    "identical_measurement_with_lock_true": {
+      "rewards": {
+        "reward": 1.0
+      },
+      "metrics": {
+        "ratio": 1.0,
+        "anchor_recorded": 1.0,
+        "strict_placement_fraction": 1.0
+      }
+    }
+  }
+}
