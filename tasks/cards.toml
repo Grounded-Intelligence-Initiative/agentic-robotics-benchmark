@@ -41,6 +41,12 @@ summary = "Two fixed Franka Pandas replace a cabinet door on loose-pin hinges: a
 platforms = ["arm"]
 stages = ["behavior"]
 
+[chute_realtime_bimanual_tracking]
+title = "Take moving parts off a chute with an R1Pro"
+summary = "Program a mobile dual-arm robot to take 20 different parts off a chute while they accelerate past, seeing them only through late camera frames, and put them in a tote."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [cloth_material_id_from_video]
 title = "Identify fabric materials from video"
 summary = "Choose the simulator material of ten fabrics from multi-view video of a robot arm handling them, so that a planner using it hits its targets on new slide and overhang handling of the real fabrics."
