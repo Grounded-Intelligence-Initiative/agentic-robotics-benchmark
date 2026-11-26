@@ -1,7 +1,7 @@
 """Observation-only reference and ablations. No imports from the environment."""
 
 import base64
-from collections import deque
+from collections import Counter, deque
 from functools import lru_cache
 from io import BytesIO
 import json
@@ -162,6 +162,12 @@ def read_view(encoded, origin, r):
                 ]
                 if mark in ROOMS | {"hall"} and corners.count("furniture") >= 2:
                     mark = "furniture"
+                if mark == "dust":
+                    ground_votes = [
+                        v for v in corners + [base] if v in ROOMS | {"hall"}
+                    ]
+                    if ground_votes:
+                        base = Counter(ground_votes).most_common(1)[0][0]
                 yield (origin[0] + i - r, origin[1] + j - r), mark, base
 
 
@@ -220,6 +226,11 @@ class Team:
         self.route = ""
         self.last_t = -1
         self.scout_visits = {}
+        self.ground_observed = set()
+        self.confirmed_free = {(0, 0)}
+        self.bumped = set()
+        self.front_visits = Counter()
+        self.chosen_front = None
 
     def absorb(self, img, p, r, from_air):
         for q, mark, base in read_view(img, p, r):
@@ -227,9 +238,13 @@ class Team:
                 self.cells[q] = "furniture"
                 continue
             surface = mark if mark in {"wall", "furniture"} else "floor"
-            self.cells[q] = surface
             if from_air:
                 self.air_cells[q] = surface
+            if from_air and q in self.ground_observed:
+                continue
+            if not from_air:
+                self.ground_observed.add(q)
+            self.cells[q] = "floor" if q in self.confirmed_free else surface
             if base in ROOMS | {"hall"}:
                 self.rooms[q] = base
             if mark == "dust":
@@ -292,6 +307,14 @@ class Team:
         oldg = self.g
         self.g = add(self.g, self.previous[0], obs["moved"][0])
         self.a = add(self.a, self.previous[1], obs["moved"][1])
+        self.confirmed_free.add(self.g)
+        if self.chosen_front == self.g:
+            self.front_visits[self.g] += 1
+        self.chosen_front = None
+        if t and self.g == oldg and self.previous[0] != "stay":
+            attempted = add(oldg, self.previous[0])
+            if attempted != self.box:
+                self.bumped.add(attempted)
         if self.g != oldg and self.g == self.box:
             self.box = add(self.g, self.previous[0])
         if self.previous[3] and (self.g in self.dirt or self.g == self.initial_box):
@@ -329,7 +352,9 @@ class Team:
             self.route = ""
         target = final if self.staged else first
         pad = self.pads.get(target)
-        free = {p for p, v in self.cells.items() if v == "floor"}
+        free = (
+            self.confirmed_free | {p for p, v in self.cells.items() if v == "floor"}
+        ) - self.bumped
         reach = paths(self.g, free - {self.box})
         todo = [
             p
@@ -371,9 +396,12 @@ class Team:
                         room in req
                         and sum(self.dirt.get(q) == room for q in self.cleaned) < 2
                     )
-                    return len(reach[p]) - 5 * incomplete, p
+                    return len(reach[p]) - 5 * incomplete + min(
+                        70, 9 * self.front_visits[p]
+                    ), p
 
-                g = reach[min(front, key=cost)][0]
+                self.chosen_front = min(front, key=cost)
+                g = reach[self.chosen_front][0]
             else:
                 g = reach.get((0, 0), "")[:1] or "stay"
         a, stride = self.scout(obs, req, target)
