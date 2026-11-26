@@ -251,6 +251,12 @@ summary = "Survey a warehouse by drone, then walk a loaded quadruped joint by jo
 platforms = ["quadruped"]
 stages = ["behavior"]
 
+[g1_sonic_locomotion]
+title = "Walk, turn and stop a Unitree G1"
+summary = "A free-standing Unitree G1 must walk straight to a target or turn right in place, then hold a measured stop using native SONIC motion tokens."
+platforms = ["humanoid"]
+stages = ["control"]
+
 [humanoid_final_assembly_25dof_ur10e]
 title = "Assemble a humanoid robot with a 6-DoF arm"
 summary = "Program a 6-DoF arm to build a humanoid robot from five finished modules, two legs, two arms and the head, on its clamped base, guided by dimension drawings, a picture manual and the cell's cameras."
