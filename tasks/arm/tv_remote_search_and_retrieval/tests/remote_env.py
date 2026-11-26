@@ -1,6 +1,6 @@
 """The living room of tv_remote_search_and_retrieval: a Franka Panda on a floor rail in front of a
 two-seat settee and a chest of three drawers, with the loose things of a living room (a sun hat,
-a storage box, a clothes hanger, a phone, a glasses case, a pouch), and a TV
+a storage basket, a clothes hanger, a phone, a glasses case, a book), and a TV
 remote that lies somewhere in it.
 
 World frame: metres, radians, quaternions (w, x, y, z). x points from the robot's rail to the sofa,
@@ -10,7 +10,7 @@ A scene is a `Scene` = `make_scene(seed, remote)`: where the settee and the ches
 (`sofa_pose`, `cabinet_pose`), how the hanger hangs, which drawer the hat is in and how it lies
 there, where the box stands on the chest, the look of the room (fabric, wood, floor, wall and
 lamp), all drawn from the seed, and where the remote is, which the caller says. A phone, a
-glasses case and a pouch are in the model too; `make_scene` puts them where the caller says, or
+glasses case and a book are in the model too; `make_scene` puts them where the caller says, or
 out of the room. This file holds no rule for where the remote is in a graded
 episode: that is the grader's, and you can put the remote wherever you want to practise.
 
@@ -52,7 +52,7 @@ __all__ = [
 SIM_DT = 0.002
 SUBSTEPS = 25
 CONTROL_DT = SIM_DT * SUBSTEPS          # 0.05 s: the controller runs at 20 Hz
-MAX_STEPS = 3600                        # 180 s of simulated time for an episode
+MAX_STEPS = 4800                        # 240 s of simulated time for an episode
 
 # ----------------------------------------------------------------------------------------------
 # Robot: Panda (robosuite 1.5.2 asset files) on a pedestal that rides a rail along y
@@ -168,14 +168,17 @@ HAT_H = 0.105
 HAT_MASS = 0.09
 
 # ----------------------------------------------------------------------------------------------
-# Storage box on the chest's top: an open wooden box. Box frame: x and y along its inner floor's
-# short and long side, z = 0 the plane it stands on.
+# Storage basket on the chest's top (Poly Haven "Wicker Basket 01", CC0, scaled): open, its
+# walls leaning out a little. Its collision shapes are a convex decomposition of the drawn mesh.
+# Box frame: x and y along its short and its long side, z = 0 the plane it stands on.
 # ----------------------------------------------------------------------------------------------
-BOX_INNER = (0.30, 0.30)                # inner floor: x, y
-BOX_WALL_H = 0.06                       # the walls' height above the inner floor
-BOX_WALL = 0.006                        # thickness of the walls and of the floor
-BOX_MASS = 0.60
-BOX_X = 0.172                           # its middle behind the chest's front, give or take 1.5 cm
+BOX_PARTS = 40                          # convex pieces of the collision shape (room/basket_col_NN.obj)
+BOX_OUTER = (0.324, 0.422)              # at the rim: x, y
+BOX_INNER = (0.244, 0.340)              # the free floor inside: x, y
+BOX_FLOOR_Z = 0.016                     # the inner floor above the plane the basket stands on
+BOX_H = 0.094                           # the rim above that plane
+BOX_MASS = 0.30
+BOX_X = 0.195                           # its middle behind the chest's front, give or take 1.5 cm
 
 # ----------------------------------------------------------------------------------------------
 # The remote (Objaverse "Remote control" by craazyy, CC BY 4.0, scaled)
@@ -184,16 +187,16 @@ REMOTE_HALF = (0.086, 0.022, 0.009)
 REMOTE_MASS = 0.20
 
 # ----------------------------------------------------------------------------------------------
-# A phone, a glasses case and a pouch (Objaverse "SmartPhone" by shedmon and "Spectacles case" by
-# lib.test, both CC BY 4.0, scaled; the pouch is a plain cloth-covered block):
+# A phone, a glasses case and a book (Objaverse "SmartPhone" by shedmon and "Spectacles case" by
+# lib.test, both CC BY 4.0, scaled; the book is one of Poly Haven's "Book Encyclopedia Set 01", CC0):
 # more small things a living room has.
 # ----------------------------------------------------------------------------------------------
 PHONE_HALF = (0.075, 0.037, 0.0045)
 PHONE_MASS = 0.18
 CASE_HALF = (0.080, 0.035, 0.017)
 CASE_MASS = 0.09
-POUCH_HALF = (0.095, 0.036, 0.020)
-POUCH_MASS = 0.11
+BOOK_HALF = (0.0815, 0.1187, 0.0108)
+BOOK_MASS = 0.35
 
 # ----------------------------------------------------------------------------------------------
 # Cameras
@@ -214,10 +217,10 @@ DEPTH_MAX_MM = 6000
 # ----------------------------------------------------------------------------------------------
 SEEN_PIXELS = 60                        # remote pixels in a delivered image that count as "seen"
 HOLD_STEPS = 20                         # 1 s of holding the remote clear of everything
-LIFT_CLEAR = 0.08                       # the held remote's centre above the surface it lay on
+LIFT_CLEAR = 0.08                       # free height below the held remote
 PARTIAL_SEEN = 0.2                      # score for the remote seen in a delivered image
 PARTIAL_REVEALED = 0.4                  # score for the remote laid open
-# Where the phone, the case and the pouch are when a scene has none.
+# Where the phone, the case and the book are when a scene has none.
 OUT_OF_ROOM = ((6.0, 6.0, 1.0, 0.0), (7.0, 6.0, 1.0, 0.0), (8.0, 6.0, 1.0, 0.0))
 
 _MASK = (1 << 64) - 1
@@ -244,7 +247,7 @@ class Scene:
     remote: tuple
     phone: tuple
     case: tuple
-    pouch: tuple
+    book: tuple
     fabric_rgb: tuple       # tints: each multiplies a surface's texture
     pad_rgb: tuple
     wood_rgb: tuple
@@ -290,10 +293,10 @@ def _shade(rgb, factor):
     return tuple(min(1.0, max(0.0, c * factor)) for c in rgb)
 
 
-def make_scene(seed, remote, phone=None, case=None, pouch=None, hanger_swing=None):
+def make_scene(seed, remote, phone=None, case=None, book=None, hanger_swing=None):
     """The scene of `seed` with the remote at `remote` = (x, y, z, yaw), world frame, as the
     furniture stands in this scene (`place` turns a point of the nominal layout into it).
-    `phone`, `case` and `pouch` likewise, or None for a scene without them. The layout, the hat,
+    `phone`, `case` and `book` likewise, or None for a scene without them. The layout, the hat,
     the box, the hanger's swing (unless given) and the look are drawn from the seed."""
     look = _Draw(seed, "look")
     room = _Draw(seed, "room")
@@ -324,7 +327,7 @@ def make_scene(seed, remote, phone=None, case=None, pouch=None, hanger_swing=Non
         remote=tuple(float(v) for v in remote),
         phone=tuple(float(v) for v in (phone if phone is not None else OUT_OF_ROOM[0])),
         case=tuple(float(v) for v in (case if case is not None else OUT_OF_ROOM[1])),
-        pouch=tuple(float(v) for v in (pouch if pouch is not None else OUT_OF_ROOM[2])),
+        book=tuple(float(v) for v in (book if book is not None else OUT_OF_ROOM[2])),
         fabric_rgb=fabric,
         pad_rgb=_shade(fabric, look.uniform(0.90, 1.0)),
         wood_rgb=_shade(look.choice(WOODS), look.uniform(0.85, 1.0)),
@@ -571,19 +574,13 @@ def _hat():
 
 
 def _storage_box():
-    """The open box on the chest: a floor and four walls, drawn as they are."""
-    ix, iy = 0.5 * BOX_INNER[0], 0.5 * BOX_INNER[1]
-    t, h = BOX_WALL, BOX_WALL_H
-    extra = 'friction="0.6 0.01 0.0001" condim="4" group="1"'
+    """The basket on the chest: convex pieces as collision shapes, and the drawn model."""
     parts = ['<body name="box" pos="{}"><freejoint name="box_free"/>'.format(_fmt((CAB_X0 + BOX_X, CAB_CY, CAB_H + 0.001))),
-             '<inertial pos="0 0 0.02" mass="{}" diaginertia="0.008 0.006 0.012"/>'.format(BOX_MASS),
-             _box("box_floor", (0, 0, 0.5 * t), (ix + t, iy + t, 0.5 * t), material="box", extra=extra)]
-    zc = t + 0.5 * h
-    for name, pos, half in (("box_w0", (-ix - 0.5 * t, 0, zc), (0.5 * t, iy + t, 0.5 * h)),
-                            ("box_w1", (ix + 0.5 * t, 0, zc), (0.5 * t, iy + t, 0.5 * h)),
-                            ("box_w2", (0, -iy - 0.5 * t, zc), (ix, 0.5 * t, 0.5 * h)),
-                            ("box_w3", (0, iy + 0.5 * t, zc), (ix, 0.5 * t, 0.5 * h))):
-        parts.append(_box(name, pos, half, material="box", extra=extra))
+             '<inertial pos="0 0 0.03" mass="{}" diaginertia="0.008 0.006 0.012"/>'.format(BOX_MASS)]
+    for i in range(BOX_PARTS):
+        parts.append('<geom name="box{i}" type="mesh" mesh="basket_col_{i:02d}" {h} friction="0.6 0.01 0.0001" '
+                     'condim="4"/>'.format(i=i, h=HIDDEN))
+    parts.append(_mesh("box_look", "basket", "basket"))
     parts.append("</body>")
     return "\n".join(parts)
 
@@ -599,18 +596,18 @@ def _remote():
 
 
 def _clutter():
-    """The phone, the glasses case and the pouch: boxes as their models are drawn. A pad is as
+    """The phone, the glasses case and the book: boxes as their models are drawn. A pad is as
     soft over the phone as over the remote (those two do not touch it); they touch each other."""
     out = []
     for i, (name, half, mass, bits) in enumerate((
             ("phone", PHONE_HALF, PHONE_MASS, 'contype="9" conaffinity="10"'), ("case", CASE_HALF, CASE_MASS, ""),
-            ("pouch", POUCH_HALF, POUCH_MASS, ""))):
+            ("book", BOOK_HALF, BOOK_MASS, ""))):
         volume = 8.0 * half[0] * half[1] * half[2]
-        if name == "pouch":             # drawn as the box it is
-            out.append('<body name="pouch" pos="{x} 6 1"><freejoint name="pouch_free"/>'
-                       '<geom name="pouch" type="box" size="{s}" density="{d}" {h} friction="0.6 0.01 0.0001" condim="4"/>'
-                       '<geom name="pouch_look" type="box" size="{s}" material="pouch" {v}/></body>'.format(
-                           x=6 + i, s=_fmt(half), d=_fmt((mass / volume,)), h=HIDDEN, v=SHOWN))
+        if name == "book":
+            out.append('<body name="book" pos="{x} 6 1"><freejoint name="book_free"/>'
+                       '<geom name="book" type="box" size="{s}" density="{d}" {h} friction="0.6 0.01 0.0001" condim="4"/>'
+                       '{look}</body>'.format(x=6 + i, s=_fmt(half), d=_fmt((mass / volume,)), h=HIDDEN,
+                                              look=_mesh("book_look0", "book_0", "book_0") + _mesh("book_look1", "book_1", "book_1")))
             continue
         mesh = "phone" if name == "phone" else "glasses_case"
         out.append('<body name="{n}" pos="{x} 6 1"><freejoint name="{n}_free"/>'
@@ -688,8 +685,10 @@ def build_xml():
     <texture name="hat" type="2d" file="{room}/hat.png"/>
     <material name="hat_cloth" texture="hat" specular="0.05" shininess="0.05"/>
     <mesh name="hat" file="{room}/hat.obj" scale="{hat_scale}"/>
-    <material name="pouch" texture="fabric" texuniform="true" texrepeat="8 8" rgba="0.70 0.30 0.22 1" specular="0.05" shininess="0.05"/>
-    <material name="box" texture="oak" texuniform="true" texrepeat="5 5" rgba="0.80 0.66 0.48 1" specular="0.1" shininess="0.1"/>
+    <texture name="basket" type="2d" file="{room}/basket.png"/>
+    <material name="basket" texture="basket" specular="0.05" shininess="0.05"/>
+    <mesh name="basket" file="{room}/basket.obj"/>
+    {box_meshes}
     {hat_meshes}
     {clutter_assets}
   </asset>
@@ -748,9 +747,11 @@ def build_xml():
         clutter_assets="\n    ".join(
             '<mesh name="{n}" file="{r}/{n}.obj"/><texture name="{n}" type="2d" file="{r}/{n}.png"/>'
             '<material name="{n}" texture="{n}" specular="0.3" shininess="0.4"/>'.format(n=n, r=room)
-            for n in ("phone_0", "phone_1", "glasses_case_0", "glasses_case_1")),
+            for n in ("phone_0", "phone_1", "glasses_case_0", "glasses_case_1", "book_0", "book_1")),
         sofa_meshes="\n    ".join('<mesh name="sofa_col_{i:02d}" file="{r}/sofa_col_{i:02d}.obj"/>'.format(i=i, r=room)
                                 for i in range(SOFA_PARTS)),
+        box_meshes="\n    ".join('<mesh name="basket_col_{i:02d}" file="{r}/basket_col_{i:02d}.obj"/>'.format(i=i, r=room)
+                               for i in range(BOX_PARTS)),
         hat_meshes="\n    ".join('<mesh name="hat_col_{i:02d}" file="{r}/hat_col_{i:02d}.obj" scale="{s}"/>'.format(i=i, r=room, s=_fmt((HAT_SCALE,) * 3))
                                for i in range(HAT_PARTS)),
         cab_pos=_fmt((CAB_X0, CAB_CY, 0)),
@@ -813,7 +814,7 @@ class Env(object):
         self.arm_dadr = [m.jnt_dofadr[self._name(J, n)] for n in ["rail"] + ["joint{}".format(i) for i in range(1, 8)]]
         self.finger_qadr = [m.jnt_qposadr[self._name(J, n)] for n in ("finger_joint1", "finger_joint2")]
         self.drawer_qadr = {n: m.jnt_qposadr[self._name(J, "drawer_" + n)] for n in DRAWERS}
-        self.free_qadr = {n: m.jnt_qposadr[self._name(J, n + "_free")] for n in ("remote", "hanger", "pad_left", "pad_right", "hat", "box", "phone", "case", "pouch")}
+        self.free_qadr = {n: m.jnt_qposadr[self._name(J, n + "_free")] for n in ("remote", "hanger", "pad_left", "pad_right", "hat", "box", "phone", "case", "book")}
         self.free_dadr = {n: m.jnt_dofadr[self._name(J, n + "_free")] for n in ("remote", "hanger", "pad_left", "pad_right", "hat")}
         self.body = {n: self._name(B, n) for n in ("remote", "hanger", "hat", "box", "pad_left", "pad_right", "drawer_upper",
                                                    "drawer_mid", "drawer_lower", "right_gripper", "pedestal",
@@ -902,12 +903,11 @@ class Env(object):
         (bx, by), yaw = place(CAB_PIVOT, cab, spec.box_xy, spec.box_yaw)
         d.qpos[adr:adr + 3] = (bx, by, CAB_H + 0.001)
         d.qpos[adr + 3:adr + 7] = _quat_yaw(yaw)
-        # The remote, the phone, the glasses case and the pouch where the scene has them.
-        for name, pose in (("remote", spec.remote), ("phone", spec.phone), ("case", spec.case), ("pouch", spec.pouch)):
+        # The remote, the phone, the glasses case and the book where the scene has them.
+        for name, pose in (("remote", spec.remote), ("phone", spec.phone), ("case", spec.case), ("book", spec.book)):
             adr = self.free_qadr[name]
             d.qpos[adr:adr + 3] = pose[:3]
             d.qpos[adr + 3:adr + 7] = _quat_yaw(pose[3])
-        self.start_z = float(spec.remote[2])
         mujoco.mj_forward(m, d)
         for _ in range(500):                       # 1 s for the loose things to settle
             mujoco.mj_step(m, d)
@@ -1118,6 +1118,22 @@ class Env(object):
         del adr
         return free >= 2
 
+    def _room_below(self, pos):
+        """The free height straight below the remote's centre (the robot does not count)."""
+        m, d = self.model, self.data
+        geomid = np.zeros(1, dtype=np.int32)
+        origin = np.array(pos, dtype=float)
+        room = 0.0
+        for _ in range(8):
+            dist = mujoco.mj_ray(m, d, origin, np.array([0.0, 0.0, -1.0]), self.solid, 1, self.body["remote"], geomid)
+            if dist < 0:
+                return 10.0
+            if int(m.geom_bodyid[geomid[0]]) not in self.robot_bodies:
+                return room + dist - REMOTE_HALF[2]
+            room += dist + 0.002
+            origin = origin - np.array([0.0, 0.0, dist + 0.002])
+        return room
+
     def _judge(self):
         m, d = self.model, self.data
         progress = self.progress
@@ -1127,14 +1143,12 @@ class Env(object):
             if self._reveal_run >= 5:
                 progress["revealed"] = True
         # Retrieved: the remote held by both finger pads, touching nothing else, lifted clear of
-        # the surface it lay on at the start, with nothing but the robot above it, for HOLD_STEPS
-        # in a row.
+        # whatever is below it, with nothing but the robot above it, for HOLD_STEPS in a row.
         touching = self._contacts(self.body["remote"])
         held = all(p in touching for p in self.pad_geoms)
         others = [g for g in touching if g not in self.finger_geoms]
         pos = d.xpos[self.body["remote"]]
-        base = self.start_z - REMOTE_HALF[2]
-        clear = pos[2] - base >= LIFT_CLEAR and self.remote_exposed()
+        clear = self._room_below(pos) >= LIFT_CLEAR and self.remote_exposed()
         self._hold = self._hold + 1 if (held and not others and clear) else 0
         if self._hold >= HOLD_STEPS:
             progress["retrieved"] = True

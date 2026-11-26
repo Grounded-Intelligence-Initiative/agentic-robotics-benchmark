@@ -13,8 +13,8 @@ hat's drawer, the box, the hanger's swing and the look) and a place for the remo
 `--remote x,y,z,yaw` is the remote's centre and direction in the world frame, as the furniture
 stands in that scene: the remote is put there and let go, so give a z just above what it is to
 lie on. `remote_env.place` turns a point of the nominal layout into the scene's. `--scenes` names
-a JSON list of `{"seed": 1, "remote": [x, y, z, yaw], "phone": [...], "case": [...], "pouch": [...]}`
-(`phone`, `case` and `pouch` are optional: a scene without one has none in the room). The default is one scene
+a JSON list of `{"seed": 1, "remote": [x, y, z, yaw], "phone": [...], "case": [...], "book": [...]}`
+(`phone`, `case` and `book` are optional: a scene without one has none in the room). The default is one scene
 with the remote lying in the open on the floor in front of the settee.
 
 `--film DIR` saves a picture of the room every 50 steps (a view of your own choosing is easy to
@@ -161,7 +161,7 @@ def main():
     try:
         wire.await_ready()
         for index, item in enumerate(scenes):
-            spec = E.make_scene(int(item["seed"]), item["remote"], item.get("phone"), item.get("case"), item.get("pouch"))
+            spec = E.make_scene(int(item["seed"]), item["remote"], item.get("phone"), item.get("case"), item.get("book"))
             results.append(episode(wire, env, spec, rng, args.max_steps, args.film, item.get("name", "scene{}".format(index))))
             print("[practice] {}".format(json.dumps(results[-1])), file=sys.stderr, flush=True)
     except WireError as exc:

@@ -15,13 +15,15 @@ of six hiding spots:
 * ``under_hat``: in the drawer the sun hat lies in (any of the three), under the hat: one end
   under its crown, the other under the high side of its brim.
   Opening the drawer shows a hat; the remote shows once the hat is out of the way.
-* ``in_box``: on the floor of the storage box on the chest, under the pouch that lies in the box.
+* ``in_box``: on the floor of the storage basket on the chest, under the book that lies in it.
+  The book is too wide for the hand to take from above: the basket can be taken by its rim and
+  tipped out.
 
-The pouch is always in the box. The phone lies under a seat pad, in a drawer the hat is not in,
-under the hat or in the box under the pouch (those two only when the remote is not there); the
-glasses case in a drawer the hat is not in or in the box beside the pouch. Things in one drawer or
-under one pad are at least CLUTTER_GAP apart. Nothing of the remote that would count as seen
-shows in either camera when an episode starts (the selection of the graded episodes checks it).
+The book is always in the box. The phone lies under a seat pad, in a drawer the hat is not in,
+under the hat or in the box under the book (those two only when the remote is not there); the
+glasses case in a drawer the hat is not in. Things in one drawer or
+under one pad are at least CLUTTER_GAP apart. At most a few pixels of the remote show in either camera when an episode starts (the selection
+of the graded episodes checks it).
 
 `make_episode(E, seed, spot)` returns the simulator's `Scene`; `E` is the simulator module.
 """
@@ -31,11 +33,10 @@ import math
 HIDING_SPOTS = ("left_cushion", "right_cushion", "under_sofa", "under_chest", "under_hat", "in_box")
 CLUTTER_GAP = 0.04
 PHONE_SPOTS = ("left_cushion", "right_cushion", "drawer", "drawer", "under_hat", "in_box")
-CASE_SPOTS = ("drawer", "drawer", "in_box")
-BOX_POUCH_X = 0.0           # in the box frame: the pouch's lane (and what is under it) ...
+CASE_SPOTS = ("drawer",)
+BOX_BOOK_X = -0.015         # in the box frame: the middle of the book
 HAT_REMOTE_Y = -0.026       # in the hat's frame: where the remote's middle is under the hat
-POUCH_SHIFT = 0.013         # the pouch's middle in front of the middle of what it lies on
-BOX_CASE_X = 0.108          # ... and the glasses case's
+BOOK_SHIFT = 0.045          # the book's middle in front of the middle of what lies under it
 
 
 def _corners(xy, yaw, half):
@@ -107,7 +108,7 @@ def make_episode(E, seed, hiding_spot):
     base = E.make_scene(seed, remote=(0.0, 0.0, 0.0, 0.0))      # the layout, the hat and the box of this seed
     pose = E._Draw(seed, "pose:" + hiding_spot)
     yaw = pose.uniform(-math.pi, math.pi)
-    box_floor = E.CAB_H + E.BOX_WALL
+    box_floor = E.CAB_H + E.BOX_FLOOR_Z
     hat_floor = E.DRAWER_FLOOR_Z[base.hat_drawer]
     half_z = E.REMOTE_HALF[2]
     piece, z = "cabinet", half_z
@@ -124,8 +125,8 @@ def make_episode(E, seed, hiding_spot):
                              0.5 * math.pi + pose.uniform(-0.04, 0.04) + (math.pi if pose.uniform() < 0.5 else 0.0))
         z = hat_floor + half_z
     elif hiding_spot == "in_box":
-        # Along the box, in the pouch's lane.
-        xy, yaw = _in_box(base, (BOX_POUCH_X + pose.uniform(-0.008, 0.008), pose.uniform(-0.03, 0.03)),
+        # Along the box, behind its middle.
+        xy, yaw = _in_box(base, (BOX_BOOK_X + BOOK_SHIFT + pose.uniform(-0.005, 0.005), pose.uniform(-0.02, 0.02)),
                           0.5 * math.pi + pose.uniform(-0.05, 0.05) + (math.pi if pose.uniform() < 0.5 else 0.0))
         z = box_floor + half_z
     elif hiding_spot == "under_chest":
@@ -143,8 +144,8 @@ def make_episode(E, seed, hiding_spot):
     drawers = [n for n in E.DRAWERS if n != base.hat_drawer]
     things = {hiding_spot: [(xy, yaw, E.REMOTE_HALF[:2])]}
     placed = {}
-    under_pouch = half_z if hiding_spot == "in_box" else 0.0     # half the height of what the pouch lies on
-    pouch_at = (xy, yaw) if hiding_spot == "in_box" else None
+    under_book = half_z if hiding_spot == "in_box" else 0.0     # half the height of what the book lies on
+    book_at = (xy, yaw) if hiding_spot == "in_box" else None
     for name, spots, half in (("phone", PHONE_SPOTS, E.PHONE_HALF), ("case", CASE_SPOTS, E.CASE_HALF)):
         spots = [s for s in spots if s != hiding_spot]
         spot = clutter.choice(spots)
@@ -155,14 +156,10 @@ def make_episode(E, seed, hiding_spot):
                              0.5 * math.pi + clutter.uniform(-0.08, 0.08))
             placed[name] = _world(E, base, "cabinet", lay[0], lay[1], hat_floor + half[2])
         elif spot == "in_box" and name == "phone":
-            lay = _in_box(base, (BOX_POUCH_X + clutter.uniform(-0.008, 0.008), clutter.uniform(-0.03, 0.03)),
+            lay = _in_box(base, (BOX_BOOK_X + BOOK_SHIFT + clutter.uniform(-0.005, 0.005), clutter.uniform(-0.02, 0.02)),
                           0.5 * math.pi + clutter.uniform(-0.08, 0.08))
             placed[name] = _world(E, base, "cabinet", lay[0], lay[1], box_floor + half[2])
-            under_pouch, pouch_at = half[2], lay
-        elif spot == "in_box":
-            lay = _in_box(base, (BOX_CASE_X + clutter.uniform(-0.005, 0.005), clutter.uniform(-0.04, 0.04)),
-                          0.5 * math.pi + clutter.uniform(-0.1, 0.1))
-            placed[name] = _world(E, base, "cabinet", lay[0], lay[1], box_floor + half[2])
+            under_book, book_at = half[2], lay
         else:
             candidates = [spot] + ([d + "_drawer" for d in drawers if d + "_drawer" != spot] if spot.endswith("_drawer") else [])
             for spot in candidates:                     # the drawn place, or the next with room
@@ -175,15 +172,13 @@ def make_episode(E, seed, hiding_spot):
             on_sofa = spot.endswith("_cushion")
             surface = E.DECK_Z if on_sofa else E.DRAWER_FLOOR_Z[spot.split("_")[0]]
             placed[name] = _world(E, base, "sofa" if on_sofa else "cabinet", lay[0], lay[1], surface + half[2])
-    # The pouch: on the remote or the phone when one of them is in the box, else on the box's floor.
-    if pouch_at is None:
-        pouch_at = _in_box(base, (BOX_POUCH_X + clutter.uniform(-0.008, 0.008), clutter.uniform(-0.03, 0.03)),
-                           0.5 * math.pi + clutter.uniform(-0.08, 0.08))
+    # The book: over the remote or the phone when one of them is in the box (which lies under
+    # its back half, so that the book's front edge is down on the box's floor and nothing shows
+    # from the front), else flat on the box's floor.
+    if book_at is None:
+        book_at = _in_box(base, (BOX_BOOK_X + clutter.uniform(-0.006, 0.006), clutter.uniform(-0.02, 0.02)), clutter.uniform(-0.04, 0.04))
     else:
-        # Over what it lies on, a little toward the box's front: the side the overview camera
-        # looks from, so that nothing of what is under it shows.
         c, s = math.cos(base.box_yaw), math.sin(base.box_yaw)
-        pouch_at = ((pouch_at[0][0] - c * POUCH_SHIFT, pouch_at[0][1] - s * POUCH_SHIFT),
-                    base.box_yaw + 0.5 * math.pi + clutter.uniform(-0.03, 0.03))
-    pouch = _world(E, base, "cabinet", pouch_at[0], pouch_at[1], box_floor + 2.0 * under_pouch + E.POUCH_HALF[2] + 0.001)
-    return E.make_scene(seed, remote=remote, phone=placed["phone"], case=placed["case"], pouch=pouch, hanger_swing=swing)
+        book_at = ((book_at[0][0] - c * BOOK_SHIFT, book_at[0][1] - s * BOOK_SHIFT), base.box_yaw + clutter.uniform(-0.03, 0.03))
+    book = _world(E, base, "cabinet", book_at[0], book_at[1], box_floor + 2.0 * under_book + E.BOOK_HALF[2] + 0.001)
+    return E.make_scene(seed, remote=remote, phone=placed["phone"], case=placed["case"], book=book, hanger_swing=swing)

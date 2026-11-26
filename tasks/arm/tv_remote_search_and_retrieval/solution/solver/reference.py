@@ -25,6 +25,15 @@ HAT_BITE = 0.022                # how far in from the brim's edge the fingers ta
 HAT_SLIDE = 0.028               # the hand comes down this far outside that, then slides in
 HAT_BRIM_Z = 0.027              # the brim's high side above the drawer's floor
 HAT_OPEN = 0.045
+TIP_RIM = 0.150                 # the basket's front rim before its middle
+TIP_BITE = 0.028                # how far down its wall the fingers take it
+TIP_LIFT = 0.30
+TIP_AT = (0.42, -0.37, 0.44)    # where it is poured out: the held rim's x, its y from the chest's outer side, its height
+TIP_STAND = 0.30                # the pedestal stands this far to one side of that along the rail
+TIP_TURN = 125                  # degrees the hand turns
+TIP_DRAW = 0.13                 # the hand draws back this far toward the rail over the last part of the pour ...
+TIP_DRAW_FROM = 80              # ... from this many degrees on
+TIP_ASIDE = 0.56                # the emptied basket is put down this far along the rail
 UNDER_OUT = 0.26                # the remote's near end is drawn out to this far in front of the chest
 
 class Reference(Robot):
@@ -178,7 +187,7 @@ class Reference(Robot):
     def box_rim(pts):
         """The points of the box's walls: the only thing above the chest's top."""
         top = E.CAB_H
-        return pts[(pts[:, 2] > top + 0.035) & (pts[:, 2] < top + 0.09) & (np.abs(pts[:, 1] - CAB_CY) < 0.3)
+        return pts[(pts[:, 2] > top + 0.05) & (pts[:, 2] < top + 0.11) & (np.abs(pts[:, 1] - CAB_CY) < 0.3)
                    & (pts[:, 0] > E.CAB_X0) & (pts[:, 0] < E.CAB_X0 + E.CAB_DEPTH)]
 
     @staticmethod
@@ -240,18 +249,20 @@ class Reference(Robot):
         things in it, each (centre xy, yaw of its long axis, length, top height above the box's
         floor, number of points), the longest first."""
         import cv2
-        floor = E.CAB_H + E.BOX_WALL
+        floor = E.CAB_H + E.BOX_FLOOR_Z
+        rim_z = E.CAB_H + E.BOX_H
         rgb, depth, pose = top_view
         depth = median_filter(depth, size=3)
         pts = self.points("wrist", depth, pose, depth > 0)
         near = (np.abs(pts[:, 0] - self.box_xy[0]) < 0.22) & (np.abs(pts[:, 1] - self.box_xy[1]) < 0.25)
-        rim = pts[near & (pts[:, 2] > floor + E.BOX_WALL_H - 0.012) & (pts[:, 2] < floor + E.BOX_WALL_H + 0.012)]
+        rim = pts[near & (pts[:, 2] > rim_z - 0.014) & (pts[:, 2] < rim_z + 0.012)]
         yaw = 0.0
         if len(rim) >= 150:
             (cx, cy), sides, angle = cv2.minAreaRect(rim[:, :2].astype(np.float32))
-            outer = E.BOX_INNER[0] + 2.0 * E.BOX_WALL
-            if all(abs(side - outer) < 0.02 for side in sides):       # the whole rim is in view
-                yaw = math.radians((angle + 45.0) % 90.0 - 45.0)
+            if sides[0] > sides[1]:              # the long side along y
+                sides, angle = (sides[1], sides[0]), angle + 90.0
+            if all(abs(side - outer) < 0.02 for side, outer in zip(sides, E.BOX_OUTER)):     # the whole rim is in view
+                yaw = math.radians((angle + 90.0) % 180.0 - 90.0)
                 self.box_xy = (float(cx), float(cy))
                 self.kin.box_xy, self.kin.box_yaw = self.box_xy, yaw
                 self.kin.set_layout(*self.layout)
@@ -278,7 +289,7 @@ class Reference(Robot):
                 along, across = (xy - centre) @ axis, (xy - centre) @ side
                 a0, a1 = np.percentile(along, 2), np.percentile(along, 98)
                 c0, c1 = np.percentile(across, 2), np.percentile(across, 98)
-                if c1 - c0 < 0.035 or a1 - a0 > 0.23:
+                if c1 - c0 < 0.035 or a1 - a0 > 0.30:
                     continue                    # a wall of the box, not a thing in it
                 things.append((centre + axis * 0.5 * (a0 + a1) + side * 0.5 * (c0 + c1), math.atan2(axis[1], axis[0]),
                                float(a1 - a0), float(np.percentile(thing[:, 2], 90) - floor), len(thing)))
@@ -286,43 +297,133 @@ class Reference(Robot):
         return things
 
     def search_box(self):
-        """Look into the box on the chest; take out what lies on top of other things there and
-        look again."""
+        """Look into the basket on the chest. A thing lies in it that is too wide to take: the
+        basket is taken by its front rim and tipped out, and the remote looked for among what
+        came out."""
         self.kin.use("cabinet")
-        floor = E.CAB_H + E.BOX_WALL
+        floor = E.CAB_H + E.BOX_FLOOR_Z
         rails = [CAB_CY + 0.40, CAB_CY + 0.30, CAB_CY + 0.50, CAB_CY - 0.35, CAB_CY + 0.20, CAB_CY - 0.20, CAB_CY + 0.10]
-        for attempt in range(2):
-            bx, by = self.box_xy
-            self.grip_cmd = 0.08
-            yield from self.move_pose((bx - 0.08, by, floor + 0.21), DOWN_Y, rails=[by + o for o in (0.2, -0.2, 0.1, -0.1, 0.3, -0.3, 0.0)])
-            yield from self.wait(6)
-            views = yield from self.look(2)
-            things = self.box_things(views["wrist"])
-            self.log.append(("box_things", [(round(float(t[0][0]), 3), round(float(t[0][1]), 3), round(t[2], 3), round(t[3], 3)) for t in things]))
-            # The remote, if it lies open?
-            hit = yield from self.see_remote((floor + 0.007, floor + 0.03), ((bx - 0.13, bx + 0.13), (by - 0.16, by + 0.16)))
-            if hit is not None:
-                self.log.append(("in_box", hit))
-                yield from self.pick(hit, floor, rails)
+        bx, by = self.box_xy
+        self.grip_cmd = 0.08
+        yield from self.move_pose((bx - 0.08, by, floor + 0.21), DOWN_Y, rails=[by + o for o in (0.2, -0.2, 0.1, -0.1, 0.3, -0.3, 0.0)])
+        yield from self.wait(6)
+        views = yield from self.look(2)
+        things = self.box_things(views["wrist"])
+        bx, by = self.box_xy
+        yaw = getattr(self.kin, "box_yaw", 0.0)
+        self.log.append(("box_things", [(round(float(t[0][0]), 3), round(float(t[0][1]), 3), round(t[2], 3), round(t[3], 3)) for t in things]))
+        hit = yield from self.see_remote((floor + 0.007, floor + 0.03), ((bx - 0.11, bx + 0.11), (by - 0.16, by + 0.16)))
+        if hit is not None:
+            self.log.append(("in_box", hit))
+            yield from self.pick(hit, floor, rails)
+            return True
+        if not things:
+            return False
+        # The front rim's middle, the hand over it, its fingers either side of the wall.
+        c, s = math.cos(yaw), math.sin(yaw)
+        rim = np.array([bx - c * TIP_RIM, by - s * TIP_RIM, E.CAB_H + E.BOX_H - TIP_BITE])
+        held = down(yaw)
+        self.grip_cmd = 0.05
+        self.kin.park("box")
+        ok = yield from self.move_pose(rim + np.array([0.0, 0.0, 0.14]), held, rails=[by + o for o in (0.25, -0.25, 0.35, -0.35, 0.15, -0.15)],
+                                       sym=False, then=(0, 0, -0.14))
+        self.log.append(("rim_ik", ok))
+        yield from self.move_line(rim, step=0.006)
+        yield from self.grip(0.0, steps=20)
+        yield from self.move_line(rim + np.array([0.0, 0.0, TIP_LIFT]), step=0.004)
+        # Carry it (it hangs level from the fingers) over the open floor beyond the chest, bring
+        # it down to a hand's height above the floor and pour it out: the hand turns slowly
+        # until the basket's far side points down, and the book and what was under it slide out.
+        spot = np.array([TIP_AT[0], E.CAB_Y[0] + TIP_AT[1], TIP_AT[2]])
+        shift = self.rail(spot[1] + TIP_STAND) - self.q_cmd[0]
+        yield from self.move_q(self.q_cmd + np.array([shift] + [0.0] * 7), speed=0.35)
+        p, _ = self.kin.fk(self.q_cmd)
+        yield from self.move_line((p[0], spot[1], p[2]), step=0.006)
+        yield from self.move_line(spot, step=0.006)
+        _, rot0 = self.kin.fk(self.q_cmd)
+
+        def turned(t):
+            ct, st = math.cos(t), math.sin(t)
+            return np.array([[ct, 0.0, st], [0.0, 1.0, 0.0], [-st, 0.0, ct]]) @ rot0
+
+        def pouring(i):
+            """The hand's place and turn at step `i` of the pour: over its last part the hand
+            also draws back toward the rail, so that what leaves the basket later (the remote,
+            from under the book) comes to lie clear of what left it first."""
+            t = TIP_TURN * i / n
+            back = TIP_DRAW * min(max((t - TIP_DRAW_FROM) / (TIP_TURN - TIP_DRAW_FROM), 0.0), 1.0)
+            return spot - np.array([back, 0.0, 0.0]), turned(math.radians(t))
+
+        n = 170
+        worst = 0.0
+        for i in range(1, n + 1):
+            pos, rot = pouring(i)
+            q, ep, er = self.kin.ik(pos, rot, self.q_cmd, rail=self.q_cmd[0], iters=60, posture=self.q_cmd)
+            worst = max(worst, ep, 0.1 * er)
+            self.q_cmd = q
+            yield from self.tick()
+        self.log.append(("tip", round(float(worst), 4)))
+        # A few small shakes, for what clings in the basket's corner.
+        for _ in range(3):
+            for i in (n - 4, n - 8, n - 12, n - 8, n - 4, n):
+                pos, rot = pouring(i)
+                q, _, _ = self.kin.ik(pos, rot, self.q_cmd, rail=self.q_cmd[0], iters=60, posture=self.q_cmd)
+                self.q_cmd = q
+                yield from self.tick()
+        yield from self.wait(20)
+        # Turn the basket back, put it down on the floor farther along and let go.
+        for i in range(n - 1, -1, -3):
+            pos, rot = pouring(i)
+            q, _, _ = self.kin.ik(pos, rot, self.q_cmd, rail=self.q_cmd[0], iters=60, posture=self.q_cmd)
+            self.q_cmd = q
+            yield from self.tick()
+        yield from self.move_line(spot + np.array([0.0, 0.0, 0.15]), step=0.008)
+        shift = max(self.q_cmd[0] - TIP_ASIDE, E.RAIL_RANGE[0] + 0.01) - self.q_cmd[0]
+        yield from self.move_q(self.q_cmd + np.array([shift] + [0.0] * 7), speed=0.4)
+        p, _ = self.kin.fk(self.q_cmd)
+        yield from self.move_line((p[0], p[1], E.BOX_H + 0.03), step=0.01)
+        yield from self.grip(0.08, steps=12)
+        yield from self.move_line((p[0], p[1], 0.45), step=0.012)
+        aside = (p[0] + TIP_RIM, p[1])                # the basket's middle where it now stands
+        # What came out lies on the floor under where the basket's far side was. The remote may
+        # lie on the book: then it is a slab above the book's cover.
+        rails = [spot[1] + o for o in (0.35, 0.25, 0.45, -0.35, 0.15, -0.25)]
+        box = ((0.15, 0.85), (spot[1] - 0.30, spot[1] + 0.30))
+        on_book = 2.0 * E.BOOK_HALF[2]
+        for cx, cy in ((spot[0] - 0.08, spot[1]), (spot[0] + 0.08, spot[1]), (spot[0] + 0.24, spot[1]), (spot[0], spot[1] - 0.16), (spot[0], spot[1] + 0.16)):
+            lies_at = on_book
+            hit2 = yield from self.look_down((cx, cy), 0.0, (on_book + 0.008, on_book + 0.03), box, rails, height=0.34)
+            if hit2 is None:
+                lies_at = 0.0
+                hit2 = yield from self.see_remote((0.006, 0.03), box)
+            if hit2 is None:
+                # Against the book? Then it is a slab a little lower than the book's cover: the
+                # closed fingers press on it and draw it clear of the book, toward the rail.
+                hit2 = yield from self.see_remote((0.008, on_book - 0.0016), box, slab=True)
+                if hit2 is not None:
+                    (rx, ry), ryaw, _ = hit2
+                    away = np.array([-math.sin(ryaw), math.cos(ryaw)])
+                    if away[0] > 0:
+                        away = -away
+                    self.grip_cmd = 0.0
+                    top = 2.0 * E.REMOTE_HALF[2]
+                    yield from self.move_pose((rx, ry, top + 0.10), down(ryaw), rails=rails, then=(0, 0, -0.10))
+                    yield from self.move_line((rx, ry, top - 0.004), step=0.004)
+                    yield from self.move_line((rx + 0.08 * away[0], ry + 0.08 * away[1], top - 0.004), step=0.003)
+                    yield from self.move_line((rx + 0.08 * away[0], ry + 0.08 * away[1], top + 0.12), step=0.008)
+                    hit2 = yield from self.look_down((rx + 0.08 * away[0], ry + 0.08 * away[1]), 0.0, (0.006, 0.03), box, rails, height=0.34)
+            self.log.append(("tipped_out", hit2, lies_at))
+            if hit2 is not None:
+                yield from self.pick(hit2, lies_at, [hit2[0][1] + o for o in (0.35, -0.35, 0.45, -0.45, 0.25, -0.25)])
                 return True
-            # Something thick enough to have a thing under it, and narrow enough to take?
-            high = [t for t in things if t[3] > E.POUCH_HALF[2] * 2.0 + 0.004]
-            if not high:
-                return False
-            centre, yaw, length, height, _ = high[0]
-            z = floor + height - 0.022
-            ok = yield from self.move_pose((centre[0], centre[1], floor + 0.16), down(yaw + 0.5 * math.pi), rails=rails)
-            yield from self.move_line((centre[0], centre[1], z), step=0.006)
-            yield from self.grip(0.0, steps=18)
-            yield from self.move_line((centre[0], centre[1], floor + 0.18), step=0.006)
-            # ... and put it down on the floor beyond the chest.
-            drop_y = E.CAB_Y[0] - 0.33
-            yield from self.move_line((E.CAB_X0 - 0.12, centre[1], floor + 0.18), step=0.01)
-            yield from self.move_q(self.q_cmd + np.array([drop_y - centre[1]] + [0.0] * 7), speed=0.6)
-            p_now, _ = self.kin.fk(self.q_cmd)
-            yield from self.move_line((p_now[0], p_now[1], 0.12), step=0.012)
-            yield from self.grip(0.08, steps=10)
-            yield from self.move_line((p_now[0], p_now[1], 0.40), step=0.012)
+        # Not on the floor: did it stay in the basket?
+        inside = ((aside[0] - 0.10, aside[0] + 0.10), (aside[1] - 0.15, aside[1] + 0.15))
+        hit2 = yield from self.look_down(aside, E.BOX_FLOOR_Z, (E.BOX_FLOOR_Z + 0.007, E.BOX_FLOOR_Z + 0.03), inside,
+                                         [aside[1] + o for o in (0.30, 0.20, 0.40, 0.10)], height=0.36)
+        self.log.append(("left_in", hit2))
+        if hit2 is not None:
+            yield from self.pick(hit2, E.BOX_FLOOR_Z, [hit2[0][1] + o for o in (0.30, 0.20, 0.40, 0.10)])
+            return True
         return False
 
     # -- seat pads ------------------------------------------------------------------------
@@ -444,7 +545,11 @@ class Reference(Robot):
         lying flat: it goes in between the legs, fingers first and a little nose down, takes the
         remote's near end, draws it out along the floor and lets go; then the remote is picked
         up from above like any other on the floor."""
-        (_, ry), _, _ = hit
+        (rx, ry), yaw, _ = hit
+        # The remote does not point straight in: its near end is a little to one side of its
+        # middle. (The low view gives its direction only roughly: the slope is bounded.)
+        slope = math.tan(yaw)
+        ry = ry + min(max(slope, -0.25), 0.25) * (E.CAB_X0 + UNDER_DEPTH - rx)
         t = math.radians(UNDER_TILT)
         ahead = np.array([math.cos(t), 0.0, -math.sin(t)])
         flat = rot_from_axes(tuple(ahead), (0, 1, 0))
@@ -453,9 +558,9 @@ class Reference(Robot):
         # A posture for the flat hand at the floor, and a way to it: the tucked arm turns about
         # its first joint, unfolds to a pose above and behind the place, comes straight down and
         # goes straight in.
-        above = pre + np.array([-0.05, 0.0, 0.30])
         plan = None
-        for offset in (-0.35, 0.35, 0.2, -0.2, 0.5, -0.5):
+        for offset, back in [(o, k) for k in (-0.05, -0.10, 0.0) for o in (-0.35, 0.35, 0.2, -0.2, 0.5, -0.5, 0.42, -0.42, 0.28, -0.28)]:
+            above = pre + np.array([back, 0.0, 0.30])
             rail = self.rail(ry + offset)
             home = self.home_at(rail)
             for rot in (flat @ np.diag([-1.0, -1.0, 1.0]), flat):
@@ -607,7 +712,7 @@ class Reference(Robot):
         return True
 
     # -- seeing and picking -----------------------------------------------------------------
-    def see_remote(self, z_range, xy_box=None, cams=2, min_points=40, dark=False, sized=True):
+    def see_remote(self, z_range, xy_box=None, cams=2, min_points=40, dark=False, sized=True, slab=False):
         yield from self.wait(6)
         views = yield from self.look(cams)
         best = None
@@ -616,7 +721,7 @@ class Reference(Robot):
             mask = depth > 0
             pts = self.points(name, depth, pose, mask)
             v, u = np.nonzero(mask)
-            hit = find_remote((pts, rgb[v, u].astype(int)), z_range, xy_box, min_points, dark, sized)
+            hit = find_remote((pts, rgb[v, u].astype(int)), z_range, xy_box, min_points, dark, sized, slab)
             if hit is not None and (best is None or hit[2] > best[2]):
                 best = hit
         return best

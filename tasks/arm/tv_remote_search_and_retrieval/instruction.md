@@ -2,8 +2,9 @@
 
 A Franka Panda arm on a floor rail stands in a living room, in front of a two-seat settee and a
 chest of drawers. Somewhere in that room is the TV remote, and nobody remembers where it was
-left: when an episode starts, nothing of it shows in either of the robot's cameras. Write the
-controller that finds the remote and takes it out.
+left: when an episode starts it is out of sight (at most a few pixels of it, far fewer than
+count as seen, are in either camera's image). Write the controller that finds the remote and
+takes it out.
 
 **You are not told where a remote may be in this room.** No list of places exists in anything
 you are given: the simulator in your home puts the remote wherever its caller says, and the rule
@@ -95,15 +96,15 @@ An action is a list of 10 numbers `[rail, q1, ..., q7, grip, cams]` at 20 Hz: po
 for the rail and the seven joints, the finger opening (0 to 0.08 m) and a camera mask for the next
 observation (1 = overview, 2 = wrist, 3 = both, 0 = none). Targets are clipped to the joint ranges
 and followed no faster than 0.5 m/s (rail), 1.4 rad/s (joints 1 to 4), 1.8 rad/s (joints 5 to 7)
-and 0.10 m/s (fingers). An episode lasts at most **3600 steps** (180 s simulated).
+and 0.10 m/s (fingers). An episode lasts at most **4800 steps** (240 s simulated).
 
 ## How an episode is judged
 
 The grader's own simulator decides; nothing your controller prints counts.
 
 - **Retrieved (score 1, and the episode ends):** the remote is held by both finger pads, touches
-  nothing else, is at least 8 cm above the surface it lay on when the episode began, has nothing
-  but the robot above it, and stays so for 20 steps in a row.
+  nothing else, has at least 8 cm of free height below it and nothing but the robot above it,
+  and stays so for 20 steps in a row.
 - **Laid open (score 0.4):** nothing but the robot is above the remote, for 5 steps in a row.
 - **Seen (score 0.2):** the remote shows (at least 60 pixels of it) in an image your controller
   asked for.

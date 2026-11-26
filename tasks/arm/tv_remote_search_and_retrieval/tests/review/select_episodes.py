@@ -2,8 +2,9 @@
 
 For each hiding spot, candidate seeds are drawn from os.urandom and the reference controller of
 solution/ plays each candidate once, in process, on the simulator of tests/remote_env.py. The first
-`PER_SPOT` candidates of a spot in which the reference retrieves the remote are the spot's graded
-episodes. Every candidate and its outcome is recorded in tests/hidden/selection.json, so the
+`PER_SPOT` candidates of a spot in which the reference retrieves the remote, and retrieves it
+again in `REPLAYS` replays with the loose things nudged by a hair (pouring a basket out does not
+come out the same on every machine's arithmetic), are the spot's graded episodes. Every candidate and its outcome is recorded in tests/hidden/selection.json, so the
 reference's own failure rate on unselected draws is on record.
 
     REMOTE_ROOM_DIR=environment/room python3 tests/review/select_episodes.py
@@ -13,6 +14,8 @@ import json
 import os
 import struct
 import sys
+
+import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TASK = os.path.dirname(os.path.dirname(HERE))
@@ -24,12 +27,18 @@ import remote_env as E  # noqa: E402
 from reference import Reference  # noqa: E402
 
 PER_SPOT = 2
-CANDIDATES = 5
-# A candidate in which a pixel of the remote shows in either camera at the start is not played.
+CANDIDATES = 8
+REPLAYS = 3            # a candidate is graded only if the reference also retrieves in this many nudged replays
+# A candidate in which more than HIDDEN_PIXELS pixels of the remote show in either camera at the
+# start is not played (60 pixels count as seen).
+HIDDEN_PIXELS = 8
 
 
-def play(env, spec):
+def play(env, spec, jitter=None):
     obs = env.reset(spec)
+    if jitter is not None:
+        # A replay with the loose things nudged by a hair: what another machine's arithmetic does.
+        env.data.qvel[:] += np.random.default_rng(jitter).normal(0.0, 1e-5, env.model.nv)
     behaviour = Reference().run(obs)
     done = False
     try:
@@ -51,16 +60,19 @@ def main():
         for _ in range(CANDIDATES):
             seed = struct.unpack("<Q", os.urandom(8))[0]
             env.reset(R.make_episode(E, seed, spot))
-            if max(env._remote_pixels(name) for name in E.CAMERAS) > 0:
+            if max(env._remote_pixels(name) for name in E.CAMERAS) > HIDDEN_PIXELS:
                 record.append({"spot": spot, "seed": seed, "shows_at_start": True, "selected": False})
                 print(record[-1], flush=True)
                 continue
             score, steps, ended = play(env, R.make_episode(E, seed, spot))
-            picked = score >= 1.0 and len(chosen[spot]) < PER_SPOT
+            replays = []
+            if score >= 1.0 and len(chosen[spot]) < PER_SPOT:
+                replays = [play(env, R.make_episode(E, seed, spot), jitter=k)[0] for k in range(REPLAYS)]
+            picked = score >= 1.0 and len(chosen[spot]) < PER_SPOT and all(r >= 1.0 for r in replays)
             if picked:
                 chosen[spot].append(seed)
             record.append({"spot": spot, "seed": seed, "reference_score": score, "steps": steps,
-                           "ended": ended, "selected": picked})
+                           "ended": ended, "replays": replays, "selected": picked})
             print(record[-1], flush=True)
         if len(chosen[spot]) < PER_SPOT:
             raise SystemExit("too few episodes for " + spot)
@@ -69,8 +81,8 @@ def main():
     with open(os.path.join(TASK, "tests", "hidden", "episodes.json"), "w") as handle:
         json.dump({"episodes": episodes}, handle, indent=1)
     with open(os.path.join(TASK, "tests", "hidden", "selection.json"), "w") as handle:
-        json.dump({"rule": "first {} of {} os.urandom candidates per spot that the reference retrieves".format(
-            PER_SPOT, CANDIDATES), "candidates": record}, handle, indent=1)
+        json.dump({"rule": "first {} of {} os.urandom candidates per spot that the reference retrieves, also in {} replays with the loose things nudged by 1e-5".format(
+            PER_SPOT, CANDIDATES, REPLAYS), "candidates": record}, handle, indent=1)
     played = [r for r in record if "reference_score" in r]
     solved = sum(1 for r in played if r["reference_score"] >= 1.0)
     print("reference retrieved {} of {} candidates played".format(solved, len(played)))

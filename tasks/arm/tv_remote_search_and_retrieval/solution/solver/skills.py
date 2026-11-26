@@ -10,7 +10,7 @@ import sys
 
 import mujoco
 import numpy as np
-from scipy.ndimage import label
+from scipy.ndimage import binary_opening, label
 from scipy.spatial import cKDTree
 
 import remote_env as E
@@ -385,14 +385,14 @@ def overview_pose():
     return _OVERVIEW
 
 
-def find_remote(points_rgb, z_range, xy_box=None, min_points=40, dark=False, sized=True):
+def find_remote(points_rgb, z_range, xy_box=None, min_points=40, dark=False, sized=True, slab=False):
     """The remote among points of the frame in use: a slab of points in a height band above its
     surface (with `dark`, only its dark ones, for a far view whose depth is too coarse to tell
     the slab). The points are split into separate things, and a thing counts as the remote only
     if it has the remote's size: the phone is wider, the glasses case wider and taller.
     Returns (centre xy, yaw of its long axis, number of points) or None."""
     pts, rgb = points_rgb
-    top = z_range[1] if (dark or not sized) else z_range[0] + 0.06
+    top = z_range[1] if (dark or not sized or slab) else z_range[0] + 0.06     # (`slab`: nothing above the band counts)
     keep = (pts[:, 2] > z_range[0]) & (pts[:, 2] < top)
     if xy_box is not None:
         (x0, x1), (y0, y1) = xy_box
@@ -407,6 +407,10 @@ def find_remote(points_rgb, z_range, xy_box=None, min_points=40, dark=False, siz
     ij = np.floor((sel[:, :2] - sel[:, :2].min(axis=0)) / cell).astype(int) + 1
     grid = np.zeros(ij.max(axis=0) + 2, dtype=bool)
     grid[ij[:, 0], ij[:, 1]] = True
+    if slab:
+        # A low slab against a taller thing: the thin seam of mixed depths along their common
+        # edge is not part of it.
+        grid = binary_opening(grid, structure=np.ones((3, 3)))
     labels, count = label(grid, structure=np.ones((3, 3)))
     of = labels[ij[:, 0], ij[:, 1]]
     best = None
@@ -433,4 +437,5 @@ def find_remote(points_rgb, z_range, xy_box=None, min_points=40, dark=False, siz
             continue
         if best is None or len(thing) > best[2]:
             best = (centre + axis * 0.5 * (a0 + a1) + side * 0.5 * (c0 + c1), math.atan2(axis[1], axis[0]), len(thing))
+            find_remote.top = float(np.percentile(thing[:, 2], 85))       # (how high the thing found lies)
     return best
