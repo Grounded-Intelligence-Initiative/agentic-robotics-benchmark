@@ -1,0 +1,94 @@
+{
+  "frozen_public_seed": 7,
+  "courses": [
+    [
+      5,
+      -90,
+      1.5
+    ],
+    [
+      5,
+      90,
+      1.5
+    ]
+  ],
+  "prefix_packets_and_codes_sha256": "25f5973b6a011b0772e1161e9dac88fe1fbe98a9f23e63160557770ff4a497b8",
+  "turn_reveal_tick": 857,
+  "actual_reveal_state_history_sha256": "2454e32e8b0f4c75e5f5fe0f7fdc84dd73a5571957edba5f92fedb9d55180077",
+  "first_turn_changed_coordinates": 4,
+  "nominal_right_tape_sha256": "9a5061215ffbb304fc64d761da9cd2b64e686f5dbc030dfeb181a22fc828032c",
+  "reference": {
+    "right": {
+      "success": true,
+      "reason": "success",
+      "stages_completed": 3,
+      "simulated_s": 24.69999999999719,
+      "applied_rows": 1235,
+      "scalar_codes": 79040,
+      "joint_accel_rms_rad_s2": 6.6090097809282655,
+      "state_pairs": 7,
+      "state_changes": 6,
+      "state_duplicates": 1,
+      "state_noise": 0,
+      "branch_pairs": 1,
+      "branch_changes": 1,
+      "branch_duplicates": 1,
+      "branch_noise": 0
+    },
+    "left": {
+      "success": true,
+      "reason": "success",
+      "stages_completed": 3,
+      "simulated_s": 24.439999999997333,
+      "applied_rows": 1222,
+      "scalar_codes": 78208,
+      "joint_accel_rms_rad_s2": 6.620451214030724,
+      "state_pairs": 7,
+      "state_changes": 5,
+      "state_duplicates": 1,
+      "state_noise": 0,
+      "branch_pairs": 1,
+      "branch_changes": 1,
+      "branch_duplicates": 1,
+      "branch_noise": 0
+    },
+    "match_lock_ok": 1
+  },
+  "blind_right_tape": {
+    "right": {
+      "success": true,
+      "reason": "success",
+      "stages_completed": 3,
+      "simulated_s": 24.69999999999719,
+      "applied_rows": 1235,
+      "scalar_codes": 79040,
+      "joint_accel_rms_rad_s2": 6.6090097809282655,
+      "state_pairs": 7,
+      "state_changes": 0,
+      "state_duplicates": 1,
+      "state_noise": 0,
+      "branch_pairs": 1,
+      "branch_changes": 0,
+      "branch_duplicates": 1,
+      "branch_noise": 0
+    },
+    "left": {
+      "success": false,
+      "reason": "path_violation",
+      "stages_completed": 1,
+      "simulated_s": 17.900000000000958,
+      "applied_rows": 895,
+      "scalar_codes": 57280,
+      "joint_accel_rms_rad_s2": 6.983906852821174,
+      "state_pairs": 3,
+      "state_changes": 0,
+      "state_duplicates": 1,
+      "state_noise": 0,
+      "branch_pairs": 1,
+      "branch_changes": 0,
+      "branch_duplicates": 1,
+      "branch_noise": 0
+    },
+    "match_lock_ok": 0
+  }
+}
