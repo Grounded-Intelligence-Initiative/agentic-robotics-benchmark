@@ -9,7 +9,11 @@ Write a controller for a free-standing G1 with 29 body joints and two Dex3 hands
 | Lift | Raise the object at least 4 cm while two parts of the same hand make opposing contacts. The hands must support at least half its weight, with other supports carrying at most 5%, continuously for 40 ms. |
 | Place | Keep the whole object footprint inside the green pad for 250 ms. The object must be nearly vertical, nearly still and clear of both hands. The pad must bear at least half its weight and other supports at most 5%. Either end may face up. |
 
-One action row advances 20 ms. The episode ends on a strict placement, a fall, an approach violation or after 1,100 rows (22 simulated seconds). The raw score is the number of strict placements divided by 16 independent evaluation episodes, eight per shape. Each episode contributes one or zero. The verifier checks that the first row of body codes responds reproducibly to different observations; motion efficiency and intermediate stages are diagnostics. A failed observation-response check gives zero reward for the entire panel, even when the verifier records strict placements. The verifier normalizes this fraction against a positive reference score after calibration. During calibration it records the raw outcome and returns zero reward.
+One action row advances 20 ms. The episode ends on a strict placement, a fall, an approach violation or after 1,100 rows (22 simulated seconds). The raw score is the number of strict placements divided by 16 independent evaluation episodes, eight per shape. Each episode contributes one or zero. Intermediate stages, motion smoothness and code usage are diagnostics.
+
+The verifier also checks whether the body commands respond to the current sensors. Across the 16 episodes, it requires at least 16 same-tick comparisons between different sensor packets and at least eight comparisons of identical packets. A response counts as changed when any of the 64 body codes in its first row differs by at least one bin. Subtract the fraction of identical-packet comparisons that changed from the fraction of different-packet comparisons that changed. This difference must be at least 0.12. Only the response to the live packet advances the real robot. Missing the comparison counts or the 0.12 threshold gives a panel reward of zero.
+
+With the observation check passed, the final reward is the number of strict placements divided by the calibrated placement count for full credit, capped at 1. Calibration records the physical outcome on independent reference panels.
 
 ## Start here
 
