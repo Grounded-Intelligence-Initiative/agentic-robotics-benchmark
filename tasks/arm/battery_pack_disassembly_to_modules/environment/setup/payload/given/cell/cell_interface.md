@@ -61,10 +61,26 @@ not depend on the robot's readings it is sent (a replayed list of actions, absol
 advance) is recognised by this and scores nothing: compute each displacement from the `tcp_target` or `q_target`
 of the observation you answer. Requests that command no motion are not compared.
 
-After a missed deadline, a closed output, an answer that is not a valid action or an exhausted budget, the pack
-ends where it is (what has been sorted so far still counts), your program is stopped with everything it started,
-and `run.sh` is started again for the next pack (at most three such restarts; after that the remaining packs are
-not worked on at all).
+A pack ends early on your program's side in two ways; in both, what has been sorted so far still counts:
+
+- **Your program is given up on and started again:** a missed deadline (`READY` within 120 s of a start; each
+  request read and answered within 30 s), a closed output, a line that is not a JSON object, an answer without
+  `action`, or more than 64 processes of your account (counted at every `reset` and every 64 requests; threads are
+  not counted). The pack ends where it is, your program is stopped with everything it started, and `run.sh` is
+  started again for the next pack: at most three such restarts, after which the remaining packs are not worked on.
+- **The pack ends and your program goes on:** an `action` that is not valid (a malformed field or a value out
+  of range) or that the cell rejects, the pack's budget of your program's own time used up, or its step
+  limit reached (section 6). The same program, still running, gets the next `reset`.
+
+**When the cell itself fails.** Your program shares the GPU and the sandbox's memory with the cell, which takes
+about 4 GB of GPU memory and 6 GB of memory: keep your program below 12 GB of GPU memory and 16 GB of memory. If the
+cell fails while a pack runs, your program is stopped with everything it started, and the pack is run again from
+the start in a fresh cell, with `run.sh` started again (that restart is not one of the three). If the cell fails a
+second time on that pack after your program was started again, or because your program's files filled a disk the
+cell writes to, the pack counts 0 and grading goes on with the next pack.
+
+**The grader's own deadline.** The grader stops 20400 s after it starts, whatever is running then: the packs graded
+by then count and the others count 0. Six packs at every limit of section 6 take about 15,000 s.
 
 ## 3. Actions
 
@@ -206,7 +222,8 @@ throughout a pack. The colour image shows all of it; the depth does not depend o
 
 Per pack: 2700 s of simulated time (`time_left`), 400 frames (`frames_left`), 20000 steps, and 1200 s of your program's own
 time: the time the grader waits for your answers, summed (the cell's simulation and rendering are not counted).
-Every single answer within 30 s.
+Every single answer within 30 s. The time budget and the step limit are checked before each request: the answer
+that crosses the budget is still carried out, and the pack ends before the next request.
 
 ## 7. How a pack is judged
 
@@ -243,7 +260,8 @@ own with it. The cell's own code is not readable from your account.
 
 ## 9. Numerics
 
-Every process of the image, the grader's and yours, runs with `OPENBLAS_CORETYPE=Haswell`, `OPENBLAS_NUM_THREADS=1`
-and `OMP_NUM_THREADS=1` unless it sets them otherwise; the grader starts `run.sh` with `PATH`, `HOME` and `LANG`
-only, so set them in `run.sh` if your arithmetic depends on them. The physics engine and the renderer are not
-bit-reproducible across machines: build a program that closes its loops on what it measures.
+The cell runs with `OPENBLAS_CORETYPE=Haswell`, `OPENBLAS_NUM_THREADS=1` and `OMP_NUM_THREADS=1`, in the
+commissioning service and when it is graded, and so does every process of your session (the image sets them). The
+grader starts `run.sh` with `PATH`, `HOME` and `LANG` only, so set them in `run.sh` if your arithmetic depends on
+them. The physics engine and the renderer are not bit-reproducible across machines: build a program that closes its
+loops on what it measures.

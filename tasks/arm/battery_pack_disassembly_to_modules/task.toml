@@ -11,9 +11,10 @@
 # the flange, the nutrunner's torque, angle and stroke, the gripper's opening, and RGB-D frames of an overhead and a
 # wrist camera on request; never a part's pose or a fastener's state. Each pack differs in its variant (4, 5 or 6
 # modules), its placement on the fixture, every fastener's position within its tolerance, the head type of every
-# fastener (the bit has to be chosen from the picture), corroded and missing fasteners, and a harness remnant that may
-# lie over fasteners. Fasteners are rule-based constraints (the right bit, the axes aligned, enough axial force, enough
-# loosening turns; a wrong bit or a bad alignment strips the head); everything else is rigid-body physics (PhysX on the
+# fastener (seen in the picture, or found by trying bits in an order that harms no head, at the cost of exchanges),
+# corroded and missing fasteners, and a harness remnant that may lie over fasteners. Fasteners are rule-based
+# constraints (the right bit, the axes aligned, enough axial force, enough loosening turns; a bit one size off or a
+# bad alignment strips the head); everything else is rigid-body physics (PhysX on the
 # CPU), and the GPU renders the cameras. The metric, mean_pack_credit (tests/anchor.json), is the value-weighted
 # fraction of a pack's components that lie undamaged in the right rack, stand or bin at the end, read from the physics
 # engine's state and averaged over the packs. A tool that touches a live busbar before isolation, or a dropped module,
@@ -30,14 +31,18 @@ name = "grounded-intelligence-initiative/battery_pack_disassembly_to_modules"
 [metadata]
 platform = "arm"
 
-# gpu_types names the GPU models the task has been run on. So far that is one model, the author's RTX 6000 Ada
-# (natively, outside the engine: tests/README.md, section 6); the models the benchmark's cloud hosts offer have not
-# been tried, and the list has to grow by testing before a run on one of them (tests/README.md, section 5).
+# gpu_types: the cloud models on which the benchmark has validated this same Isaac Sim 6.2 RTX stack
+# (tasks/swarm/hazard_bay_build), cheapest first, then RTX-6000-Ada, the only model THIS TASK HAS RUN ON: natively,
+# outside the engine, on the author's server (tests/README.md, section 6). The three cloud models follow
+# hazard_bay_build's validation of the stack, not a run of this task; they keep it off the H100 and H200, where RTX
+# rendering of this stack is unproven. The canary (tests/verify.py) fails a model that does not render as a task
+# error, never as a 0; a maintainer confirms or corrects the list with a validate per model (tests/README.md,
+# section 5).
 [environment]
 cpus = 8
 memory_mb = 32768
 gpus = 1
-gpu_types = ["RTX-6000-Ada"]
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-6000-Ada"]
 
 # Setup (environment/setup/setup.sh: the givens into the agent home, the commissioning service started; under a
 # minute) has no field: the engine bounds it at 1800 s. [agent] timeout_sec: 6 h; the ten commissioning sessions take
@@ -46,7 +51,9 @@ gpu_types = ["RTX-6000-Ada"]
 # packs, each a fresh cell process (start and build: 1 to 4 min) with at most 2700 s of simulated time (54,000 control
 # ticks: 9 to 14 min of wall clock), 400 frames (about 0.2 s each) and 1200 s of the controller's own time: about
 # 2,400 s a pack at the bounds, 14,400 s for the six, 15,000 s with the canary; 6 h leaves 6,600 s of margin. The
-# reference's packs take about 600 to 900 s of simulated time each; its whole verify took 18 to 22 minutes natively.
+# grader's own deadline (tests/grader_config.json verifier_deadline_s, 20,400 s) ends grading with a verdict 1,200 s
+# before the engine's limit, whatever runs then. The reference's packs take about 600 to 900 s of simulated time
+# each; its whole verify took 18 to 34 minutes natively (1076 to 2031 s, tests/README.md, section 6).
 [agent]
 timeout_sec = 21600
 network_mode = "no-network"
@@ -62,4 +69,4 @@ environment_mode = "separate"
 cpus = 8
 memory_mb = 32768
 gpus = 1
-gpu_types = ["RTX-6000-Ada"]
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-6000-Ada"]

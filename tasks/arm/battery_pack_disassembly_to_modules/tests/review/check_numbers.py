@@ -28,6 +28,8 @@ def main():
     grader = json.load(open(os.path.join(TESTS, "grader_config.json")))
     service = json.load(open(os.path.join(TASK, "environment", "commission_service", "dev_packs.json")))
     packs = json.load(open(os.path.join(TESTS, "hidden", "packs.json")))["packs"]
+    verify = open(os.path.join(TESTS, "verify.py")).read()
+    toml = open(os.path.join(TASK, "task.toml")).read()
     T, W = S.MOUNT_TOL, S.SENSORS
     want = [
         # (what the instruction says, the code's value)
@@ -52,6 +54,12 @@ def main():
                       "fastener": 0.5}),
         ("(4, 5 or 6 modules", sorted(v["modules"] for v in S.VARIANTS.values()) == [4, 5, 6]),
         ("at most three times", True),
+        ("at most 5000 files and 200 MB", (int(re.search(r"MAX_SUBMISSION_FILES = (\d+)", verify).group(1)),
+                                           grader["max_submission_mb"]) == (5000, 200)),
+        ("more than 64 processes of your account", grader["max_processes"] == 64),
+        ("The grader stops 20,400 s after it starts", grader["verifier_deadline_s"] == 20400
+         and grader["verifier_deadline_s"] + 1200 == int(re.search(r"\[verifier\]\ntimeout_sec = (\d+)", toml).group(1))),
+        ("about 15,000 s", "15,000 s with the canary" in toml),
     ]
     flat = re.sub(r"\s+", " ", text)
     bad = []

@@ -14,8 +14,9 @@ see it:
 - the **variant** (4, 5 or 6 modules; another lid, another layout), which is not marked on the pack;
 - the pack's **placement** on the fixture (within 12 mm and 1.5 degrees) and every **fastener's position** (within
   2 mm of the manual's nominal one), while a bit engages only within 1.2 to 2 mm;
-- every fastener's **head type** (hexagon or Torx, per fastener: the bit has to be chosen from the picture);
-- **corroded** fasteners, which need more torque than the default allows, and **missing** ones;
+- every fastener's **head type** (hexagon or Torx, per fastener): seen in the picture, or found by trying bits in an
+  order that harms no head (`tool_catalog.md`, section 2), at the cost of bit exchanges;
+- **corroded** fasteners, which need more torque than a clean one's breakaway, and **missing** ones;
 - **sealant** dabbed over part of some heads, which hides part of the head from the cameras;
 - the **look** of the pack: grime, dust and labels on the lid, dull heads, and the hall's light (brightness and colour);
 - a **harness remnant** that may lie on the lid or inside the pack over fasteners and has to go first.
@@ -27,8 +28,9 @@ plates on the fixture and the robot's exact kinematics. The depth images are an 
 2.5 mm at the fixture from the overhead camera, 0.3 mm from the wrist camera close up), quantized, with no reading
 on dark and shiny surfaces, at edges and in the stereo pair's shadows (`cell_interface.md`, section 5).
 
-A wrong bit or a bit that is not square on a head wears the head until it is stripped. A tool that touches a busbar
-before the pack is isolated, or a module that falls, ends the work on that pack.
+A bit one size off (a 13 mm socket on a 10 mm hexagon, a T30 bit in a T40 recess), the extractor, or a bit that is on
+a head but not square on it wears the head until it is stripped; any other bit turns freely on it and harms nothing.
+A tool that touches a busbar before the pack is isolated, or a module that falls, ends the work on that pack.
 
 ## What you produce (in `/home/user/submission/`)
 
@@ -58,9 +60,14 @@ observation you are answering. Standard output is the wire: log to standard erro
 
 The program runs under your account's name but in a fresh sandbox that holds nothing of yours except the submission
 folder: no `~/given`, no other file, no process you started, no network (it may open no internet socket). It gets
-`PATH` (with `/opt/venv/bin` first), `HOME` and `LANG`. Copy what it needs (the cell's configuration, for
-instance) into the submission folder. After a missed deadline, a closed output or an invalid action the pack ends
-where it is and `run.sh` is started again for the next pack, at most three times.
+`PATH` (with `/opt/venv/bin` first), `HOME` and `LANG`, nothing else (`cell_interface.md`, section 9). Copy what it
+needs (the cell's configuration, for instance) into the submission folder: at most 5000 files and 200 MB in all; a
+larger folder is not run and scores 0.
+
+After a missed deadline, a closed output, a reply without an action or more than 64 processes of your account
+(threads are not counted), the pack ends where it is and `run.sh` is started again for the next pack, at most three
+times. After an invalid action, a used-up time budget or the step limit, the pack ends where it is and the same
+program, still running, gets the next pack (`cell_interface.md`, section 2).
 
 ## What you are given
 
@@ -101,7 +108,15 @@ simulations of your own with.
 
 The grader runs your program on a fixed hidden set of **six packs**, one after the other, each in its own cell (with
 its own camera mounting), with these limits per pack: 2700 s of simulated time, 400 camera frames, 20000 steps, and 1200 s of your program's
-own time (the time the grader waits for your answers, summed; simulation and rendering are not counted).
+own time (the time the grader waits for your answers, summed; simulation and rendering are not counted). The budget
+is checked before each request, so the answer that crosses it is still carried out.
+
+Your program shares the GPU and the sandbox's memory with the cell, which takes about 4 GB of GPU memory and 6 GB of
+memory: keep your program below 12 GB of GPU memory and 16 GB of memory. If the cell fails while your program runs,
+your program is stopped and the pack is run again from the start in a fresh cell (that restart is not one of the
+three); if the cell fails again on that pack after your program was started again, or because your program's files
+filled a disk, the pack counts 0. The grader stops 20,400 s after it starts, whatever is running then: the packs
+graded by then count and the others count 0 (six packs at every limit above take about 15,000 s).
 
 A pack ends when your program sends `done`, when its simulated time is used up, when a tool touches a live part
 before isolation, when a module falls, or when your program is given up on. Then every component of the pack counts

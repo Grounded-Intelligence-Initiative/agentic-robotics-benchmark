@@ -4,9 +4,15 @@ Runs as root in a SEPARATE verifier sandbox: no agent process exists there, the 
 the engine restores only the declared artifact /home/user/submission. The grader clears the agent's account with the
 kit, hands the restored submission (at most `max_submission_mb`) to the agent account in place, starts `bash run.sh`
 in it through nonet_exec.py (a seccomp filter: only AF_UNIX sockets) at the agent's UID and speaks the kit's wire
-through `pack_grade.run_packs` (the kit Solver: READY within 120 s, each reply within 30 s, at most 3 restarts; the
-probe lock, `IdleAwareProbeLock`). Before anything else it reclaims root's PATH directories
-(robotics_grader.stage.secure_exec_path).
+through `pack_grade.run_packs` (the kit Solver: READY within 120 s, each reply within 30 s, at most 3 restarts, at
+most `max_processes` processes of the agent's account; the probe lock, `IdleAwareProbeLock`). Before anything else it
+reclaims root's PATH directories (robotics_grader.stage.secure_exec_path).
+
+A verdict always: the kit's `VerifierDeadline` is armed at the start with `verifier_deadline_s` (inside the task's
+`[verifier] timeout_sec`); if grading is still running then, the packs graded so far count, every other pack counts
+0, and `verifier_deadline_expired` says why. A cell that fails while a controller runs is run once more with the
+controller stopped; a second failure is scored when the submission can have caused it (pack_grade.run_packs) and is
+a task error only when it cannot.
 
 The cell: every pack of the set runs in a fresh process of `packcell/server.py` (Isaac Sim; physics on the CPU, the
 GPU renders the two cameras). The process runs as the image's unprivileged account `packcell`, from a copy of
@@ -44,6 +50,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -63,6 +70,7 @@ from robotics_grader import (  # noqa: E402
     zero_verdict,
 )
 from robotics_grader.account import clear_agent_account  # noqa: E402
+from robotics_grader.deadline import VerifierDeadline  # noqa: E402
 from robotics_grader.stage import fail, secure_exec_path  # noqa: E402
 
 STAGE = os.path.dirname(os.path.abspath(__file__))
@@ -72,6 +80,7 @@ PACKS = os.path.join(STAGE, "hidden", "packs.json")
 MAX_SUBMISSION_FILES = 5000
 MAX_REPLY = 1 << 20            # a reply line longer than 1 MiB closes the wire; an action is a few hundred bytes
 CANARY = {"seed": 20261124, "variant": "P4", "harness": "lid"}      # not a graded pack
+NUMERICS = {"OPENBLAS_CORETYPE": "Haswell", "OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1"}   # as the image's ENV
 ROOT = os.geteuid() == 0
 
 
@@ -204,6 +213,36 @@ def agent_inet_sockets(uid):
     return n
 
 
+def agent_files_fill_a_disk(uid, folders, tops=("/home", "/tmp", "/var/tmp", "/dev/shm"), limit=200000):
+    """Why the account's files can have filled a filesystem the cell writes to, or None: one of `folders` has less
+    than 1 GiB (or a tenth of its size, if smaller) free while the account holds at least 64 MiB of files in the places
+    it can write (bounded walk, links not followed)."""
+    held, seen = 0, 0
+    for top in tops:
+        for dp, dns, fns in os.walk(top, followlinks=False):
+            for name in fns + dns:
+                seen += 1
+                try:
+                    st = os.lstat(os.path.join(dp, name))
+                except OSError:
+                    continue
+                if st.st_uid == uid and stat.S_ISREG(st.st_mode):
+                    held += st.st_blocks * 512
+            if seen > limit:
+                break
+    if held < 64 << 20:
+        return None
+    for folder in folders:
+        try:
+            du = shutil.disk_usage(folder)
+        except OSError:
+            continue
+        if du.free < min(1 << 30, du.total // 10):
+            return "the controller's files ({} MiB) can have filled the disk: {} has {} MiB free".format(
+                held >> 20, folder, du.free >> 20)
+    return None
+
+
 def stage_submission(uid, gid, max_bytes):
     """Make the restored submission the agent account's own folder, in place. Ownership changes never follow a
     symlink; size and file count are capped. Returns the path, or None if there is no usable submission."""
@@ -307,6 +346,7 @@ class CellHost(object):
                     "OPTIX_CACHE_PATH": os.path.join(self.work, "optix"), "WARP_CACHE_PATH": os.path.join(self.work, "warp"),
                     "NVIDIA_DRIVER_CAPABILITIES": os.environ.get("NVIDIA_DRIVER_CAPABILITIES", ""),
                     "NVIDIA_VISIBLE_DEVICES": os.environ.get("NVIDIA_VISIBLE_DEVICES", "")}
+        self.env.update(NUMERICS)        # as the commissioning cell runs (environment/setup/setup.sh)
         self.uid = pw.pw_uid
 
     def start(self, timeout):
@@ -396,6 +436,80 @@ def main():
     secured = {"root_path_dirs_secured": float(len(secure_exec_path()))}   # before anything else runs
     config = stage_config()
     anchor, meta = read_anchor()
+    run = {"records": [], "lock": None, "packs": [], "solver": None, "egress_mode": "none", "truth": False,
+           "egress": {"hits": 0}, "clock": G.Clock()}
+    written = []
+    verdict_lock = threading.Lock()
+
+    def publish(more, zero=False, note=""):
+        """Write the verdict from the packs graded so far (a pack of the set that was not graded counts 0), once."""
+        with verdict_lock:
+            if written:
+                return False
+            written.append(True)
+            records, lock = list(run["records"]), run["lock"]
+            credits = [r["credit"] for r in records]
+            measured = sum(credits) / max(len(run["packs"]), len(credits), 1)
+            if zero or run["egress"]["hits"] or not math.isfinite(measured) or measured < 0:
+                measured = 0.0
+            extra = dict(lock.rewards() if lock is not None else {},
+                         packs_in_set=float(len(run["packs"])),
+                         packs_graded=float(len(records)),
+                         packs_aborted=float(sum(1 for r in records if r["aborted"])),
+                         packs_done=float(sum(1 for r in records if r["ended"] == "done")),
+                         packs_live_contact=float(sum(1 for r in records if r["ended"] == "live_contact")),
+                         packs_module_dropped=float(sum(1 for r in records if r["ended"] == "module_dropped")),
+                         packs_out_of_sim_span=float(sum(1 for r in records if r["ended"] == "sim_cap")),
+                         packs_given_up=float(sum(1 for r in records if r["ended"] == "given_up")),
+                         packs_cell_failed=float(sum(1 for r in records if r["ended"] == "cell_failed")),
+                         cell_retries=float(sum(1 for r in records if r.get("cell_retried"))),
+                         protective_stops=float(sum(r.get("protective_stops", 0) for r in records)),
+                         fasteners_stripped=float(sum(r.get("stripped", 0) for r in records)),
+                         frames=float(sum(r.get("frames", 0) for r in records)),
+                         steps=float(sum(r["steps"] for r in records)),
+                         egress_guard_seccomp=1.0 if run["egress_mode"] == "seccomp" else 0.0,
+                         egress_detected=float(run["egress"]["hits"]),
+                         controller_seconds=round(float(run["clock"].s), 1),
+                         controller_restarts=float(getattr(run["solver"], "restarts", 0)),
+                         probe_residual_true=float(max([r.get("probe_residual_true", 0.0) for r in records] or [0.0])),
+                         probe_residual_copy=float(max([r.get("probe_residual_copy", 0.0) for r in records] or [0.0])),
+                         probe_copies=float(sum(r.get("probe_copies", 0) for r in records)),
+                         probe_true_residual_larger=float(sum(r.get("probe_true_residual_larger", 0) for r in records)),
+                         oracle_token=1.0 if run["truth"] else 0.0,
+                         **secured)
+            extra.update(more)
+            for r in records:
+                extra["credit_pack_{}".format(r["index"])] = r["credit"]
+            verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5), higher_is_better=True,
+                                    metric_name="mean_pack_credit", locks_ok=lock.ok if lock is not None else True,
+                                    extra=extra, full_at=meta.get("full_at", 1.0))
+            keep_records(records)
+            lines = ["pack {} ({}): credit {:.4f}, ended {}, {} of {} items placed, {} steps, {} s simulated{}".format(
+                r["index"], r["variant"], r["credit"], r["ended"], r.get("placed", 0), r.get("items", 0), r["steps"],
+                r.get("sim_s", 0), ", ABORTED: " + r["aborted"] if r["aborted"] else "") for r in records]
+            write_verdict(verdict, diagnostic=note + "mean_pack_credit {:.5f}; probes {}/{} (lock {}); ".format(
+                measured, lock.passed if lock is not None else 0, lock.total if lock is not None else 0,
+                "ok" if lock is None or lock.ok else "FAILED") + "; ".join(lines))
+            log("measured={:.5f} anchor={} ratio={:.3f} reward={:.3f} lock={} ({}/{}, {} idle) egress={} "
+                "controller_time={:.0f}s wall={:.0f}s{}".format(
+                    measured, anchor, verdict["metrics"]["ratio"], verdict["rewards"]["reward"], lock is None or lock.ok,
+                    getattr(lock, "passed", 0), getattr(lock, "total", 0), getattr(lock, "idle_skipped", 0),
+                    run["egress_mode"], run["clock"].s, time.monotonic() - t_start, " " + note if note else ""))
+            return True
+
+    def out_of_time(elapsed):
+        # the timer's thread; the process ends (status 0) when this returns
+        publish({"verifier_deadline_expired": 1.0, "verifier_deadline_s": round(elapsed, 1)},
+                note="the grader's own deadline expired after {:.0f} s with {} of {} packs graded; the others count 0. "
+                .format(elapsed, len(run["records"]), len(run["packs"])))
+        proc = getattr(run["solver"], "proc", None)
+        if proc is not None:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except OSError:
+                pass
+
+    VerifierDeadline(float(config.get("verifier_deadline_s", 20400)) - (time.monotonic() - t_start), out_of_time).arm()
     try:
         uid, gid = _agent_ids()
     except KeyError:
@@ -420,7 +534,8 @@ def main():
         log("staging the submission failed: {}".format(type(exc).__name__))
         workdir = None
     if workdir is None or not os.path.isfile(os.path.join(workdir, "run.sh")):
-        write_verdict(zero_verdict(reason="no usable submission (no /home/user/submission/run.sh)",
+        write_verdict(zero_verdict(reason="no usable submission (no /home/user/submission/run.sh, or more than {} files "
+                                   "or {} MB)".format(MAX_SUBMISSION_FILES, config.get("max_submission_mb", 200)),
                                    anchored=anchor is not None, extra=secured))
         return
     truth = oracle_token_ok(workdir)
@@ -428,9 +543,19 @@ def main():
     if ROOT:
         egress_mode = "seccomp" if egress_self_test(uid, gid) else "detect"
     GuardedSolver.guard = egress_mode == "seccomp"
+    GuardedSolver.max_processes = int(config.get("max_processes", 64))
+    run.update(packs=packs, truth=truth, egress_mode=egress_mode)
     log("egress guard: {}; oracle token: {}; {} packs in the fixed set".format(egress_mode, truth, len(packs)))
     host = CellHost(str(config.get("cell_account", "packcell")))
-    egress = {"hits": 0}
+    egress = run["egress"]
+    clock = run["clock"]
+
+    def stop_account():
+        return kill_processes(uid) if ROOT else True
+
+    def charge_files():
+        return agent_files_fill_a_disk(uid, [host.work, "/", "/tmp", "/var/tmp", "/dev/shm"]) if ROOT else None
+
     try:
         start_s, reset_s = canary(host, config)
         log("canary passed: the cell started in {} s, built and rendered a pack in {} s".format(start_s, reset_s))
@@ -440,13 +565,14 @@ def main():
             if egress_mode == "detect" and agent_inet_sockets(uid):
                 egress["hits"] += 1
 
-        clock = G.Clock()
         try:
             solver = clock.timed(GuardedSolver, step_timeout=float(config.get("step_timeout_s", 30)), submission=workdir)
+            run["solver"] = solver
             try:
-                records, lock = G.run_packs(solver, packs, truth, config,
-                                            lambda: host.start(float(config.get("cell_start_timeout_s", 900))),
-                                            log=log, clock=clock, on_pack=watch)
+                G.run_packs(solver, packs, truth, config,
+                            lambda: host.start(float(config.get("cell_start_timeout_s", 900))),
+                            log=log, clock=clock, on_pack=watch, stop_account=stop_account,
+                            charge_files=charge_files, progress=run)
             finally:
                 try:
                     solver.close()
@@ -455,58 +581,21 @@ def main():
         except cellproc.CellError as exc:
             if ROOT:
                 kill_processes(uid)
-            fail("the cell failed twice on one pack: {} | {}".format(str(exc)[:600], host.log_tail()[-900:]))
+            fail("the cell failed twice on one pack with nothing of the submission running: {} | {}".format(
+                str(exc)[:600], host.log_tail()[-900:]))
         except (SolverMissing, SolverAborted) as exc:
             if ROOT:
                 kill_processes(uid)
-            write_verdict(zero_verdict(reason=str(exc)[:200], anchored=anchor is not None, extra=secured))
+            with verdict_lock:
+                if not written:
+                    written.append(True)
+                    write_verdict(zero_verdict(reason=str(exc)[:200], anchored=anchor is not None, extra=secured))
             return
         watch(len(packs))
     finally:
         host.cleanup()
     cleanup_ok = kill_processes(uid) if ROOT else True
-    credits = [r["credit"] for r in records]
-    measured = sum(credits) / len(credits) if credits else 0.0
-    if egress["hits"] or not cleanup_ok or not math.isfinite(measured) or measured < 0:
-        measured = 0.0
-    extra = dict(lock.rewards(),
-                 packs_in_set=float(len(packs)),
-                 packs_aborted=float(sum(1 for r in records if r["aborted"])),
-                 packs_done=float(sum(1 for r in records if r["ended"] == "done")),
-                 packs_live_contact=float(sum(1 for r in records if r["ended"] == "live_contact")),
-                 packs_module_dropped=float(sum(1 for r in records if r["ended"] == "module_dropped")),
-                 packs_out_of_sim_span=float(sum(1 for r in records if r["ended"] == "sim_cap")),
-                 packs_given_up=float(sum(1 for r in records if r["ended"] == "given_up")),
-                 cell_retries=float(sum(1 for r in records if r.get("cell_retried"))),
-                 protective_stops=float(sum(r.get("protective_stops", 0) for r in records)),
-                 fasteners_stripped=float(sum(r.get("stripped", 0) for r in records)),
-                 frames=float(sum(r.get("frames", 0) for r in records)),
-                 steps=float(sum(r["steps"] for r in records)),
-                 egress_guard_seccomp=1.0 if egress_mode == "seccomp" else 0.0,
-                 egress_detected=float(egress["hits"]),
-                 cleanup_failed=0.0 if cleanup_ok else 1.0,
-                 controller_seconds=round(float(clock.s), 1),
-                 probe_residual_true=float(max([r.get("probe_residual_true", 0.0) for r in records] or [0.0])),
-                 probe_residual_copy=float(max([r.get("probe_residual_copy", 0.0) for r in records] or [0.0])),
-                 probe_copies=float(sum(r.get("probe_copies", 0) for r in records)),
-                 probe_true_residual_larger=float(sum(r.get("probe_true_residual_larger", 0) for r in records)),
-                 oracle_token=1.0 if truth else 0.0,
-                 **secured)
-    for r in records:
-        extra["credit_pack_{}".format(r["index"])] = r["credit"]
-    verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5), higher_is_better=True,
-                            metric_name="mean_pack_credit", locks_ok=lock.ok, extra=extra,
-                            full_at=meta.get("full_at", 1.0))
-    keep_records(records)
-    lines = ["pack {} ({}): credit {:.4f}, ended {}, {} of {} items placed, {} steps, {} s simulated{}".format(
-        r["index"], r["variant"], r["credit"], r["ended"], r.get("placed", 0), r.get("items", 0), r["steps"],
-        r.get("sim_s", 0), ", ABORTED: " + r["aborted"] if r["aborted"] else "") for r in records]
-    write_verdict(verdict, diagnostic="mean_pack_credit {:.5f}; probes {}/{} (lock {}); ".format(
-        measured, lock.passed, lock.total, "ok" if lock.ok else "FAILED") + "; ".join(lines))
-    log("measured={:.5f} anchor={} ratio={:.3f} reward={:.3f} lock={} ({}/{}, {} idle) egress={} "
-        "controller_time={:.0f}s wall={:.0f}s".format(
-            measured, anchor, verdict["metrics"]["ratio"], verdict["rewards"]["reward"], lock.ok, lock.passed,
-            lock.total, lock.idle_skipped, egress_mode, clock.s, time.monotonic() - t_start))
+    publish({"cleanup_failed": 0.0 if cleanup_ok else 1.0}, zero=not cleanup_ok)
 
 
 if __name__ == "__main__":

@@ -16,8 +16,15 @@ its time budget used up). In every case the pack's credit is what lies where it 
 - `truth` (the cell's privileged view) is added to every observation only in a token run (the caller decides).
 - The budget (`controller_budget_s`, per pack) is the controller's own time, kept by a `Clock`: what the grader waits
   for each reset and each reply. The cell's simulation and rendering are not charged.
-- A failure of the cell itself (`cellproc.CellError`) is the grader's own: the pack is run once more from the start
-  with a fresh cell and a restarted controller; a second failure propagates (a task error).
+- A failure of the cell itself (`cellproc.CellError`): the controller is stopped with its whole process group (and,
+  as root, every process of its account) before anything else, so that nothing of it runs while a fresh cell starts
+  and builds the pack, and the pack is run once more from the start with that cell and a restarted controller (the
+  restart is the grader's, not one of the controller's `max_restarts`). A second failure on the same pack is the
+  controller's when it can have caused it: when it happened after the controller was started again (its GPU memory,
+  its memory, its disk or its load beside the cell), when the controller could not be stopped completely, or when
+  the caller's `charge_files()` finds that its files can have filled a disk the cell writes to. That pack then
+  counts 0 (`ended` "cell_failed") and grading goes on with the next one. Any other second failure propagates (a
+  task error: no submission can have caused it).
 """
 
 import hashlib
@@ -93,7 +100,12 @@ def run_pack(solver, lock, clock, index, entry, truth, config, start_cell, log):
     lock.rng = probe_stream(index, entry["seed"])
     budget = float(config["controller_budget_s"])
     used0 = clock.s
-    cell = start_cell()
+    ran = False                          # whether the controller was (re)started beside this cell
+    try:
+        cell = start_cell()
+    except cellproc.CellError as exc:
+        exc.controller_ran = ran
+        raise
     t0 = time.monotonic()
     try:
         reply = cell.request({"cmd": "reset", "pack": pack, "config": config.get("cell") or {}},
@@ -101,6 +113,7 @@ def run_pack(solver, lock, clock, index, entry, truth, config, start_cell, log):
         obs = reply["obs"]
         t = 0
         try:
+            ran = True
             clock.timed(solver.reset)
             while not obs["ended"]:
                 if clock.s - used0 > budget:
@@ -133,6 +146,9 @@ def run_pack(solver, lock, clock, index, entry, truth, config, start_cell, log):
                    frames=score["frames"], protective_stops=score["protective_stops"], stripped=len(score["stripped"]),
                    placed=sum(1 for v in score["detail"].values() if v), items=len(score["detail"]),
                    detail=score["detail"], events=score["events"], cell_wall=score["wall"])
+    except cellproc.CellError as exc:
+        exc.controller_ran = ran
+        raise
     finally:
         cell.close()
     rec.update(wall=round(time.monotonic() - t0, 1), controller_s=round(clock.s - used0, 1))
@@ -145,24 +161,57 @@ def run_pack(solver, lock, clock, index, entry, truth, config, start_cell, log):
     return rec
 
 
-def run_packs(solver, packs, truth, config, start_cell, log=None, clock=None, on_pack=None):
-    """Every pack of the set in order over one controller. Returns (records, lock)."""
+def stop_for_cell(solver, stop_account=None):
+    """Stop the controller with its whole process group (and, with `stop_account`, every process of its account)
+    before a fresh cell starts, and have the next reset start it again without counting that restart against its
+    `max_restarts`. True when nothing of it is left running."""
+    if not solver._broken and not solver._dead:
+        solver.max_restarts += 1          # the grader's restart, not one of the controller's
+    solver._broken = True
+    solver._stop(grace=0)
+    return stop_account() if stop_account is not None else True
+
+
+def run_packs(solver, packs, truth, config, start_cell, log=None, clock=None, on_pack=None, stop_account=None,
+              charge_files=None, progress=None):
+    """Every pack of the set in order over one controller. Returns (records, lock). `progress` (a dict), when given,
+    holds the lock and the records of the packs graded so far while this runs (a deadline reads it)."""
     cfg = dict(CONFIG)
     cfg.update({k: v for k, v in (config or {}).items() if k in CONFIG})
     clock = Clock() if clock is None else clock
     lock = IdleAwareProbeLock(None, rate=cfg["probe_rate"], pass_fraction=cfg["probe_pass_fraction"], tolerance=1e-4,
                               canonical=canonical)
     records = []
+    if progress is not None:
+        progress.update(lock=lock, records=records)
     for index, entry in enumerate(packs):
         if on_pack is not None:
             on_pack(index)
         try:
             rec = run_pack(solver, lock, clock, index, entry, truth, cfg, start_cell, log)
         except cellproc.CellError as exc:
+            stopped = stop_for_cell(solver, stop_account)
             if log:
-                log("pack {}: the cell failed ({}); running the pack once more".format(index, str(exc)[:300]))
-            solver._broken = True             # a fresh controller for the repeated pack
-            rec = run_pack(solver, lock, clock, index, entry, truth, cfg, start_cell, log)
+                log("pack {}: the cell failed ({}); the controller is stopped{} and the pack runs once more".format(
+                    index, str(exc)[:300], "" if stopped else " (not completely)"))
+            try:
+                rec = run_pack(solver, lock, clock, index, entry, truth, cfg, start_cell, log)
+            except cellproc.CellError as again:
+                cause = None
+                if getattr(again, "controller_ran", True):
+                    cause = "the cell failed again while the controller ran beside it"
+                elif not stopped:
+                    cause = "the cell failed again; the controller's processes could not all be stopped"
+                elif charge_files is not None:
+                    cause = charge_files()
+                if cause is None:
+                    raise                      # nothing of the submission ran: the grading environment's failure
+                stop_for_cell(solver, stop_account)
+                if log:
+                    log("pack {} ({}): credit=0.0000 ended=cell_failed: {} ({})".format(
+                        index, entry.get("variant"), cause, str(again)[:300]))
+                rec = {"index": index, "variant": entry.get("variant"), "credit": 0.0, "ended": "cell_failed",
+                       "aborted": cause[:200], "steps": 0, "cell_failed": str(again)[:300]}
             rec["cell_retried"] = True
         records.append(rec)
     return records, lock
