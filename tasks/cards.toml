@@ -257,6 +257,12 @@ summary = "Program a 6-DoF arm to build a humanoid robot from five finished modu
 platforms = ["humanoid"]
 stages = ["assembly"]
 
+[g1_sonic_command_sequence]
+title = "Follow walking commands revealed at each stop"
+summary = "A Unitree G1 must stop at a waypoint, wait for its turn direction, pivot and stop, then walk a newly specified distance using native SONIC motion tokens."
+platforms = ["humanoid"]
+stages = ["behavior", "control"]
+
 [humanoid_leg_cad_design_from_photos]
 title = "Model a humanoid leg in CAD"
 summary = "Rebuild the lost CAD of the 19 made parts of a humanoid robot's right leg in FreeCAD from photos of its staged teardown, and assemble them with its given components and the leg's joints."
