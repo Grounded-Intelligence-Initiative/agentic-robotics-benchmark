@@ -54,7 +54,7 @@ for line in sys.stdin:
         print(json.dumps({"ok": True}), flush=True); break
     t = m["t"]
     if SC == "forks" and t == 2 and not kids:
-        kids = [subprocess.Popen(["sleep", "300"]) for _ in range(40)]
+        kids = [subprocess.Popen(["sleep", "300"]) for _ in range(80)]
     if SC == "helper" and t == 1 and not kids:
         kids = [subprocess.Popen(["sleep", "300"])]
         with open(os.path.join(HERE, "helpers.log"), "a") as f:
@@ -190,7 +190,7 @@ def test_process_cap(work, packs, config):
         except OSError:                          # a process that ended while /proc was read
             return False
     base = len([p for p in os.listdir("/proc") if p.isdigit() and mine(p)])
-    V.GuardedSolver.max_processes = base + 15
+    V.GuardedSolver.max_processes = base + 40         # other processes of this account come and go on a shared host
     real_uid = V.GuardedSolver._uid
     V.GuardedSolver._uid = lambda self: os.getuid()        # outside the engine the agent account does not exist
     try:

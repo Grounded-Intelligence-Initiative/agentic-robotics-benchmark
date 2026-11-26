@@ -325,10 +325,12 @@ def restore_submission(workdir, snap, uid, gid):
 
 def scrub_account(uid, gid, workdir, snap):
     """After the controller's processes are gone (a cell failure): nothing of the submission stays but the
-    submission itself, as it was staged. Returns (files removed, IPC objects removed)."""
-    removed = scrub_files(uid, workdir, skip=(STAGE, os.path.dirname(snap)))
+    submission itself, as it was staged (without a copy, `snap` None, the submission folder is left as it is).
+    Returns (files removed, IPC objects removed)."""
+    removed = scrub_files(uid, workdir, skip=(STAGE,))
     ipc = remove_sysv(sysv_objects(uid))
-    restore_submission(workdir, snap, uid, gid)
+    if snap is not None:
+        restore_submission(workdir, snap, uid, gid)
     return removed, ipc
 
 
@@ -554,6 +556,8 @@ def main():
                          cell_retries=float(sum(1 for r in records if r.get("cell_retried"))),
                          protective_stops=float(sum(r.get("protective_stops", 0) for r in records)),
                          fasteners_stripped=float(sum(r.get("stripped", 0) for r in records)),
+                         fasteners_sheared=float(sum(r.get("sheared", 0) for r in records)),
+                         packs_module_vented=float(sum(1 for r in records if r["ended"] == "module_vented")),
                          frames=float(sum(r.get("frames", 0) for r in records)),
                          steps=float(sum(r["steps"] for r in records)),
                          egress_guard_seccomp=1.0 if run["egress_mode"] == "seccomp" else 0.0,
@@ -629,7 +633,12 @@ def main():
                                    anchored=anchor is not None, extra=secured))
         return
     truth = oracle_token_ok(workdir)
-    snap = snapshot_submission(workdir) if ROOT else None
+    snap = None
+    if ROOT:
+        try:
+            snap = snapshot_submission(workdir)
+        except OSError as exc:
+            log("the submission could not be copied ({}): after a cell failure it is not restored".format(type(exc).__name__))
     egress_mode = "none"
     if ROOT:
         egress_mode = "seccomp" if egress_self_test(uid, gid) else "detect"
@@ -646,9 +655,14 @@ def main():
             return True
         stopped = kill_processes(uid)
         if stopped:
-            removed, ipc = scrub_account(uid, gid, workdir, snap)
-            log("the controller's account emptied before the retry: {} file(s) or folder(s), {} IPC object(s) "
-                "removed; the submission restored as staged".format(removed, ipc))
+            try:
+                removed, ipc = scrub_account(uid, gid, workdir, snap)
+                log("the controller's account emptied before the retry: {} file(s) or folder(s), {} IPC object(s) "
+                    "removed; the submission {}".format(removed, ipc, "restored as staged" if snap else "left as it is"))
+            except OSError as exc:
+                log("emptying the controller's account failed ({}): the pack's retry counts as the controller's".format(
+                    type(exc).__name__))
+                return False
         return stopped
 
     try:
