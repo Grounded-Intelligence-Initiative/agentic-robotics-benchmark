@@ -1,7 +1,13 @@
 {
   "metric": "strict_course_fraction",
   "direction": "higher",
-  "value": null,
-  "full_at": 1.0,
-  "source": "Pending four preregistered official reference panels."
+  "value": 0.9375,
+  "full_at": 0.8,
+  "unit": "strictly completed three-command courses per scheduled trial",
+  "reference_commit": "959a3aa4777ce596fe24f494d78d48a87eb9a0c8",
+  "source": "Four official null-anchor oracle panels measured 15, 16, 15 and 13 complete courses out of 16. The preregistered rule sets full credit at 12 complete courses after both response gates pass.",
+  "measurement": "review/anchor_measurement.json",
+  "measurement_sha256": "2a1f105f74c1e73736d2b8311e31a427315399431eea68e0c9d4b7cc7607e5fd",
+  "preregistration": "review/anchor_protocol.json",
+  "preregistration_sha256": "64ef0f0662ee9e95615f3a532adf71abcea8761d339a41e6d655ccf786f0d1d7"
 }
