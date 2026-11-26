@@ -3,8 +3,8 @@
 The agent-facing contract is `instruction.md`; the device is described in
 `environment/setup/payload/given/holder_manual.md` and implemented in `holder_model.py` beside it. This page records
 the design decisions, what the grader checks and why, what is known to be rough, and, in section 7, a dated status
-log: **what was verified, where, and what was not**. Version 0.1, 2026-11-24; the task name is provisional (not yet
-registered in the coordination sheet; it appears only as the folder name and in `task.toml`).
+log: **what was verified, where, and what was not**. Version 0.2, 2026-11-26 (version 0.1, 2026-11-24, was too easy:
+section 7); the Task Name was registered in the coordination sheet on 2026-11-25.
 
 **Design rule: the agent gets what the device's engineer would have, and nothing a camera holder in an operating
 room would not.** It gets the holder's kinematics and manual, the intrinsics of both scopes, a labelled development
@@ -24,11 +24,12 @@ which instruments matter, and when the surgeon needs the picture to stand still.
 
 The task measures that in closed loop. A four-joint holder (pan, tilt, insertion, roll about the trocar's remote
 centre of motion) carries a 0 or 30 degree laparoscope; a recorded procedure plays; the agent's controller sees the
-endoscope's RGB frame (one control step old) and the four joint readings, and commands joint rates. It is scored on
+endoscope's RGB frame (one to three control steps old) and the four joint readings, and commands joint rates. It is scored on
 the fraction of control steps with a usable view. The engineering is real end to end: perception that survives
 unseen instruments and tissue, telling the surgeon's instruments from the assistant's, noticing an exchange, telling
-which scope is fitted from how the picture moves, noticing a smeared lens from the picture, visual servoing through
-a servo with lag and a video chain with latency, and standing still at the right times.
+which scope is fitted, at what angle the camera head sits on it and how late the video is from how the picture moves,
+how far away an instrument is when its size is not known, noticing a smeared lens from the picture, visual servoing
+through a servo with lag and a video chain with latency, and standing still at the right times.
 
 ## 2. The simulator (`tests/endosim/`)
 
@@ -88,6 +89,43 @@ and tissue it has not seen, as a holder sold to another hospital would. It was a
 (status log): a small net trained for two minutes on eight development recordings found 99 % of the tips in the two
 held-out ones, within 4 px in the median, when development and graded looks came from one pool.
 
+**The rig of a procedure** (version 0.2; `procedure.draw_rig`, manual sections 4 and 5). Three things that a camera
+holder moved from one operating room to the next meets, that version 0.1 kept fixed and published, and that the one
+frontier episode on 0.1 (section 7, 2026-11-26) took as given:
+
+| what | rule (drawn once per procedure) | what it changes |
+|---|---|---|
+| the camera head's angle h on the eyepiece | uniform in -40 to +40 degrees | `R_WC = R_WS Rz(roll) Rx(-d) Rz(h)`: the picture turned about the view direction; the horizon rule and which way the picture moves for a joint motion depend on it |
+| the video chain's latency | 1, 2 or 3 control steps, equally likely | how old the frame is (`Session` takes the procedure's own) |
+| each instrument's shaft | 10 mm with probability 0.35, else 5 mm; a 10 mm instrument is the 5 mm geometry built twice as large about its tip | the picture of an instrument no longer gives its distance: a 10 mm one at 2z looks like a 5 mm one at z, up to lighting and its context |
+
+Why each one is there, and why it is not a penalty or hidden information:
+
+* *The camera head.* In a real set-up the camera head is clamped on the scope's eyepiece by hand, and the angle is
+  wherever the scrub nurse left it; "the horizon is off" is the commonest camera-holding complaint. Version 0.1 had
+  it at 0 and published that, so `holder_model.level_roll` levelled the picture blind, and the episode's program did
+  exactly that. The angle is observable: a known joint motion moves the picture in a direction that h turns, from
+  the first second of a procedure (the scope is identified the same way). The horizon rule is unchanged; it is now
+  judged on the picture the surgeon sees.
+* *The latency.* Video chains differ between rooms (camera control unit, routing to monitors, recording). Version
+  0.1 published one step; the episode's program hard-wired it. The latency is observable from when the picture
+  starts to move after a commanded motion.
+* *The instruments' sizes.* 5 and 10 mm instruments are both common. Version 0.1 had every shaft 5 mm, so the
+  apparent width at the tip gave the depth (`fx * 5 mm / width`); the episode's program, and the pixel baseline,
+  read depth that way. A 10 mm instrument built as a scaled 5 mm one removes that shortcut without hiding anything:
+  depth still follows from the holder's own motion (parallax, the change of size with insertion), from the tissue
+  the tip works on, from the light, and an instrument keeps its size until it is exchanged. Rule 2 was always a
+  working distance; the manual now says so, and the judging (`fx * 5 mm / depth`) is unchanged.
+
+Everything an expert needs is on file: the ranges in the manual (section 4: `HEAD_ANGLE_MAX_DEG`,
+`LATENCY_STEPS`; section 5: the sizes), the model with the head angle (`camera_pose(q, scope, head)`,
+`level_roll(pan, tilt, scope, head)`), each development recording's head angle and latency in its `meta.json`
+(measured "in the lab"), and every instrument's `shaft_mm` in its labels. The commissioning service plays each
+development procedure with its own rig. The rule was committed (046ea06) before any value was drawn; the values were
+drawn once by `tests/review/draw_rigs.py` from a 64-bit `os.urandom` key per set (e34d77e) and are recorded in
+`hidden/procedures.json` and `dev_procedures.json` with the key (`draw_rigs.py check` recomputes them). A procedure
+without a rig is nominal (head 0, one step, all 5 mm), which is version 0.1.
+
 **Rendering** (`scene.py`, `render_server.py`, `post.py`). One headless Isaac Sim 6.2 process draws the frames: the
 RTX Real-Time path tracer through a Replicator render product at 640 x 480, one subframe per frame, the render
 product's settings pinned (`RENDER_SETTINGS`), physics never stepped. The scene is procedural USD: the textured
@@ -136,7 +174,7 @@ the account `endosim` from a 0700 copy of the renderer's files (the scene and im
 episode stay in the root-only stage folder), runs the canary, starts the controller through the kit's `Solver` (the
 agent's account; the kit clears that account first), and plays the fixed hidden set
 (`hidden/procedures.json`: 12 procedures x 800 steps, the same for every submission). Per step: the session renders
-the current state, hands the controller the frame of one step earlier and the current joint readings, and applies
+the current state, hands the controller the frame of `latency` steps earlier (the procedure's rig) and the current joint readings, and applies
 the reply through `model.clip_command`.
 
 **The view rules** (`Episode._judge`, manual section 6). At every step reached, from the simulator's state only:
@@ -185,7 +223,8 @@ controller receives frames and joint readings and nothing else.
 ## 4. The reference and the anchor
 
 `solution/reference/controller.py`. The reference does not look at the picture: its submission carries a 256-bit
-token (`hidden/oracle_token.sha256`), and for it alone every observation holds `privileged`: the scope fitted,
+token (`hidden/oracle_token.sha256`), and for it alone every observation holds `privileged`: the scope fitted, the
+camera head's angle, the video latency,
 whether the lens is smeared, and each instrument's tip in the camera frame, with the frame's latency. That is all it
 gets beyond the public wire. It is not told which instruments count, when the surgeon does fine work, where the
 tissue is, or what comes next, and it moves the holder only by rate commands. It rebuilds the tips in the patient
@@ -221,7 +260,8 @@ moved both ways, which is the run-to-run spread of a controller that reads the p
 ## 5. The agent's side
 
 * `~/given/holder_manual.md`, `holder_model.py`: the device, the scopes, the set-up, the exact rules.
-* `~/given/dev_procedures/`: ten development procedures recorded as video with labels, by the commissioning service
+* `~/given/dev_procedures/`: ten development procedures recorded as video with labels (since 0.2 each label gives
+  every instrument's `shaft_mm`, and each `meta.json` the recording's camera head angle and video latency), by the commissioning service
   on the sandbox's own GPU during the first minutes of the session (so the frames come from the renderer the grader
   will use; nothing is fetched or committed). The camera in them is held by a scripted, deliberately ordinary
   assistant (`recorder.Assistant`: its view is usable on 52 to 84 % of the steps); two recordings include a lens
@@ -247,9 +287,16 @@ ones are in neither the image nor the sandbox.
   exchanges, tips buried deeper), not penalties.
 * **Numerics are not pinned.** The simulator and the reference compute with numpy's default kernels; on another CPU
   a threshold can flip on a step. The reference repeats to the last digit here; `full_at` 0.98 is the margin.
-* **The controller is not confined to no network.** It runs through the kit's `Solver` as the agent's account; the
-  engine opens egress during verify (`docs/security-model.md` section 4). `hazard_bay_build`'s `nonet_exec.py` is the
-  model if a maintainer wants a seccomp filter here; it was not added because it could not be tested on this server.
+* **The controller's network filter is tested natively only.** Since version 0.2 the controller starts through
+  `tests/nonet_exec.py` (`hazard_bay_build`'s launcher, byte for byte: AF_UNIX sockets only; a self-test before the
+  first start, the kit's plain launcher and `network_filter` 0 in the metrics if the filter cannot be installed).
+  Natively a Torch-on-CUDA program ran under the filter and was refused internet sockets (EPERM); the account switch
+  and the self-test run only as root, in the engine.
+* **The renderer shares the sandbox with the controller.** Its shared memory is sealed after every start, with the
+  agent's processes stopped across a restart (review S1); but the controller can still take GPU memory, GPU time or
+  disk that the renderer needs, and a renderer that fails four times is a task error. `VerifierDeadline` (8400 s)
+  writes a verdict from the steps judged so far, with every step not reached counted unusable, so a slow host ends in
+  a score rather than in no verdict.
 * **No repository-level test.** The rule here was one folder per pull request, so the copy check lives in
   `tests/review/check_copies.py` instead of the repository's `tests/` (compare `tests/test_pump_skid_commissioning.py`).
 * **GPU models.** `task.toml` names RTX-4090, RTX-5090 and RTX-PRO-6000 from `hazard_bay_build`'s validation of the
@@ -280,6 +327,56 @@ ones are in neither the image nor the sandbox.
 Newest first. Each entry says where the numbers come from; "here" is the development server (Ubuntu 22.04,
 RTX 6000 Ada, NVIDIA driver 570.195.03, Isaac Sim 6.2.0.0 + Isaac Lab 3.0.0 in a native Python 3.12 venv, no root,
 no Docker).
+
+### 2026-11-26: version 0.2, made harder after the first frontier episode (trees `046ea06` to TBD-TIP)
+
+**What the episode showed.** One Claude Opus 5.5 episode (`ale run` `624ea132` on `a5acf5e`, claude-code 2.1.309,
+effort high, no web tools, the 4 h budget; on the RTX 3090 host of the validate runs) scored `useful_view_fraction`
+0.883 against the reference's 0.903: ratio 0.978, reward 1.0. The agent ended by itself after 2 h 07 min. Its
+session (`trajectory.json`) and its program show what was easy:
+
+* **Perception.** It trained an ensemble of three small heat-map CNNs on the development frames and labels (left,
+  right and assistant tips and their apparent size), augmented towards what the graded looks add (recoloured shafts
+  and tissue, blood, clutter, smoke). The wider look pool of the graded procedures cost it little.
+* **Depth from size.** It read every tip's depth as `fx * 5 mm / apparent width`: with every shaft 5 mm, the
+  apparent size was a range finder.
+* **The published camera chain taken as exact.** The holder model, a video latency of exactly one step, and the
+  camera head aligned with the scope (`level_roll` levelled the picture with no feedback from it). Only the scope
+  had to be identified, which it did from optical flow against both scopes' predictions in the first steps.
+* **An offline simulator from the labels.** With the labels' tips, depths and joints and the exact public model it
+  rebuilt every development instrument's 3D path, wrote its own judge of the view rules and tuned its control law
+  against it, without spending commissioning sessions on tuning.
+* Where it lost its 2 %: the first 15 to 20 steps of each procedure (the approach), and some lost tips.
+
+A real camera holder moved between operating rooms has none of those three givens. That is where version 0.2 adds
+difficulty: engineering a real system has to do (identify the camera chain, find depth without a known size), not
+penalties or hidden information.
+
+**The levers** (section 2, "The rig of a procedure"; manual sections 4 and 5): the camera head's angle on the
+eyepiece, uniform within +-40 degrees; the video latency, 1, 2 or 3 steps; each instrument 10 mm with probability
+0.35, built at twice the size. Each is stated in the manual as a datasheet would, each development recording gives its
+values, and each is observable from the holder's own motion. The rule and ranges were committed in `046ea06` before
+any value existed; `tests/review/draw_rigs.py` then drew each set's rigs once from a 64-bit `os.urandom` key of its
+own (`e34d77e`; hidden key 10556249565426065709, development key 16933116259670986098). The hidden set got heads from
+-31.4 to +37.4 degrees (3 of 12 within +-15), latency 1 on 7 procedures, 2 on 2 and 3 on 3, and a 10 mm surgeon's
+instrument in 7 of its 12 procedures (the development set: in 3 of 10). Nothing was redrawn. Kept from version 0.1: the hidden and development seeds, kinds, scopes,
+events and looks (the rig is drawn from its own key and adds `shaft_mm` to the looks without moving any other draw),
+the scoring, the probe lock's rule, the kit and the action set.
+
+TBD-RESULTS
+
+**Review items** (`endoscope-533631eb`, the independent pre-PR review). Fixed: S1 (the renderer's shared memory is
+sealed after every start, with the agent's processes stopped by SIGSTOP across a restart; `VerifierDeadline` at
+8400 s writes a verdict from the steps judged, every step not reached counted unusable); S2 (the controller starts
+through `tests/nonet_exec.py`, `hazard_bay_build`'s launcher byte for byte; natively a Torch-on-CUDA program ran
+under its filter and was refused internet sockets); S3 (the instruction now says that a malformed action ends the
+procedure without a restart, and that the reply which uses up the budget is still applied, N2); S4 (the practice
+launcher writes without blocking under one deadline per request; it times the controller only, N7); S5 (this file,
+`task.toml` and the draft brought up to date; the 2026-11-24 entry below is history and its "Decisions" and "Next"
+lists are superseded: the name is registered, the probe copy is a possible observation since `763919b`, the anchor
+is re-measured below). N3 ("a GPU of the same models") and N5 (the timing note) are in the instruction and
+`task.toml`. Not fixed, in the known limitations: S1's GPU-memory, GPU-time and disk sharing; S6 (the frozen
+program's run-to-run spread is measured below only as far as time allowed); N1, N4, N6, N8, N9.
 
 ### 2026-11-25, evening: the first `ale validate`, on an RTX 3090 (trees `5faaf03`, `4f91966`)
 

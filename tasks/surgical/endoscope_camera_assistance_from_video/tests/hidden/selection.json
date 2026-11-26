@@ -127,10 +127,18 @@
     "clutter": 3,
     "fine_fraction": 0.831,
     "both_active_fraction": 0.838,
-    "generator": "endosim-procedure/0.2"
+    "head_deg": -18.35,
+    "latency_steps": 3,
+    "shafts_mm": [
+     5,
+     5,
+     5,
+     5
+    ],
+    "generator": "endosim-procedure/0.3"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9387,
+   "reference_render_free": 0.88,
    "reference_lens_contacts": 0
   },
   {
@@ -156,10 +164,17 @@
     "clutter": 4,
     "fine_fraction": 0.579,
     "both_active_fraction": 1.0,
-    "generator": "endosim-procedure/0.2"
+    "head_deg": -20.906,
+    "latency_steps": 1,
+    "shafts_mm": [
+     5,
+     10,
+     10
+    ],
+    "generator": "endosim-procedure/0.3"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.865,
+   "reference_render_free": 0.85,
    "reference_lens_contacts": 0
   },
   {
@@ -186,10 +201,18 @@
     "clutter": 6,
     "fine_fraction": 0.784,
     "both_active_fraction": 1.0,
-    "generator": "endosim-procedure/0.2"
+    "head_deg": 30.294,
+    "latency_steps": 2,
+    "shafts_mm": [
+     10,
+     5,
+     5,
+     10
+    ],
+    "generator": "endosim-procedure/0.3"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9525,
+   "reference_render_free": 0.915,
    "reference_lens_contacts": 0
   },
   {
@@ -215,10 +238,17 @@
     "clutter": 2,
     "fine_fraction": 0.595,
     "both_active_fraction": 1.0,
-    "generator": "endosim-procedure/0.2"
+    "head_deg": 37.422,
+    "latency_steps": 1,
+    "shafts_mm": [
+     10,
+     5,
+     5
+    ],
+    "generator": "endosim-procedure/0.3"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9263,
+   "reference_render_free": 0.9163,
    "reference_lens_contacts": 0
   },
   {
@@ -245,10 +275,18 @@
     "clutter": 3,
     "fine_fraction": 0.629,
     "both_active_fraction": 0.831,
-    "generator": "endosim-procedure/0.2"
+    "head_deg": -31.421,
+    "latency_steps": 3,
+    "shafts_mm": [
+     10,
+     10,
+     10,
+     5
+    ],
+    "generator": "endosim-procedure/0.3"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.8775,
+   "reference_render_free": 0.7937,
    "reference_lens_contacts": 0
   },
   {
@@ -274,10 +312,17 @@
     "clutter": 0,
     "fine_fraction": 0.807,
     "both_active_fraction": 1.0,
-    "generator": "endosim-procedure/0.2"
+    "head_deg": -4.636,
+    "latency_steps": 3,
+    "shafts_mm": [
+     5,
+     5,
+     5
+    ],
+    "generator": "endosim-procedure/0.3"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9137,
+   "reference_render_free": 0.855,
    "reference_lens_contacts": 0
   },
   {
@@ -303,10 +348,17 @@
     "clutter": 7,
     "fine_fraction": 0.545,
     "both_active_fraction": 1.0,
-    "generator": "endosim-procedure/0.2"
+    "head_deg": -20.148,
+    "latency_steps": 2,
+    "shafts_mm": [
+     5,
+     5,
+     10
+    ],
+    "generator": "endosim-procedure/0.3"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.8375,
+   "reference_render_free": 0.7875,
    "reference_lens_contacts": 0
   },
   {
@@ -334,10 +386,19 @@
     "clutter": 8,
     "fine_fraction": 0.816,
     "both_active_fraction": 0.736,
-    "generator": "endosim-procedure/0.2"
+    "head_deg": 31.441,
+    "latency_steps": 1,
+    "shafts_mm": [
+     10,
+     5,
+     10,
+     10,
+     5
+    ],
+    "generator": "endosim-procedure/0.3"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9337,
+   "reference_render_free": 0.9325,
    "reference_lens_contacts": 0
   },
   {
@@ -364,7 +425,15 @@
     "clutter": 0,
     "fine_fraction": 0.646,
     "both_active_fraction": 0.835,
-    "generator": "endosim-procedure/0.2"
+    "head_deg": 11.634,
+    "latency_steps": 1,
+    "shafts_mm": [
+     10,
+     5,
+     5,
+     5
+    ],
+    "generator": "endosim-procedure/0.3"
    },
    "never_moves": 0.0,
    "reference_render_free": 0.875,
@@ -394,10 +463,18 @@
     "clutter": 5,
     "fine_fraction": 0.794,
     "both_active_fraction": 0.859,
-    "generator": "endosim-procedure/0.2"
+    "head_deg": 5.48,
+    "latency_steps": 1,
+    "shafts_mm": [
+     5,
+     5,
+     5,
+     5
+    ],
+    "generator": "endosim-procedure/0.3"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9275,
+   "reference_render_free": 0.9287,
    "reference_lens_contacts": 0
   },
   {
@@ -425,10 +502,19 @@
     "clutter": 3,
     "fine_fraction": 0.83,
     "both_active_fraction": 0.693,
-    "generator": "endosim-procedure/0.2"
+    "head_deg": 32.637,
+    "latency_steps": 1,
+    "shafts_mm": [
+     5,
+     10,
+     5,
+     5,
+     10
+    ],
+    "generator": "endosim-procedure/0.3"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9263,
+   "reference_render_free": 0.9113,
    "reference_lens_contacts": 0
   },
   {
@@ -454,12 +540,19 @@
     "clutter": 8,
     "fine_fraction": 0.579,
     "both_active_fraction": 1.0,
-    "generator": "endosim-procedure/0.2"
+    "head_deg": 17.483,
+    "latency_steps": 1,
+    "shafts_mm": [
+     5,
+     5,
+     10
+    ],
+    "generator": "endosim-procedure/0.3"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.8675,
+   "reference_render_free": 0.8688,
    "reference_lens_contacts": 0
   }
  ],
- "record_measured": "2026-11-24"
+ "record_measured": "2026-11-26"
 }

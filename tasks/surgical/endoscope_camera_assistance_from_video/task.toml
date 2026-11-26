@@ -1,12 +1,13 @@
-# endoscope_camera_assistance_from_video (surgical; provisional name: not yet registered in the coordination sheet).
+# endoscope_camera_assistance_from_video (surgical; the Task Name registered in the coordination sheet on 2026-11-25).
 #
 # A four-joint camera holder (pan, tilt, insertion, roll about the trocar's remote centre of motion) carries a
 # laparoscope and has to keep the surgeon's two working instruments in a usable view while a recorded procedure plays.
 # The agent writes the holder's controller, /home/user/submission/run.sh. The grader drives it step by step
 # (closed_loop: robotics_grader.Solver and the probe lock) through a fixed hidden set of 12 procedures, 800 control
-# steps each, and gives it at every step only the endoscope's RGB frame (one step old, drawn by Isaac Sim's RTX
+# steps each, and gives it at every step only the endoscope's RGB frame (1 to 3 steps old, drawn by Isaac Sim's RTX
 # renderer in the grader's own process tree) and the holder's four joint readings: never instrument poses, never the
-# procedure's phase, never which scope (0 or 30 degrees) is fitted. Score: useful_view_fraction, the fraction of
+# procedure's phase, never which scope (0 or 30 degrees) is fitted, the camera head's angle on it, the latency or
+# which instruments are 10 mm ones. Score: useful_view_fraction, the fraction of
 # control steps whose view is usable (both counting tips in the central safe zone, the instruments' apparent size in
 # the zoom band, the horizon level, the picture steady during fine work, the lens clean), judged from the simulator's
 # state, never from pixels. The agent gets what the device's engineer would have: the holder's manual and kinematic
@@ -43,10 +44,11 @@ gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-3090"]
 # [agent] timeout_sec: 4 h. The development set records in the background during the first minutes (ten procedures,
 # 401 frames each: 7 min 15 s here); a commissioning session takes 1 to 3 minutes of wall clock.
 # [verifier] timeout_sec: the renderer's start (cold, up to renderer_start_timeout_s = 2400 s), the canary (seconds),
-# then 12 procedures x 800 steps: each step one frame (0.07 to 0.09 s here on a shared machine, measured:
-# tests/README.md) plus the controller's reply, whose total is capped at 2400 s (0.25 s a step), plus the scenes'
-# loading (about 7 s each): 2400 + 9600 x 0.09 + 2400 + 12 x 7 = about 5750 s at the bounds; the reference's whole
-# verify took 13 to 15 minutes here on a warm cache. 9000 s leaves room for a host that renders at half this speed.
+# then 12 procedures x 800 steps: each step one frame, plus a probe copy on about one step in sixteen (about 10,200
+# frames; 0.07 s a frame on a quiet GPU, 0.12 s in the RTX 3090 validate, 0.17 to 0.26 s beside other jobs here) plus
+# the controller's reply, whose total is capped at 2400 s (0.25 s a step), plus the scenes' loading (about 7 s each):
+# 2400 + 10200 x 0.26 + 2400 + 12 x 7 = about 7550 s at the bounds on a busy GPU. The grader's VerifierDeadline
+# (tests/grader_config.json, 8400 s) writes a verdict from the steps judged so far before this limit is reached.
 [agent]
 timeout_sec = 14400
 network_mode = "no-network"
