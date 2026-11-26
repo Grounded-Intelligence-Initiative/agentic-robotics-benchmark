@@ -59,7 +59,11 @@ class Cameras:
         ET.SubElement(visual, "quality", offsamples="2", shadowsize="2048")
         ET.SubElement(visual, "rgba", haze=".19 .23 .23 1")
         ET.SubElement(
-            visual, "headlight", ambient=".86 .86 .86", diffuse="0 0 0", specular="0 0 0"
+            visual,
+            "headlight",
+            ambient=".86 .86 .86",
+            diffuse="0 0 0",
+            specular="0 0 0",
         )
         asset = ET.SubElement(scene, "asset")
         files = add_materials(asset, PAINT)
@@ -68,12 +72,23 @@ class Cameras:
             "v 0 .002 0\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\n"
             "f 1/1 2/2 3/3\nf 1/1 3/3 4/4\nf 2/2 1/1 5/3\nf 3/3 2/2 5/3\nf 4/4 3/3 5/3\nf 1/1 4/4 5/3\n"
         ).encode()
-        ET.SubElement(asset,"mesh",name="framed_print",file="framed_print.obj")
-        files["sweepings.obj"]=sweepings()
-        ET.SubElement(asset,"mesh",name="sweepings",file="sweepings.obj",inertia="shell")
-        ET.SubElement(asset,"material",name="glazing",rgba=".75 .87 .91 1",
-                      emission=".40",specular=".70",shininess=".70")
-        ET.SubElement(asset,"material",name="ceilingpaint",rgba=".96 .95 .90 1",emission=".33")
+        ET.SubElement(asset, "mesh", name="framed_print", file="framed_print.obj")
+        files["sweepings.obj"] = sweepings()
+        ET.SubElement(
+            asset, "mesh", name="sweepings", file="sweepings.obj", inertia="shell"
+        )
+        ET.SubElement(
+            asset,
+            "material",
+            name="glazing",
+            rgba=".75 .87 .91 1",
+            emission=".40",
+            specular=".70",
+            shininess=".70",
+        )
+        ET.SubElement(
+            asset, "material", name="ceilingpaint", rgba=".96 .95 .90 1", emission=".33"
+        )
         root = ET.SubElement(scene, "worldbody")
         ET.SubElement(
             root,
@@ -85,60 +100,153 @@ class Cameras:
             specular="0 0 0",
             active="true",
         )
-        ET.SubElement(root,"light",name="fill",directional="true",dir=".45 -.65 -.6",
-                      diffuse=".08 .09 .10",castshadow="false",active="false")
-        geom(root,(w.width-1)/2,(w.height-1)/2,-.17,
-             f"{w.width/2+.22} {w.height/2+.22} .14","79776c")
+        ET.SubElement(
+            root,
+            "light",
+            name="fill",
+            directional="true",
+            dir=".45 -.65 -.6",
+            diffuse=".08 .09 .10",
+            castshadow="false",
+            active="false",
+        )
+        geom(
+            root,
+            (w.width - 1) / 2,
+            (w.height - 1) / 2,
+            -0.17,
+            f"{w.width / 2 + 0.22} {w.height / 2 + 0.22} .14",
+            "79776c",
+        )
         # Continuous material coordinates across each room instead of repeating a
         # texture or drawing a seam on every navigation cell.
-        for room in ("hall","oak","sage","slate","rose"):
-            xx,yy=zip(*(p for p,r in w.area.items() if room=="hall" or r==room))
-            cx,cy=(min(xx)+max(xx))/2,(min(yy)+max(yy))/2
-            sx,sy=(max(xx)-min(xx)+1)/2,(max(yy)-min(yy)+1)/2
-            if room!="hall":
-                sx+=.37
-                sy+=.37
-            ET.SubElement(root,"geom",type="box",pos=f"{cx} {-cy} {-.06 if room=='hall' else -.04}",
-                          size=f"{sx} {sy} .045",material="finish_"+room)
+        for room in ("hall", "oak", "sage", "slate", "rose"):
+            xx, yy = zip(*(p for p, r in w.area.items() if room == "hall" or r == room))
+            cx, cy = (min(xx) + max(xx)) / 2, (min(yy) + max(yy)) / 2
+            sx, sy = (max(xx) - min(xx) + 1) / 2, (max(yy) - min(yy) + 1) / 2
+            if room != "hall":
+                sx += 0.37
+                sy += 0.37
+            ET.SubElement(
+                root,
+                "geom",
+                type="box",
+                pos=f"{cx} {-cy} {-0.06 if room == 'hall' else -0.04}",
+                size=f"{sx} {sy} .045",
+                material="finish_" + room,
+            )
         for x, y in w.wall:
-            geom(root,x,y,1.20,".115 .115 1.20","ffffff",material="plaster")
-            geom(root,x,y,2.415,".13 .13 .015","wall")
+            geom(root, x, y, 1.20, ".115 .115 1.20", "ffffff", material="plaster")
+            geom(root, x, y, 2.415, ".13 .13 .015", "wall")
             for dx, dy in ((0, 1), (1, 0)):
-                if (x+dx,y+dy) not in w.wall:
+                if (x + dx, y + dy) not in w.wall:
                     continue
-                cx,cy=x+dx*.5,y+dy*.5
-                windows = (x in (0,w.width-1) and dy or y in (0,w.height-1) and dx) and (x+y)%4 in (1,2)
-                radius=".497 .12" if dx else ".12 .497"
+                cx, cy = x + dx * 0.5, y + dy * 0.5
+                windows = (
+                    x in (0, w.width - 1) and dy or y in (0, w.height - 1) and dx
+                ) and (x + y) % 4 in (1, 2)
+                radius = ".497 .12" if dx else ".12 .497"
                 if windows:
-                    geom(root,cx,cy,.39,radius+" .39","ffffff",material="plaster")
-                    geom(root,cx,cy,1.47,(".49 .027" if dx else ".027 .49")+" .64","ffffff",material="glazing")
-                    geom(root,cx,cy,1.47,".018 .018 .68","e7e6dc")
-                    geom(root,cx,cy,1.47,(".49 .035" if dx else ".035 .49")+" .016","eee9dc")
-                    geom(root,cx,cy,.79,(".50 .165" if dx else ".165 .50")+" .022","c7bca2")
-                    geom(root,cx,cy,2.26,radius+" .14","ffffff",material="plaster")
+                    geom(
+                        root,
+                        cx,
+                        cy,
+                        0.39,
+                        radius + " .39",
+                        "ffffff",
+                        material="plaster",
+                    )
+                    geom(
+                        root,
+                        cx,
+                        cy,
+                        1.47,
+                        (".49 .027" if dx else ".027 .49") + " .64",
+                        "ffffff",
+                        material="glazing",
+                    )
+                    geom(root, cx, cy, 1.47, ".018 .018 .68", "e7e6dc")
+                    geom(
+                        root,
+                        cx,
+                        cy,
+                        1.47,
+                        (".49 .035" if dx else ".035 .49") + " .016",
+                        "eee9dc",
+                    )
+                    geom(
+                        root,
+                        cx,
+                        cy,
+                        0.79,
+                        (".50 .165" if dx else ".165 .50") + " .022",
+                        "c7bca2",
+                    )
+                    geom(
+                        root,
+                        cx,
+                        cy,
+                        2.26,
+                        radius + " .14",
+                        "ffffff",
+                        material="plaster",
+                    )
                 else:
-                    geom(root,cx,cy,1.2,radius+" 1.2","ffffff",material="plaster")
-                geom(root,cx,cy,.068,(".498 .145" if dx else ".145 .498")+" .063","e7e1d1")
-                geom(root,cx,cy,2.416,radius+" .016","wall")
-        decorate(w,root)
-        geom(root,(w.width-1)/2,(w.height-1)/2,2.53,
-             f"{w.width/2} {w.height/2} .065","ffffff",group="5",material="ceilingpaint")
-        populate(w,root,asset,files)
-        for x,y in w.rugs:
-            geom(root,x,y,.012,".47 .40 .009","ffffff",material="textile")
-            for offset in (-.38,.38):
-                geom(root,x+offset,y,.022,".014 .40 .001","c88ba9")
-                geom(root,x,y+offset,.022,".43 .008 .001","d7b9ae")
+                    geom(
+                        root, cx, cy, 1.2, radius + " 1.2", "ffffff", material="plaster"
+                    )
+                geom(
+                    root,
+                    cx,
+                    cy,
+                    0.068,
+                    (".498 .145" if dx else ".145 .498") + " .063",
+                    "e7e1d1",
+                )
+                geom(root, cx, cy, 2.416, radius + " .016", "wall")
+        decorate(w, root)
+        geom(
+            root,
+            (w.width - 1) / 2,
+            (w.height - 1) / 2,
+            2.53,
+            f"{w.width / 2} {w.height / 2} .065",
+            "ffffff",
+            group="5",
+            material="ceilingpaint",
+        )
+        populate(w, root, asset, files)
+        for x, y in w.rugs:
+            geom(root, x, y, 0.012, ".47 .40 .009", "ffffff", material="textile")
+            for offset in (-0.38, 0.38):
+                geom(root, x + offset, y, 0.022, ".014 .40 .001", "c88ba9")
+                geom(root, x, y + offset, 0.022, ".43 .008 .001", "d7b9ae")
             for j in range(11):
-                for edge in (-.477,.477):
-                    geom(root,x+edge,y+(j-5)*.073,.012,".032 .007 .002","c4b3a0")
+                for edge in (-0.477, 0.477):
+                    geom(
+                        root,
+                        x + edge,
+                        y + (j - 5) * 0.073,
+                        0.012,
+                        ".032 .007 .002",
+                        "c4b3a0",
+                    )
         for paint, (x, y) in {**w.mats, "dock": w.dock}.items():
             geom(root, x, y, 0.014, ".43 .42 .014", paint)
             for dx in (-0.36, 0.36):
                 geom(root, x + dx, y, 0.033, ".012 .37 .006", "d8d5bd")
         for x, y in w.dust:
-            ET.SubElement(root,"geom",type="mesh",mesh="sweepings",pos=f"{x} {-y} .011",
-                          rgba=color("dust"),name=f"d{x}_{y}",contype="0",conaffinity="0")
+            ET.SubElement(
+                root,
+                "geom",
+                type="mesh",
+                mesh="sweepings",
+                pos=f"{x} {-y} .011",
+                rgba=color("dust"),
+                name=f"d{x}_{y}",
+                contype="0",
+                conaffinity="0",
+            )
         box = ET.SubElement(root, "body", name="carton")
         geom(box, 0, 0, 0.21, ".35 .34 .21", "box")
         geom(box, 0.19, 0, 0.426, ".025 .34 .006", "b79155")
@@ -198,15 +306,14 @@ class Cameras:
                             "cylinder",
                             group="3",
                         )
-        self.model = mj.MjModel.from_xml_string(ET.tostring(scene, encoding="unicode"), assets=files)
+        self.model = mj.MjModel.from_xml_string(
+            ET.tostring(scene, encoding="unicode"), assets=files
+        )
         self.data = mj.MjData(self.model)
         self.renderer = mj.Renderer(self.model, height=84, width=84)
         self.pov = mj.MjvOption()
         self.pov.geomgroup[3] = 0
-        self.dust_geoms = {
-            p: [self.model.geom(f"d{p[0]}_{p[1]}").id]
-            for p in w.dust
-        }
+        self.dust_geoms = {p: [self.model.geom(f"d{p[0]}_{p[1]}").id] for p in w.dust}
         self.last_dust = set(w.dust)
 
     def sync(self):
@@ -248,47 +355,55 @@ class Cameras:
             flight=self.w.fuel,
         )
 
-    def presentation(self,cam,ceiling=False):
+    def presentation(self, cam, ceiling=False):
         self.sync()
-        opt=mj.MjvOption()
-        opt.geomgroup[3]=1
-        opt.geomgroup[5]=int(ceiling)
-        self.model.vis.headlight.ambient[:]=(.43,.45,.47)
-        self.model.light("daylight").diffuse[:]=(.72,.68,.60)
-        self.model.light("fill").active[0]=1
+        opt = mj.MjvOption()
+        opt.geomgroup[3] = 1
+        opt.geomgroup[5] = int(ceiling)
+        self.model.vis.headlight.ambient[:] = (0.43, 0.45, 0.47)
+        self.model.light("daylight").diffuse[:] = (0.72, 0.68, 0.60)
+        self.model.light("fill").active[0] = 1
         try:
-            with mj.Renderer(self.model,height=590,width=1040) as view:
-                view.update_scene(self.data,camera=cam,scene_option=opt)
+            with mj.Renderer(self.model, height=590, width=1040) as view:
+                view.update_scene(self.data, camera=cam, scene_option=opt)
                 return Image.fromarray(view.render())
         finally:
-            self.model.vis.headlight.ambient[:]=(.86,.86,.86)
-            self.model.light("daylight").diffuse[:]=(.19,.19,.18)
-            self.model.light("fill").active[0]=0
+            self.model.vis.headlight.ambient[:] = (0.86, 0.86, 0.86)
+            self.model.light("daylight").diffuse[:] = (0.19, 0.19, 0.18)
+            self.model.light("fill").active[0] = 0
 
-    def interior(self,room):
+    def interior(self, room):
         import math
+
         self.sync()
-        body=self.model.body("display_"+room)
-        center=self.data.xpos[body.id].copy()
-        inward=-self.data.xmat[body.id].reshape(3,3)[:,1]
-        lateral=self.data.xmat[body.id].reshape(3,3)[:,0]
-        cam=mj.MjvCamera()
+        body = self.model.body("display_" + room)
+        center = self.data.xpos[body.id].copy()
+        inward = -self.data.xmat[body.id].reshape(3, 3)[:, 1]
+        lateral = self.data.xmat[body.id].reshape(3, 3)[:, 0]
+        cam = mj.MjvCamera()
         # Stand inside the room and look toward its framed print; never a solver view.
-        cells=[p for p,r in self.w.area.items() if r==room and p not in self.w.furniture and not self.w.blocked(p)]
+        cells = [
+            p
+            for p, r in self.w.area.items()
+            if r == room and p not in self.w.furniture and not self.w.blocked(p)
+        ]
+
         # Pick a free corner in the same room (not a fixed offset that can lie inside a cabinet).
         def position(p):
-            return self.data.xpos[body.id]*0+(p[0],-p[1],1.38)
+            return self.data.xpos[body.id] * 0 + (p[0], -p[1], 1.38)
+
         def utility(p):
-            vec=position(p)-center
-            return float(vec@inward) + .32*abs(float(vec@lateral))
-        eye=position(max(cells,key=utility))
-        focus=center+inward*1.20
-        cam.lookat[:]=(focus[0],focus[1],.94)
-        dx,dy=focus[0]-eye[0],focus[1]-eye[1]
-        cam.azimuth=math.degrees(math.atan2(dy,dx))
-        cam.elevation=-math.degrees(math.atan2(eye[2]-.94,math.hypot(dx,dy)))
-        cam.distance=math.hypot(dx,dy)
-        return self.presentation(cam,ceiling=True)
+            vec = position(p) - center
+            return float(vec @ inward) + 0.32 * abs(float(vec @ lateral))
+
+        eye = position(max(cells, key=utility))
+        focus = center + inward * 1.20
+        cam.lookat[:] = (focus[0], focus[1], 0.94)
+        dx, dy = focus[0] - eye[0], focus[1] - eye[1]
+        cam.azimuth = math.degrees(math.atan2(dy, dx))
+        cam.elevation = -math.degrees(math.atan2(eye[2] - 0.94, math.hypot(dx, dy)))
+        cam.distance = math.hypot(dx, dy)
+        return self.presentation(cam, ceiling=True)
 
     def overview(self):
         self.sync()

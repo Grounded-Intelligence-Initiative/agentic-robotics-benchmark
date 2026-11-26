@@ -36,13 +36,17 @@ ROOMS = {"oak", "sage", "slate", "rose"}
 def paint(rgb):
     if max(rgb) < 35:
         return None
+
     def cost(k):
-        ref=PALETTE[k]
-        scale=sum(a*b for a,b in zip(rgb,ref))/sum(v*v for v in ref)
-        scale=max(.76,min(1.26,scale))
-        return sum((a-scale*b)**2 for a,b in zip(rgb,ref)) + 20*(scale-1)**2
-    hit = min(PALETTE,key=cost)
-    return hit if cost(hit)<=13**2 else "furniture"
+        ref = PALETTE[k]
+        scale = sum(a * b for a, b in zip(rgb, ref)) / sum(v * v for v in ref)
+        scale = max(0.76, min(1.26, scale))
+        return (
+            sum((a - scale * b) ** 2 for a, b in zip(rgb, ref)) + 20 * (scale - 1) ** 2
+        )
+
+    hit = min(PALETTE, key=cost)
+    return hit if cost(hit) <= 13**2 else "furniture"
 
 
 def add(p, d, k=1):
@@ -64,7 +68,11 @@ def read_view(encoded, origin, r):
                 base = paint(px[i * s + s // 4, j * s + s // 4])
                 # A multicoloured table/cushion can share one swatch with a marker.
                 # The footing and surrounding texture disambiguate its footprint.
-                corners = [paint(px[i*s+x,j*s+y]) for x in (1,s-2) for y in (1,s-2)]
+                corners = [
+                    paint(px[i * s + x, j * s + y])
+                    for x in (1, s - 2)
+                    for y in (1, s - 2)
+                ]
                 if mark in ROOMS | {"hall"} and corners.count("furniture") >= 2:
                     mark = "furniture"
                 yield (origin[0] + i - r, origin[1] + j - r), mark, base
@@ -245,8 +253,10 @@ class Team:
             else:
                 g = reach.get((0, 0), "")[:1] or "stay"
         a, stride = self.scout(obs, req, target)
-        dest = add(self.g,g)
-        brush = (dest in self.dirt or dest == self.initial_box) and dest not in self.cleaned
+        dest = add(self.g, g)
+        brush = (
+            dest in self.dirt or dest == self.initial_box
+        ) and dest not in self.cleaned
         self.previous = [g, a, stride, brush]
         return self.previous
 

@@ -23,6 +23,8 @@ def run(seed, mode, budget, flight):
                 w.box,
                 sorted(w.mats.items()),
                 sorted(w.dust),
+                sorted(w.rugs),
+                sorted(w.pieces),
                 w.prompt,
                 w.dock,
             )
@@ -65,24 +67,9 @@ if __name__ == "__main__":
     p.add_argument("--preview", type=Path)
     args = p.parse_args()
     if args.preview:
-        from PIL import Image, ImageDraw
+        from gallery import make
 
-        w = Home(args.seeds[0])
-        cam = Cameras(w, overview=True)
-        try:
-            im = Image.new("RGB", (800, 760), "#16202b")
-            im.paste(cam.overview(), (0, 0))
-            for i, name in enumerate(("ground", "air")):
-                tile = Image.fromarray(cam.view(name)).resize(
-                    (168, 168), Image.Resampling.NEAREST
-                )
-                im.paste(tile, (100 + i * 405, 566))
-                ImageDraw.Draw(im).text(
-                    (100 + i * 405, 740), ("Vacuum RGB", "Scout RGB")[i], fill="white"
-                )
-            im.save(args.preview)
-        finally:
-            cam.close()
+        make(args.seeds[0], args.preview, None)
     for seed in args.seeds:
         for mode in args.modes:
             print(json.dumps(run(seed, mode, args.ticks, args.flight)), flush=True)

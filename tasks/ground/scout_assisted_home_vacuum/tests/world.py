@@ -59,14 +59,18 @@ class Home:
             self.wall.update((x, edge) for x in range(1, w - 1))
             # Gallery, end suite, or through suite: not every room opens onto the hall.
             openings = rng.choice(((0, 1), (0,), (1,)))
-            for wing, xs in enumerate((range(1, partition), range(partition + 1, w - 1))):
+            for wing, xs in enumerate(
+                (range(1, partition), range(partition + 1, w - 1))
+            ):
                 room = names.pop()
                 door = (rng.choice(list(xs)[1:-1]), edge)
                 entries = {(partition + (-1 if wing == 0 else 1), inner_y)}
                 if wing in openings:
                     self.wall.remove(door)
                     if len(openings) == 2:
-                        double_entry_bays.append((door[0],edge + (1 if side == 0 else -1)))
+                        double_entry_bays.append(
+                            (door[0], edge + (1 if side == 0 else -1))
+                        )
                     entries.add((door[0], edge + (-1 if side == 0 else 1)))
                     rug_candidates.append(door)
                 cells = [(x, y) for x in xs for y in rows]
@@ -76,12 +80,12 @@ class Home:
             interior, occupied = set(cells), set()
             # A utility core cuts a notch out of some rooms; its location changes which
             # sight lines and paths are available. Do not pinch either door landing.
-            if len(cells) >= 24 and rng.random() < .8:
+            if len(cells) >= 24 and rng.random() < 0.8:
                 xs, ys = zip(*cells)
                 x = rng.choice((min(xs), max(xs)))
                 y = rng.choice((min(ys), max(ys)))
-                dx, dy = (1 if x==min(xs) else -1), (1 if y==min(ys) else -1)
-                notch = {(x,y),(x+dx,y),(x,y+dy)}
+                dx, dy = (1 if x == min(xs) else -1), (1 if y == min(ys) else -1)
+                notch = {(x, y), (x + dx, y), (x, y + dy)}
                 if not notch & entries and connected(interior - notch):
                     interior -= notch
                     self.wall.update(notch)
@@ -89,17 +93,28 @@ class Home:
             for k, model in enumerate(suite):
                 # Anchor furniture occupies up to four actual cells. Reserve door landings
                 # and check connectivity before accepting each piece, including side tables.
-                sizes = ([(2, 2), (2, 1)] if model == "bedDouble" else
-                         [(2, 1), (1, 2)] if k == 0 else [])
+                sizes = (
+                    [(2, 2), (2, 1)]
+                    if model == "bedDouble"
+                    else [(2, 1), (1, 2)]
+                    if k == 0
+                    else []
+                )
                 sizes = rng.sample(sizes, len(sizes)) + [(1, 1)]
                 for sx, sy in sizes:
                     candidates = rng.sample(sorted(interior), len(interior))
                     if k == 0:
-                        candidates.sort(key=lambda p: sum(plus(p,d) in interior for d in VEC.values()))
+                        candidates.sort(
+                            key=lambda p: sum(
+                                plus(p, d) in interior for d in VEC.values()
+                            )
+                        )
                     elif k == 1 and anchor is not None:
-                        candidates.sort(key=lambda p: abs(p[0]-anchor[0])+abs(p[1]-anchor[1]))
+                        candidates.sort(
+                            key=lambda p: abs(p[0] - anchor[0]) + abs(p[1] - anchor[1])
+                        )
                     for x, y in candidates:
-                        foot = {(x+i, y+j) for i in range(sx) for j in range(sy)}
+                        foot = {(x + i, y + j) for i in range(sx) for j in range(sy)}
                         if not foot <= interior or foot & (entries | occupied):
                             continue
                         free = interior - (foot | occupied)
@@ -107,9 +122,18 @@ class Home:
                             continue
                         occupied.update(foot)
                         self.furniture.update(dict.fromkeys(foot, model))
-                        self.pieces.append((x+(sx-1)/2, y+(sy-1)/2, sx, sy, model, rng.choice((0, 180))))
+                        self.pieces.append(
+                            (
+                                x + (sx - 1) / 2,
+                                y + (sy - 1) / 2,
+                                sx,
+                                sy,
+                                model,
+                                rng.choice((0, 180)),
+                            )
+                        )
                         if k == 0:
-                            anchor = (x,y)
+                            anchor = (x, y)
                         break
                     else:
                         continue
@@ -124,7 +148,7 @@ class Home:
         self.mats = dict(zip(("red", "blue"), pads))
         # Never trap the carton against the only doorway of a suite. Without a
         # second entry the cleaner cannot get behind it to push it back into the hall.
-        center_bays = [(x,mid) for x in range(3,w-3)]
+        center_bays = [(x, mid) for x in range(3, w - 3)]
         self.box = rng.choice(double_entry_bays or center_bays)
         self.original["hall"] = {self.box}
         self.dust = set.union(*self.original.values())
@@ -139,16 +163,21 @@ class Home:
 
         def rotate(p):
             x, y = p
-            return ((x, y), (h-1-y, x), (w-1-x, h-1-y), (y, w-1-x))[turns]
+            return ((x, y), (h - 1 - y, x), (w - 1 - x, h - 1 - y), (y, w - 1 - x))[
+                turns
+            ]
 
         self.width, self.height = (h, w) if turns % 2 else (w, h)
         self.area = {rotate(p): r for p, r in self.area.items()}
         self.wall = set(map(rotate, self.wall))
         self.furniture = {rotate(p): v for p, v in self.furniture.items()}
-        self.pieces = [(*rotate((x,y)), sx, sy, m, a-90*turns) for x,y,sx,sy,m,a in self.pieces]
+        self.pieces = [
+            (*rotate((x, y)), sx, sy, m, a - 90 * turns)
+            for x, y, sx, sy, m, a in self.pieces
+        ]
         self.original = {r: set(map(rotate, ps)) for r, ps in self.original.items()}
-        self.rugs, self.dust = set(map(rotate,self.rugs)), set(map(rotate,self.dust))
-        self.mats = {k: rotate(p) for k,p in self.mats.items()}
+        self.rugs, self.dust = set(map(rotate, self.rugs)), set(map(rotate, self.dust))
+        self.mats = {k: rotate(p) for k, p in self.mats.items()}
         self.dock, self.box = rotate(self.dock), rotate(self.box)
         self.ground = self.air = self.dock
         self.t, self.budget, self.fuel = 0, ticks, flight
