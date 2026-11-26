@@ -39,7 +39,7 @@ def check():
             monitor.step(np.zeros(64), 0., 0.)
         row = monitor.report()
         expected = (trace[5:] - trace[:-5]) / .1
-        assert row["joint_accel_samples"] == expected.size
+        assert row["joint_acceleration_samples"] == expected.size
         np.testing.assert_allclose(row["joint_accel_square_sum"], np.sum(expected**2), rtol=1e-14)
         intervals.extend(expected.ravel())
         rows.append(dict(row, shape="box", outcome=end, probes=0, duplicates=0, sensitive=0,

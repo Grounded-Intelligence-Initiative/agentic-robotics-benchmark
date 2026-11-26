@@ -12,6 +12,7 @@ import subprocess
 import sys
 import time
 
+from sonic_sim.motion_cost import MeasuredSession
 from mobile_io import HORIZON, LiveEpisode, stamp_observation, validate_action
 from sonic_sim import MobileSession
 
@@ -160,6 +161,8 @@ def repeated_query(wire, live_obs, shadow, counts):
 
 def run(episode, args):
     session = episode.session
+    meter = MeasuredSession(session)
+    episode = LiveEpisode(meter)
     counts = dict(alternate_queries=0, alternate_first_codes_differed=0,
                   identical_queries=0, identical_first_codes_differed=0)
     shadow_seed = args.seed ^ 0xA53C
@@ -187,7 +190,7 @@ def run(episode, args):
     print(json.dumps({
         "task": args.task, "seed": args.seed, "steps": state["tick"],
         "reason": state["reason"] or "step_limit", "metrics": state["metrics"],
-        "repeats": counts,
+        "repeats": counts, "motion": meter.action_metrics(),
     }, allow_nan=False))
 
 

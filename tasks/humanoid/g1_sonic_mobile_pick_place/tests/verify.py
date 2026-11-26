@@ -132,7 +132,7 @@ def summarize(rows, cfg):
                 "max_lift_m", "unique_code_rows", "base_xy_acceleration_rms_m_s2", "target_step_rms_rad",
                 "left_foot_rise_m", "right_foot_rise_m", "single_support_phases"):
         result["mean_"+key] = total(key) / n
-    denominator = total("joint_accel_samples")
+    denominator = total("joint_acceleration_samples")
     result["joint_acceleration_samples"] = denominator
     result["joint_accel_square_sum"] = total("joint_accel_square_sum")
     result["joint_accel_rms_rad_s2"] = math.sqrt(result["joint_accel_square_sum"] / denominator) if denominator else 0.
