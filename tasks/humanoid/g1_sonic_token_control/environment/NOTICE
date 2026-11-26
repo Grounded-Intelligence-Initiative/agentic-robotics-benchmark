@@ -1,0 +1,18 @@
+GEAR-SONIC V1 body decoder
+Licensed by NVIDIA Corporation under the NVIDIA Open Model License.
+Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Source: https://huggingface.co/nvidia/GEAR-SONIC/tree/6733128a3d8a523b1418b06bca3cdf61c8b0987f
+The build installs the unmodified model_decoder.onnx and its complete model
+license in /opt/sonic/assets/policy/. NVIDIA source code in the upstream release
+is covered by Apache License 2.0; the weights have the separate license above.
+
+Unitree G1/Dex3 robot description and meshes
+Copyright (c) 2016-2023 HangZhou YuShu TECHNOLOGY CO.,LTD. ("Unitree Robotics").
+Source: https://github.com/google-deepmind/mujoco_menagerie/tree/1b86ece576591213e2b666ebf59508454200ca97/unitree_g1
+The build installs the unmodified g1_with_hands.xml, its 49 referenced STL
+files, and the complete BSD 3-Clause license in /opt/sonic/assets/menagerie_g1/.
+
+public_assets.sha256 pins the publisher-provided bytes for both sets of files.
+The Docker build downloads these public simulator dependencies from their
+publishers. An installed image can run and verify them offline with
+python /opt/sonic/fetch_public_assets.py /opt/sonic/assets --check.
