@@ -147,7 +147,7 @@ the new code against the rules in a kinematic stub, outside the repository):
 | nb1 (`ee8e62a7`) | 0.993 | 1.0 | 0.0 | 1.0 | the pad over L03 found by touch (S10, 1.78 mm off nominal) and the seized L06, R5bf, B01b worked loose in two cycles each; swollen M5 read 2.44 mm and stayed; healthy modules read 0.02 to 0.14 mm high; dev 2: the overhead camera not calibrated (a pad's overhang over the near plate: a defect of the lever, fixed in the cell, `e4927a6e`); dev 0: one bracket bolt ejected outside the bin (as in round 1) |
 | nb2 (`e4927a6e`) | | 0.909 | 0.691 | | dev 2 calibrated, its pad by touch (T30, 1.56 mm off), M3 read 2.42 mm; both packs vented: a threshold in the wrong unit (fixed in `3be3069b`, frozen) |
 
-RESULTS
+**On the hidden set**, frozen at `3be3069b` and run once: `mean_pack_credit` 1.00000, reward 1.000 on the hidden set (one run of the program frozen at `3be3069b`, on the final cell): packs 1, 1, 1, 1, 1, 1; 1379 to 1842 steps, 974 to 1234 s simulated; lock 125 of 125; 0 protective stops, 0 stripped, 0 sheared, 0 vented; the program's own time 142 s for the six packs.
 
 ## What it does not do
 

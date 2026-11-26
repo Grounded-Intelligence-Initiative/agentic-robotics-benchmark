@@ -312,7 +312,9 @@ from six averaged overhead frames and one close wrist frame (the head's flat top
 fitted to its rim, its centre where sealant or a neighbour hides part of it), the harness from its blue cable, "out"
 from the nutrunner's trace. Its first version, written for exact depth and exact calibration, scored 1.00000 on the
 hidden set (section 6, the entry "2026-11-25, 10:00 to 11:35"); it scores 0.00000 on the cell as it is now. The
-revised version, for the cell as it is now, scored `mean_pack_credit` 1.00000 on the hidden set (reward 1.0; one run of a program frozen on the development packs before it) (section 6, the entry "2026-11-25, 13:50 to 21:30").
+revised version, for the cell as it is now, scored `mean_pack_credit` 1.00000 on the hidden set (reward 1.0; one run of a program frozen on the development packs before it) (section 6, the entry "2026-11-25, 13:50 to 21:30"). Its third version, adapted to the second round's seized fasteners, foam pads and
+swollen modules (section 6, the entry "2026-11-26, from 07:52"), scored `mean_pack_credit` 1.00000 (reward 1.000; one
+run, frozen before it).
 
 The anchor and its spread: see the status log (section 6) for the measured runs. `tests/anchor.json` holds the
 value measured through `ale validate` on an RTX 3090 host (section 6, the entry "2026-11-26, from 03:54"): the same
@@ -335,7 +337,9 @@ value, in the same steps, as every native run on the author's server.
   about an hour of work, through two shortcuts: exact depth (a head typed by its height in one overhead frame) and
   cameras exactly at their published poses. Both are closed (a sensor's depth, each cell's own camera mounting), and
   two more levers were added because a revised baseline still found the job easy (sealant over heads, a pack's
-  look). The first version, unchanged, scores 0.00000. The revised version scored `mean_pack_credit` 1.00000 on the hidden set (reward 1.0; one run of a program frozen on the development packs before it). It needed: calibration of
+  look). The first version, unchanged, scores 0.00000. The revised version scored `mean_pack_credit` 1.00000 on the hidden set (reward 1.0; one run of a program frozen on the development packs before it). After the second round
+  (seized fasteners, foam pads, swollen modules) its third version scored 1.00000 (reward 1.000), developed in six
+  sessions on the development packs. It needed: calibration of
   both cameras from the plates in every pack (PnP; a hand-eye from whole-board views and the robot's kinematics; a
   robust mean; detector variants against the renderer's colour wash), six averaged overhead frames, a fit of each
   head's outline to its rim at the wrist, white balance from the plates, a safe transfer height, and 29 development
@@ -1215,22 +1219,43 @@ of 85 (52 idle), no stop, nothing stripped or sheared, no vent, 34 working cycle
 in their seats. `final2` on `dca001d1` (the cell with the pad cut, `e4927a6e`): 1.00000 again, every pack in the
 same steps as `final1`, lock 85 of 85; both stages about 1600 s with GPU 3 shared. `tests/anchor.json` is unchanged
 (1.0, its source the `ale validate` run of `33ce4599`'s tree; the validate host records the anchor from its oracle
-again).
+again). The small checks on `3be3069b` (stages under the session's own folder): no submission 0, no simulator
+started; the reference without its token 0; the recorded reference on hidden pack 2 1.0 with the lock 9 of 9; its
+blind replay credit 1.0 but the lock 0 of 9, reward 0; the example 0 on all six packs; the commissioning service
+(a `run_session.py` run, an interactive session, a refused action, `truth` unknown on its wire): all as before.
 
 *The frozen Opus program* (`4c00590b`'s submission, rebuilt from its trajectory: every write into `~/submission`
 replayed in order; all nine files have the sizes of the episode's last listing and `mission.py` matches the three
 reads the episode made of it, line for line). Development packs, cell of `83b7da4e`: pack 0 credit 0.054 (it runs
 M6 at 20.5 N m: the seized lid bolt L06 sheared, the program logged it "freed", the lid stayed), pack 2 0.802 (the
 seized bracket bolt R3bf stripped by its extractor; bracket R3b and the swollen M3 stayed held, so M3 was never
-lifted). Hidden set, cell of `83b7da4e` (before the pad cut, which no hidden pad's overhang touched): **`mean_pack_credit`
-0.16489, reward 0.174** (0.795 and 0.84 on `33ce4599`): packs 0.067, 0.419, 0.062, 0.326, 0.053, 0.062; in four packs
+lifted). Hidden set, cell of `83b7da4e`, that is before the lid-pad cut of `e4927a6e` (not run again on the final cell, to
+push sooner): **`mean_pack_credit` 0.16489, reward 0.174** (0.795 and 0.84 on `33ce4599`): packs 0.067, 0.419, 0.062, 0.326, 0.053, 0.062; in four packs
 a seized lid bolt sheared and the lid stayed; in two the lid came off, a seized busbar and a bracket bolt sheared,
-and lifting the swollen M1 vented it; 9 sheared, 3 stripped, 718 protective stops, lock 54 of 54. OPUS2 This proxy
-overstates the effect (in round 1 the old baseline fell to 0 and a fresh model reached 0.84): every failure here
-is one a fresh agent avoids by reading section 5 and section 7 of the manual. What a fresh agent has to build is
-judged in the PR draft's difficulty notes.
+and lifting the swollen M1 vented it; 9 sheared, 3 stripped, 718 protective stops, lock 54 of 54. The cut only
+stops a lid pad's drawing at the lid's edge: on the hidden packs it removes the overhang of the lid pads beyond the
+short sides (packs 0, 1, 3) and the long sides away from the plates' rows (packs 3, 5); no pad value changed, every
+head stays hidden, and both cameras saw both plates before it. Every credit this program lost on the hidden set
+came from a sheared seized fastener or a vented swollen module, which the cut does not touch, so its result is not
+expected to move. This number
+shows only that the first round's program does not handle rules 5 to 7; it does not predict a fresh agent's score.
+Every failure here is one a fresh agent avoids by reading sections 5 and 7 of the manual, and the evidence says
+fresh agents do: in round 1 the old baseline fell to 0 and a fresh model reached 0.84, and on the endoscope task a
+frozen program fell from 0.88 to 0.114 while a fresh Opus 5.5 episode on the same version then scored 0.92. The
+difficulty number is the next fresh episode's. Which lever a careful fresh agent is most likely still to lose credit
+on, from what the documents give it: the pads (L7). Under the hidden lid pads sit four T30 heads 0.44 to 1.96 mm from
+their nominal places and two S10 heads 1.84 and 1.87 mm off, against a Torx bit's 1.2 mm and a socket's 2 mm of full
+engagement; nothing but touch locates them, a guess outside the tolerance wears the head, and a lid bolt left in loses
+the pack. The development packs show one pad each in two packs (S10 1.67 mm and T30 1.46 mm off), so a blind try at the
+nominal place half works there. Next the seized fasteners (L5: a per-fastener state machine near the shear torque,
+a Torx bit kept pressed for the torque it holds, one instance per development pack). Least the swollen module (L6:
+the hidden bulges are 1.07 to 2.29 mm, far above the 0.4 mm criterion, and the manual says what to do).
 
-*The revised baseline* (`review/perception_baseline/`, its README's "The third version"). BASE
+*The revised baseline* (`review/perception_baseline/`, its README's "The third version": seized fasteners worked from
+the torque trace, pad-covered fasteners by touch, module bumps measured at the wrist; developed on the development
+packs only, six development sessions and about an hour and a half of work, the levers' designer's, with the
+development truth only in `dev/devrun.py`'s comparison afterwards). `mean_pack_credit` 1.00000, reward 1.000 on the hidden set (one run of the program frozen at `3be3069b`, on the final cell): packs 1, 1, 1, 1, 1, 1; 1379 to 1842 steps, 974 to 1234 s simulated; lock 125 of 125; 0 protective stops, 0 stripped, 0 sheared, 0 vented; the program's own time 142 s for the six packs (stage 2781 s, GPU 3 shared). The task can be
+done from what an agent is given, after the second round too.
 
 ## 7. Final report (2026-11-24, 16:30 EST)
 
