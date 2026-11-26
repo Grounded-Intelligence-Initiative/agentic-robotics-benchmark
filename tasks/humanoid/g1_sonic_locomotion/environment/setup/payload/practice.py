@@ -18,7 +18,7 @@ def ask(wire, obs):
     tick = obs["tick"]
     reply = wire.request({"type": "act", "t": tick, "obs": obs})
     try:
-        return validate_action(reply.get("action"), tick, obs["horizon"])
+        return validate_action(reply["action"], tick, obs["horizon"])
     except ValueError as exc:
         raise WireError(f"invalid action at tick {tick}: {exc}") from exc
 

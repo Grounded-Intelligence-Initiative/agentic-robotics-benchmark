@@ -9,6 +9,9 @@ import subprocess
 import time
 
 
+MAX_REPLY_CHARS = 65_536
+
+
 class WireError(Exception):
     """A solver missed its deadline or returned an unusable reply."""
 
@@ -37,9 +40,15 @@ class Wire:
             if not data:
                 raise WireError("solver closed stdout")
             self.buffer.extend(data)
-            if len(self.buffer) > 1024 * 1024:
-                raise WireError("solver reply exceeds 1 MiB")
+            if b"\n" not in self.buffer and len(self.buffer) > 4 * MAX_REPLY_CHARS:
+                raise WireError("solver reply exceeds 65,536 characters")
         line, _, self.buffer = self.buffer.partition(b"\n")
+        try:
+            decoded = line.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise WireError("invalid UTF-8 on solver stdout") from exc
+        if len(decoded) + 1 > MAX_REPLY_CHARS:
+            raise WireError("solver reply exceeds 65,536 characters")
         return line.strip()
 
     def ready(self):
@@ -66,9 +75,13 @@ class Wire:
                     reply = json.loads(line)
                 except (ValueError, RecursionError) as exc:
                     raise WireError("invalid solver JSON on stdout") from exc
-                if isinstance(reply, dict):
-                    return reply
-                raise WireError("solver reply must be a JSON object")
+                if not isinstance(reply, dict):
+                    raise WireError("solver reply must be a JSON object")
+                if message["type"] == "reset" and (set(reply) != {"ok"} or reply["ok"] is not True):
+                    raise WireError("reset requires a true acknowledgment")
+                if message["type"] == "act" and set(reply) != {"action"}:
+                    raise WireError("act requires a single action")
+                return reply
         raise WireError("solver produced too many blank lines")
 
 

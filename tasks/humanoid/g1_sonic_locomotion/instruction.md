@@ -35,13 +35,15 @@ In the practice report, `simulated_s` is time to the terminal event or cutoff. `
 
 ## Solver protocol
 
-Print `READY` followed by a newline and flush within 60 seconds of launch. Read one JSON object per line and flush one response per request within 15 seconds. Use stderr for diagnostics. The process can serve multiple episodes. Clear controller memory at reset and support a fresh process after an abort.
+Print `READY` followed by a newline and flush within 60 seconds of launch. Read one JSON object per line and flush one response per request within 15 seconds. A reply may contain up to 65,536 decoded characters including the newline. Use stderr for diagnostics. The process can serve multiple episodes. Clear controller memory at reset and support a fresh process after an abort.
 
 | Host request | Solver reply |
 | --- | --- |
 | `{"type":"reset"}` | `{"ok":true}` |
 | `{"type":"act","t":t,"obs":obs}` | `{"action":{"rows":[{"codes":[...]}]}}` |
 | `{"type":"close"}` | `{"ok":true}`, then exit |
+
+The reset reply must contain exactly `{"ok":true}`, using the JSON boolean. An act reply must contain only the `action` key. A malformed reply or timeout aborts the current trial. The host can restart the solver up to three times across the panel.
 
 Each `codes` array contains exactly 64 integers in `[0,31]`. Code `c` represents the native FSQ value `(c - 16) / 16`. Every accepted row advances one physical tick. A chunk can contain between one row and `min(5 - t % 5, obs["horizon"] - t)` rows. For example, at `t = 3` you may submit one or two rows. The host checks the entire chunk before applying its first row and ends it on the first terminal event. A short practice run can stop partway through a valid chunk at the requested tick.
 
