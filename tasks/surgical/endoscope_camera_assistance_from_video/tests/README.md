@@ -233,14 +233,16 @@ stays) and keeps the view where the work is until that hand is back, aims with t
 distance set by the tips' spread, feeds the tips' velocity forward, levels the horizon in closed form, stands still
 while the tips do (its own estimate of the fine-work rule), creeps under the image-speed limit when it has to move
 during fine work, and withdraws to clean a smeared lens. The anchor is what perfect perception achieves under the
-task's information rule; what it loses, it loses to the holder's speed on long moves and to the first seconds of
-each procedure.
+task's information rule; what it loses, it loses to the holder's speed on long moves, to the first seconds of each
+procedure and, since version 0.2, to a video latency of up to three steps (its privileged observation includes the
+rig: the camera head's angle and the latency, which it would otherwise have to identify).
 
 The anchor's value, its spread and their source are in `anchor.json` and in the status log. Because the reference
 reads the state and never the picture, its score does not depend on the rendering (`tests/review/fast_eval.py`
 plays the same sessions with a null renderer in about a minute; that is how it was tuned). It depends a little on
 which steps are probed: when the memory it keeps after a repeated step is the copy's (about one time in ten), its
-next commands differ. Over ten draws of the probes, render-free, its mean was 0.9029 to 0.9037. A submission that
+next commands differ. Over ten draws of the probes, render-free, its mean was 0.8752 to 0.8759 (version 0.1: 0.9029 to
+0.9037). A submission that
 reads the picture has more spread: its frames differ from run to run in their last bits.
 
 **A pixel baseline** (`tests/review/pixel_baseline/`, maintainers' evidence, not part of grading): what the task
@@ -255,7 +257,10 @@ detection that jitters moves the camera during fine work). So the task can be do
 detector is far from enough, and what is missing is engineering an agent can do: filtering in time, a better
 reading of depth, looks the development set does not show. It was written once and never tuned in closed loop. A
 second run, on `763919b` (2026-11-25), scored 0.379 (reward 0.43) with the same weights; the per-procedure values
-moved both ways, which is the run-to-run spread of a controller that reads the picture.
+moved both ways, which is the run-to-run spread of a controller that reads the picture. On version 0.2, unchanged (its
+weights, control law and holder model of `a5acf5e`), it scores 0.074 (reward 0.09): like the frontier episode's program
+it reads depth from size and takes the camera chain as published. An adapted baseline, which identifies the rig, is
+in the status log (2026-11-26).
 
 ## 5. The agent's side
 
@@ -334,7 +339,7 @@ Newest first. Each entry says where the numbers come from; "here" is the develop
 RTX 6000 Ada, NVIDIA driver 570.195.03, Isaac Sim 6.2.0.0 + Isaac Lab 3.0.0 in a native Python 3.12 venv, no root,
 no Docker).
 
-### 2026-11-26: version 0.2, made harder after the first frontier episode (trees `046ea06` to TBD-TIP)
+### 2026-11-26: version 0.2, made harder after the first frontier episode (trees `046ea06` to `582152e`; measured on `582152e`)
 
 **What the episode showed.** One Claude Opus 5.5 episode (`ale run` `624ea132` on `a5acf5e`, claude-code 2.1.309,
 effort high, no web tools, the 4 h budget; on the RTX 3090 host of the validate runs) scored `useful_view_fraction`
@@ -369,7 +374,48 @@ instrument in 7 of its 12 procedures (the development set: in 3 of 10). Nothing 
 events and looks (the rig is drawn from its own key and adds `shaft_mm` to the looks without moving any other draw),
 the scoring, the probe lock's rule, the kit and the action set.
 
-TBD-RESULTS
+**Measurements** (all native, the grader's loop through `tests/review/run_native.py`, on the tree of `582152e4`, whose
+task code is the final one; GPU 3 of the development server, an RTX 6000 Ada shared with other users' jobs, one Isaac
+process at a time; 250 to 313 ms per frame; logs outside the repository):
+
+| what | `useful_view_fraction` | ratio / reward against 0.876 | notes |
+|---|---|---|---|
+| the reference (privileged; the anchor) | **0.8760417** (8410 of 9600) | 1.0 / 1.0 | per procedure 0.79 to 0.93; lock 172 of 604 pairs; no restart. Render-free 0.8761; over ten probe draws 0.8752 to 0.8759. Version 0.1: 0.9030 |
+| the frozen Opus 5.5 program of run `624ea132` (unchanged) | **0.1142** | 0.130 / **0.133** | 0.0000 on nine procedures (horizon failed on 90 to 100 % of their steps: the head angle was never identified); 0.885 on procedure 9 (head +5.5 degrees, latency 1, no 10 mm instrument: the conditions of version 0.1), 0.300 on 8 (head +11.6, a 10 mm instrument: zoom 69 %), 0.185 on 5 (head -4.6, latency 3: zone 49 %, steadiness 68 %). On development procedures dev01 to dev04: 0.0000 each. Lock 541 of 614; no restart |
+| the pixel baseline of version 0.1 (unchanged: `a5acf5e`'s weights, control law and model) | **0.0743** | 0.085 / **0.087** | 0.78 on procedure 9 (near-nominal rig), 0.00 to 0.08 elsewhere; version 0.1: 0.379 (reward 0.43). It reads depth from size and takes the camera chain as published, like the Opus program. Lock 235 of 583 |
+| an adapted baseline (below), frozen, once | **0.6121** | 0.699 / **0.713** | per procedure 0.30 to 0.85; scope, latency and head angle identified right on all 12 (head within 0.6 degrees); the zoom band is its main loss where a 10 mm instrument is in (procedures 4, 5, 7, 10: 0.30 to 0.53). Lock 431 of 544; no restart |
+| no submission | reward 0.0, no renderer started | | |
+| a camera that never moves (the example) | 0.0000 render-free on all 12 (`hidden/selection.json`); natively on procedure 0: 0.0000, lock 0 of 41 pairs | | |
+| random rates (`bad:jitter`), procedure 0 | 0.0000, lock 50 of 50 | | |
+| the commissioning service (setup's recording, then one session, the example controller, 200 steps) | recorded the ten development procedures with their rigs in 23 min (renderer start included); the launcher printed "18 asked, 0 changed the action"; exit 0 | | |
+
+**The adapted baseline** shows that version 0.2 can be done without privileged information, and roughly how far an
+engineer gets. It was built in about four hours from a copy of the frozen Opus program (kept outside the repository,
+as a model's work), on development material only (development recordings and labels, the commissioning service's
+procedures through the grader's loop with `run_native.py --dev`, nothing of `tests/` beyond that loop, no token), then
+frozen and run once on the hidden set. What it adds:
+a joint fit of scope, latency and head angle (a fixed 2 s excitation at home, Lucas-Kanade flow on the tissue against
+the public model's prediction for each of 2 x 3 x 61 hypotheses, refined to 0.25 degree); frame poses taken from the
+joint history at the fitted latency; a 5 / 10 mm test per instrument (an active 18 mm insertion probe while the size
+is undecided; each size predicts how the tip's picture moves and grows, held still; a sequential likelihood ratio,
+decided once, reset when the instrument comes back from an exchange); a lens contact told from the joints (a
+commanded motion that did not happen, as the manual says the scope stops); and the size channels of its nets
+fine-tuned on the development labels (`shaft_mm`; its 10 mm widths still read 19 % low, placed as 8.1 mm). On the
+development procedures it measured 0.30 to 0.78 (dev01 0.30 to 0.38, dev02 0.60, dev03 0.78, dev04 0.44 to 0.52, dev07
+0.12); render-free with true detections and the true rig 0.748 (with true sizes 0.811, taking every instrument for
+5 mm 0.643).
+
+**What this says about difficulty.** The three givens the episode relied on are gone: its program, unchanged, falls
+from 0.883 to 0.114 (reward 0.13), and it scores where it used to only on the one procedure whose rig happens to be
+near nominal. Each lever is a stated datasheet item that an expert identifies from the holder's own motion, and the
+adapted baseline does exactly that (reward 0.71, 0.70 of the reference). A frontier agent now has to notice that
+the camera chain must be identified, build the identification, and handle instruments whose size it cannot read;
+whether it lands nearer 0.13 or 0.7 only a frontier episode can say.
+
+**Not measured, for lack of time:** the frozen Opus program's run-to-run spread (review S6; it was run once on the
+hidden set and once on four development procedures); the adapted baseline's spread; anything in the engine (no
+Docker here). The next steps on the validate host: rebuild the image (`environment/` changed), `ale validate`, the
+anchor from its oracle, one frontier episode.
 
 **Review items** (`endoscope-533631eb`, the independent pre-PR review). Fixed: S1 (the renderer's shared memory is
 sealed after every start, with the agent's processes stopped by SIGSTOP across a restart; `VerifierDeadline` at
