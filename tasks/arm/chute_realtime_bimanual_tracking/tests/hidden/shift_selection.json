@@ -1,0 +1,173 @@
+{
+ "format": "chute_realtime_bimanual_tracking shift selection 1",
+ "rule": "(fixed before the screening ran, 2026-11-25): the candidates are 12 seeds drawn once with\nnumpy.random.default_rng(20261125).choice(arange(1000, 10000), 12, replace=False). Every candidate is graded once with\nthe reference over the real grading path (solution/solve.sh + tests/verify.py, 20 parts). The hidden set is the 6\ncandidates with the highest part_pickup_score (ties: the smaller seed). The anchor value is the mean of the reference's\nscore over the hidden set in a SECOND, independent grading run of those 6 shifts; full_at is the lower of the two\nruns' means divided by the higher, less 0.05, capped at 0.98.",
+ "candidates": {
+  "1105": {
+   "part_pickup_score": 0.8,
+   "placed": 15.0,
+   "fell_behind": 0.0,
+   "program_time_s": 16.16,
+   "simulated_time_s": 223.43,
+   "match_lock_ok": 1.0
+  },
+  "1334": {
+   "part_pickup_score": 0.9,
+   "placed": 18.0,
+   "fell_behind": 0.0,
+   "program_time_s": 14.71,
+   "simulated_time_s": 228.73,
+   "match_lock_ok": 1.0
+  },
+  "2162": {
+   "part_pickup_score": 0.8,
+   "placed": 16.0,
+   "fell_behind": 0.0,
+   "program_time_s": 17.17,
+   "simulated_time_s": 224.5,
+   "match_lock_ok": 1.0
+  },
+  "2524": {
+   "part_pickup_score": 0.8,
+   "placed": 16.0,
+   "fell_behind": 0.0,
+   "program_time_s": 16.17,
+   "simulated_time_s": 210.07,
+   "match_lock_ok": 1.0
+  },
+  "2805": {
+   "part_pickup_score": 0.7,
+   "placed": 14.0,
+   "fell_behind": 0.0,
+   "program_time_s": 14.8,
+   "simulated_time_s": 214.37,
+   "match_lock_ok": 1.0
+  },
+  "3070": {
+   "part_pickup_score": 0.85,
+   "placed": 16.0,
+   "fell_behind": 0.0,
+   "program_time_s": 16.82,
+   "simulated_time_s": 227.9,
+   "match_lock_ok": 1.0
+  },
+  "3390": {
+   "part_pickup_score": 0.9,
+   "placed": 17.0,
+   "fell_behind": 0.0,
+   "program_time_s": 17.8,
+   "simulated_time_s": 216.13,
+   "match_lock_ok": 1.0
+  },
+  "3783": {
+   "part_pickup_score": 0.775,
+   "placed": 16.0,
+   "fell_behind": 0.0,
+   "program_time_s": 13.24,
+   "simulated_time_s": 210.17,
+   "match_lock_ok": 1.0
+  },
+  "4191": {
+   "part_pickup_score": 0.9,
+   "placed": 18.0,
+   "fell_behind": 0.0,
+   "program_time_s": 16.23,
+   "simulated_time_s": 221.93,
+   "match_lock_ok": 1.0
+  },
+  "4836": {
+   "part_pickup_score": 0.8,
+   "placed": 16.0,
+   "fell_behind": 0.0,
+   "program_time_s": 16.07,
+   "simulated_time_s": 224.13,
+   "match_lock_ok": 1.0
+  },
+  "7168": {
+   "part_pickup_score": 0.8,
+   "placed": 16.0,
+   "fell_behind": 0.0,
+   "program_time_s": 14.78,
+   "simulated_time_s": 217.8,
+   "match_lock_ok": 1.0
+  },
+  "8803": {
+   "part_pickup_score": 0.8,
+   "placed": 16.0,
+   "fell_behind": 0.0,
+   "program_time_s": 12.13,
+   "simulated_time_s": 218.9,
+   "match_lock_ok": 1.0
+  }
+ },
+ "kept": [
+  1105,
+  1334,
+  2162,
+  3070,
+  3390,
+  4191
+ ],
+ "second_run": {
+  "1105": {
+   "part_pickup_score": 0.8,
+   "placed": 15.0,
+   "fell_behind": 0.0,
+   "program_time_s": 14.06,
+   "simulated_time_s": 223.43,
+   "match_lock_ok": 1.0
+  },
+  "1334": {
+   "part_pickup_score": 0.9,
+   "placed": 18.0,
+   "fell_behind": 0.0,
+   "program_time_s": 16.02,
+   "simulated_time_s": 228.73,
+   "match_lock_ok": 1.0
+  },
+  "2162": {
+   "part_pickup_score": 0.8,
+   "placed": 16.0,
+   "fell_behind": 0.0,
+   "program_time_s": 15.91,
+   "simulated_time_s": 224.5,
+   "match_lock_ok": 1.0
+  },
+  "3070": {
+   "part_pickup_score": 0.85,
+   "placed": 16.0,
+   "fell_behind": 0.0,
+   "program_time_s": 17.49,
+   "simulated_time_s": 227.9,
+   "match_lock_ok": 1.0
+  },
+  "3390": {
+   "part_pickup_score": 0.9,
+   "placed": 17.0,
+   "fell_behind": 0.0,
+   "program_time_s": 15.41,
+   "simulated_time_s": 216.13,
+   "match_lock_ok": 1.0
+  },
+  "4191": {
+   "part_pickup_score": 0.9,
+   "placed": 18.0,
+   "fell_behind": 0.0,
+   "program_time_s": 12.91,
+   "simulated_time_s": 221.93,
+   "match_lock_ok": 1.0
+  }
+ },
+ "frozen": {
+  "tests/verify.py": "5975167eb6ba50e8e1ec634724bfffef112071c6e36ee38816985f4fb6cfd9d0",
+  "tests/cell_env.py": "24cb54d47dabd4984ed28839274ed379232c3909f2c538f57179c44a22f0f773",
+  "tests/shift.py": "ccea8347d6e876ef3e8b738fa701859a208b07a8960bc20c0c7a532ac5380a04",
+  "tests/props.py": "4819bf3754b95815f74d04104b6450892ad1f52db2d62b3b993904558dbb1c6e",
+  "tests/grader_config.json": "46b1f825e5556c40e2f5f44990c3c6a287ae66834f5955903997938b73512976",
+  "solution/privileged/oracle.py": "912f63dce5f64ec05cb88459e256d48a7b32ec5e4baee482b3713c0703097311",
+  "solution/privileged/reference_params.json": "a8a1aca37f55b95abfc335a7ef118ec1d4ac86766082b5a0c7df401c1f63e1b9"
+ },
+ "notes": [
+  "Screening and second run were both made with the files as shipped (the frozen hashes below), on 2026-11-26.",
+  "The reference holds three privileges through its token: ground truth, what is coming (schedule, items, accelerations), and the simulator's assisted grasp. In the six kept shifts it places 15 to 18 of the 20 parts. It takes the two clamps and the drill by their handles with one hand; it does not take the cracker box, and it loses the bowl and the scissors in some shifts."
+ ]
+}
