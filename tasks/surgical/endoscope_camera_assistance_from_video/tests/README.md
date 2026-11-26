@@ -3,12 +3,13 @@
 The agent-facing contract is `instruction.md`; the device is described in
 `environment/setup/payload/given/holder_manual.md` and implemented in `holder_model.py` beside it. This page records
 the design decisions, what the grader checks and why, what is known to be rough, and, in section 7, a dated status
-log: **what was verified, where, and what was not**. Version 0.2, 2026-11-26 (version 0.1, 2026-11-24, was too easy:
-section 7); the Task Name was registered in the coordination sheet on 2026-11-25.
+log: **what was verified, where, and what was not**. Version 0.3, 2026-11-26 (versions 0.1 of 2026-11-24 and 0.2 of
+2026-11-26 were too easy: section 7); the Task Name was registered in the coordination sheet on 2026-11-25.
 
 **Design rule: the agent gets what the device's engineer would have, and nothing a camera holder in an operating
-room would not.** It gets the holder's kinematics and manual, the intrinsics of both scopes, a labelled development
-set of recorded procedures, and a commissioning service that plays development procedures for its controller. Its
+room would not.** It gets the holder's kinematics and manual, the intrinsics of both scopes, a development set of
+recorded procedures with an annotation team's 2D labels, and a commissioning service that plays procedures of its own
+for its controller. Its
 controller gets the endoscope's frame and the holder's joint readings, and nothing else. It does not get the
 simulator's code (the procedure generator, the scene, the judging), any graded procedure, ground truth on the wire,
 or a score of anything it tries.
@@ -29,7 +30,10 @@ the fraction of control steps with a usable view. The engineering is real end to
 unseen instruments and tissue, telling the surgeon's instruments from the assistant's, noticing an exchange, telling
 which scope is fitted, at what angle the camera head sits on it and how late the video is from how the picture moves,
 how far away an instrument is when its size is not known, noticing a smeared lens from the picture, visual servoing
-through a servo with lag and a video chain with latency, and standing still at the right times.
+through a servo with lag and a video chain with latency, and standing still at the right times. Since version 0.3
+the scene does not hold still either (the tissue breathes irregularly and is dragged by the instruments), tips work
+inside the tissue and in smoke, the camera head is knocked during the procedure, and some mistakes end the procedure
+for the holder (the surgeon takes the camera back).
 
 ## 2. The simulator (`tests/endosim/`)
 
@@ -56,9 +60,10 @@ rate limits were sized against the procedures: the surgeon's long moves peak nea
 
 **The cavity** (`tissue.py`). A height field: a bowl (flat floor 170 mm below the pivot, rising into the walls), 5 to
 8 smooth organ mounds, a fine ripple, under an ellipsoidal abdominal wall that carries the trocars. **The tissue is
-a non-physical surface**: static geometry that moves kinematically with the patient's breathing (one z offset, 1.5
-to 3.5 mm, 0.2 to 0.3 Hz). PhysX deformable bodies need GPU dynamics, and GPU dynamics do not repeat across GPU
-models, which a benchmark's score has to; a camera holder does not push on tissue, so the job loses nothing. The
+a non-physical surface**: geometry that moves kinematically. Until version 0.2 it moved as one piece with the
+breathing (one z offset, 1.5 to 3.5 mm, 0.2 to 0.3 Hz); since version 0.3 every point moves on its own (below,
+"Version 0.3"). PhysX deformable bodies need GPU dynamics, and GPU dynamics do not repeat across GPU
+models, which a benchmark's score has to; the kinematic field repeats to the last bit on every machine. The
 floor is 170 mm down so that the home view (scope withdrawn) never satisfies the zoom band: a camera that never
 moves scores 0 on every procedure of the fixed sets (`hidden/selection.json`, `never_moves`).
 
@@ -120,11 +125,37 @@ Why each one is there, and why it is not a penalty or hidden information:
 Everything an expert needs is on file: the ranges in the manual (section 4: `HEAD_ANGLE_MAX_DEG`,
 `LATENCY_STEPS`; section 5: the sizes), the model with the head angle (`camera_pose(q, scope, head)`,
 `level_roll(pan, tilt, scope, head)`), each development recording's head angle and latency in its `meta.json`
-(measured "in the lab"), and every instrument's `shaft_mm` in its labels. The commissioning service plays each
-development procedure with its own rig. The rule was committed (046ea06) before any value was drawn; the values were
+(measured "in the lab"), and every instrument's `shaft_mm` in its labels. (Until version 0.2 the commissioning
+service played each development procedure with its own rig; since 0.3 it plays procedures of its own.) The rule was committed (046ea06) before any value was drawn; the values were
 drawn once by `tests/review/draw_rigs.py` from a 64-bit `os.urandom` key per set (e34d77e) and are recorded in
 `hidden/procedures.json` and `dev_procedures.json` with the key (`draw_rigs.py check` recomputes them). A procedure
 without a rig is nominal (head 0, one step, all 5 mm), which is version 0.1.
+
+**Version 0.3** (2026-11-26; section 7 has why). Version 0.2 was saturated by one frontier episode (reward 0.92), and
+every lever of 0.2 was an identification problem with a recipe. Version 0.3's levers are meant to stay hard when an
+expert knows exactly what to do: perception of instruments that hide, tracking through what hides them, a scene that
+does not hold still, a rig that changes during the procedure, consequences that cannot be undone, and development
+material that is what a real team has rather than the simulator's truth.
+
+| what | rule (version 0.3) | why it is there |
+|---|---|---|
+| tissue that moves, not as one piece (`tissue.py`) | irregular breaths (each 2.9 to 5.3 s, 2 to 10 mm: the patient's own period U(3.4, 4.6) s and depth U(3, 8) mm, each breath x U(0.85, 1.15) and x U(0.75, 1.25)), a lift of 0.45 to 1.4 of the breath's depth growing towards the head, and a head-ward component of U(0.3, 0.7) of the lift; traction: a hand that holds the tissue (the left while it dissects and when it stretches, the right while it clips) drags it round its grip, a gaussian of U(10, 18) mm; instruments ride on the breathing | the episode's program triangulated a rigid tissue map and used it for depth and for the lens's clearance; a real abdomen is not rigid. Kinematic and deterministic: no PhysX deformables (they do not repeat across GPU models) |
+| tips worked into the tissue (`procedure._Site`) | at each site a hand's tip may be 2 to 6 mm under the resting surface (right p = 0.35, left p = 0.20) | tracking through what hides the instrument: the tip still counts where it is; only the shaft shows where it enters |
+| smoke that hides (`post.py`) | the plume over the energy device's tip given a dense core (weight 1.0, 45 px, 15 px above the tip, opacity to 0.97): above a density of 0.6 it hides any tip within 50 px of its centre; the events as in 0.2 (density above 0.6 on 9 to 41 % of the steps of the five smoky hidden procedures) | real smoke hides what it comes from; 0.2's smoke only tinted the picture |
+| the assistant | holds 2 to 4 cm beside the work (was 3 to 5.5), reaches into the work 3 times as often (0.012 a step) | telling the surgeon's instruments from the assistant's has to work in the middle of the work |
+| the camera head knocked (`procedure.draw_head_changes`) | once or twice per procedure (p = 0.5 each): first at U(8, 40) s, second at U(first + 15, 76) s; to an angle U(+-40) at least 15 degrees from the old, over 3 control steps | adapting online, not a constant: a program that identifies the rig once (as the episode's did) levels the wrong horizon after a knock |
+| irreversible consequences (`episode.Episode._take_over`) | the surgeon takes the camera back, and every later step of the procedure is not usable, when the lens reaches the tissue closing faster than 15 mm/s, when it touches the tissue a second time, or when a critical action (a clip applied: the jaws closed on it; the first half of a needle bite; the first second of an energy activation) is seen usable on fewer than a quarter of its steps; critical actions in the first 10 s, in the first 3 s at a new site, and overlapping the 4 s from a knock of the camera head are not judged. A smeared lens needs 10 s withdrawn (was 4 s) | the owner's request (2026-11-26): a mistake that ends the job. In 0.2 every error cost only the steps it lasted. Each is a clinical consequence with a mechanism, a line in the manual and observable precursors; none subtracts anything |
+| tighter rules where perception error bites | horizon within 10 degrees (was 15); fine-work picture speed 32 px/s (was 48) | they cost the reference 0.4 and 1.4 points render-free; a narrower zoom band (26-38 px) and safe zone (0.25) were tried and rejected: they cost the reference 16 and 5 points, through the tips' depth spread and the holder's speed, not perception |
+| development material without 3D truth (`episode.Episode.annotation`, `recorder.py`) | labels on every 4th step, only the tips an annotator can see (inside the disk, out of the tissue, no tissue in the line of sight, not in a dense plume), marked with an error of 1.5 px per coordinate (at most 4); role, present, active, catalogue size, lens, joints, the lab's head angle; no depth, apparent size, fine-work flag, horizon error or judgement. The development look pool narrowed to 3 finishes, 2 palettes, staining to 0.3 | the episode's program rebuilt every development instrument's 3D path from the labels' depth, scored its commissioning sessions exactly against it and labelled its own session frames from it |
+| a commissioning bench of its own (`commission_procedures.json`) | the service plays ten procedures of its own (the development table, new seeds, rigs and salts, the graded look pool), nothing about them on file; a session ends at a takeover without saying why | no free judge and no free labels: what a real team has is unlabelled video from the target rooms |
+| the render canary | one renderer restart and a second canary before a task error (grader and service) | a validate run lost an evaluation to a renderer that hung at the canary (`Out of resource descriptors!`) |
+
+Kept: the scoring formula, the probe lock's rule, the kit, the action set, the hidden and development seeds and
+their tables, version 0.2's rig draws (first head angle, latency, shafts). The rules were committed (`1dcff25`) before
+any value existed; `tests/review/draw_v3.py` then drew, once, a 64-bit `os.urandom` key per set (`d31ae95`): hidden
+12757619781714779651, development 16688242537185592512, commissioning 3379130351603837604. From the key each procedure
+gets a salt that is mixed into every stream of its generator (so everything 0.3 adds or changes is drawn after its
+rule) and its head changes. Nothing was redrawn.
 
 **Rendering** (`scene.py`, `render_server.py`, `post.py`). One headless Isaac Sim 6.2 process draws the frames: the
 RTX Real-Time path tracer through a Replicator render product at 640 x 480, one subframe per frame, the render
@@ -179,11 +210,20 @@ the reply through `model.clip_command`.
 
 **The view rules** (`Episode._judge`, manual section 6). At every step reached, from the simulator's state only:
 every counting tip in the central safe zone; every counting instrument's apparent shaft diameter in 22 to 44 px;
-the horizon error within 15 degrees; during fine work (a rule on the tips' own motion, so that it is observable: every
-counting tip within 9 mm of its mean over the last second) the working point's image moved by the camera no faster
-than 48 px/s; the lens clean. A lens within 4 mm of the breathing tissue is smeared and the scope stops; it is clean
-again after 4.0 s held at insertion <= 25 mm. `useful_view_fraction` = usable steps / steps over the whole set.
-There is no other term, weight or penalty: a smeared lens costs exactly the steps it makes unusable.
+the horizon error within 10 degrees (15 until version 0.2); during fine work (a rule on the tips' own motion, so that
+it is observable: every counting tip within 9 mm of its mean over the last second) the working point's image moved by
+the camera no faster than 32 px/s (48 until 0.2); the lens clean. A lens within 4 mm of the moving tissue is smeared
+and the scope stops; it is clean again after 10.0 s held at insertion <= 25 mm (4.0 s until 0.2).
+`useful_view_fraction` = usable steps / steps over the whole set. There is no other term, weight or penalty.
+
+**The surgeon takes the camera back** (version 0.3; `Episode._take_over`, manual section 6). When the lens reaches the
+tissue closing faster than `LENS_INJURY_SPEED` (15 mm/s: the clearance's drop over the servo tick of the contact),
+when it touches the tissue a second time in a procedure, or when a critical action (`procedure._critical_actions`) is
+seen with a usable view on fewer than `CRITICAL_MIN_USABLE` (a quarter) of its steps, the episode records a takeover;
+the grader stops asking the controller and runs the rest of the procedure idle, every step judged `takeover`
+(not usable). The controller gets the next procedure's `reset` as usual. Nothing is subtracted: a takeover costs the
+steps that are left. `verification.json` reports `takeovers` and `takeover_<why>` counts, and each procedure's record
+its takeover step and its critical actions (`critical_min_seen`).
 
 **What standing still costs.** A reply that is late (10 s), malformed or missing, and a used-up reply-time budget
 (0.25 s x 9600 steps = 2400 s in all, probe copies included), end the controller's control of that procedure: the
@@ -211,7 +251,10 @@ nothing more; isolation keeps the score honest.
 and reports where it landed; `check_canary` requires every marker found within 2.5 px of `model.project` and a frame
 that is neither black nor white. A failure is a task error (`fail`), never a zero: it means the sandbox cannot
 render (no RTX GPU, a host driver without its graphics libraries) or renders another camera than the published
-one. A renderer that dies or cannot bring the frame clock up to date is restarted and the frame drawn again (three
+one. Since version 0.3 a canary that fails, or a renderer that dies or hangs during it, gets one fresh renderer and a
+second canary first (`render_client.Renderer.canary`, `verify.grade`; the service does the same): a validate run on
+the RTX 3090 host (`validate-a8caaec5`) had lost an evaluation to a renderer that hung at its first frames with
+`Out of resource descriptors!`. A renderer that dies or cannot bring the frame clock up to date is restarted and the frame drawn again (three
 restarts in an evaluation), since the episode's state lives in the grader's process.
 
 **Isolation.** Three accounts in the verifier: root (the grader, the procedures, the judging), `endosim` (the
@@ -265,36 +308,45 @@ in the status log (2026-11-26).
 ## 5. The agent's side
 
 * `~/given/holder_manual.md`, `holder_model.py`: the device, the scopes, the set-up, the exact rules.
-* `~/given/dev_procedures/`: ten development procedures recorded as video with labels (since 0.2 each label gives
-  every instrument's `shaft_mm`, and each `meta.json` the recording's camera head angle and video latency), by the commissioning service
+* `~/given/dev_procedures/`: ten development procedures recorded as video with labels (since 0.3 an annotation team's:
+  on every fourth step, only the visible tips, hand-marked with a small error, roles, counting, catalogue sizes, lens,
+  joints, the lab's head angle; no depth and no judgement of the view; each `meta.json` gives the recording's camera head
+  angle, its knocks and its video latency), by the commissioning service
   on the sandbox's own GPU during the first minutes of the session (so the frames come from the renderer the grader
   will use; nothing is fetched or committed). The camera in them is held by a scripted, deliberately ordinary
   assistant (`recorder.Assistant`: its view is usable on 52 to 84 % of the steps); two recordings include a lens
-  touching tissue and its cleaning (76 smeared frames). 4010 frames, about 320 MB.
+  touching tissue and its cleaning. 4010 frames (2010 labelled), about 320 MB.
 * The commissioning service (`environment/commission_service/commissiond.py`, account `endosim`, started by
-  `setup.sh`): the grader's simulator on the ten development procedures, 12 sessions, one at a time, the grader's
-  observations and limits, no ground truth, no labels, no score, no summary. `~/commission/run_session.py` runs a
-  controller folder through a session as the grader will, repeated requests included.
+  `setup.sh`): the grader's simulator on ten commissioning procedures of its own (since 0.3:
+  `commission_procedures.json`, the development table with new seeds, rigs and salts, the graded look pool; nothing
+  about them in the agent's documents but their names), 12 sessions, one at a time, the grader's observations, limits
+  and takeovers (a session ends there, without a reason), no ground truth, no labels, no score, no summary.
+  `~/commission/run_session.py` runs a controller folder through a session as the grader will, repeated requests
+  included.
 * `~/example/`: a controller that speaks the wire, keeps memory by step index and holds still.
 
-The development procedures were drawn like the graded ones (same generator, same rule, other seeds); the graded
-ones are in neither the image nor the sandbox.
+The development and commissioning procedures were drawn like the graded ones (same generator, same rule, other
+seeds); the graded ones are in neither the image nor the sandbox.
 
-## 6. Known limitations and open items (version 0.1)
+## 6. Known limitations and open items (version 0.3)
 
-* **Validated in the engine on one host.** `ale validate` passed on version 0.2 (`88705800`, status log, 2026-11-26,
-  morning) as on version 0.1 (`a5acf5e`), both on an RTX 3090 with driver 535 and rootless Docker that limits the
-  CPUs by affinity instead of a quota; the anchor is version 0.2's validate oracle. Not exercised: any cloud GPU
-  model, a host with a CPU quota.
-* **Difficulty is measured by proxies only for version 0.2.** The target is a frontier-model reward of roughly 0.3 or
-  below. Version 0.1 was saturated by one Opus 5.5 episode (reward 1.0, status log). For 0.2 the evidence is the
-  frozen program of that episode, the unchanged pixel baseline and a baseline adapted to 0.2 on development material
-  only (status log, 2026-11-26). Only a new frontier episode settles it.
-* **The rig's identification is part of the job.** A controller that does not identify the camera head's angle
-  fails the horizon rule on every step of a procedure whose head is more than 15 degrees off, and one that takes
-  every instrument for a 5 mm one holds a 10 mm one at the wrong distance. That is deliberate and stated in the
-  manual; it also makes a submission's score less smooth than in 0.1 (a missed identification costs a whole
-  procedure).
+* **Version 0.3 is measured natively only.** `ale validate` passed on versions 0.1 and 0.2 on an RTX 3090 with driver
+  535 and rootless Docker that limits the CPUs by affinity instead of a quota (status log). Version 0.3 changes the
+  image's inputs (the service, its procedures, the manual): a new image, `ale validate` and its oracle's anchor are
+  due on the validate host. Not exercised for any version: a cloud GPU model, a host with a CPU quota.
+* **Difficulty is measured by proxies only for version 0.3.** The target is a frontier-model reward of roughly 0.3 or
+  below. Versions 0.1 and 0.2 were saturated by one Opus 5.5 episode each (rewards 1.0 and 0.92, status log). For
+  0.3 the evidence is the frozen program of the 0.2 episode and a fresh-agent proxy adapted from it on development
+  material only (status log). Only a new frontier episode settles it.
+* **Cliffs make scores lumpy.** A takeover leaves the rest of a procedure unusable, so a submission's per-procedure
+  score depends on when a single mistake happens, and two runs of a controller that reads the picture can differ
+  more than in 0.2. That is the owner's choice (2026-11-26: a mistake that ends the job). The reference stays clear of
+  every cliff with a margin (status log: its lens never comes within 15 mm of the tissue, it sees every critical
+  action usable on most of its steps, against a rule of a quarter), so the anchor does not depend on them.
+* **The rig's identification and its changes are part of the job.** A controller that does not identify the camera
+  head's angle, or does not notice a knock, fails the horizon rule (10 degrees) until it does; one that takes every
+  instrument for a 5 mm one and reads depth from size holds a 10 mm one at the wrong distance. Deliberate and stated
+  in the manual.
 * **Numerics are not pinned.** The simulator and the reference compute with numpy's default kernels; on another CPU
   a threshold can flip on a step. The reference repeats to the last digit here; `full_at` 0.98 is the margin.
 * **The controller's network filter is tested natively only.** Since version 0.2 the controller starts through
@@ -317,10 +369,24 @@ ones are in neither the image nor the sandbox.
   checked for redistribution in a public benchmark image, so none was downloaded or shipped. Open question for the
   maintainers: is there a recorded-kinematics dataset whose licence clearly allows redistribution? If so, the
   generator's gestures could be replaced or calibrated by it without touching the wire or the rules.
-* The tissue is rigid and only breathes; instruments do not deform or cut it, there is no bleeding, and smoke and a
-  smeared lens are image-space effects, not volumes. The instruments are built from primitives, not from CAD of real
-  instruments. The picture is rectified: real laparoscopes have barrel distortion.
-* The lens touches tissue only (not instruments, not the wall above); the scope's shaft collides with nothing.
+* The tissue moves kinematically (version 0.3): a breathing field and gaussian traction round a grip, no mechanics;
+  the instruments do not cut it, a tip worked into it simply passes under the surface (nothing dents round it), there
+  is no bleeding, and smoke and a smeared lens are image-space effects, not volumes. The lens's clearance is judged to
+  first order (the surface's displacement taken at the lens's own x and y), which is exact for the breathing's
+  vertical part and off by the slope times the lateral shift elsewhere (millimetres at most where the lens can be).
+  The instruments are built from primitives, not from CAD of real instruments. The picture is rectified: real
+  laparoscopes have barrel distortion.
+* **The moving mesh costs renders.** The floor's 30,000 vertices and normals are rewritten every frame; the renderer's
+  stale captures rose from under 1 % to 0.4 to 0.6 extra renders a frame (the frame clock catches them, section 2), and
+  a frame took 142 to 204 ms natively beside other jobs (status log). The clock is posed in the same USD change block
+  as the mesh, so a frame that shows the right clock shows the right tissue as far as Hydra applies one change block at
+  once; this was not checked pixel by pixel.
+* The lens touches tissue only (not instruments, not the wall above); the scope's shaft collides with nothing. A
+  takeover for a clash of the scope with an instrument's shaft was considered for version 0.3 and left out: the
+  reference's own scope, taken as a 10 mm cylinder, overlapped an instrument's shaft by up to 7 mm on test procedures
+  (render-free), so it would not stay clear with a margin.
+* The commissioning service ends a session at a takeover without saying why; a surgeon would say why. The service
+  stays silent on purpose (no judgement of the view), and the manual gives the exact rules.
 * The instruments do not wait for the camera: a real surgeon slows down when the view lags.
 * The fine-work rule is a rule on tip motion (observable), not a surgical phase label.
 * The match lock's copy is a possible observation (section 3), but it is drawn, not simulated: an instrument's

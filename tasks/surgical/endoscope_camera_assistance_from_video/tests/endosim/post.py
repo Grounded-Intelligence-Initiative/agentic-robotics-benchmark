@@ -15,7 +15,7 @@ DISK_RADIUS = 310.0
 MOTION_BLUR_SHUTTER = 0.5     # the fraction of a control step the shutter is open
 AE_TARGET = 96.0              # the automatic exposure's centre-weighted mean level (of 255)
 JPEG_QUALITY = 90
-PLUME_WEIGHT, PLUME_RISE_PX, PLUME_SD_PX = 1.2, 20.0, 70.0   # the smoke plume over its source (version 0.3)
+PLUME_WEIGHT, PLUME_RISE_PX, PLUME_SD_PX = 1.0, 15.0, 45.0   # the smoke plume over its source (version 0.3)
 SMOKE_MAX = 0.97
 
 
@@ -93,7 +93,7 @@ class Post(object):
             src = state.get("smoke_px")
             if src is not None:
                 # the plume that rises from the instrument that makes it: dense at its working end (version 0.3: above
-                # a density of about 0.45 it hides that tip, episode.SMOKE_HIDES), thinning as it spreads
+                # a density of about 0.6 its core hides what is in it, episode.SMOKE_HIDES), thinning as it spreads
                 d2 = (self.xx - float(src[0])) ** 2 + (self.yy - float(src[1]) + PLUME_RISE_PX) ** 2
                 a = a + dens * PLUME_WEIGHT * np.exp(-d2 / (2.0 * PLUME_SD_PX ** 2)) * (0.5 + field)
             a = np.clip(a, 0.0, SMOKE_MAX)[..., None]

@@ -128,7 +128,8 @@ move after a commanded motion.
   right hand's at about one place in three, the left hand's at about one in five), hidden from the camera but for its
   shaft, where it enters the tissue; it still counts where it is.
 * An energy device (the hook, the scissors) makes smoke at its tip while it cuts: a plume that rises from the tip and
-  spreads into a haze over the picture. While the smoke is thick the plume hides the tip that makes it.
+  spreads into a haze over the picture. While the smoke is thick the plume's core, just above the tip, hides that tip
+  and anything else close to it.
 * Things lie in the field: gauze swabs (white, or soaked with blood) and metal clips, on the tissue near the work.
 * The assistant's instrument holds beside the work, 2 to 4 cm to one side of it, and reaches into the middle of the
   work every eight seconds or so on average.

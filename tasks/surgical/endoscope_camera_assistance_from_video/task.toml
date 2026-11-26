@@ -6,14 +6,17 @@
 # (closed_loop: robotics_grader.Solver and the probe lock) through a fixed hidden set of 12 procedures, 800 control
 # steps each, and gives it at every step only the endoscope's RGB frame (1 to 3 steps old, drawn by Isaac Sim's RTX
 # renderer in the grader's own process tree) and the holder's four joint readings: never instrument poses, never the
-# procedure's phase, never which scope (0 or 30 degrees) is fitted, the camera head's angle on it, the latency or
-# which instruments are 10 mm ones. Score: useful_view_fraction, the fraction of
+# procedure's phase, never which scope (0 or 30 degrees) is fitted, the camera head's angle on it (knocked to another
+# angle during the procedure), the latency or which instruments are 10 mm ones; the tissue moves (irregular breathing,
+# traction by the instruments), tips work inside it and in smoke. Score: useful_view_fraction, the fraction of
 # control steps whose view is usable (both counting tips in the central safe zone, the instruments' apparent size in
 # the zoom band, the horizon level, the picture steady during fine work, the lens clean), judged from the simulator's
-# state, never from pixels. The agent gets what the device's engineer would have: the holder's manual and kinematic
-# model, the scopes' intrinsics, ten development procedures as labelled video, and a commissioning service that plays
-# those development procedures for its controller without ground truth or score (12 sessions). Design notes, what is
-# verified and what is not: tests/README.md. Needs one NVIDIA RTX GPU.
+# state, never from pixels; a lens driven into tissue, a second lens contact or an unseen critical action makes the
+# surgeon take the camera back, and the rest of that procedure is not usable. The agent gets what the device's
+# engineer would have: the holder's manual and kinematic model, the scopes' intrinsics, ten development procedures as
+# video with an annotation team's 2D labels, and a commissioning service that plays ten procedures of its own for its
+# controller without ground truth or score (12 sessions). Version 0.3. Design notes, what is verified and what is
+# not: tests/README.md. Needs one NVIDIA RTX GPU.
 
 schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]

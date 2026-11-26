@@ -23,7 +23,9 @@ from .procedure import HANDS, ROLES
 CRITERIA = ("lens", "zone", "zoom", "horizon", "motion", "takeover")
 TAKEOVERS = ("lens_injury", "second_contact", "critical_unseen")
 DISK_RADIUS_PX = 305.0        # a tip an annotator can mark lies inside the image disk (post.DISK_RADIUS 310, its edge)
-SMOKE_HIDES = 0.45            # the smoke density above which the plume hides the tip that makes it
+SMOKE_HIDES = 0.6             # the smoke density above which the plume's core hides a tip in it ...
+PLUME_HIDES_PX = 50.0         # ... within this distance of the plume's centre (PLUME_RISE_PX above the source)
+PLUME_RISE_PX = 15.0          # post.PLUME_RISE_PX (post.py imports the renderer's stack; this file must not)
 ANNOTATION_SD_PX = 1.5        # a hand-marked tip's error (px), per coordinate ...
 ANNOTATION_MAX_PX = 4.0       # ... at most this
 
@@ -236,7 +238,8 @@ class Episode(object):
     def visible(self, role, t=None):
         """Whether an annotator sees the tip of `role` in the frame of step t: the instrument in, its tip in front of
         the lens and inside the image disk, above the moving tissue with nothing of the tissue between it and the lens,
-        and, for the instrument that makes the smoke, not inside a dense plume (density above SMOKE_HIDES)."""
+        and not inside the core of a dense plume (density above SMOKE_HIDES, within PLUME_HIDES_PX of the plume's
+        centre, which rises from the right-hand instrument's tip)."""
         t = self.t if t is None else t
         proc = self.proc
         if not proc.present[role][t]:
@@ -254,8 +257,10 @@ class Episode(object):
         pts = lens[None, :] + s[:, None] * (tip - lens)[None, :]
         if np.any(pts[:, 2] < tissue.surface_z(pts[:, 0], pts[:, 1], time_s, grips)):
             return False
-        if role == "right" and float(proc.smoke[t]) > SMOKE_HIDES:
-            return False
+        if float(proc.smoke[t]) > SMOKE_HIDES:
+            src = model.project(np.asarray(proc.tip["right"][t], dtype=float)[None, :], self._pose, self.scope)[0]
+            if src[2] > 0 and math.hypot(u - src[0], v - (src[1] - PLUME_RISE_PX)) < PLUME_HIDES_PX:
+                return False
         return True
 
     def annotation(self, rng):
