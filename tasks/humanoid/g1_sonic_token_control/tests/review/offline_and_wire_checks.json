@@ -74,5 +74,30 @@
     "real_response_only_lock": 1,
     "terminal_truncation_rows": 2,
     "shadow_terminal_truncation_rows": 1
+  },
+  "unfiltered_control_same_container": {
+    "uid": 1000,
+    "unconfined_socket_create": {
+      "AF_INET": true,
+      "AF_INET6": true,
+      "AF_UNIX": true
+    }
+  },
+  "isolated_image_final_startup_check": {
+    "verifier_revision": "5dd063b6976a8a98bd21fe0fb23038ad46d52555",
+    "immutable_image_float64_matrix_product_sha256": "f83f8230aa5e4c8b0e595efe592952b387120788d96d7aed3696fea03728c0cc",
+    "kit_cleared_agent_account": true,
+    "empty_submission": {
+      "rewards": {
+        "reward": 0.0
+      },
+      "metrics": {
+        "ratio": 0.0,
+        "anchor_recorded": 0.0,
+        "episodes": 16.0,
+        "episodes_aborted": 16.0
+      },
+      "diagnostic": "scoring 0: no submission at /home/user/submission/run.sh"
+    }
   }
 }
