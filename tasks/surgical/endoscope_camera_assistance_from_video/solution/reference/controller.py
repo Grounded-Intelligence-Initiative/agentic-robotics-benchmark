@@ -133,8 +133,8 @@ def advance(state, q, priv):
 
     # 4. what to look at: each hand's tip, or the place it left while it is away. Fine work is told from the tips
     #    themselves (the published rule: every counted tip stayed within FINE_RADIUS of its own mean): then the aim is
-    #    the tips' mean place; otherwise where they will be when the command has acted (the frame is one step old,
-    #    the command takes another).
+    #    the tips' mean place; otherwise where they will be when the command has acted (the frame is `lat` steps
+    #    old, the command takes another).
     fine = True
     for h in HANDS:
         if s.away[h] or h not in s.tips:

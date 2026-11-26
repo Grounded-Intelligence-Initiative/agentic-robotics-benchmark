@@ -277,14 +277,20 @@ ones are in neither the image nor the sandbox.
 
 ## 6. Known limitations and open items (version 0.1)
 
-* **The engine has run it on one host only.** `ale validate` passed on an RTX 3090 with driver 535 and rootless Docker
-  that limits the CPUs by affinity instead of a quota (status log, 2026-11-25, evening); the anchor is that run's.
-  `ale run` has not run, and no agent phase has run in the engine (the oracle's takes milliseconds).
-* **Difficulty is unmeasured.** The target is a frontier-model reward of roughly 0.3 or below from perception and
-  control; no frontier model has been run. The one data point is the pixel baseline of section 4 (reward 0.39 and
-  0.43 in two runs, with the reference's control law handed to it, which an agent does not have). If a model saturates the task, the levers
-  that keep it honest are in the generator (the looks pool, denser smoke, more assistant interference, longer
-  exchanges, tips buried deeper), not penalties.
+* **Version 0.2 has not run in the engine.** `ale validate` passed on version 0.1 (`a5acf5e`) on an RTX 3090 with
+  driver 535 and rootless Docker that limits the CPUs by affinity instead of a quota (status log, 2026-11-25,
+  evening), and the one frontier episode ran on that version. Version 0.2 changes the build inputs under
+  `environment/` (the simulator's copy, the manual, the model, the practice launcher), so the image has to be rebuilt,
+  validated and the anchor taken from that validate's oracle; then a frontier episode on the new tip.
+* **Difficulty is measured by proxies only for version 0.2.** The target is a frontier-model reward of roughly 0.3 or
+  below. Version 0.1 was saturated by one Opus 5.5 episode (reward 1.0, status log). For 0.2 the evidence is the
+  frozen program of that episode, the unchanged pixel baseline and a baseline adapted to 0.2 on development material
+  only (status log, 2026-11-26). Only a new frontier episode settles it.
+* **The rig's identification is part of the job.** A controller that does not identify the camera head's angle
+  fails the horizon rule on every step of a procedure whose head is more than 15 degrees off, and one that takes
+  every instrument for a 5 mm one holds a 10 mm one at the wrong distance. That is deliberate and stated in the
+  manual; it also makes a submission's score less smooth than in 0.1 (a missed identification costs a whole
+  procedure).
 * **Numerics are not pinned.** The simulator and the reference compute with numpy's default kernels; on another CPU
   a threshold can flip on a step. The reference repeats to the last digit here; `full_at` 0.98 is the margin.
 * **The controller's network filter is tested natively only.** Since version 0.2 the controller starts through

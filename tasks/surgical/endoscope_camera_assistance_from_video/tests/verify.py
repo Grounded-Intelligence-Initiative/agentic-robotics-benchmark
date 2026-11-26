@@ -3,8 +3,8 @@ that holds only the agent's /home/user/submission (task.toml: separate verificat
 
 closed_loop: the grader owns the simulator. It plays the fixed hidden set of recorded procedures (hidden/
 procedures.json: the same procedures for every submission), and for every control step hands the submission's
-controller one observation (the endoscope's frame, one control step old, and the holder's four joint readings) and
-applies the rate command it answers. The frames are drawn by an Isaac Sim process of its own account (endosim/
+controller one observation (the endoscope's frame, 1 to 3 control steps old as the procedure's rig says, and the
+holder's four joint readings) and applies the rate command it answers. The frames are drawn by an Isaac Sim process of its own account (endosim/
 render_server.py); the view is judged from the simulator's state, never from pixels (endosim/episode.py):
 
     useful_view_fraction = usable steps / steps, over all procedures
