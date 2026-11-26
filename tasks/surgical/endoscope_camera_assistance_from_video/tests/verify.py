@@ -290,9 +290,9 @@ def check_canary(result, config):
 
 
 # ------------------------------------------------------------------------------------------------------ the episodes
-def run_procedure(index, item, steps, solver, renderer, lock, config, privileged, state):
+def run_procedure(index, item, steps, solver, renderer, lock, config, privileged, state, pool="all"):
     """One hidden procedure. Returns its record; never raises for anything the controller does."""
-    proc = procedure.generate(item["seed"], item.get("factors"), steps=steps)
+    proc = procedure.generate(item["seed"], item.get("factors"), steps=steps, pool=pool)
     session = Session(proc, renderer, privileged=privileged)          # the procedure's own video latency (its rig)
     LIVE["session"] = session
     rng = lock.rng
@@ -334,11 +334,11 @@ def run_procedure(index, item, steps, solver, renderer, lock, config, privileged
     return rec
 
 
-def grade(submission, config, make_solver, make_renderer, only=None):
+def grade(submission, config, make_solver, make_renderer, only=None, set_file=None, pool="all"):
     """Play the hidden set against the submission's controller. Returns (records, lock, extra metrics, diagnostic).
     Raises SolverMissing / SolverAborted when there is no controller to drive, RendererError when the environment
-    cannot render."""
-    with open(os.path.join(HERE, "hidden", "procedures.json")) as f:
+    cannot render. (`set_file` and `pool` are for a maintainer's run on the development set only.)"""
+    with open(set_file or os.path.join(HERE, "hidden", "procedures.json")) as f:
         hidden = json.load(f)
     items = hidden["procedures"] if only is None else [hidden["procedures"][i] for i in only]
     steps = int(hidden["steps"])
@@ -367,7 +367,7 @@ def grade(submission, config, make_solver, make_renderer, only=None):
         LIVE.update(records=records, lock=lock, steps=steps * len(items))
         try:
             for i, item in enumerate(items):
-                records.append(run_procedure(i, item, steps, solver, renderer, lock, config, privileged, state))
+                records.append(run_procedure(i, item, steps, solver, renderer, lock, config, privileged, state, pool))
         finally:
             solver.close()
         info = {}

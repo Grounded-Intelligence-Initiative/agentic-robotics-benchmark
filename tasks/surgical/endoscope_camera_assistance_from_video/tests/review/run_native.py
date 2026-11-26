@@ -1,6 +1,6 @@
 """Maintainers' tool: the grader's own episode loop outside the engine, on this machine's GPU.
 
-    <isaac python> tests/review/run_native.py --submission reference|idle|none|<folder> --out DIR [--only 0,1,2]
+    <isaac python> tests/review/run_native.py --submission reference|idle|none|<folder> --out DIR [--only 0,1,2] [--dev]
 
 It calls tests/verify.py's `grade` and `score` (the same hidden set, sessions, probes, budgets, renderer and canary)
 with two launchers of its own: the controller is started as the calling account instead of through `runuser`, and
@@ -75,6 +75,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--only", help="indices of the hidden procedures to run (default: all)")
     ap.add_argument("--tag", default="")
+    ap.add_argument("--dev", action="store_true", help="the development set (commissioning's procedures, dev looks) instead")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     os.environ["ARB_PYTHON"] = sys.executable
@@ -93,7 +94,9 @@ def main():
 
     try:
         records, lock, extra, diagnostic = verify.grade(
-            sub, config, lambda timeout: LocalSolver(step_timeout=timeout, submission=sub, clear_account=False), make_renderer, only=only)
+            sub, config, lambda timeout: LocalSolver(step_timeout=timeout, submission=sub, clear_account=False), make_renderer, only=only,
+            set_file=os.path.join(TASK, "environment", "commission_service", "dev_procedures.json") if a.dev else None,
+            pool="dev" if a.dev else "all")
     except (SolverMissing, SolverAborted) as exc:
         write_verdict(zero_verdict(reason=str(exc), anchored=anchor is not None), path=out)
         print(json.dumps(json.load(open(out))))
