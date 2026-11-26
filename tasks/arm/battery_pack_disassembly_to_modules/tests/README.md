@@ -317,14 +317,15 @@ swollen modules (section 6, the entry "2026-11-26, from 07:52"), scored `mean_pa
 run, frozen before it).
 
 The anchor and its spread: see the status log (section 6) for the measured runs. `tests/anchor.json` holds the
-value measured through `ale validate` on an RTX 3090 host (section 6, the entry "2026-11-26, from 03:54"): the same
-value, in the same steps, as every native run on the author's server.
+value measured through `ale validate` of the second round's version on an RTX 3090 host (section 6, the entry
+"2026-11-26, from 16:31"; before it, the entry "2026-11-26, from 03:54"): the same value, in the same steps, as the
+native runs on the author's server.
 
 ## 5. Known limitations and open decisions (version 0.1.0)
 
 - **Validated in the engine on one host.** `ale validate` passed on 2026-11-26 on the author's validate host (one
-  RTX 3090 on driver 535, rootless Docker without a CPU quota; section 6, the entry "2026-11-26, from 03:54"): the
-  image builds, setup starts the commissioning service, the verify stage's root-only paths ran (the cell as the
+  RTX 3090 on driver 535, rootless Docker without a CPU quota; section 6, the entries "2026-11-26, from 03:54" and,
+  for the second round's version, "2026-11-26, from 16:31"): the image builds, setup starts the commissioning service, the verify stage's root-only paths ran (the cell as the
   account `packcell` from a private copy, the seccomp launcher, the kit's account clearing), the untouched sandbox
   scored 0.0 and the oracle 1.0. Not exercised there: an agent phase (the commissioning sessions as the agent
   reaches them), any cloud GPU model, a host with a CPU quota.
@@ -1257,6 +1258,31 @@ packs only, six development sessions and about an hour and a half of work, the l
 development truth only in `dev/devrun.py`'s comparison afterwards). `mean_pack_credit` 1.00000, reward 1.000 on the hidden set (one run of the program frozen at `3be3069b`, on the final cell): packs 1, 1, 1, 1, 1, 1; 1379 to 1842 steps, 974 to 1234 s simulated; lock 125 of 125; 0 protective stops, 0 stripped, 0 sheared, 0 vented; the program's own time 142 s for the six packs (stage 2781 s, GPU 3 shared). The task can be
 done from what an agent is given, after the second round too.
 
+**2026-11-26, from 16:31. The second round's version through `ale validate`, on the RTX 3090 host (tree
+`ce208f10`).** The host of the entry "2026-11-26, from 03:54" above, with the same two deviations from an evaluation
+host (the cell's driver check off, still in both copies of `packcell/server.py`; the CPUs limited by an affinity of 8
+instead of a quota) and the same engine `bfb7505`. The image was rebuilt (`environment/` changed); nothing of the task
+had to change for this host.
+
+*Run* `validate-f1ab66c2` (16:32 to 17:06, the image build included), first try:
+
+    ok    grounded-intelligence-initiative/battery_pack_disassembly_to_modules: untouched={'reward': 0.0}, oracle={'reward': 1.0}
+
+The untouched verdict: "no usable submission", verify 10 s. The oracle: setup 0.7 s; in the separate verifier sandbox
+the root path secured, the agent account cleared (49 processes), the controller behind the seccomp guard, the canary
+passed (the cell up in 14.9 s, a pack built and rendered in 123.8 s on a cold cache). `mean_pack_credit` 1.00000,
+ratio 1.000, reward 1.0: every pack 1.0 (49, 48, 59, 58, 67 and 69 items placed) in 919, 843, 1067, 1062, 1149 and
+1208 steps, the steps of the second round's native runs `final1` and `final2` exactly, 89 to 126 s of wall clock a
+pack; no protective stop, no cell retry, nothing stripped or sheared, no module vented; the probe lock 85 of 85 (52
+idle pairs not counted); probe copies 137, the true observation's residual the larger in 77; the controller's own
+time 4.2 s; verify 864 s.
+
+*What was decided.* `tests/anchor.json` keeps 1.0, its source now this run; `full_at` stays 0.95. No second validate:
+the commit of this entry changes only `tests/anchor.json` and this file, so the `ok` line above stands for it (the
+pull request's description says so). A frontier episode on the pushed commit follows; its numbers go into the pull
+request's description. Not exercised in the engine: the second round's levers in an agent's hands (the episode
+follows), any cloud GPU model, a host with a CPU quota.
+
 ## 7. Final report (2026-11-24, 16:30 EST)
 
 **Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00"),
@@ -1291,6 +1317,9 @@ Then (the entry "2026-11-26, from 07:52") a second hardening round after a front
 `33ce4599`: seized fasteners with the shank's shear torque, swollen modules that stay in their seats, foam pads
 over fasteners, and the re-review's N1 to N3; the reference 1.00000 again, the frozen frontier program 0.165. The
 validate and frontier numbers above and below are `33ce4599`'s: a new `ale validate` and a new episode follow.
+Then (the entry "2026-11-26, from 16:31") the second round's version through `ale validate` on the RTX 3090 host:
+untouched 0.0, oracle 1.0, the reference's packs in the second round's native steps; the anchor's source is that
+run.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
