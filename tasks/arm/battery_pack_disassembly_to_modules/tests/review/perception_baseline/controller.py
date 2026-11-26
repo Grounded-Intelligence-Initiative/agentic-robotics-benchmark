@@ -600,6 +600,11 @@ class Baseline(object):
             if res is None:
                 return False
             cam, dep, rgb = res
+            if look == 0 and rec["group"] in ("lid", "busbar"):
+                frac, n = V.pad_at(cam, dep, self.nominal_base(rec)[:2], self.seat_z(rec))
+                if frac > 0.6:
+                    self.note(rec["id"], "under a foam pad (%.2f of %d ring readings above 9 mm): by touch" % (frac, n))
+                    return (yield from self.touch(rec, z_safe))
             h = V.wrist_head(cam, dep, est, self.seat_z(rec), rgb=rgb)
             if self.debug_dir:
                 import cv2
@@ -646,6 +651,54 @@ class Baseline(object):
         rec["refined"] = True
         return True
 
+    def probe(self, x, y, seat, z_safe):
+        """Lower the bit straight down at (x, y) until the spindle's spring gives 1 mm; the height above `seat` the
+        bit's tip rests at (the tool centre point plus the compression), or None when it met nothing above the seat."""
+        R = self.cur_T()[:3, :3]
+        yield from self.go(mk(R, [x, y, seat + 0.020]), z_safe, yaw="free", final_speed=0.15, direct=0.03)
+        R = self.cur_T()[:3, :3]
+        res = yield from self.move(mk(R, [x, y, seat - 0.004]), 0.01, guard_stroke=1.0)
+        o = self.o
+        tip = T_of(o["tcp"])[2, 3] + o["spindle"]["stroke_mm"] / 1000.0
+        yield from self.move(mk(R, [x, y, seat + 0.020]), 0.05)
+        if res != "guard":
+            return None
+        return tip - seat
+
+    def touch(self, rec, z_safe):
+        """A fastener under a foam pad (manual, section 7), by touch: the bit's tip at its nominal place rests on its
+        head (the head's height: its type) or on the seat (missing); the head's centre is midway between the two
+        places on either side, along x and along y, where the tip comes off the head's top."""
+        x0, y0, _ = self.nominal_base(rec)
+        seat = self.seat_z(rec)
+        h0 = yield from self.probe(x0, y0, seat, z_safe)
+        self.dbg["fasteners"].setdefault(rec["id"], {})["touch"] = {"h0": h0}
+        if h0 is None or h0 < 0.0025:
+            rec["state"] = "missing"
+            self.note(rec["id"], "by touch: no head (%s)" % (None if h0 is None else "%.1f mm" % (1000 * h0)))
+            return True
+        c = [x0, y0]
+        for axis in (0, 1):
+            edges = []
+            for sgn in (1.0, -1.0):
+                lo, hi = 0.0035, 0.0135                   # the tip is on the top at lo, off it at hi
+                for _ in range(5):
+                    mid = 0.5 * (lo + hi)
+                    p = list(c)
+                    p[axis] += sgn * mid
+                    h = yield from self.probe(p[0], p[1], seat, z_safe)
+                    if h is not None and h > h0 - 0.0005:
+                        lo = mid
+                    else:
+                        hi = mid
+                edges.append(0.5 * (lo + hi))
+            c[axis] += 0.5 * (edges[0] - edges[1])
+        rec["state"], rec["kind"] = "seated", V.head_kind(rec["thread"], h0)
+        rec["est"], rec["refined"] = [c[0], c[1], seat + h0], True
+        self.note(rec["id"], "by touch: %s, %.1f mm high, %.2f mm from its nominal place" % (rec["kind"], 1000 * h0, 1000 * math.hypot(c[0] - x0, c[1] - y0)))
+        self.dbg["fasteners"][rec["id"]]["touch"].update(c=c, kind=rec["kind"])
+        return True
+
     def nominal_base(self, rec):
         x, y, s = rec["nominal"]
         c, sn = math.cos(self.pack["pose"][2]), math.sin(self.pack["pose"][2])
@@ -686,7 +739,9 @@ class Baseline(object):
         self.angle0 = self.o["spindle"]["angle_deg"]
         log = []
         # a first quarter turn, slowly: does the bit drive the head?
-        broke, stalls, total = False, 0, 0.0
+        broke, stalls, total, cycles = False, 0, 0.0, 0
+        # the highest limit that harms nothing: below the shear torque and the head's limit (manual, section 5)
+        safe = min(0.975 * th["shear"], th["never_exceed"] - 1.0)
         result = "fail"
         for k in range(60):
             first = not broke
@@ -695,12 +750,23 @@ class Baseline(object):
             if first:
                 if tmax >= 0.85 * limit and turned < 15.0:
                     stalls += 1
-                    if stalls > 3:
+                    if limit < safe - 1e-6:
+                        # stalled: a corroded fastener; raise the limit as far as is safe, press harder
+                        limit = safe
+                        stroke = press(limit) / SPRING
+                        yield from self.move(mk(R, top - [0, 0, stroke]), 0.03)
+                        continue
+                    # stalled at the safe limit: seized; work it (a loosening stall at 90 % of the shear torque, a
+                    # tightening stall at 110 % of the assembly torque), then try again at the safe limit
+                    if cycles >= 8:
                         result = "stalled"
                         break
-                    limit = min(2.0 * th["assembly"], th["never_exceed"] - 1.0)
-                    stroke = press(limit) / SPRING
-                    yield from self.move(mk(R, top - [0, 0, stroke]), 0.03)
+                    t1, _, _, _ = yield from self.spin(0.6, -120.0, 0.9 * th["shear"])
+                    if t1 > 15.0:
+                        broke, total = True, t1          # it gave way while being loaded
+                        continue
+                    yield from self.spin(0.35, 120.0, 1.1 * th["assembly"])
+                    cycles += 1
                     continue
                 if tmax >= 0.7 * min(limit, th["breakaway"]):
                     broke = True
@@ -719,7 +785,7 @@ class Baseline(object):
                 result = "free_running"
                 break
         self.dbg["fasteners"].setdefault(rec["id"], {}).setdefault("unscrew", []).append({"result": result, "log": log, "est": rec["est"], "kind": rec["kind"]})
-        self.note("unscrew", rec["id"], rec["kind"], result, "turned %.0f" % total, log[:3], log[-2:])
+        self.note("unscrew", rec["id"], rec["kind"], result, "turned %.0f" % total, "worked %d" % cycles, log[:3], log[-2:])
         yield from self.lift(z_safe)
         return result
 
@@ -749,7 +815,7 @@ class Baseline(object):
 
     def take_out(self, recs, z_safe=-0.10):
         """Every seated fastener of `recs`, bit by bit, nearest first: a wrist frame over it, then out."""
-        todo = [r for r in recs if r["state"] in ("seated", "unknown") and not r["out"]]
+        todo = [r for r in recs if r["state"] in ("seated", "unknown", "covered") and not r["out"]]
         for rnd in range(3):
             if not todo:
                 break
@@ -924,6 +990,31 @@ class Baseline(object):
         yield from self.open_wait()
         yield from self.lift(z_safe)
 
+    def measure_modules(self, z_safe):
+        """Each module's top-plate bump from two wrist frames (the camera beside it along the pack's x and y); the one
+        whose bump stands the manual's criterion or more above the plate's rim is swollen (at most one a pack: the
+        highest)."""
+        sw = MANUAL["swollen"]
+        var = MANUAL["variants"][self.pack["variant"]]
+        X, Y, yaw = self.pack["pose"]
+        c, s = math.cos(yaw), math.sin(yaw)
+        top = TZ + 0.124
+        out = {}
+        for p in sorted((p for p in var["parts"] if p["kind"] == "module"), key=lambda p: p["id"]):
+            px, py = X + c * p["x"] - s * p["y"], Y + s * p["x"] + c * p["y"]
+            cams = []
+            for d in ([1.0, 0.0], [0.0, 1.0]):
+                res = yield from self.look_wrist([px, py], top, self.to_base_dir(d), z_safe=z_safe, tag=p["id"] + "_top")
+                if res is not None:
+                    cams.append((res[0], res[1]))
+            r = V.module_bump(cams, self.pack["pose"], (p["x"], p["y"]), top, plate=sw["plate"], rim=sw["rim"], a=sw["a"],
+                              b=sw["b"], dx=sw["dx"]) if cams else None
+            out[p["id"]] = None if r is None else r[0]
+            self.dbg.setdefault("modules", {})[p["id"]] = r
+        self.note("module bumps (mm):", {k: None if v is None else round(1000 * v, 3) for k, v in out.items()})
+        seen = {k: v for k, v in out.items() if v is not None and v >= sw["criterion"]}
+        return set([max(seen, key=seen.get)]) if seen else set()
+
     # ------------------------------------------------------------------ the pack, open
     def modules_seen(self, view):
         """Which variants' module handles stand where the manual puts them (the handle bar's top, 150 mm)."""
@@ -1043,6 +1134,8 @@ class Baseline(object):
         left = yield from self.take_out(inner)
         if left:
             self.note("inner fasteners not out:", left)
+        # 5b. the modules' tops, close by: a swollen one stays in its seat (manual, section 7)
+        swollen = yield from self.measure_modules(Z_PART)
         # 6. busbars, brackets, modules
         if not (yield from self.change_tool("gripper")):
             return
@@ -1062,6 +1155,9 @@ class Baseline(object):
             holders = {"R%sa" % n, "R%sb" % n}
             if holders & stuck:
                 self.note("module still held", p["id"])
+                continue
+            if p["id"] in swollen:
+                self.note("swollen module left in its seat", p["id"])
                 continue
             if (yield from self.pick(p["id"], Z_MODULE)):
                 yield from self.rack_module(bay, Z_MODULE)

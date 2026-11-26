@@ -386,6 +386,7 @@ def main():
     checks += 4
     checks += round2_rules()
     checks += huge_numbers()
+    checks += round2_draws()
     print("ok: %d checks" % checks)
 
 
@@ -508,6 +509,94 @@ def round2_rules():
     assert r2.ended is None
     checks += 3
     return checks
+
+
+def round2_draws():
+    """Checks 22 and 23: the draws of rules 5 to 7 hold to their statements (series.SEIZED, SWOLLEN, FOAM; the
+    documents state the same ranges), and nothing of them can be computed from what an agent can read."""
+    import collections
+    import hashlib
+    import json
+    task = os.path.dirname(os.path.dirname(HERE))
+    rng = random.Random(26)
+    picked, per_group = collections.Counter(), collections.Counter()
+    for k in range(400):
+        variant, harness = rng.choice(sorted(S.VARIANTS)), rng.choice(["none", "lid", "busbars"])
+        n5, sw, n7 = rng.choice([1, 2, 3, 4]), rng.random() < 0.5, rng.choice([0, 1, 2])
+        e = {"seed": rng.getrandbits(64), "variant": variant, "harness": harness, "seized_seed": rng.getrandbits(64),
+             "seized_n": n5, "swollen_seed": rng.getrandbits(64), "swollen": sw, "foam_seed": rng.getrandbits(64), "foam_n": n7}
+        p = S.draw_entry(e)
+        assert p == S.draw_entry(e)
+        fs = p["fasteners"]
+        seized = [f for f in fs if f["seized"]]
+        assert len(seized) == n5 and all(not f["missing"] for f in seized)
+        for f in fs:
+            per_group[f["group"]] += 0 if f["missing"] else 1
+            assert S.SEIZED["work"][0] <= f["work"] <= S.SEIZED["work"][1]
+            sh = S.THREADS[f["thread"]]["shear"]
+            if f["seized"]:
+                picked[f["group"]] += 1
+                assert S.SEIZED["breakaway"][0] * sh - 1e-3 <= f["breakaway"] <= S.SEIZED["breakaway"][1] * sh + 1e-3
+            else:
+                assert f["breakaway"] < sh, f          # every other fastener breaks away below its shear torque
+        mods = [q for q in p["parts"] if q["kind"] == "module"]
+        swollen = [q for q in mods if q["swollen"]]
+        assert len(swollen) == (1 if sw else 0)
+        for q in mods:
+            b = q["bump"]
+            lo, hi = S.SWOLLEN["bulge"] if q["swollen"] else S.SWOLLEN["crown"]
+            assert lo <= b["h"] <= hi and S.SWOLLEN["a"][0] <= b["a"] <= S.SWOLLEN["a"][1] and S.SWOLLEN["b"][0] <= b["b"] <= S.SWOLLEN["b"][1]
+            # the bump stays inside the top plate's rim (the plate is 20 mm shorter and narrower than the module, the
+            # rim its outer 5 mm: the plane a program fits)
+            assert abs(b["dx"]) <= S.SWOLLEN["dx"][1] and b["a"] + abs(b["dx"]) <= S.MODULE["size"][0] / 2 - 0.010 - 0.005 + 1e-9
+            assert b["b"] <= S.MODULE["size"][1] / 2 - 0.010 - 0.005 + 1e-9
+            assert (b["h"] >= S.SWOLLEN["criterion"]) == q["swollen"]
+        covers = p["harness"]["covers"] if p["harness"] else []
+        assert len(p["pads"]) == n7
+        byid = {f["id"]: f for f in fs}
+        for d in p["pads"]:
+            f = byid[d["fastener"]]
+            assert f["group"] in S.FOAM["weights"] and f["id"] not in covers and d["part"] == f["holds"]
+            assert math.hypot(d["x"] - f["nominal"][0], d["y"] - f["nominal"][1]) <= S.FOAM["off"] + 1e-6
+            assert S.FOAM["side"][0] <= d["side"] <= S.FOAM["side"][1] and S.FOAM["thick"][0] <= d["thick"] <= S.FOAM["thick"][1]
+            # the pad covers every place the fastener's head can be (2 mm) with its widest head and the ring of 12 mm
+            assert d["side"] / 2 - math.hypot(d["x"] - f["nominal"][0], d["y"] - f["nominal"][1]) >= 0.012 - 1e-9
+    # per fastener, a bracket's is chosen about twice as often as a lid's or a busbar's
+    rate = {g: picked[g] / float(per_group[g]) for g in per_group}
+    assert 1.5 < rate["bracket"] / rate["lid"] < 2.7 and 0.7 < rate["busbar"] / rate["lid"] < 1.4, rate
+    # the sets: the counts of the rules' tables, the seeds from their keys
+    sel = json.load(open(os.path.join(task, "tests", "hidden", "selection.json")))
+    hidden = json.load(open(os.path.join(task, "tests", "hidden", "packs.json")))["packs"]
+    dev = json.load(open(os.path.join(task, "environment", "commission_service", "dev_packs.json")))["packs"]
+    for name, packs in (("hidden", hidden), ("dev", dev)):
+        for k, e in enumerate(packs):
+            p = S.draw_entry(e)
+            n_seized = sum(f["seized"] for f in p["fasteners"])
+            assert n_seized == (e["seized_n"] if name == "hidden" else S.SEIZED["n_dev"]) and 2 <= e["seized_n"] <= 4 or name == "dev"
+            assert sum(q.get("swollen", False) for q in p["parts"]) == (S.SWOLLEN[name][k])
+            assert len(p["pads"]) == S.FOAM[name][k]
+            for key, tag in (("seized_key_hex", b"seized"), ("swollen_key_hex", b"swollen"), ("foam_key_hex", b"foam")):
+                want = int.from_bytes(hashlib.blake2b(b"%s|%s|%d" % (tag, name.encode(), k), key=bytes.fromhex(sel[key]),
+                                                      digest_size=8).digest(), "little")
+                assert e[tag.decode() + "_seed"] == want
+    # 23. nothing of rules 5 to 7 is on file for the agent: no key and no seed in a file it can read, and without the
+    #     seeds (all it could compute from) a pack has no seized fastener, no swollen module and no pad
+    secrets = [sel[k] for k in ("seized_key_hex", "swollen_key_hex", "foam_key_hex")]
+    secrets += [str(e[k]) for e in hidden + dev for k in ("seized_seed", "swollen_seed", "foam_seed")]
+    visible = [os.path.join(task, "instruction.md")]
+    for dp, _dns, fns in os.walk(os.path.join(task, "environment")):
+        if "commission_service" in dp:
+            continue                             # installed for the account packcell alone (the image checks it)
+        visible += [os.path.join(dp, fn) for fn in fns]
+    for fp in visible:
+        with open(fp, "rb") as f:
+            blob = f.read()
+        for x in secrets:
+            assert x.encode() not in blob, (fp, x[:8])
+    bare = S.draw_pack(hidden[0]["seed"], variant=hidden[0]["variant"], harness=hidden[0]["harness"])
+    assert not any(f["seized"] for f in bare["fasteners"]) and not bare["pads"]
+    assert not any(q.get("swollen") for q in bare["parts"])
+    return 2
 
 
 def huge_numbers():

@@ -12,5 +12,5 @@
   "max_processes": 64,
   "verifier_deadline_s": 20400,
   "scoring_cap": 1.5,
-  "note": "the grader's knobs. cell: what the grader's cell runs with (tests/packcell/wire.py DEFAULTS for the rest); the agent's copy of these numbers is given/cell/cell.json (limits). controller_budget_s and max_steps are per pack; step_timeout_s is the kit's per-request deadline (READY within 4 of them). max_processes: the kit Solver's cap on the agent account's processes (counted at every reset and every 64 requests). verifier_deadline_s: the kit's VerifierDeadline, 1200 s inside [verifier] timeout_sec (21600): a verdict from the packs graded by then."
+  "note": "the grader's knobs. cell: what the grader's cell runs with (tests/packcell/wire.py DEFAULTS for the rest); the agent's copy of these numbers is given/cell/cell.json (limits). controller_budget_s and max_steps are per pack; step_timeout_s is the kit's per-request deadline (READY within 4 of them). max_processes: the cap on the agent account's processes (verify.GuardedSolver counts them before every request). verifier_deadline_s: the kit's VerifierDeadline, 1200 s inside [verifier] timeout_sec (21600): a verdict from the packs graded by then."
 }

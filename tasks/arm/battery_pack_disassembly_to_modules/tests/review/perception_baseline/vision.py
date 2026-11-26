@@ -450,3 +450,68 @@ def wrist_head_fit(cam, depth, expect, seat_z, thread, r_search=0.009):
     pz = seat_z + H
     return {"hole": False, "x": float(c[0]), "y": float(c[1]), "z": float(pz), "height": H, "fit": True, "cover": cover,
             "rms": rms, "radius": None if rad is None else float(rad), "n_rim": int(len(pts))}
+
+
+# ------------------------------------------------------------------ round 2 (2026-11-26): foam pads, swollen modules
+def pad_at(cam, depth, xy, seat_z, r=(0.010, 0.012), above=0.009):
+    """Whether a foam pad covers the fastener whose nominal place is `xy` (manual, section 7: a pad 40 to 60 mm
+    across, its centre within 8 mm of the place, so it covers a circle of 12 mm around it; 10 to 14 mm high, more
+    than any head or dab of sealant). Returns (fraction of the ring's readings standing `above` the seat, count)."""
+    P = cam.points(depth)
+    rr = np.hypot(P[..., 0] - xy[0], P[..., 1] - xy[1])
+    ring = np.isfinite(rr) & (rr >= r[0]) & (rr <= r[1])
+    h = P[..., 2][ring] - seat_z
+    if h.size < 30:
+        return 0.0, int(h.size)
+    return float(np.mean(h > above)), int(h.size)
+
+
+def module_bump(cams, pose, centre, top_z, plate=(0.28, 0.11), rim=0.005, a=(0.09, 0.12), b=(0.035, 0.05), dx=0.015):
+    """The height of a module's top-plate bump (manual, section 7) from wrist frames [(camera, depth)]: the plate's
+    points in the module's own frame (`pose`: the pack's x, y, yaw; `centre`: the module's centre in the pack frame;
+    `top_z`: the plate's nominal height in the base frame), a plane fitted to its rim (the outer `rim`), and the bump
+    h (1 - rho^2)^2 over an ellipse of the stated sizes fitted to what stands above the plane (least squares over a
+    grid of the ellipse's semi-axes and offset). Returns (h, rim points, plate points) or None."""
+    X, Y, yaw = pose
+    c, s = math.cos(yaw), math.sin(yaw)
+    pts = []
+    for cam, dep in cams:
+        P = cam.points(dep).reshape(-1, 3)
+        P = P[np.all(np.isfinite(P), axis=1)]
+        px, py = P[:, 0] - X, P[:, 1] - Y
+        u = c * px + s * py - centre[0]
+        v = -s * px + c * py - centre[1]
+        keep = (np.abs(u) < plate[0] / 2 - 0.001) & (np.abs(v) < plate[1] / 2 - 0.001) & (np.abs(P[:, 2] - top_z) < 0.005)
+        pts.append(np.stack([u[keep], v[keep], P[keep, 2]], axis=1))
+    if not pts:
+        return None
+    Q = np.concatenate(pts)
+    edge = (np.abs(Q[:, 0]) > plate[0] / 2 - rim) | (np.abs(Q[:, 1]) > plate[1] / 2 - rim)
+    R = Q[edge]
+    if len(R) < 200 or len(Q) < 2000:
+        return None
+    A = np.stack([np.ones(len(R)), R[:, 0], R[:, 1]], axis=1)
+    coef = None
+    sel = np.ones(len(R), bool)
+    for _ in range(3):                      # a plane through the rim, readings far off it left out
+        coef = np.linalg.lstsq(A[sel], R[sel, 2], rcond=None)[0]
+        res = R[:, 2] - A @ coef
+        sel = np.abs(res - np.median(res[sel])) < 3.0 * 1.4826 * np.median(np.abs(res[sel] - np.median(res[sel]))) + 1e-5
+    r = Q[:, 2] - (coef[0] + coef[1] * Q[:, 0] + coef[2] * Q[:, 1])
+    if len(Q) > 10000:                      # enough for a hundredth of a millimetre; keeps the fit fast
+        pick = np.random.default_rng(0).choice(len(Q), 10000, replace=False)
+        Q, r = Q[pick], r[pick]
+    best = None
+    for aa in np.linspace(a[0], a[1], 5):
+        for bb in np.linspace(b[0], b[1], 5):
+            for d0 in np.linspace(-dx, dx, 5):
+                rho2 = ((Q[:, 0] - d0) / aa) ** 2 + (Q[:, 1] / bb) ** 2
+                g = np.where(rho2 < 1.0, (1.0 - rho2) ** 2, 0.0)
+                gg = float(g @ g)
+                if gg <= 0:
+                    continue
+                h = float(g @ r) / gg
+                sse = float(((r - h * g) ** 2).sum())
+                if best is None or sse < best[0]:
+                    best = (sse, h)
+    return best[1], int(len(R)), int(len(Q))
