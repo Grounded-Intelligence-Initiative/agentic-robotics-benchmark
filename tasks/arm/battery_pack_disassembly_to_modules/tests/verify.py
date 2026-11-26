@@ -11,8 +11,10 @@ reclaims root's PATH directories (robotics_grader.stage.secure_exec_path).
 A verdict always: the kit's `VerifierDeadline` is armed at the start with `verifier_deadline_s` (inside the task's
 `[verifier] timeout_sec`); if grading is still running then, the packs graded so far count, every other pack counts
 0, and `verifier_deadline_expired` says why. A cell that fails while a controller runs is run once more with the
-controller stopped; a second failure is scored when the submission can have caused it (pack_grade.run_packs) and is
-a task error only when it cannot.
+controller stopped and its account emptied (`scrub_account`: every process, every file outside the submission, every
+SysV IPC object; the submission restored from the copy taken when it was staged), so nothing of the submission is
+left; a second failure is scored when the controller ran again beside it or could not be stopped
+(pack_grade.run_packs), and is a task error only when nothing of the submission was left.
 
 The cell: every pack of the set runs in a fresh process of `packcell/server.py` (Isaac Sim; physics on the CPU, the
 GPU renders the two cameras). The process runs as the image's unprivileged account `packcell`, from a copy of
@@ -129,10 +131,17 @@ def kill_processes(uid, rounds=20, pause=0.25):
 
 
 class GuardedSolver(Solver):
-    """The kit Solver, spawned through the seccomp launcher, with a reply-line cap. Outside the engine (a
-    maintainer's run as an ordinary account) `run.sh` is started directly, with the caller's environment."""
+    """The kit Solver, spawned through the seccomp launcher, with a reply-line cap and the account's processes
+    counted before every request (the kit counts at every reset and every 64th; upstream cable_routing_through_clips
+    counts before every request). Outside the engine (a maintainer's run as an ordinary account) `run.sh` is started
+    directly, with the caller's environment."""
 
     guard = True
+
+    def request(self, message):
+        if self.max_processes > 0 and not self._dead:
+            self._check_processes()          # more than the cap: the pack ends, run.sh is started again for the next
+        return Solver.request(self, message)
 
     def _spawn(self):
         if not ROOT:
@@ -213,34 +222,114 @@ def agent_inet_sockets(uid):
     return n
 
 
-def agent_files_fill_a_disk(uid, folders, tops=("/home", "/tmp", "/var/tmp", "/dev/shm"), limit=200000):
-    """Why the account's files can have filled a filesystem the cell writes to, or None: one of `folders` has less
-    than 1 GiB (or a tenth of its size, if smaller) free while the account holds at least 64 MiB of files in the places
-    it can write (bounded walk, links not followed)."""
-    held, seen = 0, 0
+SKIP_TOPS = ("/proc", "/sys")
+
+
+def scrub_files(uid, keep, tops=("/",), skip=()):
+    """Remove every file, link and folder of the account `uid` under `tops` (links not followed, no bound), except
+    `keep` and what lies in it and in `skip`; a folder of the account that holds `keep` is emptied, not removed.
+    Returns the number of entries removed."""
+    keep = os.path.realpath(keep)
+    skip = tuple(os.path.realpath(x) for x in skip) + SKIP_TOPS
+    removed = 0
     for top in tops:
-        for dp, dns, fns in os.walk(top, followlinks=False):
-            for name in fns + dns:
-                seen += 1
+        for dp, dns, fns in os.walk(top, topdown=True, followlinks=False):
+            if dp.startswith(skip) or dp == keep or dp.startswith(keep + os.sep):
+                dns[:] = []
+                continue
+            for name in fns:
+                fp = os.path.join(dp, name)
                 try:
-                    st = os.lstat(os.path.join(dp, name))
+                    if os.lstat(fp).st_uid == uid:
+                        os.unlink(fp)
+                        removed += 1
                 except OSError:
+                    pass
+            for name in list(dns):
+                fp = os.path.join(dp, name)
+                if fp in skip or fp == keep:
+                    dns.remove(name)
                     continue
-                if st.st_uid == uid and stat.S_ISREG(st.st_mode):
-                    held += st.st_blocks * 512
-            if seen > limit:
-                break
-    if held < 64 << 20:
-        return None
-    for folder in folders:
+                try:
+                    st = os.lstat(fp)
+                except OSError:
+                    dns.remove(name)
+                    continue
+                if st.st_uid != uid or (keep + os.sep).startswith(fp + os.sep):
+                    continue                 # walk into it (an ancestor of `keep` is emptied)
+                if stat.S_ISLNK(st.st_mode):
+                    os.unlink(fp)
+                else:
+                    shutil.rmtree(fp, ignore_errors=True)
+                dns.remove(name)
+                removed += 1
+    return removed
+
+
+def sysv_objects(uid, proc="/proc/sysvipc"):
+    """The account's SysV IPC objects: [(kind, id)] for shared memory, semaphore sets and message queues."""
+    out = []
+    for kind, uid_col in (("shm", 7), ("sem", 4), ("msg", 7)):
         try:
-            du = shutil.disk_usage(folder)
-        except OSError:
+            with open(os.path.join(proc, kind)) as f:
+                head = f.readline().split()
+                col = head.index("uid") if "uid" in head else uid_col
+                for line in f:
+                    v = line.split()
+                    if len(v) > col and v[col].isdigit() and int(v[col]) == uid:
+                        out.append((kind, int(v[1])))
+        except (OSError, ValueError, IndexError):
             continue
-        if du.free < min(1 << 30, du.total // 10):
-            return "the controller's files ({} MiB) can have filled the disk: {} has {} MiB free".format(
-                held >> 20, folder, du.free >> 20)
-    return None
+    return out
+
+
+def remove_sysv(objects):
+    """IPC_RMID on each (kind, id); returns how many went."""
+    import ctypes
+    libc = ctypes.CDLL(None, use_errno=True)
+    calls = {"shm": lambda i: libc.shmctl(i, 0, None), "sem": lambda i: libc.semctl(i, 0, 0), "msg": lambda i: libc.msgctl(i, 0, None)}
+    return sum(1 for kind, i in objects if calls[kind](i) == 0)
+
+
+def snapshot_submission(workdir):
+    """A root-only copy of the staged submission, taken before anything of it runs."""
+    snap = tempfile.mkdtemp(prefix=".submission-", dir=STAGE)
+    os.chmod(snap, 0o700)
+    shutil.copytree(workdir, os.path.join(snap, "s"), symlinks=True)
+    return os.path.join(snap, "s")
+
+
+def restore_submission(workdir, snap, uid, gid):
+    """The submission folder as it was staged, the account's own again."""
+    for name in os.listdir(workdir):
+        fp = os.path.join(workdir, name)
+        if os.path.isdir(fp) and not os.path.islink(fp):
+            shutil.rmtree(fp, ignore_errors=True)
+        else:
+            try:
+                os.unlink(fp)
+            except OSError:
+                pass
+    for name in os.listdir(snap):
+        src, dst = os.path.join(snap, name), os.path.join(workdir, name)
+        if os.path.isdir(src) and not os.path.islink(src):
+            shutil.copytree(src, dst, symlinks=True)
+        else:
+            shutil.copy2(src, dst, follow_symlinks=False)
+    for dp, dns, fns in os.walk(workdir, followlinks=False):
+        for name in dns + fns:
+            os.lchown(os.path.join(dp, name), uid, gid)
+    os.lchown(workdir, uid, gid)
+    os.chmod(workdir, 0o700)
+
+
+def scrub_account(uid, gid, workdir, snap):
+    """After the controller's processes are gone (a cell failure): nothing of the submission stays but the
+    submission itself, as it was staged. Returns (files removed, IPC objects removed)."""
+    removed = scrub_files(uid, workdir, skip=(STAGE, os.path.dirname(snap)))
+    ipc = remove_sysv(sysv_objects(uid))
+    restore_submission(workdir, snap, uid, gid)
+    return removed, ipc
 
 
 def stage_submission(uid, gid, max_bytes):
@@ -470,7 +559,8 @@ def main():
                          egress_guard_seccomp=1.0 if run["egress_mode"] == "seccomp" else 0.0,
                          egress_detected=float(run["egress"]["hits"]),
                          controller_seconds=round(float(run["clock"].s), 1),
-                         controller_restarts=float(getattr(run["solver"], "restarts", 0)),
+                         controller_restarts=float(getattr(run["solver"], "restarts", 0) - getattr(run["solver"], "grader_restarts", 0)),
+                         grader_restarts=float(getattr(run["solver"], "grader_restarts", 0)),
                          probe_residual_true=float(max([r.get("probe_residual_true", 0.0) for r in records] or [0.0])),
                          probe_residual_copy=float(max([r.get("probe_residual_copy", 0.0) for r in records] or [0.0])),
                          probe_copies=float(sum(r.get("probe_copies", 0) for r in records)),
@@ -509,7 +599,7 @@ def main():
             except OSError:
                 pass
 
-    VerifierDeadline(float(config.get("verifier_deadline_s", 20400)) - (time.monotonic() - t_start), out_of_time).arm()
+    deadline = VerifierDeadline(float(config.get("verifier_deadline_s", 20400)) - (time.monotonic() - t_start), out_of_time).arm()
     try:
         uid, gid = _agent_ids()
     except KeyError:
@@ -539,6 +629,7 @@ def main():
                                    anchored=anchor is not None, extra=secured))
         return
     truth = oracle_token_ok(workdir)
+    snap = snapshot_submission(workdir) if ROOT else None
     egress_mode = "none"
     if ROOT:
         egress_mode = "seccomp" if egress_self_test(uid, gid) else "detect"
@@ -551,10 +642,14 @@ def main():
     clock = run["clock"]
 
     def stop_account():
-        return kill_processes(uid) if ROOT else True
-
-    def charge_files():
-        return agent_files_fill_a_disk(uid, [host.work, "/", "/tmp", "/var/tmp", "/dev/shm"]) if ROOT else None
+        if not ROOT:
+            return True
+        stopped = kill_processes(uid)
+        if stopped:
+            removed, ipc = scrub_account(uid, gid, workdir, snap)
+            log("the controller's account emptied before the retry: {} file(s) or folder(s), {} IPC object(s) "
+                "removed; the submission restored as staged".format(removed, ipc))
+        return stopped
 
     try:
         start_s, reset_s = canary(host, config)
@@ -571,8 +666,7 @@ def main():
             try:
                 G.run_packs(solver, packs, truth, config,
                             lambda: host.start(float(config.get("cell_start_timeout_s", 900))),
-                            log=log, clock=clock, on_pack=watch, stop_account=stop_account,
-                            charge_files=charge_files, progress=run)
+                            log=log, clock=clock, on_pack=watch, stop_account=stop_account, progress=run)
             finally:
                 try:
                     solver.close()
@@ -596,6 +690,7 @@ def main():
         host.cleanup()
     cleanup_ok = kill_processes(uid) if ROOT else True
     publish({"cleanup_failed": 0.0 if cleanup_ok else 1.0}, zero=not cleanup_ok)
+    deadline.disarm()
 
 
 if __name__ == "__main__":

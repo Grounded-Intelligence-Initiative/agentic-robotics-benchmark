@@ -60,6 +60,13 @@ def main():
         ("The grader stops 20,400 s after it starts", grader["verifier_deadline_s"] == 20400
          and grader["verifier_deadline_s"] + 1200 == int(re.search(r"\[verifier\]\ntimeout_sec = (\d+)", toml).group(1))),
         ("about 15,000 s", "15,000 s with the canary" in toml),
+        ("**seized** fasteners (up to four a pack", S.SEIZED["max"] == 4 and S.SEIZED["n_hidden"][1] <= 4
+         and S.SEIZED["breakaway"][0] > 1.0),
+        ("a bulge of a few tenths of a millimetre to 3 mm on its top", S.SWOLLEN["bulge"] == (0.0006, 0.0030)),
+        ("lifted or pushed 5 mm it vents", S.SWOLLEN["vent_m"] == 0.005),
+        ("counted before every request", "def request(self, message):\n        if self.max_processes > 0" in verify),
+        ("every file of your account outside the submission folder and every SysV IPC object of your account are\nremoved",
+         "scrub_account(uid, gid, workdir, snap)" in verify and "charge_files" not in verify),
     ]
     flat = re.sub(r"\s+", " ", text)
     bad = []

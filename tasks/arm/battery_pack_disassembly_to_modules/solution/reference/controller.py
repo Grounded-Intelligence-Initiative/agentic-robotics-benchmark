@@ -4,7 +4,8 @@ It is a privileged reference: the grader adds `truth` to its observations (where
 head a fastener has) because the submission carries the reference's token. With that it skips the perception a
 submission has to do, and nothing else: every motion, every tool and bit exchange, every fastener and every part goes
 through the same actions, rules and physics as any program's, and what it decides about a fastener while it turns
-(stalled, free, out) it decides from the nutrunner's torque and angle. Without `truth` it ends the pack at once.
+(stalled, free, out) it decides from the nutrunner's torque and angle (how long to work a seized one loose it takes
+from `truth`). Without `truth` it ends the pack at once.
 
 Structure: `Reference.act(t, obs)` answers one request. A step may be asked twice with the same `t` and slightly
 different readings; the program advances once per `t` and builds each answer from the observation it came with: the
@@ -25,7 +26,8 @@ TICK = CELL["tick_s"]
 MAXT = CELL["max_ticks_per_action"]
 TZ = CELL["table_z"]
 # the service manual's torque table
-THREADS = {"M6": {"tighten": 10.0, "head_limit": 22.0, "turns": 7.0}, "M8": {"tighten": 23.0, "head_limit": 45.0, "turns": 9.0}}
+THREADS = {"M6": {"tighten": 10.0, "head_limit": 22.0, "shear": 20.0, "turns": 7.0},
+           "M8": {"tighten": 23.0, "head_limit": 45.0, "shear": 46.0, "turns": 9.0}}
 SPRING = CELL["tools"]["nutrunner"]["spring_N_per_m"]
 OPEN = CELL["tools"]["gripper"]["open_max"]
 HOLD = {"move": {"type": "hold", "ticks": 1}}
@@ -311,7 +313,9 @@ class Reference(object):
         yield from self.move(mk(R, top - [0, 0, stroke]), 0.03)
         start = self.o["spindle"]["angle_deg"]
         stalls = 0
-        for _ in range(40):
+        # the highest limit that harms nothing: below the shear torque and the head's limit
+        safe = min(0.975 * th["shear"], th["head_limit"] - 1.0)
+        for _ in range(60):
             o = yield from self.wait(0.5, extra={"spindle": {"speed_rpm": -240.0, "torque_limit": limit}})
             tr = o["trace"]
             turned = abs(tr["angle_deg"][-1] - tr["angle_deg"][0])
@@ -319,11 +323,20 @@ class Reference(object):
             if self.tr["captured"] == fid:
                 break
             if turned < 20.0 and torque > 0.85 * limit:
-                # stalled at the limit: a corroded fastener; raise the limit as far as the head allows, press harder
                 stalls += 1
-                limit = min(2.0 * th["tighten"], th["head_limit"] - 1.0)
-                stroke = press(limit) / SPRING
-                yield from self.move(mk(R, top - [0, 0, stroke]), 0.03)
+                if limit < safe:
+                    # stalled at the limit: a corroded fastener; raise the limit as far as is safe, press harder
+                    limit = safe
+                    stroke = press(limit) / SPRING
+                    yield from self.move(mk(R, top - [0, 0, stroke]), 0.03)
+                    continue
+                # stalled at the safe limit: a seized fastener; work it (service manual, section 7) until its
+                # breakaway is below the safe limit (the privileged view says what it is now)
+                for _cycle in range(12):
+                    if self.tr["fasteners"][fid]["breakaway"] <= limit:
+                        break
+                    yield from self.wait(0.6, extra={"spindle": {"speed_rpm": -240.0, "torque_limit": 0.9 * th["shear"]}})
+                    yield from self.wait(0.35, extra={"spindle": {"speed_rpm": 240.0, "torque_limit": 1.1 * th["tighten"]}})
                 if stalls > 3:
                     self.log("fastener stays stalled", fid)
                     break
@@ -492,6 +505,9 @@ class Reference(object):
                     yield from self.drop_in_bin(where, Z_PART)
         bay = 0
         for pid in sorted(p for p, v in self.tr["parts"].items() if v["kind"] == "module"):
+            if self.tr["parts"][pid].get("swollen"):
+                self.log("swollen module stays in its seat", pid)        # service manual, section 7
+                continue
             if self.tr["parts"][pid]["locked"]:
                 self.log("module still held", pid)
                 continue

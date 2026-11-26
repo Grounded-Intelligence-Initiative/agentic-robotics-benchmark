@@ -315,19 +315,36 @@ thread: **look at every head before choosing the bit.**
 
 Lid and busbar fasteners are M6, bracket fasteners M8.
 
-| thread | assembly torque (N m) | breakaway, clean (N m) | breakaway, corroded (N m) | never exceed (N m) | turns to free |
-|---|---|---|---|---|---|
-| M6 | 10 | 11.5 | 16 to 19 | 22 | 7 |
-| M8 | 23 | 26.45 | 36.8 to 43.7 | 45 | 9 |
+| thread | assembly torque (N m) | breakaway, clean (N m) | breakaway, corroded (N m) | breakaway, seized (N m) | head's limit (N m) | shear torque (N m) | turns to free |
+|---|---|---|---|---|---|---|---|
+| M6 | 10 | 11.5 | 16 to 19 | 23 to 32 | 22 | 20 | 7 |
+| M8 | 23 | 26.45 | 36.8 to 43.7 | 52.9 to 73.6 | 45 | 46 | 9 |
 
 - **Loosening.** A fastener breaks away at its breakaway torque over the first 30 degrees and then runs out at about
   12 % of the assembly torque. After the number of turns in the table it is free; it stays on the bit (the bits are
   magnetic) until it is ejected.
 - **Corroded fasteners** (rust-brown head, a rust stain around it) need the higher breakaway torque. A nutrunner
   whose torque limit is below a fastener's breakaway torque stalls at the limit without turning it: raise the limit,
-  never above the "never exceed" value of the thread.
-- **Tightening by mistake.** A seated fastener does not turn further: the spindle stalls at its limit. With the limit
-  above the "never exceed" value the head gives way within half a second.
+  staying below the thread's shear torque and the head's limit.
+- **The shank's strength.** A fully engaged bit that holds a fastener's shear torque, loosening or tightening, twists
+  its shank off: the head comes away on the bit (eject it like a fastener), the stub stays in the thread and holds
+  its part for good (the line's rework station drills it out; this cell cannot). A sheared fastener counts nothing,
+  and the part it holds cannot be taken off. Clean and corroded fasteners break away below the shear torque.
+- **The head's limit** holds both ways: a spindle stalled at a limit above it, tightening or loosening, wears the
+  head through within half a second.
+- **Seized fasteners.** Up to 4 fasteners of a pack, in any group (a bracket fastener twice as often as a lid or a
+  busbar fastener), are seized by corrosion or
+  by thread-locker; a seized fastener may look clean or rusty. Its breakaway is 1.15 to 1.6 times its thread's shear
+  torque: no torque its shank survives turns it at first, and the spindle stalls at any limit below the shear
+  torque. It comes loose by working, with the bit fully engaged and pressed on as for the torque it holds: (1) loosen
+  against a limit of at least 85 % of the shear torque (and below it) until the spindle has stalled there for 0.5 s in
+  all, then (2) tighten against a limit of at least the assembly torque (and below the head's limit) until it has
+  stalled there for 0.25 s. Each such cycle lowers what the fastener's breakaway exceeds a clean one's by a factor of
+  0.55 to 0.8 (one factor per fastener); one to five cycles bring a seized fastener's breakaway below 19.5 N m (M6) or
+  44 N m (M8). Whether it turns now, a loosening try against a limit just below that tells. A cycle at a lower
+  torque, or a tightening without the loosening before it, does nothing.
+- **Tightening by mistake.** A seated fastener does not turn further: the spindle stalls at its limit, which does no
+  harm below the head's limit and the shear torque.
 - **The wrong bit, or a bit that is not square on the head, wears the head** (section 3 of `tool_catalog.md` has the
   tolerances). A worn-out (stripped) head no longer takes its bit; only the extractor bit EX removes such a fastener.
 - **Missing fasteners.** Field packs come back with fasteners missing (an empty, dark hole). There is nothing to
@@ -341,7 +358,8 @@ Lid and busbar fasteners are M6, bracket fasteners M8.
 4. Pull the low-voltage plugs J1 and J2 from the BMS.
 5. Remove the busbar bolts, then the busbars.
 6. Remove the bracket bolts, then the brackets.
-7. Lift each module out by its handle and stand it in a bay of the module rack.
+7. Lift each module out by its handle and stand it in a bay of the module rack; a swollen module stays in its seat
+   (section 7).
 
 Steps 4 to 6 may be interleaved as long as nothing live is touched before step 3 is complete and every component is
 free before it is lifted. Sort everything that comes off (section 9).
@@ -363,6 +381,23 @@ free before it is lifted. Sort everything that comes off (section 9).
   printed bar code) are stuck to the lid's flat areas, never over a bolt, its handle or a rib; and some clean heads
   carry a dull film of dust (about 30 %) that takes the shine off them. None of it holds anything or changes how a
   bit engages.
+- **Swollen modules.** A module whose cells have swollen pushes its top plate up: a smooth bulge 0.6 to 3 mm high at
+  its centre, over an ellipse 180 to 240 mm long and 70 to 100 mm wide whose centre lies within 15 mm of the plate's
+  centre along the module; the top plate of a healthy module is flat to within 0.25 mm (the same smooth shape). A
+  module whose top stands 0.4 mm or more above the plane of the plate's rim (its outer 5 mm) at the bulge's highest
+  point is swollen. At most one module of a pack is swollen. A swollen module stays in the tray for the line's
+  quarantine station: free it like any module (its brackets and busbars come off), but do not lift, push or pull
+  it: moved 5 mm from its seat, its cells can vent, and the work on the pack ends there. Left in its seat, freed,
+  level and undamaged, it counts its value (section 9); a healthy module left in the tray counts nothing.
+- **Foam pads.** A service shop sometimes glued a pad of soft open-cell foam over a lid bolt or a busbar bolt: light
+  grey-beige, square, 40 to 60 mm across and 10 to 14 mm high above the seat, turned at any angle, its centre within
+  8 mm of the fastener's nominal place; up to 2 pads in a pack. A pad hides the head, or the empty hole of a missing
+  fastener, from both cameras. It is glued to the lid or the busbar and leaves with it; the gripper cannot take it
+  off. It is soft: a bit pressed through it reaches the head (or the seat) and engages as it would without it. The
+  fastener under a pad is at its place of section 4, within the 2 mm above; whether it is there and which head it
+  has can be found by touch and by trial: a bit resting on a head stands the head's height (section 5) above a bit
+  resting on the seat (the spindle's `stroke_mm` at a known tool height tells which), and a bit that does not fit a
+  head turns freely and harms nothing (`tool_catalog.md`, section 3).
 - **A harness remnant.** Some packs carry a piece of blue low-voltage harness (cable 12 mm thick, 0.2 to 0.4 m long,
   a grey plug shell at each end) that was cut and left behind: lying on the lid over one or two lid bolts, or inside
   the pack along the busbars over two or three busbar bolts. It is loose. A bolt under it cannot be reached; take
@@ -382,7 +417,7 @@ The example pack is not one of the packs you will meet.
 
 | component | goes to | value |
 |---|---|---|
-| module | a bay of the module rack, standing on the bay's floor (one module per bay) | 8 |
+| module | a bay of the module rack, standing on the bay's floor (one module per bay); a swollen module: its seat in the tray, freed (section 7) | 8 |
 | lid | the lid stand, lying flat | 5 |
 | service disconnect | electronics bin | 3 |
 | busbar | copper bin | 2 |
@@ -391,5 +426,5 @@ The example pack is not one of the packs you will meet.
 | harness remnant | electronics bin | 1 |
 | fastener | either fasteners bin | 0.5 |
 
-A component counts when it lies undamaged where it belongs. Damaged means: a fastener with a stripped head, a harness
-chafed by the nutrunner, a module that was dropped.
+A component counts when it lies undamaged where it belongs. Damaged means: a fastener with a stripped head or a
+sheared shank, a harness chafed by the nutrunner, a module that was dropped or that vented.

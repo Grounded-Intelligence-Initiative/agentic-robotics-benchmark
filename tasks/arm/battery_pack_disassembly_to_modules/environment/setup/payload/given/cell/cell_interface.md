@@ -68,8 +68,8 @@ A pack ends early on your program's side in two ways; in both, what has been sor
 
 - **Your program is given up on and started again:** a missed deadline (`READY` within 120 s of a start; each
   request read and answered within 30 s), a closed output, a line that is not a JSON object, an answer without
-  `action`, or more than 64 processes of your account (counted at every `reset` and every 64 requests; threads are
-  not counted). The pack ends where it is, your program is stopped with everything it started, and `run.sh` is
+  `action`, or more than 64 processes of your account (counted before every request; threads are not
+  counted). The pack ends where it is, your program is stopped with everything it started, and `run.sh` is
   started again for the next pack: at most three such restarts, after which the remaining packs are not worked on.
 - **The pack ends and your program goes on:** an `action` that is not valid (a malformed field or a value out
   of range) or that the cell rejects, the pack's budget of your program's own time used up, or its step
@@ -77,10 +77,11 @@ A pack ends early on your program's side in two ways; in both, what has been sor
 
 **When the cell itself fails.** Your program shares the GPU and the sandbox's memory with the cell, which takes
 about 4 GB of GPU memory and 6 GB of memory: keep your program below 12 GB of GPU memory and 16 GB of memory. If the
-cell fails while a pack runs, your program is stopped with everything it started, and the pack is run again from
-the start in a fresh cell, with `run.sh` started again (that restart is not one of the three). If the cell fails a
-second time on that pack after your program was started again, or because your program's files filled a disk the
-cell writes to, the pack counts 0 and grading goes on with the next pack.
+cell fails while a pack runs, your program is stopped with everything it started, every file of your account outside
+the submission folder and every SysV IPC object of your account are removed, the submission folder is put back as it
+was handed over, and the pack is run again from the start in a fresh cell, with `run.sh` started again (that restart
+is not one of the three). If the cell fails a second time on that pack after your program was started again, or your
+program could not be stopped completely, the pack counts 0 and grading goes on with the next pack.
 
 **The grader's own deadline.** The grader stops 20400 s after it starts, whatever is running then: the packs graded
 by then count and the others count 0. Six packs at every limit of section 6 take about 15,000 s.
@@ -155,7 +156,8 @@ a little and stands still for 3 s (`stopped`, then `locked_s` counting down); mo
 
 **What ends a pack**: `done`; the simulated time is used up (`sim_cap`, 2700 s per pack); a tool touches a live part
 before isolation (`live_contact`, service manual section 1); a module falls (`module_dropped`: a free module that is
-not held and drops faster than 0.7 m/s, i.e. from more than about 25 mm). After the end nothing moves any more.
+not held and drops faster than 0.7 m/s, i.e. from more than about 25 mm); a swollen module is moved 5 mm or more
+from its seat (`module_vented`, service manual section 7). After the end nothing moves any more.
 
 ## 5. Cameras
 
@@ -235,7 +237,9 @@ When a pack has ended and everything has come to rest, each component counts if 
 
 - in a bin: its centre over the bin's inner footprint and not higher than 0.03 m above the top of the walls;
 - the lid: its centre within 0.10 m of the stand's centre in x and in y, lying on the stand, flat within 5 degrees;
-- a module: its centre over a bay, standing on the bay's floor, upright within 8 degrees;
+- a module: its centre over a bay, standing on the bay's floor, upright within 8 degrees; a swollen module (service
+  manual, section 7): within 5 mm of its seat in the tray, level within 5 degrees, freed (its brackets and busbars
+  off);
 - a fastener: in either fasteners bin.
 
 The pack's credit is the value of what counts divided by the value of everything in the pack (a missing fastener is
@@ -244,7 +248,8 @@ not in the pack). Nothing is subtracted for anything.
 ## 8. Commissioning
 
 The commissioning service in your sandbox runs this cell on 4 development packs of the series: packs with their own
-placements, head types, corroded and missing fasteners and harness remnants, none of them a pack you are graded on.
+placements, head types, corroded, seized and missing fasteners, harness remnants, swollen modules and foam pads, none
+of them a pack you are graded on.
 Each development pack is taken apart in a cell of its own: its cameras' mounting offsets (section 5) are the same in
 every session on that pack and differ from those of the other development packs and of every graded cell.
 You get what a commissioning engineer has at the cell: the same actions and observations as above, the camera

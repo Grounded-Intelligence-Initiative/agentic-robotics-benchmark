@@ -17,6 +17,13 @@ see it:
 - every fastener's **head type** (hexagon or Torx, per fastener): seen in the picture, or found by trying bits in an
   order that harms no head (`tool_catalog.md`, section 2), at the cost of bit exchanges;
 - **corroded** fasteners, which need more torque than a clean one's breakaway, and **missing** ones;
+- **seized** fasteners (up to four a pack, clean-looking or rusty) that no torque the shank survives turns: a bit
+  that holds a thread's shear torque twists the shank off and the stub keeps its part for good, so a seized fastener
+  has to be worked loose under torque control (`service_manual.md`, section 5);
+- **foam pads** glued over some lid and busbar fasteners, which hide the head (or the empty hole) from both cameras;
+  the bit goes through them;
+- a **swollen** module (a bulge of a few tenths of a millimetre to 3 mm on its top), which must stay in its seat:
+  lifted or pushed 5 mm it vents and the work on the pack ends;
 - **sealant** dabbed over part of some heads, which hides part of the head from the cameras;
 - the **look** of the pack: grime, dust and labels on the lid, dull heads, and the hall's light (brightness and colour);
 - a **harness remnant** that may lie on the lid or inside the pack over fasteners and has to go first.
@@ -28,9 +35,11 @@ plates on the fixture and the robot's exact kinematics. The depth images are an 
 2.5 mm at the fixture from the overhead camera, 0.3 mm from the wrist camera close up), quantized, with no reading
 on dark and shiny surfaces, at edges and in the stereo pair's shadows (`cell_interface.md`, section 5).
 
-A bit one size off (a 13 mm socket on a 10 mm hexagon, a T30 bit in a T40 recess), the extractor, or a bit that is on
-a head but not square on it wears the head until it is stripped; any other bit turns freely on it and harms nothing.
-A tool that touches a busbar before the pack is isolated, or a module that falls, ends the work on that pack.
+A bit one size off (a 13 mm socket on a 10 mm hexagon, a T30 bit in a T40 recess), the extractor, a bit that is on
+a head but not square on it, a Torx bit not pressed hard enough for the torque it holds, or a stall above the head's
+limit wears the head until it is stripped; any other bit turns freely on it and harms nothing. A tool that touches a
+busbar before the pack is isolated, a module that falls, or a swollen module moved off its seat ends the work on that
+pack.
 
 ## What you produce (in `/home/user/submission/`)
 
@@ -65,9 +74,9 @@ needs (the cell's configuration, for instance) into the submission folder: at mo
 larger folder is not run and scores 0.
 
 After a missed deadline, a closed output, a reply without an action or more than 64 processes of your account
-(threads are not counted), the pack ends where it is and `run.sh` is started again for the next pack, at most three
-times. After an invalid action, a used-up time budget or the step limit, the pack ends where it is and the same
-program, still running, gets the next pack (`cell_interface.md`, section 2).
+(counted before every request; threads are not counted), the pack ends where it is and `run.sh` is started again for
+the next pack, at most three times. After an invalid action, a used-up time budget or the step limit, the pack ends
+where it is and the same program, still running, gets the next pack (`cell_interface.md`, section 2).
 
 ## What you are given
 
@@ -113,19 +122,23 @@ is checked before each request, so the answer that crosses it is still carried o
 
 Your program shares the GPU and the sandbox's memory with the cell, which takes about 4 GB of GPU memory and 6 GB of
 memory: keep your program below 12 GB of GPU memory and 16 GB of memory. If the cell fails while your program runs,
-your program is stopped and the pack is run again from the start in a fresh cell (that restart is not one of the
-three); if the cell fails again on that pack after your program was started again, or because your program's files
-filled a disk, the pack counts 0. The grader stops 20,400 s after it starts, whatever is running then: the packs
-graded by then count and the others count 0 (six packs at every limit above take about 15,000 s).
+your program is stopped, every file of your account outside the submission folder and every SysV IPC object of your
+account are removed, the submission folder is put back as it was handed over, and the pack is run again from the
+start in a fresh cell (that restart is not one of the three); if the cell fails again on that pack after your
+program was started again, or your program could not be stopped completely, the pack counts 0; and if the processes
+of your account cannot all be stopped when grading ends, the run scores 0. The grader stops 20,400 s after it
+starts, whatever is running then: the packs graded by then count and the others count 0 (six packs at every limit
+above take about 15,000 s).
 
 A pack ends when your program sends `done`, when its simulated time is used up, when a tool touches a live part
-before isolation, when a module falls, or when your program is given up on. Then every component of the pack counts
-if it lies undamaged where it belongs (service manual, section 9; `cell_interface.md`, section 7): a module standing
-in a bay of the rack (value 8), the lid on its stand (5), the service disconnect in the electronics bin (3), a
-busbar in the copper bin (2), a bracket in the steel bin (1), a low-voltage plug or the harness remnant in the
-electronics bin (1 each), a fastener in a fasteners bin (0.5). The pack's credit is the value that counts divided
-by the value of everything in the pack; nothing is subtracted for anything, and what was sorted before a pack ended
-early still counts. Where things are is read from the physics engine, not from pictures.
+before isolation, when a module falls or a swollen module is moved off its seat, or when your program is given up
+on. Then every component of the pack counts if it lies undamaged where it belongs (service manual, section 9;
+`cell_interface.md`, section 7): a module standing in a bay of the rack, or a swollen one freed and left in its seat
+(value 8), the lid on its stand (5), the service disconnect in the electronics bin (3), a busbar in the copper bin
+(2), a bracket in the steel bin (1), a low-voltage plug or the harness remnant in the electronics bin (1 each), a
+fastener in a fasteners bin (0.5). The pack's credit is the value that counts divided by the value of everything in
+the pack; nothing is subtracted for anything, and what was sorted before a pack ended early still counts. Where
+things are is read from the physics engine, not from pictures.
 
 `mean_pack_credit` is the mean of the six credits. The reward you are judged on is `mean_pack_credit` relative to a
 hidden reference value. A program that does nothing scores 0.

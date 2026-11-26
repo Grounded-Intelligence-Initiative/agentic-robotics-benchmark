@@ -9,10 +9,12 @@ applies joint moves kinematically and can be told to fail.
   then, the rest at 0, `verifier_deadline_expired` 1, and the process ends with status 0;
 - the process cap: a controller that starts more processes than `max_processes` has the pack ended and scored, and
   is started again for the next pack;
-- a cell failure: the controller (and what it started) is stopped before the fresh cell starts, the restart is not
-  counted against the three, a second failure after the controller was started again is scored (the pack counts 0,
-  grading goes on), and a second failure with nothing of the submission running is a task error unless its files
-  can have filled a disk.
+- the process cap: counted before every request (the pack in which a controller passes it ends at its next request);
+- a malformed action with a JSON integer too large for a float (the re-review's N1), applied or in a probe pair;
+- a cell failure: the controller (and what it started) is stopped before the fresh cell starts, its account's files
+  outside the submission and its SysV IPC objects are removed and the submission is restored as staged, the restart
+  is not counted against the three, a second failure after the controller was started again is scored (the pack
+  counts 0, grading goes on), and a second failure with nothing of the submission left is a task error.
 """
 
 import json
@@ -61,6 +63,8 @@ for line in sys.stdin:
         time.sleep(0.25)
     qt = m["obs"]["q_target"]
     act = {"move": {"type": "joint", "delta": [0.001 + 1e-3 * qt[0], 0, 0, 0, 0, 0], "ticks": 1}}
+    if SC == "huge" and t == 3:
+        act = {"move": {"type": "joint", "delta": [int("1" * 400), 0, 0, 0, 0, 0], "ticks": 1}}
     if t >= 12:
         act = {"cmd": "done"}
     print(json.dumps({"action": act}), flush=True)
@@ -190,13 +194,32 @@ def test_process_cap(work, packs, config):
         V.GuardedSolver._uid = real_uid
         V.GuardedSolver.max_processes = 0
     r = records
-    res = [check("process cap: the pack after the forks is ended at its reset and scored",
-                 r[1]["aborted"] and "too many processes" in r[1]["aborted"] and r[1]["ended"] == "given_up"
-                 and r[1]["credit"] == 0.0, str([(x["ended"], x["aborted"]) for x in r])),
-           check("process cap: pack 0 (before the check) counts", r[0]["credit"] == 1.0),
+    res = [check("process cap: every pack in which the controller starts its forks (at t = 2) ends at its next request, scored",
+                 all(x["aborted"] and "too many processes" in x["aborted"] and x["ended"] == "given_up" and x["credit"] == 0.0
+                     and x["steps"] == 3 for x in r), str([(x["ended"], x["aborted"], x["steps"]) for x in r])),
            check("process cap: run.sh started again for the next pack, its children stopped",
                  len(lines(os.path.join(sub, "launches.log"))) >= 2 and solver.restarts >= 1,
                  "launches %d, restarts %d" % (len(lines(os.path.join(sub, "launches.log"))), solver.restarts))]
+    return all(res)
+
+
+def test_huge_numbers(work, packs, config):
+    """N1 of the re-review: an action with a JSON integer too large for a float is a malformed action (the pack
+    ends there, grading goes on), on the applied path and on the probe lock's path; never an OverflowError."""
+    reset_stub()
+    sub = submission(work, "huge")
+    solver, r = grade(sub, packs[:2], config)
+    res = [check("a 400-digit integer in an applied action (at t = 3, every start): each pack ends there as malformed",
+                 len(r) == 2 and all("malformed action" in (x["aborted"] or "") and x["steps"] == 3 for x in r),
+                 str([(x["ended"], x["aborted"]) for x in r]))]
+    lock = G.IdleAwareProbeLock(None, rate=1.0, pass_fraction=0.1, tolerance=1e-4, canonical=G.canonical)
+    huge = {"move": {"type": "joint", "delta": [int("9" * 400), 0, 0, 0, 0, 0]}}
+    ok = False
+    try:
+        lock.record(huge, {"move": {"type": "joint", "delta": [0.01, 0, 0, 0, 0, 0]}})
+    except V.SolverAborted as exc:
+        ok = "malformed" in str(exc)
+    res.append(check("a 400-digit integer in a probe pair's reply: a malformed action (SolverAborted)", ok))
     return all(res)
 
 
@@ -238,20 +261,41 @@ def test_cell_failure(work, packs, config):
         res.append(check("second failure with nothing of the submission running: a task error", False, "no exception"))
     except cellproc.CellError as exc:
         res.append(check("second failure with nothing of the submission running: a task error", True, str(exc)))
-    # (d) the same, but the controller's files can have filled a disk: scored
-    reset_stub()
-    sub = submission(work, "plain")
-    StubCell.fail_at, StubCell.fail_start = {(2, 5)}, {3}
-    solver, r = grade(sub, packs[:3], config, charge_files=lambda: "the controller's files filled the disk (stub)")
-    res.append(check("second failure, the files can have filled a disk: scored",
-                     r[1]["ended"] == "cell_failed" and "disk" in r[1]["aborted"] and r[2]["credit"] == 1.0,
-                     str([(x["ended"], x["credit"]) for x in r])))
-    # the disk rule itself on a filesystem with room: no charge
-    tmp = tempfile.mkdtemp(dir=work)
-    with open(os.path.join(tmp, "big"), "wb") as f:
-        f.write(b"\0" * (80 << 20))
-    res.append(check("the disk rule: 80 MiB of files on a disk with room is not charged",
-                     V.agent_files_fill_a_disk(os.getuid(), [tmp], tops=(tmp,)) is None))
+    # (d) the account is emptied before the retry: every file of it outside the submission (links not followed),
+    #     and the submission is restored as it was staged (verify.scrub_files, restore_submission)
+    top = tempfile.mkdtemp(dir=work)
+    home, keep = os.path.join(top, "home"), os.path.join(top, "home", "submission")
+    os.makedirs(os.path.join(keep, "lib"))
+    os.makedirs(os.path.join(home, ".cache", "deep"))
+    os.makedirs(os.path.join(top, "tmp", "notes"))
+    for fp in (os.path.join(keep, "run.sh"), os.path.join(keep, "lib", "a.py"), os.path.join(home, ".cache", "deep", "x"),
+               os.path.join(top, "tmp", "notes", "pack1.json"), os.path.join(top, "tmp", "fill")):
+        with open(fp, "w") as f:
+            f.write("x")
+    outside = tempfile.mkdtemp(dir=work)
+    with open(os.path.join(outside, "victim"), "w") as f:
+        f.write("x")
+    os.symlink(outside, os.path.join(top, "tmp", "link"))
+    snap = os.path.join(tempfile.mkdtemp(dir=work), "s")
+    shutil.copytree(keep, snap, symlinks=True)
+    with open(os.path.join(keep, "notes_of_pack1"), "w") as f:
+        f.write("x")
+    os.unlink(os.path.join(keep, "lib", "a.py"))
+    removed = V.scrub_files(os.getuid(), keep, tops=(top,))
+    V.restore_submission(keep, snap, os.getuid(), os.getgid())
+    left = sorted(os.path.relpath(os.path.join(dp, n), top) for dp, dns, fns in os.walk(top) for n in dns + fns)
+    res.append(check("cell failure: the account's files outside the submission are removed, links not followed",
+                     left == ["home", "home/submission", "home/submission/lib", "home/submission/lib/a.py", "home/submission/run.sh"]
+                     and os.path.exists(os.path.join(outside, "victim")) and removed == 2, "%s, removed %d" % (left, removed)))
+    # SysV IPC: the account's objects are found (one is made here and removed by id only: never every object of the
+    # account running this test)
+    import ctypes
+    libc = ctypes.CDLL(None, use_errno=True)
+    shm = libc.shmget(0, 4096, 0o1600)            # IPC_PRIVATE, IPC_CREAT | 0600
+    found = ("shm", shm) in V.sysv_objects(os.getuid()) if shm >= 0 else False
+    gone = V.remove_sysv([("shm", shm)]) == 1 if shm >= 0 else False
+    res.append(check("cell failure: the account's SysV shared memory is found and removed",
+                     shm >= 0 and found and gone and ("shm", shm) not in V.sysv_objects(os.getuid()), "id %d" % shm))
     return all(res)
 
 
@@ -319,7 +363,8 @@ def main():
     config = dict(G.CONFIG)
     config.update(step_timeout_s=5.0, probe_rate=0.2)
     try:
-        ok = [test_cell_failure(work, packs, config), test_process_cap(work, packs, config), test_deadline(work)]
+        ok = [test_cell_failure(work, packs, config), test_process_cap(work, packs, config), test_huge_numbers(work, packs, config),
+              test_deadline(work)]
     finally:
         shutil.rmtree(work, ignore_errors=True)
     print("grader safeguards: %s" % ("all ok" if all(ok) else "FAILED"))

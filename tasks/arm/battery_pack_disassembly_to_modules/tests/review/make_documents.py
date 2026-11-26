@@ -28,6 +28,7 @@ from packcell import series as S  # noqa: E402
 GIVEN = os.path.join(TASK, "environment", "setup", "payload", "given")
 MANUAL = os.path.join(GIVEN, "manual")
 E = S.ENGAGE
+SZ, SW, FM = S.SEIZED, S.SWOLLEN, S.FOAM
 D = wire.DEFAULTS
 NR, GR = S.TOOLS["nutrunner"], S.TOOLS["gripper"]
 
@@ -256,23 +257,44 @@ thread: **look at every head before choosing the bit.**
 
 Lid and busbar fasteners are M6, bracket fasteners M8.
 
-""" + table(["thread", "assembly torque (N m)", "breakaway, clean (N m)", "breakaway, corroded (N m)", "never exceed (N m)", "turns to free"], [
+""" + table(["thread", "assembly torque (N m)", "breakaway, clean (N m)", "breakaway, corroded (N m)", "breakaway, seized (N m)",
+             "head's limit (N m)", "shear torque (N m)", "turns to free"], [
         [k, "%g" % T["tighten"], "%g" % (1.15 * T["tighten"]), "%g to %g" % (1.6 * T["tighten"], 1.9 * T["tighten"]),
-         "%g" % T["head_limit"], "%g" % T["turns"]] for k, T in sorted(S.THREADS.items())]) + """
+         "%g to %g" % (SZ["breakaway"][0] * T["shear"], SZ["breakaway"][1] * T["shear"]),
+         "%g" % T["head_limit"], "%g" % T["shear"], "%g" % T["turns"]] for k, T in sorted(S.THREADS.items())]) + """
 
 - **Loosening.** A fastener breaks away at its breakaway torque over the first %g degrees and then runs out at about
   %d %% of the assembly torque. After the number of turns in the table it is free; it stays on the bit (the bits are
   magnetic) until it is ejected.
 - **Corroded fasteners** (rust-brown head, a rust stain around it) need the higher breakaway torque. A nutrunner
   whose torque limit is below a fastener's breakaway torque stalls at the limit without turning it: raise the limit,
-  never above the "never exceed" value of the thread.
-- **Tightening by mistake.** A seated fastener does not turn further: the spindle stalls at its limit. With the limit
-  above the "never exceed" value the head gives way within half a second.
+  staying below the thread's shear torque and the head's limit.
+- **The shank's strength.** A fully engaged bit that holds a fastener's shear torque, loosening or tightening, twists
+  its shank off: the head comes away on the bit (eject it like a fastener), the stub stays in the thread and holds
+  its part for good (the line's rework station drills it out; this cell cannot). A sheared fastener counts nothing,
+  and the part it holds cannot be taken off. Clean and corroded fasteners break away below the shear torque.
+- **The head's limit** holds both ways: a spindle stalled at a limit above it, tightening or loosening, wears the
+  head through within half a second.
+- **Seized fasteners.** Up to %d fasteners of a pack, in any group (a bracket fastener twice as often as a lid or a
+  busbar fastener), are seized by corrosion or
+  by thread-locker; a seized fastener may look clean or rusty. Its breakaway is %g to %g times its thread's shear
+  torque: no torque its shank survives turns it at first, and the spindle stalls at any limit below the shear
+  torque. It comes loose by working, with the bit fully engaged and pressed on as for the torque it holds: (1) loosen
+  against a limit of at least %d %% of the shear torque (and below it) until the spindle has stalled there for %g s in
+  all, then (2) tighten against a limit of at least the assembly torque (and below the head's limit) until it has
+  stalled there for %g s. Each such cycle lowers what the fastener's breakaway exceeds a clean one's by a factor of
+  %g to %g (one factor per fastener); one to five cycles bring a seized fastener's breakaway below %g N m (M6) or
+  %g N m (M8). Whether it turns now, a loosening try against a limit just below that tells. A cycle at a lower
+  torque, or a tightening without the loosening before it, does nothing.
+- **Tightening by mistake.** A seated fastener does not turn further: the spindle stalls at its limit, which does no
+  harm below the head's limit and the shear torque.
 - **The wrong bit, or a bit that is not square on the head, wears the head** (section 3 of `tool_catalog.md` has the
   tolerances). A worn-out (stripped) head no longer takes its bit; only the extractor bit EX removes such a fastener.
 - **Missing fasteners.** Field packs come back with fasteners missing (an empty, dark hole). There is nothing to
   remove there; what the fastener held may already be loose.
-""" % (E["breakaway_deg"], round(100 * E["running_fraction"])))
+""" % (E["breakaway_deg"], round(100 * E["running_fraction"]), SZ["max"], SZ["breakaway"][0], SZ["breakaway"][1],
+       round(100 * S.WORK["loosen"]), S.WORK["loosen_s"], S.WORK["tighten_s"], SZ["work"][0], SZ["work"][1],
+       0.975 * S.THREADS["M6"]["shear"], S.THREADS["M8"]["head_limit"] - 1.0))
     t.append("""## 6. Order of work
 
 1. Remove every bolt of the lid.
@@ -281,7 +303,8 @@ Lid and busbar fasteners are M6, bracket fasteners M8.
 4. Pull the low-voltage plugs J1 and J2 from the BMS.
 5. Remove the busbar bolts, then the busbars.
 6. Remove the bracket bolts, then the brackets.
-7. Lift each module out by its handle and stand it in a bay of the module rack.
+7. Lift each module out by its handle and stand it in a bay of the module rack; a swollen module stays in its seat
+   (section 7).
 
 Steps 4 to 6 may be interleaved as long as nothing live is touched before step 3 is complete and every component is
 free before it is lifted. Sort everything that comes off (section 9).
@@ -303,6 +326,23 @@ free before it is lifted. Sort everything that comes off (section 9).
   printed bar code) are stuck to the lid's flat areas, never over a bolt, its handle or a rib; and some clean heads
   carry a dull film of dust (about %d %%) that takes the shine off them. None of it holds anything or changes how a
   bit engages.
+- **Swollen modules.** A module whose cells have swollen pushes its top plate up: a smooth bulge %g to %g mm high at
+  its centre, over an ellipse %d to %d mm long and %d to %d mm wide whose centre lies within %d mm of the plate's
+  centre along the module; the top plate of a healthy module is flat to within %g mm (the same smooth shape). A
+  module whose top stands %g mm or more above the plane of the plate's rim (its outer 5 mm) at the bulge's highest
+  point is swollen. At most one module of a pack is swollen. A swollen module stays in the tray for the line's
+  quarantine station: free it like any module (its brackets and busbars come off), but do not lift, push or pull
+  it: moved %d mm from its seat, its cells can vent, and the work on the pack ends there. Left in its seat, freed,
+  level and undamaged, it counts its value (section 9); a healthy module left in the tray counts nothing.
+- **Foam pads.** A service shop sometimes glued a pad of soft open-cell foam over a lid bolt or a busbar bolt: light
+  grey-beige, square, %d to %d mm across and %d to %d mm high above the seat, turned at any angle, its centre within
+  %d mm of the fastener's nominal place; up to %d pads in a pack. A pad hides the head, or the empty hole of a missing
+  fastener, from both cameras. It is glued to the lid or the busbar and leaves with it; the gripper cannot take it
+  off. It is soft: a bit pressed through it reaches the head (or the seat) and engages as it would without it. The
+  fastener under a pad is at its place of section 4, within the 2 mm above; whether it is there and which head it
+  has can be found by touch and by trial: a bit resting on a head stands the head's height (section 5) above a bit
+  resting on the seat (the spindle's `stroke_mm` at a known tool height tells which), and a bit that does not fit a
+  head turns freely and harms nothing (`tool_catalog.md`, section 3).
 - **A harness remnant.** Some packs carry a piece of blue low-voltage harness (cable 12 mm thick, 0.2 to 0.4 m long,
   a grey plug shell at each end) that was cut and left behind: lying on the lid over one or two lid bolts, or inside
   the pack along the busbars over two or three busbar bolts. It is loose. A bolt under it cannot be reached; take
@@ -313,7 +353,10 @@ free before it is lifted. Sort everything that comes off (section 9).
        S.SEALANT["r"][0], S.SEALANT["r"][1], 1000 * S.SEALANT["above"][0], 1000 * S.SEALANT["above"][1],
        S.APPEARANCE["patches"][0], S.APPEARANCE["patches"][1], round(2000 * S.APPEARANCE["patch_axes"][0]),
        round(2000 * S.APPEARANCE["patch_axes"][1]), S.APPEARANCE["labels"][0], S.APPEARANCE["labels"][1],
-       round(100 * S.APPEARANCE["dusty_p"])))
+       round(100 * S.APPEARANCE["dusty_p"]), 1000 * SW["bulge"][0], 1000 * SW["bulge"][1], round(2000 * SW["a"][0]), round(2000 * SW["a"][1]),
+       round(2000 * SW["b"][0]), round(2000 * SW["b"][1]), round(1000 * SW["dx"][1]), 1000 * SW["crown"][1], 1000 * SW["criterion"],
+       round(1000 * SW["vent_m"]), round(1000 * FM["side"][0]), round(1000 * FM["side"][1]), round(1000 * FM["thick"][0]),
+       round(1000 * FM["thick"][1]), round(1000 * FM["off"]), FM["max"]))
     t.append("""## 8. Photographs
 
 `manual/photo_example_lid.jpg` and `manual/photo_example_inside.jpg`: an example pack (an HVB-P5) under the cell's
@@ -325,7 +368,7 @@ The example pack is not one of the packs you will meet.
     t.append("""## 9. Sorting and recovered value
 
 """ + table(["component", "goes to", "value"], [
-        ["module", "a bay of the module rack, standing on the bay's floor (one module per bay)", "%g" % S.VALUES["module"]],
+        ["module", "a bay of the module rack, standing on the bay's floor (one module per bay); a swollen module: its seat in the tray, freed (section 7)", "%g" % S.VALUES["module"]],
         ["lid", "the lid stand, lying flat", "%g" % S.VALUES["lid"]],
         ["service disconnect", "electronics bin", "%g" % S.VALUES["msd"]],
         ["busbar", "copper bin", "%g" % S.VALUES["busbar"]],
@@ -335,8 +378,8 @@ The example pack is not one of the packs you will meet.
         ["fastener", "either fasteners bin", "%g" % S.VALUES["fastener"]],
     ]) + """
 
-A component counts when it lies undamaged where it belongs. Damaged means: a fastener with a stripped head, a harness
-chafed by the nutrunner, a module that was dropped.
+A component counts when it lies undamaged where it belongs. Damaged means: a fastener with a stripped head or a
+sheared shank, a harness chafed by the nutrunner, a module that was dropped or that vented.
 """)
     return "\n".join(t)
 
@@ -395,7 +438,8 @@ The bit drives a fastener when all of this holds:
 - the bit's axis is within %s mm of the fastener's axis for a socket, %s mm for a Torx bit, and the two axes are
   within %g degrees of each other;
 - the bit is pressed on the head with at least %g N (the spindle's spring: stroke times the spring rate); a Torx bit
-  in addition needs %g N plus %g N for every N m it transmits, or it cams out of the recess;
+  in addition needs %g N plus %g N for every N m it holds, turning or stalled at its limit, or it cams out of the
+  recess;
 - the torque limit is at least what the fastener needs (the service manual's torque table).
 
 A bit that is on the head but outside these tolerances (up to %s mm off for a socket, %s mm for a Torx bit, up to
@@ -405,11 +449,13 @@ head is stripped after about one and a half turns of that; a Torx recess that is
 Stop as soon as the readings show it. Further off than that, or with a bit that does not fit at all, the bit turns
 freely (torque about %g N m) and nothing happens to the head.
 
-A spindle that is stalled at its limit on a fastener it should drive is doing no harm, as long as the limit is not
-above the thread's "never exceed" value.
+A spindle that is stalled at its limit on a fastener it should drive is doing no harm, as long as the limit is below
+the head's limit and the thread's shear torque (the service manual's torque table; at the shear torque the shank
+twists off).
 
 **The extractor EX** bites into a stripped head: within %s mm and %g degrees, pressed on with at least %g N, with
-the torque limit at %g times the fastener's breakaway torque; it turns the fastener out at half the spindle's speed.
+the torque limit at %g times the fastener's breakaway torque (below the shear torque, which holds for the extractor
+too); it turns the fastener out at half the spindle's speed.
 On a sound head it only does damage.
 
 **A freed fastener** stays on the bit. `eject` lets it fall; do that over a fasteners bin. With a fastener on the
@@ -544,8 +590,8 @@ A pack ends early on your program's side in two ways; in both, what has been sor
 
 - **Your program is given up on and started again:** a missed deadline (`READY` within 120 s of a start; each
   request read and answered within 30 s), a closed output, a line that is not a JSON object, an answer without
-  `action`, or more than %d processes of your account (counted at every `reset` and every 64 requests; threads are
-  not counted). The pack ends where it is, your program is stopped with everything it started, and `run.sh` is
+  `action`, or more than %d processes of your account (counted before every request; threads are not
+  counted). The pack ends where it is, your program is stopped with everything it started, and `run.sh` is
   started again for the next pack: at most three such restarts, after which the remaining packs are not worked on.
 - **The pack ends and your program goes on:** an `action` that is not valid (a malformed field or a value out
   of range) or that the cell rejects, the pack's budget of your program's own time used up, or its step
@@ -553,10 +599,11 @@ A pack ends early on your program's side in two ways; in both, what has been sor
 
 **When the cell itself fails.** Your program shares the GPU and the sandbox's memory with the cell, which takes
 about 4 GB of GPU memory and 6 GB of memory: keep your program below 12 GB of GPU memory and 16 GB of memory. If the
-cell fails while a pack runs, your program is stopped with everything it started, and the pack is run again from
-the start in a fresh cell, with `run.sh` started again (that restart is not one of the three). If the cell fails a
-second time on that pack after your program was started again, or because your program's files filled a disk the
-cell writes to, the pack counts 0 and grading goes on with the next pack.
+cell fails while a pack runs, your program is stopped with everything it started, every file of your account outside
+the submission folder and every SysV IPC object of your account are removed, the submission folder is put back as it
+was handed over, and the pack is run again from the start in a fresh cell, with `run.sh` started again (that restart
+is not one of the three). If the cell fails a second time on that pack after your program was started again, or your
+program could not be stopped completely, the pack counts 0 and grading goes on with the next pack.
 
 **The grader's own deadline.** The grader stops %d s after it starts, whatever is running then: the packs graded
 by then count and the others count 0. Six packs at every limit of section 6 take about 15,000 s.
@@ -631,7 +678,8 @@ a little and stands still for %g s (`stopped`, then `locked_s` counting down); m
 
 **What ends a pack**: `done`; the simulated time is used up (`sim_cap`, %g s per pack); a tool touches a live part
 before isolation (`live_contact`, service manual section 1); a module falls (`module_dropped`: a free module that is
-not held and drops faster than 0.7 m/s, i.e. from more than about 25 mm). After the end nothing moves any more.
+not held and drops faster than 0.7 m/s, i.e. from more than about 25 mm); a swollen module is moved %d mm or more
+from its seat (`module_vented`, service manual section 7). After the end nothing moves any more.
 
 ## 5. Cameras
 
@@ -698,7 +746,9 @@ When a pack has ended and everything has come to rest, each component counts if 
 
 - in a bin: its centre over the bin's inner footprint and not higher than 0.03 m above the top of the walls;
 - the lid: its centre within 0.10 m of the stand's centre in x and in y, lying on the stand, flat within 5 degrees;
-- a module: its centre over a bay, standing on the bay's floor, upright within 8 degrees;
+- a module: its centre over a bay, standing on the bay's floor, upright within 8 degrees; a swollen module (service
+  manual, section 7): within %d mm of its seat in the tray, level within %g degrees, freed (its brackets and busbars
+  off);
 - a fastener: in either fasteners bin.
 
 The pack's credit is the value of what counts divided by the value of everything in the pack (a missing fastener is
@@ -707,7 +757,8 @@ not in the pack). Nothing is subtracted for anything.
 ## 8. Commissioning
 
 The commissioning service in your sandbox runs this cell on %d development packs of the series: packs with their own
-placements, head types, corroded and missing fasteners and harness remnants, none of them a pack you are graded on.
+placements, head types, corroded, seized and missing fasteners, harness remnants, swollen modules and foam pads, none
+of them a pack you are graded on.
 Each development pack is taken apart in a cell of its own: its cameras' mounting offsets (section 5) are the same in
 every session on that pack and differ from those of the other development packs and of every graded cell.
 You get what a commissioning engineer has at the cell: the same actions and observations as above, the camera
@@ -736,12 +787,13 @@ loops on what it measures.
        c["lid_stand"]["size"][0], c["lid_stand"]["size"][1], c["docks"]["nutrunner"], c["docks"]["gripper"], c["bit_station"], c["home_q"],
        GRADER["probe_pass_fraction"], GRADER["max_processes"], GRADER["verifier_deadline_s"],
        D["max_ticks"], S.TICK, D["tcp_speed_max"], D["tcp_rot_speed_max"], D["joint_speed_max"],
-       D["overload_force"], D["overload_torque"], D["overload_joint_error"], D["stop_lock_s"], D["sim_cap_s"], D["frame_budget"],
+       D["overload_force"], D["overload_torque"], D["overload_joint_error"], D["stop_lock_s"], D["sim_cap_s"], round(1000 * SW["vent_m"]),
+       D["frame_budget"],
        "\n".join(cam), S.MOUNT_TOL["overhead"]["mm"], S.MOUNT_TOL["overhead"]["deg"], S.MOUNT_TOL["wrist"]["mm"], S.MOUNT_TOL["wrist"]["deg"],
        plates, sheet, so["dark"][1], so["dark"][0], so["bright"][0], so["bright"][1],
        S.APPEARANCE["gain"][0], S.APPEARANCE["gain"][1], S.APPEARANCE["kelvin"][0], S.APPEARANCE["kelvin"][1],
        S.APPEARANCE["lamp"][0], S.APPEARANCE["lamp"][1], D["sim_cap_s"], D["frame_budget"], GRADER["max_steps"], GRADER["controller_budget_s"],
-       len(DEV["packs"]), len(DEV["packs"]), DEV["sessions"], DEV["idle_s"])
+       round(1000 * SW["vent_m"]), SW["level_deg"], len(DEV["packs"]), len(DEV["packs"]), DEV["sessions"], DEV["idle_s"])
 
 
 def robot_json():

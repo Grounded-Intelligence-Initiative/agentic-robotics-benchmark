@@ -12,13 +12,15 @@
 # wrist camera on request; never a part's pose or a fastener's state. Each pack differs in its variant (4, 5 or 6
 # modules), its placement on the fixture, every fastener's position within its tolerance, the head type of every
 # fastener (seen in the picture, or found by trying bits in an order that harms no head, at the cost of exchanges),
-# corroded and missing fasteners, and a harness remnant that may lie over fasteners. Fasteners are rule-based
-# constraints (the right bit, the axes aligned, enough axial force, enough loosening turns; a bit one size off or a
-# bad alignment strips the head); everything else is rigid-body physics (PhysX on the
-# CPU), and the GPU renders the cameras. The metric, mean_pack_credit (tests/anchor.json), is the value-weighted
+# corroded, seized and missing fasteners (a seized one has to be worked loose under torque control: at a thread's
+# shear torque the shank twists off and its part stays held), sealant, foam pads that hide some fasteners, dirt and
+# the hall's light, a swollen module that must stay in its seat, and a harness remnant that may lie over fasteners.
+# Fasteners are rule-based constraints (the right bit, the axes aligned, enough axial force, enough loosening turns;
+# a bit one size off or a bad alignment strips the head); everything else is rigid-body physics (PhysX on the CPU),
+# and the GPU renders the cameras. The metric, mean_pack_credit (tests/anchor.json), is the value-weighted
 # fraction of a pack's components that lie undamaged in the right rack, stand or bin at the end, read from the physics
-# engine's state and averaged over the packs. A tool that touches a live busbar before isolation, or a dropped module,
-# ends that pack with the credit earned so far; there is no other term. Design notes: tests/README.md.
+# engine's state and averaged over the packs. A tool that touches a live busbar before isolation, a dropped module or
+# a swollen module moved off its seat ends that pack with the credit earned so far; there is no other term. Design notes: tests/README.md.
 #
 # Needs one NVIDIA RTX GPU in the agent's sandbox (the commissioning service) and in the verifier (the graded cell).
 

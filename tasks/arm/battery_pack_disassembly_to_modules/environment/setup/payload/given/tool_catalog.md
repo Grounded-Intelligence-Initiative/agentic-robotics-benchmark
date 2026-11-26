@@ -49,7 +49,8 @@ The bit drives a fastener when all of this holds:
 - the bit's axis is within 2 mm of the fastener's axis for a socket, 1.2 mm for a Torx bit, and the two axes are
   within 3 degrees of each other;
 - the bit is pressed on the head with at least 8 N (the spindle's spring: stroke times the spring rate); a Torx bit
-  in addition needs 10 N plus 1.5 N for every N m it transmits, or it cams out of the recess;
+  in addition needs 10 N plus 1.5 N for every N m it holds, turning or stalled at its limit, or it cams out of the
+  recess;
 - the torque limit is at least what the fastener needs (the service manual's torque table).
 
 A bit that is on the head but outside these tolerances (up to 3.5 mm off for a socket, 2.5 mm for a Torx bit, up to
@@ -59,11 +60,13 @@ head is stripped after about one and a half turns of that; a Torx recess that is
 Stop as soon as the readings show it. Further off than that, or with a bit that does not fit at all, the bit turns
 freely (torque about 0.15 N m) and nothing happens to the head.
 
-A spindle that is stalled at its limit on a fastener it should drive is doing no harm, as long as the limit is not
-above the thread's "never exceed" value.
+A spindle that is stalled at its limit on a fastener it should drive is doing no harm, as long as the limit is below
+the head's limit and the thread's shear torque (the service manual's torque table; at the shear torque the shank
+twists off).
 
 **The extractor EX** bites into a stripped head: within 1.5 mm and 3 degrees, pressed on with at least 50 N, with
-the torque limit at 1.2 times the fastener's breakaway torque; it turns the fastener out at half the spindle's speed.
+the torque limit at 1.2 times the fastener's breakaway torque (below the shear torque, which holds for the extractor
+too); it turns the fastener out at half the spindle's speed.
 On a sound head it only does damage.
 
 **A freed fastener** stays on the bit. `eject` lets it fall; do that over a fasteners bin. With a fastener on the

@@ -17,14 +17,14 @@ its time budget used up). In every case the pack's credit is what lies where it 
 - The budget (`controller_budget_s`, per pack) is the controller's own time, kept by a `Clock`: what the grader waits
   for each reset and each reply. The cell's simulation and rendering are not charged.
 - A failure of the cell itself (`cellproc.CellError`): the controller is stopped with its whole process group (and,
-  as root, every process of its account) before anything else, so that nothing of it runs while a fresh cell starts
-  and builds the pack, and the pack is run once more from the start with that cell and a restarted controller (the
-  restart is the grader's, not one of the controller's `max_restarts`). A second failure on the same pack is the
-  controller's when it can have caused it: when it happened after the controller was started again (its GPU memory,
-  its memory, its disk or its load beside the cell), when the controller could not be stopped completely, or when
-  the caller's `charge_files()` finds that its files can have filled a disk the cell writes to. That pack then
-  counts 0 (`ended` "cell_failed") and grading goes on with the next one. Any other second failure propagates (a
-  task error: no submission can have caused it).
+  as root, the caller's `stop_account` stops every process of its account, removes its files outside the submission
+  and its SysV IPC objects, and restores the submission as it was staged) before anything else, so that nothing of
+  it is left while a fresh cell starts and builds the pack, and the pack is run once more from the start with that
+  cell and a restarted controller (the restart is the grader's, not one of the controller's `max_restarts`). A
+  second failure on the same pack is the controller's when it can have caused it: when it happened after the
+  controller was started again (its GPU memory, its memory, its disk or its load beside the cell) or when the
+  controller could not be stopped completely. That pack then counts 0 (`ended` "cell_failed") and grading goes on
+  with the next one. Any other second failure propagates (a task error: nothing of the submission was left).
 """
 
 import hashlib
@@ -166,13 +166,14 @@ def stop_for_cell(solver, stop_account=None):
     `max_restarts`. True when nothing of it is left running."""
     if not solver._broken and not solver._dead:
         solver.max_restarts += 1          # the grader's restart, not one of the controller's
+        solver.grader_restarts = getattr(solver, "grader_restarts", 0) + 1
     solver._broken = True
     solver._stop(grace=0)
     return stop_account() if stop_account is not None else True
 
 
 def run_packs(solver, packs, truth, config, start_cell, log=None, clock=None, on_pack=None, stop_account=None,
-              charge_files=None, progress=None):
+              progress=None):
     """Every pack of the set in order over one controller. Returns (records, lock). `progress` (a dict), when given,
     holds the lock and the records of the packs graded so far while this runs (a deadline reads it)."""
     cfg = dict(CONFIG)
@@ -201,10 +202,8 @@ def run_packs(solver, packs, truth, config, start_cell, log=None, clock=None, on
                     cause = "the cell failed again while the controller ran beside it"
                 elif not stopped:
                     cause = "the cell failed again; the controller's processes could not all be stopped"
-                elif charge_files is not None:
-                    cause = charge_files()
                 if cause is None:
-                    raise                      # nothing of the submission ran: the grading environment's failure
+                    raise                      # nothing of the submission was left: the grading environment's failure
                 stop_for_cell(solver, stop_account)
                 if log:
                     log("pack {} ({}): credit=0.0000 ended=cell_failed: {} ({})".format(
