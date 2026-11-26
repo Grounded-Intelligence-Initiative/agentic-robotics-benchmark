@@ -2,6 +2,8 @@
 
 The task is one continuous free-base MuJoCo episode. The robot starts behind the table. Its pelvis and both feet must advance, it must settle inside the dock, then it must lift the object with a supported opposed grasp and release it fully on the pad. Decoder memory, contact and velocity are preserved throughout the episode.
 
+The scorer evaluates docking over 250 consecutive 2 ms intervals. Each interval uses starting pose and contact geometry together with planar pelvis speed after integration. Lift and release use the aligned pre-integration object pose, velocity and contact forces.
+
 | What to inspect | Source |
 | --- | --- |
 | Solver contract, reference encoder, practice commands | [Participant instructions](../../instruction.md) |
