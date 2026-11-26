@@ -11,16 +11,34 @@ A submitted process sends one to five rows of 64 original SONIC integer codes. I
 
 ## Run the reference in a disposable task environment
 
-First provision the task's public environment and complete its participant setup. From a checkout or evaluation fixture where `TASK_DIR` points to this task's directory and `/home/user` is the participant home, run the installer as the participant. It replaces the practice submission in that home.
+From the benchmark checkout on a Linux x86-64 Docker host with AVX2 and FMA, build the public task image. The build downloads and verifies the released SONIC encoder, decoder and G1 assets. The two practice episodes run offline on CPU. The installer writes to the disposable container's participant home.
 
 ```sh
-ALE_HOME=/home/user bash "$TASK_DIR/solution/solve.sh"
-cd /home/user
-/opt/venv/bin/python3 practice.py --turn left  --seed 7 --submission submission --trace /tmp/left.jsonl.gz
-/opt/venv/bin/python3 practice.py --turn right --seed 7 --submission submission --trace /tmp/right.jsonl.gz
+task=tasks/humanoid/g1_sonic_command_sequence
+docker build -t g1-sonic-sequence-review "$task/environment"
+docker run --rm --network none --user user --cpus=4 --memory=8g \
+  --mount "type=bind,src=$PWD/$task/solution,dst=/review/solution,readonly" \
+  --mount "type=bind,src=$PWD/$task/environment/setup/payload,dst=/review/practice,readonly" \
+  g1-sonic-sequence-review bash -euc '
+    bash /review/solution/solve.sh
+    for turn in left right; do
+      /opt/venv/bin/python3 /review/practice/practice.py --turn "$turn" --seed 7 --submission /home/user/submission
+    done'
 ```
 
-Each command prints one JSON summary of the reached stages, stop times, physical errors, applied code count and motion diagnostics. Each trace contains the chosen public observation, proposed body rows and number applied. A transition can consume part of a proposed chunk. The following packet carries the newly revealed command.
+Each command prints one JSON summary of the reached stages, stop times, physical errors, applied code count and motion diagnostics. In an existing ALE task environment, add `--trace /tmp/left.jsonl.gz` or `--trace /tmp/right.jsonl.gz` to retain the observations, proposed rows and actual applied counts. A transition can consume part of a proposed chunk. The following packet carries the newly revealed command.
+
+## Run the official verification
+
+From a full benchmark checkout, initialize the pinned engine and build its network helper once on the Docker host. The verifier measures 16 fresh courses in its own sandbox and writes the raw completion and feedback counts to the oracle's `verification.json`.
+
+```sh
+task=tasks/humanoid/g1_sonic_command_sequence
+git submodule update --init vendor/ale
+(cd vendor/ale && VIRTUAL_ENV= uv sync --frozen --all-groups && images/build.sh ale-qemu-runner)
+(cd vendor/ale && VIRTUAL_ENV= uv run ale lint "../../$task" && \
+  VIRTUAL_ENV= uv run ale validate "../../$task" --runs-dir /tmp/ale-g1-sonic-sequence)
+```
 
 ## Public seed 7
 
