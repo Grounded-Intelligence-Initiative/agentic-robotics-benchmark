@@ -2,8 +2,10 @@
 
 import argparse
 import base64
+from collections import deque
 from contextlib import ExitStack, contextmanager, suppress
 import json
+import math
 import os
 from pathlib import Path
 import select
@@ -11,6 +13,8 @@ import signal
 import subprocess
 import sys
 import time
+
+import numpy as np
 
 from sonic_io import HORIZON, LiveEpisode, stamp_observation, validate_action
 from sonic_sim import BenchSession
@@ -158,13 +162,65 @@ def repeated_query(wire, live_obs, shadow, counts):
     return live_rows
 
 
+class AppliedMotion:
+    """Observe each successful step of the real session, including a partial final chunk."""
+
+    def __init__(self, session):
+        self.session = session
+        self.rows = 0
+        self.previous_token = None
+        self.changes = 0
+        self.velocities = deque([session.state["observation"]["dq"]], maxlen=5)
+        self.acceleration_squared_sum = 0.0
+
+    def __getattr__(self, name):
+        return getattr(self.session, name)
+
+    def step(self, token, left_hand, right_hand):
+        state = self.session.step(token, left_hand, right_hand)
+        self.rows += 1
+        if self.previous_token is not None:
+            self.changes += int(np.count_nonzero(token != self.previous_token))
+        self.previous_token = token
+        velocity = state["observation"]["dq"]
+        if len(self.velocities) == 5:
+            acceleration = (velocity - self.velocities[0]) / 0.1
+            self.acceleration_squared_sum += float(np.sum(acceleration ** 2))
+        self.velocities.append(velocity)
+        return state
+
+    def summary(self):
+        comparisons = 64 * max(0, self.rows - 1)
+        samples = max(0, self.rows - 4)
+        metrics = dict(simulated_seconds=self.rows / 50, executed_fsq_scalars=64 * self.rows,
+                       body_code_comparisons=comparisons, body_code_changes=self.changes,
+                       joint_acceleration_samples=samples)
+        if comparisons:
+            metrics["body_code_churn_fraction"] = self.changes / comparisons
+        if samples:
+            metrics["joint_acceleration_rms_rad_s2"] = math.sqrt(
+                self.acceleration_squared_sum / (29 * samples))
+        return metrics
+
+
+@contextmanager
+def measure_motion(episode):
+    original = episode.session
+    measured = AppliedMotion(original)
+    episode.session = measured
+    try:
+        yield measured
+    finally:
+        episode.session = original
+
+
 def run(episode, args):
     session = episode.session
     counts = dict(alternate_queries=0, alternate_first_codes_differed=0,
                   identical_queries=0, identical_first_codes_differed=0)
     shadow_seed = args.seed ^ 0xA53C
     last_repeat = max(tick for tick in REPEAT_TICKS if tick < args.steps)
-    with ExitStack() as shadow_resources, solver(args.submission) as wire:
+    with measure_motion(episode) as motion, ExitStack() as shadow_resources, solver(args.submission) as wire:
         shadow = LiveEpisode(shadow_resources.enter_context(
             BenchSession(session.task, shadow_seed, args.assets_root)
         ))
@@ -187,7 +243,7 @@ def run(episode, args):
     print(json.dumps({
         "task": args.task, "seed": args.seed, "steps": state["tick"],
         "reason": state["reason"] or "step_limit", "metrics": state["metrics"],
-        "repeats": counts,
+        "repeats": counts, "motion": motion.summary(),
     }, allow_nan=False))
 
 

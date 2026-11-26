@@ -28,6 +28,8 @@ SH
 
 For a full rollout omit `--steps`. Try both `box_to_pad` and `cylinder_to_pad` with different seeds. The practice driver exercises your submitted process and prints the raw physical outcome. The `repeats` fields count how often the first body-code vector changed for a second observation at the same tick and for an identical observation. The neutral starter should report zero changes. Look at the saved `hand` and `side` views together to see where the gripper and object sit relative to the pad.
 
+The practice report groups action costs and motion smoothness under `motion`. `simulated_seconds` and `executed_fsq_scalars` count 0.02 s and 64 body codes per applied row. `body_code_changes` counts coordinates whose bin changed between adjacent applied rows, and `body_code_comparisons` counts all compared coordinates. Their ratio is `body_code_churn_fraction`. At each tick starting with tick 5, `joint_acceleration_rms_rad_s2` uses the change in measured joint velocity over the preceding 0.10 s and pools its squared acceleration across all 29 joints. `joint_acceleration_samples` counts those ticks. A fraction or RMS appears once it has a nonzero denominator. These diagnostics cover only the robot you control, through the last applied row.
+
 ## Process and actions
 
 The host starts `bash run.sh` in your submission directory as an unprivileged user. Print the literal line `READY` and flush it within 60 seconds. Then read one JSON request per line from stdin, emit one JSON reply per line within 15 seconds, and flush stdout after each reply. A reply may contain up to 65,536 decoded characters including the newline. Send diagnostics to stderr.

@@ -58,3 +58,12 @@ Each applied body row contributes 0.02 to `simulated_seconds` and 64 to `execute
 `body_code_changes` counts changed coordinates between adjacent applied body rows within each episode. `body_code_churn_fraction` divides this count by `body_code_comparisons`, the total number of coordinates compared.
 
 `joint_acceleration_rms_rad_s2` pools measured angular accelerations across all 29 G1 body joints in hardware order and all eligible real ticks. At every tick $t\ge5$, the verifier takes $(dq_t-dq_{t-5})/0.1$ using native joint velocities in rad/s and the reset velocity for $dq_0$. It reports the square root of the mean squared acceleration in rad/s². `joint_acceleration_samples` counts eligible ticks. A zero denominator omits the corresponding fraction or RMS. These diagnostics describe the executed motion and carry zero scoring weight.
+
+The public practice JSON exposes the same per-episode counters under `motion`. To compare its numbers with the trusted row-by-row diagnostic and reproduce both original V4 source trajectories, run this from the repository root with the practice image built above.
+
+```bash
+task=tasks/humanoid/g1_sonic_token_space_control
+docker run --rm --network none --read-only --user user --tmpfs /tmp:rw,exec \
+  --mount "type=bind,src=$PWD/$task,dst=/task,readonly" \
+  --entrypoint /opt/venv/bin/python3 g1-sonic-review -B /task/tests/review/check_practice_motion.py
+```
