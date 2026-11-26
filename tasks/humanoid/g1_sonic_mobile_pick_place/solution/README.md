@@ -31,3 +31,16 @@ The SONIC token-control project trained the tabletop actor by behavior cloning. 
 | Training checkpoint SHA-256 | `d9df4905599acb3cf058eea4145e98679a99ca2e0a5dbc6deab2f722791e4af4` |
 
 The frozen manifest records the distributed integer ONNX hash in the artifact table above. Git attributes the collection, training, export and freeze commits to Zi-ang Cao. The research snapshot has no separate V4 model-license file. The NVIDIA Open Model License accompanies the original GEAR-SONIC V1 encoder and decoder fetched by the task image. [Environment notices](../environment/NOTICE)
+
+## Five-metre public practice
+
+The optional controller uses public pelvis odometry to steer and slow an analytic walking reference. It progressively retracts the arms near the table. After a quiet stance it returns the arms to the standing posture and runs the same frozen V4 visual controller. Each control row passes through the original SONIC decoder. The full course shares one physics episode and one decoder history.
+
+From this solution directory inside the task image, install the optional reference into its own submission directory and run a public practice episode:
+
+```sh
+ALE_HOME=/tmp/g1-long bash five_metre/install.sh
+/opt/venv/bin/python3 /home/user/practice.py run --course five-metre --task cylinder_to_pad --seed 19 --submission /tmp/g1-long/submission
+```
+
+Use `--task box_to_pad --seed 3` for a box example. The host records a settled five-metre dock, the two ankle displacements, load-supported lift and stable pad release. The registered one-metre reference is installed with `solve.sh`.

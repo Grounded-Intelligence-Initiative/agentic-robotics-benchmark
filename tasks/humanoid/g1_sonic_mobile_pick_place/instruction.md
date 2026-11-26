@@ -35,6 +35,15 @@ SH
 
 For a full rollout omit `--steps`. Try both `box_to_pad` and `cylinder_to_pad` with different seeds. The practice driver exercises your submitted process and prints the raw physical outcome. The `repeats` fields count how often the first body-code vector changed for a second observation at the same tick and for an identical observation. The neutral starter should report zero changes. Use the overview to follow the approach. The hand and side views show the table, object and pad. Try the cylinder with public seed 19 as a second practice case. The practice summary includes walking, docking, lift, placement, approach violations and the terminal reason; these fields stay on the host.
 
+The registered course starts approximately one metre from the table and allows 1,100 control ticks (22 s). The optional `--course five-metre` public exercise starts four metres farther back and allows 1,800 ticks (36 s). It uses the same action and camera packets. Five-metre practice requires 4.75 m of forward pelvis travel and 4.60 m from each ankle at the settled dock, followed by the same supported lift and released placement. The practice metrics include the three signed distances at docking. To inspect the whole course and run a submission:
+
+```sh
+/opt/venv/bin/python3 practice.py inspect --course five-metre --task box_to_pad --seed 3 --out /tmp/g1-five-metre
+/opt/venv/bin/python3 practice.py run --course five-metre --task box_to_pad --seed 3 --submission submission
+```
+
+The extra `course-overview.png` in the inspection directory is a host review image. The solver receives the three calibrated task cameras listed below.
+
 ## Process and actions
 
 The host starts `bash run.sh` in your submission directory as an unprivileged user. Print the literal line `READY` and flush it within 60 seconds. Then read one JSON request per line from stdin, emit one JSON reply per line within 15 seconds, and flush stdout after each reply. A reply may contain up to 65,536 decoded characters including the newline. Send diagnostics to stderr.

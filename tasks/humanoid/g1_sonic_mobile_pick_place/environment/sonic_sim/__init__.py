@@ -22,6 +22,8 @@ class MobileSession:
     state["metrics"] and gives the solver only the public proprioception and RGB.
     """
 
+    scene_type = MobileTask
+
     def __init__(self, task, seed, assets_root, horizon=HORIZON):
         self.horizon = _integer(horizon, "horizon", 1, 100_000)
         root = Path(assets_root).resolve()
@@ -35,7 +37,7 @@ class MobileSession:
         if not isinstance(task, str) or task not in MOBILE_TASKS:
             raise ValueError(f"unknown task {task!r}")
         _integer(seed, "seed", 0, 2**64 - 1)
-        scene = MobileTask(task, seed, self._robot_root)
+        scene = self.scene_type(task, seed, self._robot_root)
         self.close()
         self._scene = scene
         self.task, self.tick = task, 0

@@ -16,11 +16,13 @@ def _yaw(quat):
 
 
 class MobileTask(G1Task):
+    start_x_bounds = (-1.005, -.965)
+
     def __init__(self, task, seed, robot_root):
         super().__init__(task, seed, robot_root)
         m, d = self.model, self.data
         area = "g1_sonic_mobile_pick_place"
-        x = _uniform(seed, area, "start-x", -1.005, -.965)
+        x = _uniform(seed, area, "start-x", *self.start_x_bounds)
         y = _uniform(seed, area, "start-y", .078, .103)
         angle = _uniform(seed, area, "start-heading", -.038, -.026)
         # These initial conditions are written before the first physics step.

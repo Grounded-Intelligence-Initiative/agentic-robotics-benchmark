@@ -12,9 +12,9 @@ import subprocess
 import sys
 import time
 
+from mobile_io import LiveEpisode, stamp_observation, validate_action
 from sonic_sim.motion_cost import MeasuredSession
-from mobile_io import HORIZON, LiveEpisode, stamp_observation, validate_action
-from sonic_sim import MobileSession
+from sonic_sim.practice_course import COURSES
 
 
 # Public practice times span the approach and the work at the table.
@@ -123,6 +123,9 @@ def inspect(episode, out):
     (out / "calibration.json").write_text(
         json.dumps(frame["calibration"], indent=2) + "\n", encoding="utf-8"
     )
+    if hasattr(episode.session, "course_view"):
+        from PIL import Image
+        Image.fromarray(episode.session.course_view()).save(out / "course-overview.png")
     print(f"Saved tick {frame['tick']} camera views and calibration to {out}")
 
 
@@ -169,7 +172,7 @@ def run(episode, args):
     last_repeat = max(tick for tick in REPEAT_TICKS if tick < args.steps)
     with ExitStack() as shadow_resources, solver(args.submission) as wire:
         shadow = LiveEpisode(shadow_resources.enter_context(
-            MobileSession(session.task, shadow_seed, args.assets_root)
+            type(session)(session.task, shadow_seed, args.assets_root)
         ))
         while session.tick < args.steps and not session.state["done"]:
             obs = episode.observe()
@@ -200,19 +203,24 @@ def main():
     inspect_parser = commands.add_parser("inspect", help="save the three calibrated initial camera views")
     run_parser = commands.add_parser("run", help="run a submission on a public practice seed")
     for command in (inspect_parser, run_parser):
+        command.add_argument("--course", choices=tuple(COURSES), default="one-metre",
+                             help="practice starting distance (default one-metre)")
         command.add_argument("--task", choices=("box_to_pad", "cylinder_to_pad"), required=True)
         command.add_argument("--seed", type=int, required=True)
         command.add_argument("--assets-root", type=Path, default=Path(os.environ.get("SONIC_ASSETS", "/opt/sonic/assets")))
     inspect_parser.add_argument("--out", type=Path, required=True)
     run_parser.add_argument("--submission", type=Path, required=True)
-    run_parser.add_argument("--steps", type=int, default=HORIZON,
-                            help=f"stop after this many physical ticks (default {HORIZON})")
+    run_parser.add_argument("--steps", type=int,
+                            help="stop earlier than the selected course horizon")
     args = parser.parse_args()
     if not 0 <= args.seed < 2**64:
         parser.error("--seed must be an unsigned 64-bit integer")
-    if args.command == "run" and not 1 <= args.steps <= HORIZON:
-        parser.error(f"--steps must be between 1 and {HORIZON}")
-    with MobileSession(f"{args.task}_challenge", args.seed, args.assets_root) as session:
+    session_type, horizon = COURSES[args.course]
+    if args.command == "run":
+        args.steps = horizon if args.steps is None else args.steps
+        if not 1 <= args.steps <= horizon:
+            parser.error(f"--steps must be between 1 and {horizon}")
+    with session_type(f"{args.task}_challenge", args.seed, args.assets_root) as session:
         episode = LiveEpisode(session)
         if args.command == "inspect":
             inspect(episode, args.out)
