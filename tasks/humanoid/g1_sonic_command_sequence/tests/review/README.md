@@ -32,3 +32,7 @@ The offline CPU reference reproduced the 5 m approach, 90 degree pivot and 1.5 m
 | Right | 782 | 857 | 1,007 | 1,235 (24.70 s) | 0.036 m |
 
 Table entries before the elapsed time are 50 Hz control ticks. Both courses share every actual input and code row through tick 856. The first command and row difference occurs when the turn is revealed at tick 857. The responses changed for both opposite-turn probes and stayed identical on all six duplicate queries across the two practice runs. The host withheld each departure distance until that run's own pivot settled. A stopped course that never earns its pivot receives no turn or departure command.
+
+## Official reference calibration
+
+The four prescheduled null-anchor reference panels completed 15, 16, 15 and 13 courses out of 16. All four passed both feedback checks. The first panel fixed the reference at 15/16. The registered minimum full-credit count of 12 and the one-course allowance give `max(12, min(15,16,15,13) - 1) = 12`, so `full_at = 12/15 = 0.8`. Once calibrated, either failed feedback check gives zero. With both passed, the reward is `min(1, completed_courses / 12)` while the raw fraction stays `completed_courses / 16`.
