@@ -124,6 +124,7 @@ class Team:
         self.dirt = {}
         self.cleaned = set()
         self.box = self.initial_box = None
+        self.staged = False
         self.route = ""
         self.last_t = -1
         self.scout_visits = {}
@@ -171,9 +172,7 @@ class Team:
                     and sum(self.dirt.get(q) == self.rooms.get(p) for q in self.dirt)
                     < 2
                 )
-                hall = self.rooms.get(p) == "hall" and (
-                    target not in self.pads or self.box is None
-                )
+                hall = self.rooms.get(p) == "hall" and self.box is None
                 return (
                     1.3 * min(gains, 12)
                     + 6 * useful
@@ -203,7 +202,17 @@ class Team:
         self.absorb(obs["ground"], self.g, 1, False)
         self.scout_visits[self.a] = self.scout_visits.get(self.a, 0) + 1
         req = {k for k in ROOMS if k in obs["instruction"].split()}
-        target = "blue" if "blue" in obs["instruction"].split() else "red"
+        words = obs["instruction"].split()
+        first = words[words.index("room") - 1]
+        final = "red" if first == "blue" else "blue"
+        if (
+            not self.staged
+            and self.pads.get(first) is not None
+            and self.box == self.pads[first]
+        ):
+            self.staged = True
+            self.route = ""
+        target = final if self.staged else first
         pad = self.pads.get(target)
         free = {p for p, v in self.cells.items() if v == "floor"}
         reach = paths(self.g, free - {self.box})
@@ -231,7 +240,7 @@ class Team:
         elif todo:
             q = min(todo, key=lambda p: (len(reach[p]), p))
             g = reach[q][:1] or "stay"
-        elif finished and pad is not None and self.box == pad:
+        elif finished and self.staged and pad is not None and self.box == pad:
             g = reach.get((0, 0), "")[:1] or "stay"
         else:
             front = [

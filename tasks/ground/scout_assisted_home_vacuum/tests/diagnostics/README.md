@@ -18,6 +18,8 @@ are the real, concurrent robot inputs. Finishes are credited in
 [`../interior_materials/`](../interior_materials/CREDITS.md) and furnishings in
 [`../furnishings/`](../furnishings/CREDITS.md); all assets are local.
 
+The carton must be staged inside a room, then pushed back out to its hallway mat; it cannot be pulled. The generator searches for reversible push routes for the first mat, accounting for the vacuum's access to both sides of each push. The 100-seed contract test physically pushes the carton through both stops for each home. A valid route exists; its coordinates are not disclosed. Unvisited rooms may contain additional spills that the work order does not request.
+
 The generator rotates and changes the connections of four furnished rooms, including
 through-suites, alcoves, furniture footprints and protected runners. Ground motion and
 flight are discretized. The official task is not a continuous-dynamics or real-house

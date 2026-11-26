@@ -15,7 +15,12 @@ from world import Home, VEC, connected, plus
 class Contracts(unittest.TestCase):
     def test_shared_clock_and_battery(self):
         w = Home(10, ticks=2, flight=1)
-        inward = next(d for d, v in VEC.items() if plus(w.dock, v) in w.mats.values())
+        inward = next(
+            d
+            for d, v in VEC.items()
+            if d != "stay"
+            and all(not w.blocked(plus(w.dock, (n * v[0], n * v[1]))) for n in (1, 2))
+        )
         w.advance([inward, inward, 2, False])
         self.assertEqual((w.t, w.motion, w.fuel), (1, [1, 2], 0))
         p = w.air
@@ -47,6 +52,8 @@ class Contracts(unittest.TestCase):
         w.dust.clear()
         w.ground = w.dock
         w.box = w.mats[w.target]
+        self.assertFalse(w.result()["success"])
+        w.staged = True
         self.assertTrue(w.result()["success"])
         w.target = "blue" if w.target == "red" else "red"
         self.assertFalse(w.result()["success"])
@@ -83,7 +90,7 @@ class Contracts(unittest.TestCase):
         w.advance(["stay", "stay", 0, False])
         self.assertFalse(w.scuffs)
         w.advance(["stay", "stay", 0, True])
-        w.ground, w.box = w.dock, w.mats[w.target]
+        w.ground, w.box, w.staged = w.dock, w.mats[w.target], True
         w.dust.clear()
         self.assertFalse(w.result()["success"])
         self.assertAlmostEqual(w.result()["score"], 0.70)
@@ -99,10 +106,23 @@ class Contracts(unittest.TestCase):
             self.assertTrue(
                 (w.dust | w.rugs | {w.box, w.dock} | set(w.mats.values())) <= free
             )
-            self.assertTrue(deliver(w.dock, w.box, w.mats[w.target], free), seed)
+            self.assertIn(w.area[w.mats[w.stage]], w.request)
+            self.assertEqual(w.area[w.mats[w.target]], "hall")
             orientations.add(
-                next(d for d, v in VEC.items() if plus(w.dock, v) in w.mats.values())
+                (
+                    w.dock[0] == 1,
+                    w.dock[0] == w.width - 2,
+                    w.dock[1] == 1,
+                    w.dock[1] == w.height - 2,
+                )
             )
+            for pad in (w.stage, w.target):
+                plan = deliver(w.ground, w.box, w.mats[pad], free)
+                self.assertTrue(plan, seed)
+                for d in plan:
+                    w.advance([d, "stay", 0, False])
+                self.assertEqual(w.box, w.mats[pad], seed)
+            self.assertTrue(w.result()["parked"], seed)
         self.assertEqual(len(orientations), 4)
 
     def test_scout_has_no_xray_or_cleaning_credit(self):

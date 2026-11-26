@@ -30,8 +30,54 @@ def connected(cells):
     return len(seen) == len(cells)
 
 
+def reversible_carton_cells(free, start, dock):
+    """Flood only pushes that the vacuum could undo; enclosed corners cannot be stations."""
+    walks = {}
+
+    def reach(block, pos):
+        seen = walks.setdefault(block, {})
+        if pos not in seen:
+            group, todo = {pos}, [pos]
+            while todo:
+                p = todo.pop()
+                for v in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    q = plus(p, v)
+                    if q in free and q != block and q not in group:
+                        group.add(q)
+                        todo.append(q)
+            marker = min(group)
+            for p in group:
+                seen[p] = marker
+        return seen[pos]
+
+    todo = deque([(start, dock, 0)])
+    distances, seen = {}, set()
+    while todo:
+        b, g, n = todo.popleft()
+        key = b, reach(b, g)
+        if key in seen:
+            continue
+        seen.add(key)
+        distances.setdefault(b, n)
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            behind, new, ahead = (
+                (b[0] - dx, b[1] - dy),
+                (b[0] + dx, b[1] + dy),
+                (b[0] + 2 * dx, b[1] + 2 * dy),
+            )
+            if (
+                behind in free
+                and new in free
+                and ahead in free
+                and reach(b, behind) == key[1]
+                and reach(new, ahead) == reach(new, b)
+            ):
+                todo.append((new, b, n + 1))
+    return distances
+
+
 class Home:
-    def __init__(self, seed, ticks=200, flight=36):
+    def __init__(self, seed, ticks=200, flight=36, _attempt=0):
         rng = random.Random(seed)
         w, h = rng.choice((17, 19, 21)), rng.choice((15, 17))
         mid = h // 2 + rng.choice((-1, 0, 1))
@@ -44,7 +90,7 @@ class Home:
                     self.area[x, y] = "hall"
         names = list(ROOMS)
         rng.shuffle(names)
-        double_entry_bays, rug_candidates, specs = [], [], []
+        rug_candidates, specs = [], []
         styles = list(SUITES)
         rng.shuffle(styles)
         self.pieces = []
@@ -67,10 +113,6 @@ class Home:
                 entries = {(partition + (-1 if wing == 0 else 1), inner_y)}
                 if wing in openings:
                     self.wall.remove(door)
-                    if len(openings) == 2:
-                        double_entry_bays.append(
-                            (door[0], edge + (1 if side == 0 else -1))
-                        )
                     entries.add((door[0], edge + (-1 if side == 0 else 1)))
                     rug_candidates.append(door)
                 cells = [(x, y) for x in xs for y in rows]
@@ -145,14 +187,32 @@ class Home:
         self.target = rng.choice(("red", "blue"))
         pads = [(2, mid), (w - 3, mid)]
         rng.shuffle(pads)
-        self.mats = dict(zip(("red", "blue"), pads))
-        # Never trap the carton against the only doorway of a suite. Without a
-        # second entry the cleaner cannot get behind it to push it back into the hall.
+        self.dock = (rng.choice((1, w - 2)), mid)
         center_bays = [(x, mid) for x in range(3, w - 3)]
-        self.box = rng.choice(double_entry_bays or center_bays)
+        self.box = rng.choice(center_bays)
+        free = set(self.area) - self.wall - set(self.furniture)
+        reversible = reversible_carton_cells(free, self.box, self.dock)
+        already_dirty = set.union(*self.original.values())
+        candidates = [
+            p
+            for p, n in reversible.items()
+            if self.area[p] in self.request and p not in already_dirty and n >= 4
+        ]
+        if not candidates:
+            # Keep the challenge consistent; do not replace an unreachable indoor goal
+            # with a trivial hall target or include such homes in the denominator.
+            if _attempt >= 63:
+                raise RuntimeError("could not generate a reversible indoor route")
+            self.__init__(rng.getrandbits(128), ticks, flight, _attempt + 1)
+            return
+        self.stage = "blue" if self.target == "red" else "red"
+        candidates.sort(key=lambda p: (min(7, reversible[p]), abs(p[1] - mid), p))
+        first = rng.choice(candidates[-min(8, len(candidates)) :])
+        hall_pad = max(pads, key=lambda p: abs(p[0] - first[0]))
+        self.mats = {self.stage: first, self.target: hall_pad}
+        self.staged = False
         self.original["hall"] = {self.box}
         self.dust = set.union(*self.original.values())
-        self.dock = (rng.choice((1, w - 2)), mid)
         # An entrance runner must be crossed to enter several rooms. A protected rug
         # is traversable with suction off, not a wall or a camera-only appearance.
         self.rugs = set(rug_candidates)
@@ -185,7 +245,8 @@ class Home:
         self.distance = 0
         self.prompt = (
             f"Vacuum the visible dust in the {self.request[0]} and {self.request[1]} "
-            f"rooms and the entrance hall. Park the carton on the {self.target} mat. "
+            f"rooms and the entrance hall. Stage the supply carton on the {self.stage} "
+            f"room mat first. Then park it on the {self.target} hall mat. "
             "Keep the brush off on woven runners. Return to the dock."
         )
 
@@ -221,6 +282,8 @@ class Home:
                 ):
                     if dest == self.box:
                         self.box = beyond
+                        if self.box == self.mats[self.stage]:
+                            self.staged = True
                     self.ground = dest
                     self.distance += 1
                     self.motion[0] = 1
@@ -243,12 +306,18 @@ class Home:
             r: len(self.original[r] - self.dust) / len(self.original[r])
             for r in (*self.request, "hall")
         }
-        parked, docked = self.box == self.mats[self.target], self.ground == self.dock
+        parked = self.staged and self.box == self.mats[self.target]
+        docked = self.ground == self.dock
         success = min(clean.values()) == 1 and parked and docked and not self.scuffs
-        score = 0.45 * sum(clean.values()) / 3 + 0.25 * parked + 0.30 * success
+        score = (
+            0.45 * sum(clean.values()) / 3
+            + 0.125 * (int(self.staged) + int(parked))
+            + 0.30 * success
+        )
         return dict(
             clean=clean,
             parked=parked,
+            staged=self.staged,
             docked=docked,
             success=success,
             score=score,
