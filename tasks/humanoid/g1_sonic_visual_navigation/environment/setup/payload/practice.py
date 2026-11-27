@@ -13,6 +13,7 @@ from navigation_io import Course, HORIZON, NavigationEpisode, validate_action
 from practice_wire import WireError, solver
 from sonic_loco import LocomotionSession
 from sonic_loco.obstacles import make_layout
+from sonic_loco.racks import VARIANTS
 
 
 def run(args, course):
@@ -23,7 +24,8 @@ def run(args, course):
         phases = None if args.right_phase_s is None else (args.right_phase_s,args.left_phase_s)
         layout = make_layout(args.layout_seed,course.first_m,tail=None if args.tail=="auto" else args.tail,
                              service=None if args.service=="auto" else args.service,
-                             phase_seed=args.phase_seed,phases=phases)
+                             phase_seed=args.phase_seed,phases=phases,rack_seed=args.rack_seed,
+                             left_rack=args.left_rack,right_rack=args.right_rack)
         episode = NavigationEpisode(session, course, layout=layout)
         if args.inspect:
             args.inspect.mkdir(parents=True, exist_ok=True)
@@ -67,9 +69,12 @@ def main():
     parser.add_argument('--phase-seed', type=int, help='independently sample both shutter phases')
     parser.add_argument('--right-phase-s', type=float, help='right phase at reset in [0,12) seconds')
     parser.add_argument('--left-phase-s', type=float, help='left phase at reset in [0,12) seconds')
+    parser.add_argument('--rack-seed',type=int,help='independent seed for both permanent outgoing racks')
+    parser.add_argument('--left-rack',choices=VARIANTS,help='outgoing left branch: roof tier and lateral opening')
+    parser.add_argument('--right-rack',choices=VARIANTS,help='outgoing right branch: roof tier and lateral opening')
     parser.add_argument('--first-m', type=float, default=6.25)
     parser.add_argument('--angle-deg', type=float, default=90.)
-    parser.add_argument('--last-m', type=float, default=1.5)
+    parser.add_argument('--last-m', type=float, default=4.)
     parser.add_argument('--steps', type=int, default=HORIZON)
     parser.add_argument('--submission', type=Path, default=Path('/home/user/submission'))
     parser.add_argument('--assets-root', type=Path, default=Path(os.environ.get('SONIC_ASSETS', '/opt/sonic/assets')))

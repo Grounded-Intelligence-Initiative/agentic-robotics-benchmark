@@ -9,6 +9,8 @@ import numpy as np
 
 from sonic_sim.decoder import DEFAULT_Q, Decoder, DecoderHistory
 
+from . import racks
+from .rack_score import RobotProfile, RackPassage
 from .obstacles import LANE_HALF_WIDTH, LATERAL, PANEL_HEIGHT, PANEL_LENGTH, PLATE_OFFSET_X, cycle, heading_axes
 from .model import BODY_JOINTS, FINGER_JOINTS, PHYSICS_DT, RIGHT_CLOSURE, SIDES, SUBSTEPS, floor_contacts, make_model
 
@@ -49,6 +51,13 @@ class LocomotionSession:
                  "gate_1_minus_y_cabinet", "gate_1_plus_y_cabinet")
         self.gate_geom_ids = {model.geom(name).id:(int(name.startswith("gate_1_")),name) for name in names}
         self._gate_mocaps = {name:model.body_mocapid[model.body(name+"_anchor").id] for name in names}
+        self._rack_mocaps = {}
+        for gid in range(model.ngeom):
+            name = model.geom(gid).name
+            if name and name.startswith("rack_"):
+                self._rack_mocaps[name] = model.body_mocapid[model.body(name+"_anchor").id]
+                if model.geom_contype[gid]:
+                    self.gate_geom_ids[gid]=(2,name)
         self._leaf_bodies = [model.body("shutter_"+side).id for side,_ in LATERAL]
         self._rail_bodies = [model.body("shutter_"+side+"_anchor").id for side,_ in LATERAL]
         joints = [model.joint("shutter_"+side).id for side,_ in LATERAL]
@@ -61,6 +70,7 @@ class LocomotionSession:
         self._robot_physical_geoms = frozenset(g for g in range(model.ngeom)
             if model.body_rootid[model.geom_bodyid[g]] == root
             and (model.geom_contype[g] or model.geom_conaffinity[g]))
+        self.profile = RobotProfile(model,self._robot_physical_geoms)
         joints = [model.joint(name).id for name in BODY_JOINTS]
         self._qadr = model.jnt_qposadr[joints].copy()
         self._vadr = model.jnt_dofadr[joints].copy()
@@ -87,9 +97,10 @@ class LocomotionSession:
         self.data = data = mujoco.MjData(self.model)
         self.tick = 0
         self.layout = None
+        self.rack_monitor = None
         self.obstacle_contact_substeps = 0
         self.first_obstacle_contact = None
-        for mid in (*self._gate_mocaps.values(), *self._stripe_mocaps):
+        for mid in (*self._gate_mocaps.values(), *self._rack_mocaps.values(), *self._stripe_mocaps):
             data.mocap_pos[mid] = (0., 0., -4.)
         self._history = DecoderHistory()
         self.last_target = None
@@ -112,6 +123,7 @@ class LocomotionSession:
 
     def _place_furniture(self, data, layout):
         fork = layout.fork
+        racks.place(data,layout.racks,self.layout_origin_xy,self.layout_axes,self.layout_yaw,self._rack_mocaps,self.station_m)
         quat = (math.cos(self.layout_yaw/2), 0., 0., math.sin(self.layout_yaw/2))
         def place(mid, x, y, z):
             data.mocap_pos[mid] = (*((self.layout_origin_xy + self.layout_axes @ [x,y])), z)
@@ -136,9 +148,10 @@ class LocomotionSession:
         for mid, sign in zip(self._stripe_mocaps, (-1,1)):
             place(mid, 4., sign*LANE_HALF_WIDTH, .0015)
 
-    def install_layout(self, layout):
+    def install_layout(self, layout, *, station_m=4.):
         if self.tick:
             raise ValueError("furniture must be configured at reset")
+        self.station_m = station_m
         self.layout = layout
         self.layout_origin_xy = np.asarray(self._sample["base_xy"]).copy()
         self.layout_yaw = self._sample["heading_rad"]
@@ -176,7 +189,8 @@ class LocomotionSession:
                 self.first_obstacle_contact = dict(time_s=float(time_s), native_substep=int(round(time_s/PHYSICS_DT)),
                     tick=int(math.ceil(time_s/(PHYSICS_DT*SUBSTEPS)-1e-8)), gate_index=gate,
                     panel=piece, obstacle_geom=self.model.geom(cabinet).name, robot_body=self.model.body(body).name,
-                    robot_geom_id=robot, distance_m=float(contact.dist), world_xyz_m=contact.pos.tolist())
+                    robot_geom_id=robot, robot_mesh=(self.model.mesh(self.model.geom_dataid[robot]).name
+                        if self.model.geom_type[robot]==mujoco.mjtGeom.mjGEOM_MESH else None), distance_m=float(contact.dist), world_xyz_m=contact.pos.tolist())
             self.obstacle_contact_substeps += 1
             return True
         return False
@@ -207,8 +221,11 @@ class LocomotionSession:
         if not upright and self._fall_time is None:
             self._fall_time = float(time_s)
         obstacle_contact = self._obstacle_contact(time_s)
+        head_top = self.profile.head_top(d)
+        if self.rack_monitor is not None:
+            self.rack_monitor.record(d,time_s,pos[:2],head_top)
         self._sample = dict(
-            obstacle_contact=obstacle_contact, shutter_slides_m=self.actual_slides(), time_s=float(time_s), elapsed_s=float(time_s), base_xy=pos[:2].tolist(),
+            head_top_m=head_top, obstacle_contact=obstacle_contact, shutter_slides_m=self.actual_slides(), time_s=float(time_s), elapsed_s=float(time_s), base_xy=pos[:2].tolist(),
             torso_xy=torso[:2].tolist(), velocity_xy=velocity[:2].tolist(), heading_rad=heading,
             torso_heading_rad=torso_heading, yaw_rate_rad_s=yaw_rate, pelvis_height_m=float(pos[2]),
             torso_height_m=float(torso[2]), torso_tilt_rad=math.acos(float(np.clip(torso_rotation[8], -1., 1.))),
@@ -338,6 +355,13 @@ class LocomotionSession:
         mirror.qpos[self._leaf_q] = strokes*(self.data.qpos[self._leaf_q]/strokes)[::-1]
         mujoco.mj_forward(self.model, mirror)
         return self.egocentric(beacons, probe=True, view_data=mirror)
+
+    def alternate_rack_camera(self, alternative, beacons):
+        image_world = copy(self.data)
+        racks.place(image_world,alternative,self.layout_origin_xy,self.layout_axes,self.layout_yaw,
+                    self._rack_mocaps,self.station_m)
+        mujoco.mj_forward(self.model,image_world)
+        return self.egocentric(beacons,probe=True,view_data=image_world)
 
     def egocentric(self, beacons, *, depth=True, probe=False, view_data=None):
         data = self.data if view_data is None else view_data

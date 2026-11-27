@@ -6,6 +6,8 @@ from numbers import Real
 
 import numpy as np
 
+from .racks import RackPair, make_racks
+
 LANE_HALF_WIDTH = 1.58
 PANEL_LENGTH = 2.4
 PANEL_DEPTH = .18
@@ -91,6 +93,7 @@ class Layout:
     service: str
     phases: tuple
     short_stroke_m: float
+    racks: RackPair
 
     @property
     def gates(self):
@@ -109,10 +112,11 @@ class Layout:
                        left_width_m=f.right_width_m)
         tail = replace(self.tail, left_m=-self.tail.left_m) if self.tail else None
         service = {'left':'right','right':'left','both':'both'}[self.service]
-        return replace(self, fork=fork, tail=tail, service=service, phases=self.phases[::-1])
+        return replace(self, fork=fork, tail=tail, service=service, phases=self.phases[::-1], racks=self.racks.mirrored())
 
 
-def make_layout(seed, first_m, *, tail=None, service=None, phase_seed=None, phases=None):
+def make_layout(seed, first_m, *, tail=None, service=None, phase_seed=None, phases=None,
+                rack_seed=None, left_rack=None, right_rack=None):
     """Overrides fix only their named factor; independent geometry and schedule draws persist."""
     _seed(seed)
     phase_seed = seed if phase_seed is None else _seed(phase_seed)
@@ -142,7 +146,8 @@ def make_layout(seed, first_m, *, tail=None, service=None, phase_seed=None, phas
         x = max(fork.forward_m+1.65, first_m*draw('tail-x',.66,.72))
         y = (1 if tail=='left' else -1)*draw('tail-offset',.57,.76)
         downstream = Gate(x,y,draw('tail-width',.95,1.08),material('tail-'))
-    return Layout(fork,downstream,service,tuple(map(float,phases)),draw('limited-travel',.06,.12))
+    return Layout(fork,downstream,service,tuple(map(float,phases)),draw('limited-travel',.06,.12),
+                  make_racks(seed if rack_seed is None else rack_seed,first_m,left_rack,right_rack))
 
 
 def heading_axes(yaw):

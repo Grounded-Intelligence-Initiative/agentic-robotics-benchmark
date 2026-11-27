@@ -3,7 +3,7 @@ import base64
 from collections import deque
 from io import BytesIO
 from PIL import Image
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import hashlib
 import json
 import math
@@ -11,6 +11,8 @@ from numbers import Real
 
 import numpy as np
 
+from sonic_loco.rack_score import RackPassage
+from sonic_loco.racks import STAND_HEAD_M, frame
 from sonic_loco.obstacles import LANE_HALF_WIDTH, LATERAL, PLATE_OFFSET_X, Layout, make_layout
 from sonic_loco.score import (
     PhysicalScore, STRAIGHT_CORRIDOR_M, STOP_SPEED_M_S, STOP_YAW_RATE_RAD_S, STRAIGHT_DISK_M,
@@ -19,7 +21,7 @@ from sonic_loco.score import (
 
 PROTOCOL = "g1-sonic-visual-navigation/1"
 STAGES = ("approach", "pivot", "departure")
-STAGE_LIMITS = (2600, 450, 650)
+STAGE_LIMITS = (2600, 450, 1300)
 HORIZON = sum(STAGE_LIMITS)
 EXTRA_APPROACH_HOLD = 75
 CHUNK = 5
@@ -47,7 +49,7 @@ class Course:
         values = (self.first_m, self.turn_deg, self.last_m)
         if not all(isinstance(x, Real) and not isinstance(x, bool) and math.isfinite(x) for x in values):
             raise ValueError("course parameters must be finite numbers")
-        if not (5.0 <= self.first_m <= 8.0 and 75 <= abs(self.turn_deg) <= 105 and .8 <= self.last_m <= 2.5):
+        if not (5.0 <= self.first_m <= 8.0 and 75 <= abs(self.turn_deg) <= 105 and 3.6 <= self.last_m <= 4.5):
             raise ValueError("course parameters are outside the supported route limits")
 
     def current_goal(self, stage):
@@ -63,7 +65,7 @@ class Course:
 def practice_course(turn):
     if turn not in ("left", "right"):
         raise ValueError("practice turn must be left or right")
-    return Course(6.25, 90. if turn == "left" else -90., 1.5)
+    return Course(6.25, 90. if turn == "left" else -90., 4.0)
 
 
 def stamp_observation(obs):
@@ -102,7 +104,7 @@ class NavigationEpisode:
         self.layout = make_layout(obstacle_seed, course.first_m) if layout is None else layout
         if not isinstance(self.layout, Layout):
             raise ValueError("expected a physical obstacle layout")
-        session.install_layout(self.layout)
+        session.install_layout(self.layout,station_m=course.last_m)
         self.passages = []
         self._shutter_crossing = None
         self._previous_slides = session.actual_slides()
@@ -142,6 +144,16 @@ class NavigationEpisode:
         self._start_tick = self.session.tick
         self._start_xy = np.asarray(state["metrics"]["base_xy"])
         self._start_yaw = state["metrics"]["heading_rad"]
+        dock_reference = None
+        if self.stage == "departure":
+            arm = "left" if self._course.turn_deg>0 else "right"
+            self.session.rack_monitor = RackPassage(self.session,arm)
+            origin,axis = frame(self.layout.racks,arm,self.session.layout_origin_xy,self.session.layout_axes)
+            self._start_xy = origin
+            # Keep the unwrapped native yaw continuous across the -pi/pi cut.
+            target_yaw = math.atan2(axis[1,0],axis[0,0])
+            self._start_yaw += math.atan2(math.sin(target_yaw-self._start_yaw),math.cos(target_yaw-self._start_yaw))
+            dock_reference = (origin,self._start_yaw)
         self._axis = np.array([np.cos(self._start_yaw), np.sin(self._start_yaw)])
         self._distance, self._turn = self._course.current_goal(self.stage)
         self._target_xy = self._start_xy + self._distance * self._axis
@@ -151,7 +163,8 @@ class NavigationEpisode:
         self._score = PhysicalScore("right_turn_stop" if self.stage == "pivot" else "straight_stop",
                                     self._distance, -abs(self._turn), state["metrics"],
                                     state["observation"]["dq"], self._cap,
-                                    corridor_m=LANE_HALF_WIDTH if self.stage == "approach" else STRAIGHT_CORRIDOR_M)
+                                    corridor_m=LANE_HALF_WIDTH if self.stage != "pivot" else STRAIGHT_CORRIDOR_M,
+                                    station_reference=dock_reference,min_head_m=STAND_HEAD_M if self.stage=="departure" else None)
 
         self.session.beacons = self.landmarks()
 
@@ -207,6 +220,26 @@ class NavigationEpisode:
         rgb,depth = self.session.swapped_phase_camera(self.landmarks())
         return stamp_observation(dict(live, camera={"rgb_png":_png(rgb), "depth_mm_png":_png(depth)}))
 
+    def observe_alternate_rack(self, branch, *, flip_side=False, alternate_height=False):
+        """External audit only. Render a second actual rack in an isolated state at the live pose."""
+        if not (flip_side or alternate_height):
+            return self.observe()
+        current=self.layout.racks.branch(branch)
+        other=current
+        if flip_side:
+            other=replace(other,left_m=-other.left_m,side=-other.side)
+        if alternate_height:
+            if other.height_family=="low":
+                h=1.36+3*(other.underside_m-1.205)
+                other=replace(other,height_family="high",underside_m=h)
+            else:
+                h=1.205+(other.underside_m-1.36)/3
+                other=replace(other,height_family="low",underside_m=h)
+        alternative=replace(self.layout.racks,**{branch:other})
+        live=self.observe()
+        rgb,depth=self.session.alternate_rack_camera(alternative,self.landmarks())
+        return stamp_observation(dict(live,camera={"rgb_png":_png(rgb),"depth_mm_png":_png(depth)}))
+
     def relight(self, live, brightness):
         """Render a different lamp exposure using exactly the live depth acquisition."""
         if live["tick"] != self.session.tick or live["last_observation_id"] != self.last_observation_id:
@@ -244,7 +277,8 @@ class NavigationEpisode:
 
     def _qualifies_as_stopped(self, sample):
         disk = TURN_DISK_M if self.stage == "pivot" else STRAIGHT_DISK_M
-        return (sample["upright"] and not sample["fallen"] and math.dist(sample["base_xy"], self._target_xy) <= disk
+        return ((self.stage!="departure" or sample["head_top_m"]>=STAND_HEAD_M)
+                and sample["upright"] and not sample["fallen"] and math.dist(sample["base_xy"], self._target_xy) <= disk
                 and abs(sample["heading_rad"] - self._target_yaw) <= YAW_TOLERANCE_RAD
                 and math.hypot(*sample["velocity_xy"]) <= STOP_SPEED_M_S
                 and abs(sample["yaw_rate_rad_s"]) <= STOP_YAW_RATE_RAD_S)
@@ -334,6 +368,12 @@ class NavigationEpisode:
             return "obstacle_contact"
         if self.course_boundary_violation:
             return "course_boundary"
+        rack = self.session.rack_monitor
+        if rack is not None:
+            if rack.boundary:
+                return "course_boundary"
+            if rack.missed:
+                return "missed_rack_passage"
         if self._missed_passage:
             return "missed_passage"
         if state["metrics"]["fallen"]:
@@ -348,6 +388,8 @@ class NavigationEpisode:
                     self.stage == "departure" or self.session.tick % CHUNK == 0):
                 if self.stage == "approach" and len(self.passages) != len(self.layout.gates):
                     return "missed_passage"
+                if rack is not None and (rack.entry is None or rack.exit is None or rack.cleared is None or rack.head_under is None):
+                    return "missed_rack_passage"
                 return "success"
         if self.stage_tick >= self._cap:
             return "time_limit"
@@ -396,7 +438,12 @@ class NavigationEpisode:
             g = self.layout.tail
             geometry.append(dict(asdict(g),gate_kind="fixed_offset",side=g.side,gap_min_m=g.edges[0],
                                  gap_max_m=g.edges[1]))
+        monitor = self.session.rack_monitor
         return {"success": self.reason == "success", "reason": self.reason, "stages": stages,
+                "rack_layouts":{arm:self.layout.racks.branch(arm).record() for arm in ("left","right")},
+                "rack_passage":None if monitor is None else monitor.summary(),
+                "final_station_distance_m":self._course.last_m,
+                "required_final_head_m":STAND_HEAD_M,
                 "gate_layout": geometry, "service":self.layout.service, "phases_right_left_s":self.layout.phases,
                 "fork_staging_entry_s":self.fork_staging_entry_s,"fork_staging_slow_s":self.fork_staging_slow_s,
                 "required_gates": len(self.layout.gates), "passed_gates": len(self.passages),
@@ -405,8 +452,9 @@ class NavigationEpisode:
                 "first_obstacle_contact": contact,
                 "first_obstacle_contact_tick": None if contact is None else contact["tick"],
                 "first_obstacle_contact_time_s": None if contact is None else contact["time_s"],
-                "course_boundary_violation": self.course_boundary_violation,
-                "missed_passage": self._missed_passage,
+                "course_boundary_violation": bool(self.course_boundary_violation or (monitor and monitor.boundary)),
+                "missed_passage": bool(self._missed_passage or (monitor and monitor.missed)
+                                      or self.reason in ("missed_passage", "missed_rack_passage")),
                 "stages_completed": sum(s["reason"] == "success" for s in self._completed),
                 "simulated_s": self.session.state["metrics"]["time_s"], "applied_rows": rows,
                 "issued_control_s": rows / 50, "scalar_codes": CODE_DIM * rows,

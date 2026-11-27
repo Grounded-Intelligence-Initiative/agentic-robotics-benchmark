@@ -5,6 +5,7 @@ import mujoco
 import numpy as np
 
 from sonic_sim.decoder import EFFORT_LIMIT, KD, KP
+from . import racks
 from .obstacles import ISLAND_WIDTH, LATERAL, PANEL_DEPTH, PANEL_HEIGHT, PANEL_LENGTH, PLATE_DEPTH, PLATE_WIDTH
 
 
@@ -39,6 +40,7 @@ def make_model(root):
     ET.SubElement(asset, "material", name="floor_mat", texture="tiles", texrepeat="4 4", texuniform="true")
     ET.SubElement(xml.find("worldbody"), "geom", name="floor", type="plane", size="0 0 .05", material="floor_mat")
     world = xml.find("worldbody")
+    racks.add_models(world)
     # The slide rails and cabinets are anchored once at reset. A moving leaf is
     # a finite-mass body with one native joint, actuator, and collision geometry.
     actuators = xml.find("actuator")

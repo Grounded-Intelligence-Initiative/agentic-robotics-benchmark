@@ -45,7 +45,8 @@ class FootTransitions:
 
 
 class PhysicalScore:
-    def __init__(self, route_name, distance_m, heading_delta_rad, initial_metrics, initial_dq, horizon, *, corridor_m=STRAIGHT_CORRIDOR_M):
+    def __init__(self, route_name, distance_m, heading_delta_rad, initial_metrics, initial_dq, horizon, *, corridor_m=STRAIGHT_CORRIDOR_M,
+                 station_reference=None, min_head_m=None):
         if route_name not in ("straight_stop", "right_turn_stop"):
             raise ValueError("unknown locomotion route")
         self.route = route_name
@@ -59,17 +60,21 @@ class PhysicalScore:
             raise ValueError("invalid straight or signed right-turn goal")
         self.x0, self.y0 = initial_metrics["base_xy"]
         self.yaw0 = initial_metrics["heading_rad"]
+        self.previous_xy = (self.x0,self.y0)
+        if station_reference is not None:
+            (self.x0,self.y0),self.yaw0 = station_reference
         self.cos0, self.sin0 = math.cos(self.yaw0), math.sin(self.yaw0)
         self.reason = None
         self.time = float(initial_metrics["time_s"])
         self.t0 = self.time
         self.ticks = 0
         self.hold = self.best_hold = 0.
+        self.min_head_m = min_head_m
+        self.hold_head_min = None
         self.peak_lateral = self.peak_pivot = self.peak_wrong_yaw = 0.
         self.speed = self.yaw_rate = self.peak_speed = self.peak_yaw_rate = 0.
         self.forward = self.lateral = self.yaw = 0.
         self.path_length = self.angle_travel = 0.
-        self.previous_xy = (self.x0, self.y0)
         self.position_error, self.heading_error = self.distance, self.turn
         self.controls = None
         self.changed = self.accel_samples = 0
@@ -128,6 +133,12 @@ class PhysicalScore:
         at_rest_at_goal = (m["upright"] and self.position_error <= disk
                            and abs(self.heading_error) <= YAW_TOLERANCE_RAD
                            and self.speed <= STOP_SPEED_M_S and abs(self.yaw_rate) <= STOP_YAW_RATE_RAD_S)
+        if self.min_head_m is not None:
+            at_rest_at_goal = at_rest_at_goal and m["head_top_m"]>=self.min_head_m
+            if at_rest_at_goal:
+                self.hold_head_min = m["head_top_m"] if self.hold_head_min is None else min(self.hold_head_min,m["head_top_m"])
+            else:
+                self.hold_head_min = None
         self.hold = self.hold + dt if at_rest_at_goal else 0.
         self.best_hold = max(self.best_hold, self.hold)
         if self.hold + 1e-10 >= STOP_DWELL_S:
@@ -177,5 +188,6 @@ class PhysicalScore:
                     final_speed_m_s=self.speed,final_yaw_rate_rad_s=self.yaw_rate,
                     peak_speed_m_s=self.peak_speed,peak_abs_yaw_rate_rad_s=self.peak_yaw_rate,
                     max_stop_dwell_s=self.best_hold,
+                    min_head_height_during_final_dwell_m=self.hold_head_min if self.reason=="success" else None,
                     left_unloads=self.feet[0].unloads,left_reloads=self.feet[0].reloads,
                     right_unloads=self.feet[1].unloads,right_reloads=self.feet[1].reloads)
