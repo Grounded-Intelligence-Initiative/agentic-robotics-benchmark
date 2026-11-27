@@ -1,6 +1,6 @@
 # Trained baseline and reproduction
 
-The baseline trains during the agent stage. `run_baseline.sh` copies the source files into
+The baseline trains during the agent stage. `solve.sh` copies the source files into
 `/home/user/submission` and runs `train.sh`; setup does not train, download data,
 or clear existing outputs. The tested agent receives an interface and public
 data, not this recipe.
@@ -59,16 +59,19 @@ or full_at. See tests/gt_reference_measurement.json for the endpoint evidence.
 
 ## Reproduce in the task image
 
-Run `bash solution/run_baseline.sh` to reproduce the trained baseline. Training needs
+Run `bash solution/solve.sh` to reproduce the trained baseline. Training needs
 the public data and generic initialization installed by the image, plus CUDA.
 The final artifacts are `model.pt`, `model.py`, `train.sh`, training sources,
 `config.json` and `training_log.jsonl` under `/home/user/submission`. Public
 practice grading and the private verifier both report raw AP50 as the score.
 
-The baseline is not a perfect GT detector. `solve.sh` is the separate author GT
-oracle described in ORACLE.md; it trains this same baseline for authentic training
-provenance, then packages explicit GT buffers for scoring validation. A perfect
-oracle result is not learned-model accuracy. Actual ALE validation remains required.
+The learned reference is not a perfect detector. `solve.sh` exports its actual
+learned weights, without GT buffers or per-image answer lookup. `run_baseline.sh`
+is an alias for the same entry point. The metric endpoint check lives separately
+in tests/metric_selfcheck.py and is not an admissible model submission. With the
+fixed AP50 scale, the current reference does not meet ALE's oracle reward=1 rule;
+this admission-contract issue remains open. No hidden-score tuning or baseline
+normalization is used to manufacture a pass.
 
 ## Fixed baseline repetitions
 

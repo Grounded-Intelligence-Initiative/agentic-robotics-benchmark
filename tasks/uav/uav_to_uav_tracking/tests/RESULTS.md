@@ -29,18 +29,27 @@ are not new ALE verdicts for that revision. They ran on H200 with an independent
 function-calling harness and Apptainer, not the declared RTX4090/Docker ALE stack.
 
 Formal GPU ALE lifecycle/UID isolation and a formal frontier episode remain
-unverified. solution/solve.sh now packages an explicit GT oracle after real
-baseline training; see solution/ORACLE.md. This integration does not by itself
-prove the engine's oracle=1 lifecycle gate. The author result
+unverified. The current solution/solve.sh submits only a learned detector. Its
+measured AP50 does not satisfy the pinned engine's oracle=1 admission rule;
+that contract requires maintainer resolution without rescaling AP50 or submitting
+hidden answers. The author result
 0.5974 is above the repository's approximate frontier guideline of 0.5, but is
 not a full score. Report this candidly without tuning on hidden data, shortening
 the declared budget or rescaling the score to manufacture an acceptance result.
 
-## Real Docker verification
+## Historical GT-only grader endpoint evidence
+
+The following results used the retired GT-packaging implementation. It looked up
+hidden boxes by pixel hash after training, so its perfect predictions were not
+learned. That implementation and its hidden-answer fixture have been removed from
+the current task. These immutable runs validate scoring endpoints only; they do
+not describe the current solve.sh or establish learned-reference success.
+
+### Real Docker verification
 
 DCC job 62774192 completed with scheduler exit 0:0. The exact existing verifier
 image sha256:7fab623064e3b756800f93e83207c0b34b5bb63ee1e24270d7a0c87c75668f21
-ran the current, unmodified verify.py and worker. No device or score override
+ran the unmodified verify.py and worker at that recorded revision. No device or score override
 was installed. Missing artifacts scored 0; a truncated checkpoint scored 0; the
 GT submission scored AP50=1 and reward=1 over all 2,475 held-out frames in
 203.38 seconds. All three containers exited zero. Real root/user separation,
@@ -51,7 +60,7 @@ This CPU check packaged GT with the unchanged first trained baseline from job
 fresh full solve.sh training job 62774159. Neither result is a claim of the
 formal GPU Docker ALE lifecycle, and no learned detector is claimed to score1.
 
-## Fresh full oracle execution
+### Historical full GT execution
 
 DCC job 62774159 executed the complete solve.sh at source
 9c19c6a096c34ff034cc018a8b3715b6a2f5ec22 and completed with scheduler exit 0:0.

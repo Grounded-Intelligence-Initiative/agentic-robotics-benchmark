@@ -103,35 +103,20 @@ class ProcessTests(unittest.TestCase):
         return infer(self.sub,self.data,TASK/"tests/worker.py",device="cpu",
                      startup_timeout=15,frame_timeout=timeout,total_timeout=max(30,timeout*3))
 
-    def test_gt_oracle_uses_normal_worker(self):
-        from prepare_gt_fixture import pixel_key
-        from build_gt_submission import package
-        from gt_model import Detector
-        # Distinct RGB inputs, including a negative frame, through the same
-        # artifact checks and pixel-only worker protocol as an agent submission.
-        Image.new("RGB",(32,32),(255,0,0)).save(self.data/"b.png")
-        predictions={}
-        for name,boxes in (("a.png",[[4,4,12,12,1.0]]),("b.png",[])):
-            with Image.open(self.data/name) as im:
-                predictions[pixel_key(np.array(im.convert("RGB")))]=boxes
-        fixture=self.root/"fixture.json"
-        fixture.write_text(json.dumps({"schema":1,"role":"author_only_ground_truth_oracle",
-            "frames":2,"annotations_sha256":"synthetic-unit-test",
-            "predictions":predictions}))
-        baseline=self.root/"baseline"
-        shutil.copytree(self.sub,baseline)
-        original_log=(baseline/"training_log.jsonl").read_bytes()
-        original_hash=hashlib.sha256((baseline/"model.pt").read_bytes()).hexdigest()
-        (baseline/"config.json").write_text(json.dumps({"checkpoint_sha256":original_hash}))
-        package(baseline,self.sub,fixture)
-        self.assertEqual((self.sub/"training_log.jsonl").read_bytes(),original_log)
-        self.assertEqual(hashlib.sha256((baseline/"model.pt").read_bytes()).hexdigest(),original_hash)
-        data,preds=infer(self.sub,self.data,TASK/"tests/worker.py",device="cpu")
-        self.assertAlmostEqual(metrics(data,preds)["uav_ap50"],1.0)
-        self.assertEqual(len(preds),1)
-        model=Detector(str(self.sub/"model.pt"),"cpu")
-        with self.assertRaisesRegex(ValueError,"outside"):
-            model.predict(np.full((32,32,3),2,dtype=np.uint8))
+    def test_learned_detector_uses_normal_worker_without_answer_fixture(self):
+        from model import build_model
+        # An ordinary state dict must support arbitrary unseen pixels through
+        # the real worker, without a pixel-keyed GT fixture. Random weights here
+        # are a protocol fixture, not evidence of reference training quality.
+        torch.manual_seed(7)
+        torch.save(build_model().state_dict(), self.sub/"model.pt")
+        Image.new("RGB", (32, 32), (37, 83, 149)).save(self.data/"b.png")
+        shutil.copy2(TASK/"solution/model.py", self.sub/"model.py")
+        data, preds = infer(self.sub, self.data, TASK/"tests/worker.py", device="cpu",
+                            startup_timeout=30, frame_timeout=30, total_timeout=120)
+        self.assertEqual(len(data["images"]), 2)
+        self.assertTrue(all(p["image_id"] in (1, 2) for p in preds))
+        self.assertFalse(any(p.name.startswith("gt_") for p in self.sub.iterdir()))
 
     def test_fresh_state_each_sequence(self):
         d,p=self.run_model("class Detector:\n def __init__(self,*a): self.n=0\n def reset(self): self.n=0\n def predict(self,frame):\n  self.n+=1\n  return [[self.n,0,8,8,.9]]\n")

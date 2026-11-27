@@ -65,12 +65,21 @@ all 2,475 frames across ten sequences while asserting a non-root UID, denied lab
 reads, denied verdict writes and denied Internet sockets. These tests are not ALE
 validation and did not exercise CUDA or ALE's sandbox lifecycle.
 
-Pending: GPU execution of this exact verifier; isolation checks under the full ALE
-sandbox lifecycle; full untouched/truncated/oracle validation and formal frontier difficulty.
-The GT endpoint is measured; no trained-model score is promoted to a perfect detector.
-The author-only solution/solve.sh now trains the baseline, preserves its genuine
-artifacts under baseline/, and packages exact GT buffers into the scoring oracle.
-No scoring override, magic marker exemption or synthetic training log is used.
-The same worker, artifact validation and metric evaluate its predictions. Its
-perfect score is an endpoint test, not learned accuracy; actual ALE validation
-remains necessary. See solution/ORACLE.md.
+## Remaining admission requirements
+
+GPU execution of this exact verifier, isolation checks under the full ALE sandbox
+lifecycle and a formal frontier episode remain unverified.
+
+There is also a scoring/admission contract conflict: CONTRIBUTING.md and the pinned
+engine's docs/specs/episode-protocol.md require an untouched reward of 0 and an
+oracle reward of 1 after rounding. The real learned reference has mean AP50
+0.5171147779. solve.sh now runs that learned reference only; the fixed GT scale
+must not be normalized to the baseline, and hidden answers must not be packaged
+as a detector. It therefore does not currently satisfy the oracle=1 gate.
+Maintainer agreement on supporting this raw-metric training task is required before
+admission. A qualified GPU host alone does not resolve the score requirement.
+
+Earlier GT-packaged submissions are retained only as historical grader endpoint
+evidence in RESULTS.md. They are not the current solution and cannot establish
+successful learned training or satisfy this task's intended reference contract.
+The current source contains no pixel-keyed hidden-label fixture or GT model builder.

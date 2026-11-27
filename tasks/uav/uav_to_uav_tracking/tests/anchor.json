@@ -3,9 +3,7 @@
   "direction": "higher",
   "value": 1.0,
   "full_at": 1.0,
-  "source": "Exact GT predictions measured AP50=1.0 on all 55,616 frozen frames (DCC62738778). A complete GT submission subsequently scored reward/AP50=1.0 over all 2,475 hidden frames in the unmodified real Docker verifier (DCC62774192); missing/truncated submissions scored0. Both are author evidence, not formal GPU ALE validation.",
-  "reference_commit": "9c19c6a096c34ff034cc018a8b3715b6a2f5ec22",
-  "reference_kind": "ground_truth_submission",
-  "note": "Unrounded reward equals raw AP50; the engine serializes primary reward to two decimals and preserves reward_exact. Trained baselines never set the denominator or saturation threshold. Formal ALE lifecycle admission remains separate.",
-  "oracle_model_sha256": "efff9c11416e1b4d7fd57c5128f126f3295edebcb73ec51c72b7c4f33dfe755d"
+  "source": "Exact GT predictions measured AP50=1.0 on all 55,616 frozen frames (DCC62738778); empty predictions measured 0. This is a metric endpoint, not the learned reference performance or an ALE admission result. See gt_reference_measurement.json.",
+  "reference_kind": "metric_endpoint_selfcheck",
+  "note": "Unrounded reward equals raw AP50; the engine serializes primary reward to two decimals and preserves reward_exact. Trained baselines never set the denominator or saturation threshold. The learned solve.sh does not currently meet the pinned ALE oracle=1 gate."
 }
