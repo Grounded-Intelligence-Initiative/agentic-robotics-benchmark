@@ -1,0 +1,11 @@
+# The task image's Python dependencies, the one list (environment/Dockerfile installs it into
+# the py3.12 /opt/venv). The grader renders the endoscope video with MuJoCo (software OpenGL
+# through PyOpenGL); the agent gets the usual scientific stack for identification work, Pillow
+# to read the endoscope's JPEG frames, and the same MuJoCo to render the instrument's meshes.
+numpy==2.2.6
+scipy==1.15.3
+pandas==2.2.3
+matplotlib==3.10.3
+pillow==13.0.0
+mujoco==3.16.0
+PyOpenGL==3.1.10
