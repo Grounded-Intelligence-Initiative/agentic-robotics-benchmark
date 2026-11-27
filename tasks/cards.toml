@@ -227,6 +227,12 @@ summary = "Rebuild the lost CAD of a four-digit robot hand's 52 printed parts in
 platforms = ["hand"]
 stages = ["hardware-design"]
 
+[dexterous_hand_environment_twin_from_real_photo]
+title = "Build a sim twin of a pick board from one photo"
+summary = "Build a MuJoCo digital twin of ten household things on a wooden board from one calibrated photograph, for a four-digit robot hand to rehearse its picks on."
+platforms = ["hand"]
+stages = ["environment"]
+
 [dexterous_hand_full_assembly_16dof_panda]
 title = "Assemble a four-digit robot hand with a Panda"
 summary = "Program a Franka Panda to build a four-digit robot hand from its nine bolt-on modules onto its palm, guided by its picture manual and the cell's cameras."

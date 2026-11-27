@@ -1,0 +1,1010 @@
+<mujoco model="reference twin">
+  <compiler angle="radian" autolimits="true"/>
+  <asset>
+    <mesh name="wine_glass_00" file="assets/wine_glass_00.stl"/>
+    <mesh name="wine_glass_01" file="assets/wine_glass_01.stl"/>
+    <mesh name="wine_glass_02" file="assets/wine_glass_02.stl"/>
+    <mesh name="wine_glass_03" file="assets/wine_glass_03.stl"/>
+    <mesh name="wine_glass_04" file="assets/wine_glass_04.stl"/>
+    <mesh name="wine_glass_05" file="assets/wine_glass_05.stl"/>
+    <mesh name="wine_glass_06" file="assets/wine_glass_06.stl"/>
+    <mesh name="wine_glass_07" file="assets/wine_glass_07.stl"/>
+    <mesh name="wine_glass_08" file="assets/wine_glass_08.stl"/>
+    <mesh name="wine_glass_09" file="assets/wine_glass_09.stl"/>
+    <mesh name="wine_glass_10" file="assets/wine_glass_10.stl"/>
+    <mesh name="wine_glass_11" file="assets/wine_glass_11.stl"/>
+    <mesh name="wine_glass_12" file="assets/wine_glass_12.stl"/>
+    <mesh name="wine_glass_13" file="assets/wine_glass_13.stl"/>
+    <mesh name="wine_glass_14" file="assets/wine_glass_14.stl"/>
+    <mesh name="wine_glass_15" file="assets/wine_glass_15.stl"/>
+    <mesh name="wine_glass_16" file="assets/wine_glass_16.stl"/>
+    <mesh name="wine_glass_17" file="assets/wine_glass_17.stl"/>
+    <mesh name="wine_glass_18" file="assets/wine_glass_18.stl"/>
+    <mesh name="wine_glass_19" file="assets/wine_glass_19.stl"/>
+    <mesh name="wine_glass_20" file="assets/wine_glass_20.stl"/>
+    <mesh name="wine_glass_21" file="assets/wine_glass_21.stl"/>
+    <mesh name="wine_glass_22" file="assets/wine_glass_22.stl"/>
+    <mesh name="wine_glass_23" file="assets/wine_glass_23.stl"/>
+    <mesh name="wine_glass_24" file="assets/wine_glass_24.stl"/>
+    <mesh name="wine_glass_25" file="assets/wine_glass_25.stl"/>
+    <mesh name="wine_glass_26" file="assets/wine_glass_26.stl"/>
+    <mesh name="wine_glass_27" file="assets/wine_glass_27.stl"/>
+    <mesh name="wine_glass_28" file="assets/wine_glass_28.stl"/>
+    <mesh name="wine_glass_29" file="assets/wine_glass_29.stl"/>
+    <mesh name="wine_glass_30" file="assets/wine_glass_30.stl"/>
+    <mesh name="wine_glass_31" file="assets/wine_glass_31.stl"/>
+    <mesh name="wine_glass_32" file="assets/wine_glass_32.stl"/>
+    <mesh name="wine_glass_33" file="assets/wine_glass_33.stl"/>
+    <mesh name="wine_glass_34" file="assets/wine_glass_34.stl"/>
+    <mesh name="wine_glass_35" file="assets/wine_glass_35.stl"/>
+    <mesh name="wine_glass_36" file="assets/wine_glass_36.stl"/>
+    <mesh name="wine_glass_37" file="assets/wine_glass_37.stl"/>
+    <mesh name="wine_glass_38" file="assets/wine_glass_38.stl"/>
+    <mesh name="wine_glass_39" file="assets/wine_glass_39.stl"/>
+    <mesh name="wine_glass_40" file="assets/wine_glass_40.stl"/>
+    <mesh name="wine_glass_41" file="assets/wine_glass_41.stl"/>
+    <mesh name="wine_glass_42" file="assets/wine_glass_42.stl"/>
+    <mesh name="wine_glass_43" file="assets/wine_glass_43.stl"/>
+    <mesh name="wine_glass_44" file="assets/wine_glass_44.stl"/>
+    <mesh name="wine_glass_45" file="assets/wine_glass_45.stl"/>
+    <mesh name="wine_glass_46" file="assets/wine_glass_46.stl"/>
+    <mesh name="wine_glass_47" file="assets/wine_glass_47.stl"/>
+    <mesh name="wine_glass_48" file="assets/wine_glass_48.stl"/>
+    <mesh name="wine_glass_49" file="assets/wine_glass_49.stl"/>
+    <mesh name="wine_glass_50" file="assets/wine_glass_50.stl"/>
+    <mesh name="wine_glass_51" file="assets/wine_glass_51.stl"/>
+    <mesh name="wine_glass_52" file="assets/wine_glass_52.stl"/>
+    <mesh name="wine_glass_53" file="assets/wine_glass_53.stl"/>
+    <mesh name="wine_glass_54" file="assets/wine_glass_54.stl"/>
+    <mesh name="wine_glass_55" file="assets/wine_glass_55.stl"/>
+    <mesh name="wine_glass_56" file="assets/wine_glass_56.stl"/>
+    <mesh name="wine_glass_57" file="assets/wine_glass_57.stl"/>
+    <mesh name="wine_glass_58" file="assets/wine_glass_58.stl"/>
+    <mesh name="wine_glass_59" file="assets/wine_glass_59.stl"/>
+    <mesh name="wine_glass_60" file="assets/wine_glass_60.stl"/>
+    <mesh name="wine_glass_61" file="assets/wine_glass_61.stl"/>
+    <mesh name="wine_glass_62" file="assets/wine_glass_62.stl"/>
+    <mesh name="wine_glass_63" file="assets/wine_glass_63.stl"/>
+    <mesh name="wine_glass_64" file="assets/wine_glass_64.stl"/>
+    <mesh name="wine_glass_65" file="assets/wine_glass_65.stl"/>
+    <mesh name="wine_glass_66" file="assets/wine_glass_66.stl"/>
+    <mesh name="wine_glass_67" file="assets/wine_glass_67.stl"/>
+    <mesh name="wine_glass_68" file="assets/wine_glass_68.stl"/>
+    <mesh name="wine_glass_69" file="assets/wine_glass_69.stl"/>
+    <mesh name="wine_glass_70" file="assets/wine_glass_70.stl"/>
+    <mesh name="wine_glass_71" file="assets/wine_glass_71.stl"/>
+    <mesh name="wine_glass_72" file="assets/wine_glass_72.stl"/>
+    <mesh name="wine_glass_73" file="assets/wine_glass_73.stl"/>
+    <mesh name="wine_glass_74" file="assets/wine_glass_74.stl"/>
+    <mesh name="wine_glass_75" file="assets/wine_glass_75.stl"/>
+    <mesh name="wine_glass_76" file="assets/wine_glass_76.stl"/>
+    <mesh name="wine_glass_77" file="assets/wine_glass_77.stl"/>
+    <mesh name="wine_glass_78" file="assets/wine_glass_78.stl"/>
+    <mesh name="wine_glass_79" file="assets/wine_glass_79.stl"/>
+    <mesh name="wine_glass_80" file="assets/wine_glass_80.stl"/>
+    <mesh name="wine_glass_81" file="assets/wine_glass_81.stl"/>
+    <mesh name="wine_glass_82" file="assets/wine_glass_82.stl"/>
+    <mesh name="wine_glass_83" file="assets/wine_glass_83.stl"/>
+    <mesh name="wine_glass_84" file="assets/wine_glass_84.stl"/>
+    <mesh name="wine_glass_85" file="assets/wine_glass_85.stl"/>
+    <mesh name="wine_glass_86" file="assets/wine_glass_86.stl"/>
+    <mesh name="wine_glass_87" file="assets/wine_glass_87.stl"/>
+    <mesh name="wine_glass_88" file="assets/wine_glass_88.stl"/>
+    <mesh name="wine_glass_89" file="assets/wine_glass_89.stl"/>
+    <mesh name="wine_glass_90" file="assets/wine_glass_90.stl"/>
+    <mesh name="wine_glass_91" file="assets/wine_glass_91.stl"/>
+    <mesh name="wine_glass_92" file="assets/wine_glass_92.stl"/>
+    <mesh name="wine_glass_93" file="assets/wine_glass_93.stl"/>
+    <mesh name="wine_glass_94" file="assets/wine_glass_94.stl"/>
+    <mesh name="wine_glass_95" file="assets/wine_glass_95.stl"/>
+    <mesh name="teapot_00" file="assets/teapot_00.stl"/>
+    <mesh name="teapot_01" file="assets/teapot_01.stl"/>
+    <mesh name="teapot_02" file="assets/teapot_02.stl"/>
+    <mesh name="teapot_03" file="assets/teapot_03.stl"/>
+    <mesh name="teapot_04" file="assets/teapot_04.stl"/>
+    <mesh name="teapot_05" file="assets/teapot_05.stl"/>
+    <mesh name="teapot_06" file="assets/teapot_06.stl"/>
+    <mesh name="teapot_07" file="assets/teapot_07.stl"/>
+    <mesh name="teapot_08" file="assets/teapot_08.stl"/>
+    <mesh name="teapot_09" file="assets/teapot_09.stl"/>
+    <mesh name="teapot_10" file="assets/teapot_10.stl"/>
+    <mesh name="teapot_11" file="assets/teapot_11.stl"/>
+    <mesh name="teapot_12" file="assets/teapot_12.stl"/>
+    <mesh name="teapot_13" file="assets/teapot_13.stl"/>
+    <mesh name="teapot_14" file="assets/teapot_14.stl"/>
+    <mesh name="teapot_15" file="assets/teapot_15.stl"/>
+    <mesh name="teapot_16" file="assets/teapot_16.stl"/>
+    <mesh name="teapot_17" file="assets/teapot_17.stl"/>
+    <mesh name="teapot_18" file="assets/teapot_18.stl"/>
+    <mesh name="teapot_19" file="assets/teapot_19.stl"/>
+    <mesh name="teapot_20" file="assets/teapot_20.stl"/>
+    <mesh name="teapot_21" file="assets/teapot_21.stl"/>
+    <mesh name="teapot_22" file="assets/teapot_22.stl"/>
+    <mesh name="teapot_23" file="assets/teapot_23.stl"/>
+    <mesh name="teapot_24" file="assets/teapot_24.stl"/>
+    <mesh name="teapot_25" file="assets/teapot_25.stl"/>
+    <mesh name="teapot_26" file="assets/teapot_26.stl"/>
+    <mesh name="teapot_27" file="assets/teapot_27.stl"/>
+    <mesh name="teapot_28" file="assets/teapot_28.stl"/>
+    <mesh name="teapot_29" file="assets/teapot_29.stl"/>
+    <mesh name="teapot_30" file="assets/teapot_30.stl"/>
+    <mesh name="teapot_31" file="assets/teapot_31.stl"/>
+    <mesh name="teapot_32" file="assets/teapot_32.stl"/>
+    <mesh name="teapot_33" file="assets/teapot_33.stl"/>
+    <mesh name="teapot_34" file="assets/teapot_34.stl"/>
+    <mesh name="teapot_35" file="assets/teapot_35.stl"/>
+    <mesh name="teapot_36" file="assets/teapot_36.stl"/>
+    <mesh name="teapot_37" file="assets/teapot_37.stl"/>
+    <mesh name="teapot_38" file="assets/teapot_38.stl"/>
+    <mesh name="teapot_39" file="assets/teapot_39.stl"/>
+    <mesh name="teapot_40" file="assets/teapot_40.stl"/>
+    <mesh name="teapot_41" file="assets/teapot_41.stl"/>
+    <mesh name="teapot_42" file="assets/teapot_42.stl"/>
+    <mesh name="teapot_43" file="assets/teapot_43.stl"/>
+    <mesh name="teapot_44" file="assets/teapot_44.stl"/>
+    <mesh name="teapot_45" file="assets/teapot_45.stl"/>
+    <mesh name="teapot_46" file="assets/teapot_46.stl"/>
+    <mesh name="teapot_47" file="assets/teapot_47.stl"/>
+    <mesh name="teapot_48" file="assets/teapot_48.stl"/>
+    <mesh name="teapot_49" file="assets/teapot_49.stl"/>
+    <mesh name="teapot_50" file="assets/teapot_50.stl"/>
+    <mesh name="teapot_51" file="assets/teapot_51.stl"/>
+    <mesh name="teapot_52" file="assets/teapot_52.stl"/>
+    <mesh name="teapot_53" file="assets/teapot_53.stl"/>
+    <mesh name="teapot_54" file="assets/teapot_54.stl"/>
+    <mesh name="teapot_55" file="assets/teapot_55.stl"/>
+    <mesh name="teapot_56" file="assets/teapot_56.stl"/>
+    <mesh name="teapot_57" file="assets/teapot_57.stl"/>
+    <mesh name="teapot_58" file="assets/teapot_58.stl"/>
+    <mesh name="teapot_59" file="assets/teapot_59.stl"/>
+    <mesh name="teapot_60" file="assets/teapot_60.stl"/>
+    <mesh name="teapot_61" file="assets/teapot_61.stl"/>
+    <mesh name="teapot_62" file="assets/teapot_62.stl"/>
+    <mesh name="teapot_63" file="assets/teapot_63.stl"/>
+    <mesh name="teapot_64" file="assets/teapot_64.stl"/>
+    <mesh name="teapot_65" file="assets/teapot_65.stl"/>
+    <mesh name="teapot_66" file="assets/teapot_66.stl"/>
+    <mesh name="teapot_67" file="assets/teapot_67.stl"/>
+    <mesh name="teapot_68" file="assets/teapot_68.stl"/>
+    <mesh name="teapot_69" file="assets/teapot_69.stl"/>
+    <mesh name="teapot_70" file="assets/teapot_70.stl"/>
+    <mesh name="teapot_71" file="assets/teapot_71.stl"/>
+    <mesh name="teapot_72" file="assets/teapot_72.stl"/>
+    <mesh name="teapot_73" file="assets/teapot_73.stl"/>
+    <mesh name="teapot_74" file="assets/teapot_74.stl"/>
+    <mesh name="teapot_75" file="assets/teapot_75.stl"/>
+    <mesh name="teapot_76" file="assets/teapot_76.stl"/>
+    <mesh name="teapot_77" file="assets/teapot_77.stl"/>
+    <mesh name="teapot_78" file="assets/teapot_78.stl"/>
+    <mesh name="teapot_79" file="assets/teapot_79.stl"/>
+    <mesh name="teapot_80" file="assets/teapot_80.stl"/>
+    <mesh name="teapot_81" file="assets/teapot_81.stl"/>
+    <mesh name="teapot_82" file="assets/teapot_82.stl"/>
+    <mesh name="teapot_83" file="assets/teapot_83.stl"/>
+    <mesh name="teapot_84" file="assets/teapot_84.stl"/>
+    <mesh name="teapot_85" file="assets/teapot_85.stl"/>
+    <mesh name="teapot_86" file="assets/teapot_86.stl"/>
+    <mesh name="teapot_87" file="assets/teapot_87.stl"/>
+    <mesh name="teapot_88" file="assets/teapot_88.stl"/>
+    <mesh name="teapot_89" file="assets/teapot_89.stl"/>
+    <mesh name="teapot_90" file="assets/teapot_90.stl"/>
+    <mesh name="teapot_91" file="assets/teapot_91.stl"/>
+    <mesh name="teapot_92" file="assets/teapot_92.stl"/>
+    <mesh name="teapot_93" file="assets/teapot_93.stl"/>
+    <mesh name="teapot_94" file="assets/teapot_94.stl"/>
+    <mesh name="teapot_95" file="assets/teapot_95.stl"/>
+    <mesh name="cup_00" file="assets/cup_00.stl"/>
+    <mesh name="cup_01" file="assets/cup_01.stl"/>
+    <mesh name="cup_02" file="assets/cup_02.stl"/>
+    <mesh name="cup_03" file="assets/cup_03.stl"/>
+    <mesh name="cup_04" file="assets/cup_04.stl"/>
+    <mesh name="cup_05" file="assets/cup_05.stl"/>
+    <mesh name="cup_06" file="assets/cup_06.stl"/>
+    <mesh name="cup_07" file="assets/cup_07.stl"/>
+    <mesh name="cup_08" file="assets/cup_08.stl"/>
+    <mesh name="cup_09" file="assets/cup_09.stl"/>
+    <mesh name="cup_10" file="assets/cup_10.stl"/>
+    <mesh name="cup_11" file="assets/cup_11.stl"/>
+    <mesh name="cup_12" file="assets/cup_12.stl"/>
+    <mesh name="cup_13" file="assets/cup_13.stl"/>
+    <mesh name="cup_14" file="assets/cup_14.stl"/>
+    <mesh name="cup_15" file="assets/cup_15.stl"/>
+    <mesh name="cup_16" file="assets/cup_16.stl"/>
+    <mesh name="cup_17" file="assets/cup_17.stl"/>
+    <mesh name="cup_18" file="assets/cup_18.stl"/>
+    <mesh name="cup_19" file="assets/cup_19.stl"/>
+    <mesh name="cup_20" file="assets/cup_20.stl"/>
+    <mesh name="cup_21" file="assets/cup_21.stl"/>
+    <mesh name="cup_22" file="assets/cup_22.stl"/>
+    <mesh name="cup_23" file="assets/cup_23.stl"/>
+    <mesh name="cup_24" file="assets/cup_24.stl"/>
+    <mesh name="cup_25" file="assets/cup_25.stl"/>
+    <mesh name="cup_26" file="assets/cup_26.stl"/>
+    <mesh name="cup_27" file="assets/cup_27.stl"/>
+    <mesh name="cup_28" file="assets/cup_28.stl"/>
+    <mesh name="cup_29" file="assets/cup_29.stl"/>
+    <mesh name="cup_30" file="assets/cup_30.stl"/>
+    <mesh name="cup_31" file="assets/cup_31.stl"/>
+    <mesh name="cup_32" file="assets/cup_32.stl"/>
+    <mesh name="cup_33" file="assets/cup_33.stl"/>
+    <mesh name="cup_34" file="assets/cup_34.stl"/>
+    <mesh name="cup_35" file="assets/cup_35.stl"/>
+    <mesh name="cup_36" file="assets/cup_36.stl"/>
+    <mesh name="cup_37" file="assets/cup_37.stl"/>
+    <mesh name="cup_38" file="assets/cup_38.stl"/>
+    <mesh name="cup_39" file="assets/cup_39.stl"/>
+    <mesh name="cup_40" file="assets/cup_40.stl"/>
+    <mesh name="cup_41" file="assets/cup_41.stl"/>
+    <mesh name="cup_42" file="assets/cup_42.stl"/>
+    <mesh name="cup_43" file="assets/cup_43.stl"/>
+    <mesh name="cup_44" file="assets/cup_44.stl"/>
+    <mesh name="cup_45" file="assets/cup_45.stl"/>
+    <mesh name="cup_46" file="assets/cup_46.stl"/>
+    <mesh name="cup_47" file="assets/cup_47.stl"/>
+    <mesh name="cup_48" file="assets/cup_48.stl"/>
+    <mesh name="cup_49" file="assets/cup_49.stl"/>
+    <mesh name="cup_50" file="assets/cup_50.stl"/>
+    <mesh name="cup_51" file="assets/cup_51.stl"/>
+    <mesh name="cup_52" file="assets/cup_52.stl"/>
+    <mesh name="cup_53" file="assets/cup_53.stl"/>
+    <mesh name="cup_54" file="assets/cup_54.stl"/>
+    <mesh name="cup_55" file="assets/cup_55.stl"/>
+    <mesh name="cup_56" file="assets/cup_56.stl"/>
+    <mesh name="cup_57" file="assets/cup_57.stl"/>
+    <mesh name="cup_58" file="assets/cup_58.stl"/>
+    <mesh name="cup_59" file="assets/cup_59.stl"/>
+    <mesh name="cup_60" file="assets/cup_60.stl"/>
+    <mesh name="cup_61" file="assets/cup_61.stl"/>
+    <mesh name="cup_62" file="assets/cup_62.stl"/>
+    <mesh name="cup_63" file="assets/cup_63.stl"/>
+    <mesh name="cup_64" file="assets/cup_64.stl"/>
+    <mesh name="cup_65" file="assets/cup_65.stl"/>
+    <mesh name="cup_66" file="assets/cup_66.stl"/>
+    <mesh name="cup_67" file="assets/cup_67.stl"/>
+    <mesh name="cup_68" file="assets/cup_68.stl"/>
+    <mesh name="cup_69" file="assets/cup_69.stl"/>
+    <mesh name="cup_70" file="assets/cup_70.stl"/>
+    <mesh name="cup_71" file="assets/cup_71.stl"/>
+    <mesh name="cup_72" file="assets/cup_72.stl"/>
+    <mesh name="cup_73" file="assets/cup_73.stl"/>
+    <mesh name="cup_74" file="assets/cup_74.stl"/>
+    <mesh name="cup_75" file="assets/cup_75.stl"/>
+    <mesh name="cup_76" file="assets/cup_76.stl"/>
+    <mesh name="cup_77" file="assets/cup_77.stl"/>
+    <mesh name="cup_78" file="assets/cup_78.stl"/>
+    <mesh name="cup_79" file="assets/cup_79.stl"/>
+    <mesh name="cup_80" file="assets/cup_80.stl"/>
+    <mesh name="cup_81" file="assets/cup_81.stl"/>
+    <mesh name="cup_82" file="assets/cup_82.stl"/>
+    <mesh name="cup_83" file="assets/cup_83.stl"/>
+    <mesh name="cup_84" file="assets/cup_84.stl"/>
+    <mesh name="cup_85" file="assets/cup_85.stl"/>
+    <mesh name="cup_86" file="assets/cup_86.stl"/>
+    <mesh name="cup_87" file="assets/cup_87.stl"/>
+    <mesh name="cup_88" file="assets/cup_88.stl"/>
+    <mesh name="cup_89" file="assets/cup_89.stl"/>
+    <mesh name="cup_90" file="assets/cup_90.stl"/>
+    <mesh name="cup_91" file="assets/cup_91.stl"/>
+    <mesh name="cup_92" file="assets/cup_92.stl"/>
+    <mesh name="cup_93" file="assets/cup_93.stl"/>
+    <mesh name="cup_94" file="assets/cup_94.stl"/>
+    <mesh name="cup_95" file="assets/cup_95.stl"/>
+    <mesh name="tin_00" file="assets/tin_00.stl"/>
+    <mesh name="tin_01" file="assets/tin_01.stl"/>
+    <mesh name="tin_02" file="assets/tin_02.stl"/>
+    <mesh name="tin_03" file="assets/tin_03.stl"/>
+    <mesh name="tin_04" file="assets/tin_04.stl"/>
+    <mesh name="tin_05" file="assets/tin_05.stl"/>
+    <mesh name="tin_06" file="assets/tin_06.stl"/>
+    <mesh name="tin_07" file="assets/tin_07.stl"/>
+    <mesh name="tin_08" file="assets/tin_08.stl"/>
+    <mesh name="tin_09" file="assets/tin_09.stl"/>
+    <mesh name="tin_10" file="assets/tin_10.stl"/>
+    <mesh name="tin_11" file="assets/tin_11.stl"/>
+    <mesh name="tin_12" file="assets/tin_12.stl"/>
+    <mesh name="tin_13" file="assets/tin_13.stl"/>
+    <mesh name="tin_14" file="assets/tin_14.stl"/>
+    <mesh name="tin_15" file="assets/tin_15.stl"/>
+    <mesh name="tin_16" file="assets/tin_16.stl"/>
+    <mesh name="tin_17" file="assets/tin_17.stl"/>
+    <mesh name="tin_18" file="assets/tin_18.stl"/>
+    <mesh name="tin_19" file="assets/tin_19.stl"/>
+    <mesh name="tin_20" file="assets/tin_20.stl"/>
+    <mesh name="tin_21" file="assets/tin_21.stl"/>
+    <mesh name="tin_22" file="assets/tin_22.stl"/>
+    <mesh name="tin_23" file="assets/tin_23.stl"/>
+    <mesh name="tin_24" file="assets/tin_24.stl"/>
+    <mesh name="tin_25" file="assets/tin_25.stl"/>
+    <mesh name="tin_26" file="assets/tin_26.stl"/>
+    <mesh name="tin_27" file="assets/tin_27.stl"/>
+    <mesh name="tin_28" file="assets/tin_28.stl"/>
+    <mesh name="tin_29" file="assets/tin_29.stl"/>
+    <mesh name="tin_30" file="assets/tin_30.stl"/>
+    <mesh name="tin_31" file="assets/tin_31.stl"/>
+    <mesh name="tin_32" file="assets/tin_32.stl"/>
+    <mesh name="tin_33" file="assets/tin_33.stl"/>
+    <mesh name="tin_34" file="assets/tin_34.stl"/>
+    <mesh name="tin_35" file="assets/tin_35.stl"/>
+    <mesh name="tin_36" file="assets/tin_36.stl"/>
+    <mesh name="tin_37" file="assets/tin_37.stl"/>
+    <mesh name="tin_38" file="assets/tin_38.stl"/>
+    <mesh name="tin_39" file="assets/tin_39.stl"/>
+    <mesh name="toy_remote_00" file="assets/toy_remote_00.stl"/>
+    <mesh name="toy_remote_01" file="assets/toy_remote_01.stl"/>
+    <mesh name="toy_remote_02" file="assets/toy_remote_02.stl"/>
+    <mesh name="toy_remote_03" file="assets/toy_remote_03.stl"/>
+    <mesh name="toy_remote_04" file="assets/toy_remote_04.stl"/>
+    <mesh name="toy_remote_05" file="assets/toy_remote_05.stl"/>
+    <mesh name="toy_remote_06" file="assets/toy_remote_06.stl"/>
+    <mesh name="toy_remote_07" file="assets/toy_remote_07.stl"/>
+    <mesh name="toy_remote_08" file="assets/toy_remote_08.stl"/>
+    <mesh name="toy_remote_09" file="assets/toy_remote_09.stl"/>
+    <mesh name="toy_remote_10" file="assets/toy_remote_10.stl"/>
+    <mesh name="toy_remote_11" file="assets/toy_remote_11.stl"/>
+    <mesh name="toy_remote_12" file="assets/toy_remote_12.stl"/>
+    <mesh name="toy_remote_13" file="assets/toy_remote_13.stl"/>
+    <mesh name="toy_remote_14" file="assets/toy_remote_14.stl"/>
+    <mesh name="toy_remote_15" file="assets/toy_remote_15.stl"/>
+    <mesh name="toy_remote_16" file="assets/toy_remote_16.stl"/>
+    <mesh name="toy_remote_17" file="assets/toy_remote_17.stl"/>
+    <mesh name="toy_remote_18" file="assets/toy_remote_18.stl"/>
+    <mesh name="toy_remote_19" file="assets/toy_remote_19.stl"/>
+    <mesh name="toy_remote_20" file="assets/toy_remote_20.stl"/>
+    <mesh name="toy_remote_21" file="assets/toy_remote_21.stl"/>
+    <mesh name="toy_remote_22" file="assets/toy_remote_22.stl"/>
+    <mesh name="toy_remote_23" file="assets/toy_remote_23.stl"/>
+    <mesh name="toy_remote_24" file="assets/toy_remote_24.stl"/>
+    <mesh name="toy_remote_25" file="assets/toy_remote_25.stl"/>
+    <mesh name="toy_remote_26" file="assets/toy_remote_26.stl"/>
+    <mesh name="toy_remote_27" file="assets/toy_remote_27.stl"/>
+    <mesh name="toy_remote_28" file="assets/toy_remote_28.stl"/>
+    <mesh name="toy_remote_29" file="assets/toy_remote_29.stl"/>
+    <mesh name="toy_remote_30" file="assets/toy_remote_30.stl"/>
+    <mesh name="toy_remote_31" file="assets/toy_remote_31.stl"/>
+    <mesh name="toy_remote_32" file="assets/toy_remote_32.stl"/>
+    <mesh name="toy_remote_33" file="assets/toy_remote_33.stl"/>
+    <mesh name="tube_00" file="assets/tube_00.stl"/>
+    <mesh name="tube_01" file="assets/tube_01.stl"/>
+    <mesh name="tube_02" file="assets/tube_02.stl"/>
+    <mesh name="tube_03" file="assets/tube_03.stl"/>
+    <mesh name="tube_04" file="assets/tube_04.stl"/>
+    <mesh name="tube_05" file="assets/tube_05.stl"/>
+    <mesh name="candy_box_00" file="assets/candy_box_00.stl"/>
+    <mesh name="candy_box_01" file="assets/candy_box_01.stl"/>
+    <mesh name="candy_box_02" file="assets/candy_box_02.stl"/>
+    <mesh name="candy_box_03" file="assets/candy_box_03.stl"/>
+    <mesh name="candy_box_04" file="assets/candy_box_04.stl"/>
+    <mesh name="fork_00" file="assets/fork_00.stl"/>
+    <mesh name="fork_01" file="assets/fork_01.stl"/>
+    <mesh name="fork_02" file="assets/fork_02.stl"/>
+    <mesh name="fork_03" file="assets/fork_03.stl"/>
+    <mesh name="fork_04" file="assets/fork_04.stl"/>
+    <mesh name="fork_05" file="assets/fork_05.stl"/>
+    <mesh name="fork_06" file="assets/fork_06.stl"/>
+    <mesh name="fork_07" file="assets/fork_07.stl"/>
+    <mesh name="fork_08" file="assets/fork_08.stl"/>
+    <mesh name="small_bottle_00" file="assets/small_bottle_00.stl"/>
+    <mesh name="small_bottle_01" file="assets/small_bottle_01.obj"/>
+    <mesh name="clog_00" file="assets/clog_00.stl"/>
+    <mesh name="clog_01" file="assets/clog_01.stl"/>
+    <mesh name="clog_02" file="assets/clog_02.stl"/>
+    <mesh name="clog_03" file="assets/clog_03.stl"/>
+    <mesh name="clog_04" file="assets/clog_04.stl"/>
+    <mesh name="clog_05" file="assets/clog_05.stl"/>
+    <mesh name="clog_06" file="assets/clog_06.stl"/>
+    <mesh name="clog_07" file="assets/clog_07.stl"/>
+    <mesh name="clog_08" file="assets/clog_08.stl"/>
+    <mesh name="clog_09" file="assets/clog_09.stl"/>
+    <mesh name="clog_10" file="assets/clog_10.stl"/>
+    <mesh name="clog_11" file="assets/clog_11.stl"/>
+    <mesh name="clog_12" file="assets/clog_12.stl"/>
+    <mesh name="clog_13" file="assets/clog_13.stl"/>
+    <mesh name="clog_14" file="assets/clog_14.stl"/>
+    <mesh name="clog_15" file="assets/clog_15.stl"/>
+    <mesh name="clog_16" file="assets/clog_16.stl"/>
+    <mesh name="clog_17" file="assets/clog_17.stl"/>
+    <mesh name="clog_18" file="assets/clog_18.stl"/>
+    <mesh name="clog_19" file="assets/clog_19.stl"/>
+    <mesh name="clog_20" file="assets/clog_20.stl"/>
+    <mesh name="clog_21" file="assets/clog_21.stl"/>
+    <mesh name="clog_22" file="assets/clog_22.stl"/>
+    <mesh name="clog_23" file="assets/clog_23.stl"/>
+    <mesh name="clog_24" file="assets/clog_24.stl"/>
+    <mesh name="clog_25" file="assets/clog_25.stl"/>
+    <mesh name="clog_26" file="assets/clog_26.stl"/>
+    <mesh name="clog_27" file="assets/clog_27.stl"/>
+    <mesh name="clog_28" file="assets/clog_28.stl"/>
+    <mesh name="clog_29" file="assets/clog_29.stl"/>
+    <mesh name="clog_30" file="assets/clog_30.stl"/>
+    <mesh name="clog_31" file="assets/clog_31.stl"/>
+    <mesh name="clog_32" file="assets/clog_32.stl"/>
+    <mesh name="clog_33" file="assets/clog_33.stl"/>
+    <mesh name="clog_34" file="assets/clog_34.stl"/>
+    <mesh name="clog_35" file="assets/clog_35.stl"/>
+    <mesh name="clog_36" file="assets/clog_36.stl"/>
+    <mesh name="clog_37" file="assets/clog_37.stl"/>
+    <mesh name="clog_38" file="assets/clog_38.stl"/>
+    <mesh name="clog_39" file="assets/clog_39.stl"/>
+    <mesh name="clog_40" file="assets/clog_40.stl"/>
+    <mesh name="clog_41" file="assets/clog_41.stl"/>
+    <mesh name="clog_42" file="assets/clog_42.stl"/>
+    <mesh name="clog_43" file="assets/clog_43.stl"/>
+    <mesh name="clog_44" file="assets/clog_44.stl"/>
+    <mesh name="clog_45" file="assets/clog_45.stl"/>
+    <mesh name="clog_46" file="assets/clog_46.stl"/>
+    <mesh name="clog_47" file="assets/clog_47.stl"/>
+    <mesh name="clog_48" file="assets/clog_48.stl"/>
+    <mesh name="clog_49" file="assets/clog_49.stl"/>
+    <mesh name="clog_50" file="assets/clog_50.stl"/>
+    <mesh name="clog_51" file="assets/clog_51.stl"/>
+    <mesh name="clog_52" file="assets/clog_52.stl"/>
+    <mesh name="clog_53" file="assets/clog_53.stl"/>
+    <mesh name="clog_54" file="assets/clog_54.stl"/>
+    <mesh name="clog_55" file="assets/clog_55.stl"/>
+    <mesh name="clog_56" file="assets/clog_56.stl"/>
+    <mesh name="clog_57" file="assets/clog_57.stl"/>
+    <mesh name="clog_58" file="assets/clog_58.stl"/>
+    <mesh name="clog_59" file="assets/clog_59.stl"/>
+    <mesh name="clog_60" file="assets/clog_60.stl"/>
+    <mesh name="clog_61" file="assets/clog_61.stl"/>
+    <mesh name="clog_62" file="assets/clog_62.stl"/>
+    <mesh name="clog_63" file="assets/clog_63.stl"/>
+    <mesh name="clog_64" file="assets/clog_64.stl"/>
+    <mesh name="clog_65" file="assets/clog_65.stl"/>
+    <mesh name="clog_66" file="assets/clog_66.stl"/>
+    <mesh name="clog_67" file="assets/clog_67.stl"/>
+    <mesh name="clog_68" file="assets/clog_68.stl"/>
+    <mesh name="clog_69" file="assets/clog_69.stl"/>
+    <mesh name="clog_70" file="assets/clog_70.stl"/>
+    <mesh name="clog_71" file="assets/clog_71.stl"/>
+    <mesh name="clog_72" file="assets/clog_72.stl"/>
+    <mesh name="clog_73" file="assets/clog_73.stl"/>
+    <mesh name="clog_74" file="assets/clog_74.stl"/>
+    <mesh name="clog_75" file="assets/clog_75.stl"/>
+    <mesh name="clog_76" file="assets/clog_76.stl"/>
+    <mesh name="clog_77" file="assets/clog_77.stl"/>
+    <mesh name="clog_78" file="assets/clog_78.stl"/>
+    <mesh name="clog_79" file="assets/clog_79.stl"/>
+    <mesh name="clog_80" file="assets/clog_80.stl"/>
+    <mesh name="clog_81" file="assets/clog_81.stl"/>
+    <mesh name="clog_82" file="assets/clog_82.stl"/>
+    <mesh name="clog_83" file="assets/clog_83.stl"/>
+    <mesh name="clog_84" file="assets/clog_84.stl"/>
+    <mesh name="clog_85" file="assets/clog_85.stl"/>
+    <mesh name="clog_86" file="assets/clog_86.stl"/>
+    <mesh name="clog_87" file="assets/clog_87.stl"/>
+    <mesh name="clog_88" file="assets/clog_88.stl"/>
+    <mesh name="clog_89" file="assets/clog_89.stl"/>
+    <mesh name="clog_90" file="assets/clog_90.stl"/>
+    <mesh name="clog_91" file="assets/clog_91.stl"/>
+    <mesh name="clog_92" file="assets/clog_92.stl"/>
+    <mesh name="clog_93" file="assets/clog_93.stl"/>
+    <mesh name="clog_94" file="assets/clog_94.stl"/>
+    <mesh name="clog_95" file="assets/clog_95.stl"/>
+  </asset>
+  <worldbody>
+    <body name="support" pos="-0.014795637592395654 -0.028836577691094573 -0.01" quat="0.6493919735376311 0.0 0.0 -0.760453854421753">
+      <geom name="board" type="box" size="0.2965 0.1745 0.01" friction="0.6 0.005 0.0001"/>
+    </body>
+    <body name="wine_glass" pos="0.10895147617522588 0.11414846405736043 0.09849990152631033" quat="0.5073977530295887 0.5124289765364601 -0.48846984123623094 -0.4912853330081939">
+      <freejoint name="wine_glass_free"/>
+      <inertial pos="-0.0003608677204289601 -0.01672466948221656 -0.0003811793325724407" quat="0.419957811976604 0.4236200279320508 -0.5667186709181958 0.5683409681937321" mass="0.05307645740105265" diaginertia="0.0001583725454158313 0.0001583316211199547 3.8423077502221445e-05"/>
+      <geom name="wine_glass_00" type="mesh" mesh="wine_glass_00" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_01" type="mesh" mesh="wine_glass_01" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_02" type="mesh" mesh="wine_glass_02" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_03" type="mesh" mesh="wine_glass_03" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_04" type="mesh" mesh="wine_glass_04" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_05" type="mesh" mesh="wine_glass_05" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_06" type="mesh" mesh="wine_glass_06" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_07" type="mesh" mesh="wine_glass_07" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_08" type="mesh" mesh="wine_glass_08" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_09" type="mesh" mesh="wine_glass_09" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_10" type="mesh" mesh="wine_glass_10" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_11" type="mesh" mesh="wine_glass_11" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_12" type="mesh" mesh="wine_glass_12" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_13" type="mesh" mesh="wine_glass_13" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_14" type="mesh" mesh="wine_glass_14" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_15" type="mesh" mesh="wine_glass_15" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_16" type="mesh" mesh="wine_glass_16" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_17" type="mesh" mesh="wine_glass_17" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_18" type="mesh" mesh="wine_glass_18" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_19" type="mesh" mesh="wine_glass_19" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_20" type="mesh" mesh="wine_glass_20" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_21" type="mesh" mesh="wine_glass_21" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_22" type="mesh" mesh="wine_glass_22" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_23" type="mesh" mesh="wine_glass_23" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_24" type="mesh" mesh="wine_glass_24" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_25" type="mesh" mesh="wine_glass_25" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_26" type="mesh" mesh="wine_glass_26" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_27" type="mesh" mesh="wine_glass_27" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_28" type="mesh" mesh="wine_glass_28" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_29" type="mesh" mesh="wine_glass_29" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_30" type="mesh" mesh="wine_glass_30" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_31" type="mesh" mesh="wine_glass_31" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_32" type="mesh" mesh="wine_glass_32" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_33" type="mesh" mesh="wine_glass_33" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_34" type="mesh" mesh="wine_glass_34" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_35" type="mesh" mesh="wine_glass_35" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_36" type="mesh" mesh="wine_glass_36" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_37" type="mesh" mesh="wine_glass_37" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_38" type="mesh" mesh="wine_glass_38" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_39" type="mesh" mesh="wine_glass_39" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_40" type="mesh" mesh="wine_glass_40" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_41" type="mesh" mesh="wine_glass_41" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_42" type="mesh" mesh="wine_glass_42" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_43" type="mesh" mesh="wine_glass_43" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_44" type="mesh" mesh="wine_glass_44" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_45" type="mesh" mesh="wine_glass_45" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_46" type="mesh" mesh="wine_glass_46" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_47" type="mesh" mesh="wine_glass_47" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_48" type="mesh" mesh="wine_glass_48" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_49" type="mesh" mesh="wine_glass_49" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_50" type="mesh" mesh="wine_glass_50" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_51" type="mesh" mesh="wine_glass_51" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_52" type="mesh" mesh="wine_glass_52" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_53" type="mesh" mesh="wine_glass_53" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_54" type="mesh" mesh="wine_glass_54" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_55" type="mesh" mesh="wine_glass_55" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_56" type="mesh" mesh="wine_glass_56" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_57" type="mesh" mesh="wine_glass_57" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_58" type="mesh" mesh="wine_glass_58" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_59" type="mesh" mesh="wine_glass_59" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_60" type="mesh" mesh="wine_glass_60" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_61" type="mesh" mesh="wine_glass_61" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_62" type="mesh" mesh="wine_glass_62" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_63" type="mesh" mesh="wine_glass_63" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_64" type="mesh" mesh="wine_glass_64" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_65" type="mesh" mesh="wine_glass_65" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_66" type="mesh" mesh="wine_glass_66" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_67" type="mesh" mesh="wine_glass_67" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_68" type="mesh" mesh="wine_glass_68" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_69" type="mesh" mesh="wine_glass_69" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_70" type="mesh" mesh="wine_glass_70" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_71" type="mesh" mesh="wine_glass_71" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_72" type="mesh" mesh="wine_glass_72" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_73" type="mesh" mesh="wine_glass_73" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_74" type="mesh" mesh="wine_glass_74" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_75" type="mesh" mesh="wine_glass_75" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_76" type="mesh" mesh="wine_glass_76" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_77" type="mesh" mesh="wine_glass_77" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_78" type="mesh" mesh="wine_glass_78" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_79" type="mesh" mesh="wine_glass_79" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_80" type="mesh" mesh="wine_glass_80" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_81" type="mesh" mesh="wine_glass_81" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_82" type="mesh" mesh="wine_glass_82" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_83" type="mesh" mesh="wine_glass_83" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_84" type="mesh" mesh="wine_glass_84" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_85" type="mesh" mesh="wine_glass_85" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_86" type="mesh" mesh="wine_glass_86" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_87" type="mesh" mesh="wine_glass_87" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_88" type="mesh" mesh="wine_glass_88" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_89" type="mesh" mesh="wine_glass_89" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_90" type="mesh" mesh="wine_glass_90" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_91" type="mesh" mesh="wine_glass_91" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_92" type="mesh" mesh="wine_glass_92" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_93" type="mesh" mesh="wine_glass_93" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_94" type="mesh" mesh="wine_glass_94" friction="0.6 0.005 0.0001"/>
+      <geom name="wine_glass_95" type="mesh" mesh="wine_glass_95" friction="0.6 0.005 0.0001"/>
+    </body>
+    <body name="teapot" pos="0.06574098951909654 -0.03641059316976111 0.09317574757354968" quat="0.652240834618628 0.6651902409637678 0.21427015152464418 0.2935849777290482">
+      <freejoint name="teapot_free"/>
+      <inertial pos="0.010069363614810974 0.006966457381899196 -0.00034102434742419325" quat="0.6142251955649851 0.3682817728286871 -0.6065123996930156 0.3453095045809453" mass="0.6210916227363782" diaginertia="0.003166396906061224 0.0024520825420005824 0.001322328989493609"/>
+      <geom name="teapot_00" type="mesh" mesh="teapot_00" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_01" type="mesh" mesh="teapot_01" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_02" type="mesh" mesh="teapot_02" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_03" type="mesh" mesh="teapot_03" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_04" type="mesh" mesh="teapot_04" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_05" type="mesh" mesh="teapot_05" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_06" type="mesh" mesh="teapot_06" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_07" type="mesh" mesh="teapot_07" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_08" type="mesh" mesh="teapot_08" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_09" type="mesh" mesh="teapot_09" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_10" type="mesh" mesh="teapot_10" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_11" type="mesh" mesh="teapot_11" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_12" type="mesh" mesh="teapot_12" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_13" type="mesh" mesh="teapot_13" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_14" type="mesh" mesh="teapot_14" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_15" type="mesh" mesh="teapot_15" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_16" type="mesh" mesh="teapot_16" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_17" type="mesh" mesh="teapot_17" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_18" type="mesh" mesh="teapot_18" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_19" type="mesh" mesh="teapot_19" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_20" type="mesh" mesh="teapot_20" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_21" type="mesh" mesh="teapot_21" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_22" type="mesh" mesh="teapot_22" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_23" type="mesh" mesh="teapot_23" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_24" type="mesh" mesh="teapot_24" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_25" type="mesh" mesh="teapot_25" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_26" type="mesh" mesh="teapot_26" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_27" type="mesh" mesh="teapot_27" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_28" type="mesh" mesh="teapot_28" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_29" type="mesh" mesh="teapot_29" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_30" type="mesh" mesh="teapot_30" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_31" type="mesh" mesh="teapot_31" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_32" type="mesh" mesh="teapot_32" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_33" type="mesh" mesh="teapot_33" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_34" type="mesh" mesh="teapot_34" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_35" type="mesh" mesh="teapot_35" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_36" type="mesh" mesh="teapot_36" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_37" type="mesh" mesh="teapot_37" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_38" type="mesh" mesh="teapot_38" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_39" type="mesh" mesh="teapot_39" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_40" type="mesh" mesh="teapot_40" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_41" type="mesh" mesh="teapot_41" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_42" type="mesh" mesh="teapot_42" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_43" type="mesh" mesh="teapot_43" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_44" type="mesh" mesh="teapot_44" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_45" type="mesh" mesh="teapot_45" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_46" type="mesh" mesh="teapot_46" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_47" type="mesh" mesh="teapot_47" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_48" type="mesh" mesh="teapot_48" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_49" type="mesh" mesh="teapot_49" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_50" type="mesh" mesh="teapot_50" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_51" type="mesh" mesh="teapot_51" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_52" type="mesh" mesh="teapot_52" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_53" type="mesh" mesh="teapot_53" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_54" type="mesh" mesh="teapot_54" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_55" type="mesh" mesh="teapot_55" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_56" type="mesh" mesh="teapot_56" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_57" type="mesh" mesh="teapot_57" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_58" type="mesh" mesh="teapot_58" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_59" type="mesh" mesh="teapot_59" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_60" type="mesh" mesh="teapot_60" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_61" type="mesh" mesh="teapot_61" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_62" type="mesh" mesh="teapot_62" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_63" type="mesh" mesh="teapot_63" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_64" type="mesh" mesh="teapot_64" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_65" type="mesh" mesh="teapot_65" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_66" type="mesh" mesh="teapot_66" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_67" type="mesh" mesh="teapot_67" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_68" type="mesh" mesh="teapot_68" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_69" type="mesh" mesh="teapot_69" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_70" type="mesh" mesh="teapot_70" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_71" type="mesh" mesh="teapot_71" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_72" type="mesh" mesh="teapot_72" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_73" type="mesh" mesh="teapot_73" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_74" type="mesh" mesh="teapot_74" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_75" type="mesh" mesh="teapot_75" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_76" type="mesh" mesh="teapot_76" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_77" type="mesh" mesh="teapot_77" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_78" type="mesh" mesh="teapot_78" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_79" type="mesh" mesh="teapot_79" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_80" type="mesh" mesh="teapot_80" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_81" type="mesh" mesh="teapot_81" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_82" type="mesh" mesh="teapot_82" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_83" type="mesh" mesh="teapot_83" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_84" type="mesh" mesh="teapot_84" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_85" type="mesh" mesh="teapot_85" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_86" type="mesh" mesh="teapot_86" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_87" type="mesh" mesh="teapot_87" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_88" type="mesh" mesh="teapot_88" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_89" type="mesh" mesh="teapot_89" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_90" type="mesh" mesh="teapot_90" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_91" type="mesh" mesh="teapot_91" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_92" type="mesh" mesh="teapot_92" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_93" type="mesh" mesh="teapot_93" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_94" type="mesh" mesh="teapot_94" friction="0.6 0.005 0.0001"/>
+      <geom name="teapot_95" type="mesh" mesh="teapot_95" friction="0.6 0.005 0.0001"/>
+    </body>
+    <body name="cup" pos="-0.02145568559617375 -0.17405643079225858 0.030278840826796775" quat="0.5781080784785009 0.5826330509765208 0.40471704309126433 0.4031549237441486">
+      <freejoint name="cup_free"/>
+      <inertial pos="0.012125048546257225 -0.005203994232004631 0.0006223890148911284" quat="0.4910541169735794 0.5204277587309513 0.5142065942635944 0.47287670756912403" mass="0.045824320181827076" diaginertia="4.456825283629612e-05 3.470305432805904e-05 3.173689595812404e-05"/>
+      <geom name="cup_00" type="mesh" mesh="cup_00" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_01" type="mesh" mesh="cup_01" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_02" type="mesh" mesh="cup_02" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_03" type="mesh" mesh="cup_03" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_04" type="mesh" mesh="cup_04" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_05" type="mesh" mesh="cup_05" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_06" type="mesh" mesh="cup_06" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_07" type="mesh" mesh="cup_07" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_08" type="mesh" mesh="cup_08" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_09" type="mesh" mesh="cup_09" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_10" type="mesh" mesh="cup_10" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_11" type="mesh" mesh="cup_11" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_12" type="mesh" mesh="cup_12" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_13" type="mesh" mesh="cup_13" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_14" type="mesh" mesh="cup_14" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_15" type="mesh" mesh="cup_15" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_16" type="mesh" mesh="cup_16" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_17" type="mesh" mesh="cup_17" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_18" type="mesh" mesh="cup_18" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_19" type="mesh" mesh="cup_19" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_20" type="mesh" mesh="cup_20" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_21" type="mesh" mesh="cup_21" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_22" type="mesh" mesh="cup_22" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_23" type="mesh" mesh="cup_23" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_24" type="mesh" mesh="cup_24" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_25" type="mesh" mesh="cup_25" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_26" type="mesh" mesh="cup_26" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_27" type="mesh" mesh="cup_27" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_28" type="mesh" mesh="cup_28" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_29" type="mesh" mesh="cup_29" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_30" type="mesh" mesh="cup_30" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_31" type="mesh" mesh="cup_31" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_32" type="mesh" mesh="cup_32" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_33" type="mesh" mesh="cup_33" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_34" type="mesh" mesh="cup_34" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_35" type="mesh" mesh="cup_35" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_36" type="mesh" mesh="cup_36" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_37" type="mesh" mesh="cup_37" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_38" type="mesh" mesh="cup_38" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_39" type="mesh" mesh="cup_39" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_40" type="mesh" mesh="cup_40" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_41" type="mesh" mesh="cup_41" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_42" type="mesh" mesh="cup_42" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_43" type="mesh" mesh="cup_43" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_44" type="mesh" mesh="cup_44" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_45" type="mesh" mesh="cup_45" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_46" type="mesh" mesh="cup_46" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_47" type="mesh" mesh="cup_47" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_48" type="mesh" mesh="cup_48" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_49" type="mesh" mesh="cup_49" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_50" type="mesh" mesh="cup_50" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_51" type="mesh" mesh="cup_51" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_52" type="mesh" mesh="cup_52" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_53" type="mesh" mesh="cup_53" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_54" type="mesh" mesh="cup_54" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_55" type="mesh" mesh="cup_55" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_56" type="mesh" mesh="cup_56" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_57" type="mesh" mesh="cup_57" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_58" type="mesh" mesh="cup_58" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_59" type="mesh" mesh="cup_59" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_60" type="mesh" mesh="cup_60" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_61" type="mesh" mesh="cup_61" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_62" type="mesh" mesh="cup_62" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_63" type="mesh" mesh="cup_63" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_64" type="mesh" mesh="cup_64" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_65" type="mesh" mesh="cup_65" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_66" type="mesh" mesh="cup_66" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_67" type="mesh" mesh="cup_67" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_68" type="mesh" mesh="cup_68" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_69" type="mesh" mesh="cup_69" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_70" type="mesh" mesh="cup_70" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_71" type="mesh" mesh="cup_71" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_72" type="mesh" mesh="cup_72" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_73" type="mesh" mesh="cup_73" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_74" type="mesh" mesh="cup_74" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_75" type="mesh" mesh="cup_75" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_76" type="mesh" mesh="cup_76" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_77" type="mesh" mesh="cup_77" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_78" type="mesh" mesh="cup_78" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_79" type="mesh" mesh="cup_79" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_80" type="mesh" mesh="cup_80" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_81" type="mesh" mesh="cup_81" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_82" type="mesh" mesh="cup_82" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_83" type="mesh" mesh="cup_83" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_84" type="mesh" mesh="cup_84" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_85" type="mesh" mesh="cup_85" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_86" type="mesh" mesh="cup_86" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_87" type="mesh" mesh="cup_87" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_88" type="mesh" mesh="cup_88" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_89" type="mesh" mesh="cup_89" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_90" type="mesh" mesh="cup_90" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_91" type="mesh" mesh="cup_91" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_92" type="mesh" mesh="cup_92" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_93" type="mesh" mesh="cup_93" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_94" type="mesh" mesh="cup_94" friction="0.6 0.005 0.0001"/>
+      <geom name="cup_95" type="mesh" mesh="cup_95" friction="0.6 0.005 0.0001"/>
+    </body>
+    <body name="tin" pos="0.06342296546515291 -0.25455672752729863 0.04633189763303938" quat="0.6442246097708836 0.6520263298634492 -0.27544514920833724 -0.28976936882277565">
+      <freejoint name="tin_free"/>
+      <inertial pos="-0.0007265079823720463 0.0007589113326406752 0.0006008069404919656" quat="0.699960862403923 0.7138831442037971 0.020629069246440625 0.00029837306210955296" mass="0.1762541311479028" diaginertia="0.00020738938086484798 0.00016892352145674174 0.00013671378481033332"/>
+      <geom name="tin_00" type="mesh" mesh="tin_00" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_01" type="mesh" mesh="tin_01" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_02" type="mesh" mesh="tin_02" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_03" type="mesh" mesh="tin_03" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_04" type="mesh" mesh="tin_04" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_05" type="mesh" mesh="tin_05" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_06" type="mesh" mesh="tin_06" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_07" type="mesh" mesh="tin_07" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_08" type="mesh" mesh="tin_08" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_09" type="mesh" mesh="tin_09" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_10" type="mesh" mesh="tin_10" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_11" type="mesh" mesh="tin_11" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_12" type="mesh" mesh="tin_12" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_13" type="mesh" mesh="tin_13" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_14" type="mesh" mesh="tin_14" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_15" type="mesh" mesh="tin_15" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_16" type="mesh" mesh="tin_16" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_17" type="mesh" mesh="tin_17" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_18" type="mesh" mesh="tin_18" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_19" type="mesh" mesh="tin_19" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_20" type="mesh" mesh="tin_20" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_21" type="mesh" mesh="tin_21" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_22" type="mesh" mesh="tin_22" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_23" type="mesh" mesh="tin_23" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_24" type="mesh" mesh="tin_24" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_25" type="mesh" mesh="tin_25" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_26" type="mesh" mesh="tin_26" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_27" type="mesh" mesh="tin_27" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_28" type="mesh" mesh="tin_28" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_29" type="mesh" mesh="tin_29" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_30" type="mesh" mesh="tin_30" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_31" type="mesh" mesh="tin_31" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_32" type="mesh" mesh="tin_32" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_33" type="mesh" mesh="tin_33" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_34" type="mesh" mesh="tin_34" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_35" type="mesh" mesh="tin_35" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_36" type="mesh" mesh="tin_36" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_37" type="mesh" mesh="tin_37" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_38" type="mesh" mesh="tin_38" friction="0.6 0.005 0.0001"/>
+      <geom name="tin_39" type="mesh" mesh="tin_39" friction="0.6 0.005 0.0001"/>
+    </body>
+    <body name="toy_remote" pos="-0.07652286078442859 0.11152352527973423 0.017600266343141047" quat="0.7008296731808008 0.6978834357855537 0.09260361330473535 0.11498282501464817">
+      <freejoint name="toy_remote_free"/>
+      <inertial pos="0.00517372992170205 -7.42511221260277e-05 -0.0003614644705138592" quat="0.498413121463209 0.496880971617828 0.5007927556736634 0.5038851816259383" mass="0.14878500799806946" diaginertia="0.0003216335743546542 0.0002905470853304624 5.8086871338795623e-05"/>
+      <geom name="toy_remote_00" type="mesh" mesh="toy_remote_00" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_01" type="mesh" mesh="toy_remote_01" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_02" type="mesh" mesh="toy_remote_02" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_03" type="mesh" mesh="toy_remote_03" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_04" type="mesh" mesh="toy_remote_04" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_05" type="mesh" mesh="toy_remote_05" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_06" type="mesh" mesh="toy_remote_06" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_07" type="mesh" mesh="toy_remote_07" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_08" type="mesh" mesh="toy_remote_08" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_09" type="mesh" mesh="toy_remote_09" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_10" type="mesh" mesh="toy_remote_10" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_11" type="mesh" mesh="toy_remote_11" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_12" type="mesh" mesh="toy_remote_12" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_13" type="mesh" mesh="toy_remote_13" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_14" type="mesh" mesh="toy_remote_14" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_15" type="mesh" mesh="toy_remote_15" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_16" type="mesh" mesh="toy_remote_16" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_17" type="mesh" mesh="toy_remote_17" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_18" type="mesh" mesh="toy_remote_18" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_19" type="mesh" mesh="toy_remote_19" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_20" type="mesh" mesh="toy_remote_20" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_21" type="mesh" mesh="toy_remote_21" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_22" type="mesh" mesh="toy_remote_22" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_23" type="mesh" mesh="toy_remote_23" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_24" type="mesh" mesh="toy_remote_24" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_25" type="mesh" mesh="toy_remote_25" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_26" type="mesh" mesh="toy_remote_26" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_27" type="mesh" mesh="toy_remote_27" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_28" type="mesh" mesh="toy_remote_28" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_29" type="mesh" mesh="toy_remote_29" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_30" type="mesh" mesh="toy_remote_30" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_31" type="mesh" mesh="toy_remote_31" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_32" type="mesh" mesh="toy_remote_32" friction="0.6 0.005 0.0001"/>
+      <geom name="toy_remote_33" type="mesh" mesh="toy_remote_33" friction="0.6 0.005 0.0001"/>
+    </body>
+    <body name="tube" pos="-0.09307545551975044 0.20546908367822497 0.029061029473184355" quat="0.6658954331775266 -0.06756307661141427 -0.7124859716393429 0.2106709352740821">
+      <freejoint name="tube_free"/>
+      <inertial pos="4.41760540306914e-05 -0.015876620648434293 0.0003044306189769406" quat="0.7070019171213795 0.7060381451070863 0.028679166102581144 -0.02891249335669749" mass="0.09283824422332684" diaginertia="0.00013728555972259177 0.00013334730500201266 2.3477924964525375e-05"/>
+      <geom name="tube_00" type="mesh" mesh="tube_00" friction="0.6 0.005 0.0001"/>
+      <geom name="tube_01" type="mesh" mesh="tube_01" friction="0.6 0.005 0.0001"/>
+      <geom name="tube_02" type="mesh" mesh="tube_02" friction="0.6 0.005 0.0001"/>
+      <geom name="tube_03" type="mesh" mesh="tube_03" friction="0.6 0.005 0.0001"/>
+      <geom name="tube_04" type="mesh" mesh="tube_04" friction="0.6 0.005 0.0001"/>
+      <geom name="tube_05" type="mesh" mesh="tube_05" friction="0.6 0.005 0.0001"/>
+    </body>
+    <body name="candy_box" pos="-0.0984079670799741 -0.028278689866870904 0.011756782720889068" quat="0.7664003594119505 -0.00040844954816183284 0.003298055066191744 0.6423546100830744">
+      <freejoint name="candy_box_free"/>
+      <inertial pos="-0.00019853517855817075 -0.0003870984752268253 -0.000101809939890205" quat="0.4992398856789773 0.49942199046818714 -0.49943076959041877 0.5019024988684163" mass="0.21157099148375452" diaginertia="0.0007369798708050081 0.0005421172617292409 0.00021361479767109006"/>
+      <geom name="candy_box_00" type="mesh" mesh="candy_box_00" friction="0.6 0.005 0.0001"/>
+      <geom name="candy_box_01" type="mesh" mesh="candy_box_01" friction="0.6 0.005 0.0001"/>
+      <geom name="candy_box_02" type="mesh" mesh="candy_box_02" friction="0.6 0.005 0.0001"/>
+      <geom name="candy_box_03" type="mesh" mesh="candy_box_03" friction="0.6 0.005 0.0001"/>
+      <geom name="candy_box_04" type="mesh" mesh="candy_box_04" friction="0.6 0.005 0.0001"/>
+    </body>
+    <body name="fork" pos="-0.009060354069200804 0.04388506574657937 0.021964079384430353" quat="-0.3303467971599613 -0.2175843918769215 0.6935355286380853 0.6021100368989021">
+      <freejoint name="fork_free"/>
+      <inertial pos="0.010175262534053844 -0.003322994017790026 -4.62837150678411e-06" quat="0.4926838971529147 0.5024098772963855 0.49648038120879223 0.5082854746655882" mass="0.0019242107092061833" diaginertia="5.084849524150952e-06 5.063246350252563e-06 6.560263841980433e-08"/>
+      <geom name="fork_00" type="mesh" mesh="fork_00" friction="0.6 0.005 0.0001"/>
+      <geom name="fork_01" type="mesh" mesh="fork_01" friction="0.6 0.005 0.0001"/>
+      <geom name="fork_02" type="mesh" mesh="fork_02" friction="0.6 0.005 0.0001"/>
+      <geom name="fork_03" type="mesh" mesh="fork_03" friction="0.6 0.005 0.0001"/>
+      <geom name="fork_04" type="mesh" mesh="fork_04" friction="0.6 0.005 0.0001"/>
+      <geom name="fork_05" type="mesh" mesh="fork_05" friction="0.6 0.005 0.0001"/>
+      <geom name="fork_06" type="mesh" mesh="fork_06" friction="0.6 0.005 0.0001"/>
+      <geom name="fork_07" type="mesh" mesh="fork_07" friction="0.6 0.005 0.0001"/>
+      <geom name="fork_08" type="mesh" mesh="fork_08" friction="0.6 0.005 0.0001"/>
+    </body>
+    <body name="small_bottle" pos="0.044765722508697564 0.21685470597558268 0.014756472443575714" quat="0.672165647782174 0.17647259047052258 -0.6996937442138783 0.16576921023567015">
+      <freejoint name="small_bottle_free"/>
+      <inertial pos="-2.775531014347713e-05 -0.007285156289868667 -4.923949468554309e-05" quat="0.7076296803023783 0.7065738072682928 0.0027354188039503003 -0.00249157008975539" mass="0.04067167442515959" diaginertia="3.0149335783227722e-05 2.7223436488394477e-05 7.013761482036412e-06"/>
+      <geom name="small_bottle_00" type="mesh" mesh="small_bottle_00" friction="0.6 0.005 0.0001"/>
+      <geom name="small_bottle_01" type="mesh" mesh="small_bottle_01" friction="0.6 0.005 0.0001"/>
+    </body>
+    <body name="clog" pos="-0.11598924268303856 -0.22774242569342606 0.04270985904000394" quat="0.3822656905893327 0.3827305071510371 0.5859903919283562 0.6033287339931872">
+      <freejoint name="clog_free"/>
+      <inertial pos="-0.01120495162353085 -0.016052584867542925 -0.003819620602965106" quat="0.42569775469412835 0.5472922533391185 0.48950627386436374 0.5288064096914836" mass="0.3494031097241918" diaginertia="0.0018823489657370405 0.001707356260549617 0.0003745561164257318"/>
+      <geom name="clog_00" type="mesh" mesh="clog_00" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_01" type="mesh" mesh="clog_01" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_02" type="mesh" mesh="clog_02" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_03" type="mesh" mesh="clog_03" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_04" type="mesh" mesh="clog_04" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_05" type="mesh" mesh="clog_05" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_06" type="mesh" mesh="clog_06" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_07" type="mesh" mesh="clog_07" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_08" type="mesh" mesh="clog_08" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_09" type="mesh" mesh="clog_09" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_10" type="mesh" mesh="clog_10" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_11" type="mesh" mesh="clog_11" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_12" type="mesh" mesh="clog_12" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_13" type="mesh" mesh="clog_13" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_14" type="mesh" mesh="clog_14" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_15" type="mesh" mesh="clog_15" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_16" type="mesh" mesh="clog_16" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_17" type="mesh" mesh="clog_17" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_18" type="mesh" mesh="clog_18" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_19" type="mesh" mesh="clog_19" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_20" type="mesh" mesh="clog_20" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_21" type="mesh" mesh="clog_21" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_22" type="mesh" mesh="clog_22" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_23" type="mesh" mesh="clog_23" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_24" type="mesh" mesh="clog_24" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_25" type="mesh" mesh="clog_25" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_26" type="mesh" mesh="clog_26" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_27" type="mesh" mesh="clog_27" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_28" type="mesh" mesh="clog_28" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_29" type="mesh" mesh="clog_29" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_30" type="mesh" mesh="clog_30" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_31" type="mesh" mesh="clog_31" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_32" type="mesh" mesh="clog_32" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_33" type="mesh" mesh="clog_33" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_34" type="mesh" mesh="clog_34" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_35" type="mesh" mesh="clog_35" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_36" type="mesh" mesh="clog_36" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_37" type="mesh" mesh="clog_37" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_38" type="mesh" mesh="clog_38" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_39" type="mesh" mesh="clog_39" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_40" type="mesh" mesh="clog_40" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_41" type="mesh" mesh="clog_41" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_42" type="mesh" mesh="clog_42" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_43" type="mesh" mesh="clog_43" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_44" type="mesh" mesh="clog_44" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_45" type="mesh" mesh="clog_45" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_46" type="mesh" mesh="clog_46" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_47" type="mesh" mesh="clog_47" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_48" type="mesh" mesh="clog_48" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_49" type="mesh" mesh="clog_49" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_50" type="mesh" mesh="clog_50" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_51" type="mesh" mesh="clog_51" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_52" type="mesh" mesh="clog_52" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_53" type="mesh" mesh="clog_53" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_54" type="mesh" mesh="clog_54" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_55" type="mesh" mesh="clog_55" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_56" type="mesh" mesh="clog_56" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_57" type="mesh" mesh="clog_57" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_58" type="mesh" mesh="clog_58" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_59" type="mesh" mesh="clog_59" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_60" type="mesh" mesh="clog_60" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_61" type="mesh" mesh="clog_61" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_62" type="mesh" mesh="clog_62" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_63" type="mesh" mesh="clog_63" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_64" type="mesh" mesh="clog_64" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_65" type="mesh" mesh="clog_65" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_66" type="mesh" mesh="clog_66" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_67" type="mesh" mesh="clog_67" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_68" type="mesh" mesh="clog_68" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_69" type="mesh" mesh="clog_69" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_70" type="mesh" mesh="clog_70" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_71" type="mesh" mesh="clog_71" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_72" type="mesh" mesh="clog_72" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_73" type="mesh" mesh="clog_73" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_74" type="mesh" mesh="clog_74" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_75" type="mesh" mesh="clog_75" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_76" type="mesh" mesh="clog_76" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_77" type="mesh" mesh="clog_77" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_78" type="mesh" mesh="clog_78" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_79" type="mesh" mesh="clog_79" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_80" type="mesh" mesh="clog_80" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_81" type="mesh" mesh="clog_81" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_82" type="mesh" mesh="clog_82" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_83" type="mesh" mesh="clog_83" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_84" type="mesh" mesh="clog_84" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_85" type="mesh" mesh="clog_85" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_86" type="mesh" mesh="clog_86" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_87" type="mesh" mesh="clog_87" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_88" type="mesh" mesh="clog_88" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_89" type="mesh" mesh="clog_89" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_90" type="mesh" mesh="clog_90" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_91" type="mesh" mesh="clog_91" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_92" type="mesh" mesh="clog_92" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_93" type="mesh" mesh="clog_93" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_94" type="mesh" mesh="clog_94" friction="0.6 0.005 0.0001"/>
+      <geom name="clog_95" type="mesh" mesh="clog_95" friction="0.6 0.005 0.0001"/>
+    </body>
+  </worldbody>
+</mujoco>

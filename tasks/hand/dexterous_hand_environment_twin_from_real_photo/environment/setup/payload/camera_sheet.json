@@ -1,0 +1,14 @@
+{
+ "format": "camera-sheet/1",
+ "what": "the team's calibration sheet of the survey camera that took photo.png",
+ "image_width_px": 1096,
+ "image_height_px": 852,
+ "fx_px": 705.47,
+ "fy_px": 703.02,
+ "cx_px": 554.12,
+ "cy_px": 432.41,
+ "distortion": "none recorded",
+ "pixel_convention": "OpenCV pinhole: u counts columns to the right, v counts rows downward; the centre of the top-left pixel is (0, 0), so the image covers [-0.5, W - 0.5] x [-0.5, H - 0.5]; K = [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]; camera axes x right, y down, z forward along the optical axis",
+ "pose": "not recorded",
+ "depth": "not recorded"
+}
