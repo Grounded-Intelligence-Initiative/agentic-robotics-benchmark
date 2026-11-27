@@ -1,0 +1,3 @@
+# Local authoring only: the videos and the labelled answers live in the benchmark's Hugging Face dataset, never in git.
+payload/test/
+payload/labelled/

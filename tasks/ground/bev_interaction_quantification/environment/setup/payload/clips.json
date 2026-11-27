@@ -1,0 +1,566 @@
+{
+ "test": [
+  {
+   "id": "T01",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "3179",
+    "3207"
+   ]
+  },
+  {
+   "id": "T02",
+   "frames": 36,
+   "start_s": 0.0,
+   "end_s": 3.5,
+   "vehicles": [
+    "2181",
+    "2182"
+   ]
+  },
+  {
+   "id": "T03",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "170",
+    "173"
+   ]
+  },
+  {
+   "id": "T04",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "2305",
+    "2307"
+   ]
+  },
+  {
+   "id": "T05",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "1682",
+    "1750"
+   ]
+  },
+  {
+   "id": "T06",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "1233",
+    "1310"
+   ]
+  },
+  {
+   "id": "T07",
+   "frames": 89,
+   "start_s": 0.1,
+   "end_s": 8.9,
+   "vehicles": [
+    "1157",
+    "1277"
+   ]
+  },
+  {
+   "id": "T08",
+   "frames": 90,
+   "start_s": 0.0,
+   "end_s": 8.9,
+   "vehicles": [
+    "1655",
+    "1735"
+   ]
+  },
+  {
+   "id": "T09",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "764",
+    "825"
+   ]
+  },
+  {
+   "id": "T10",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "1794",
+    "2025"
+   ]
+  },
+  {
+   "id": "T11",
+   "frames": 57,
+   "start_s": 2.5,
+   "end_s": 8.2,
+   "vehicles": [
+    "691",
+    "702"
+   ]
+  },
+  {
+   "id": "T12",
+   "frames": 58,
+   "start_s": 0.0,
+   "end_s": 5.7,
+   "vehicles": [
+    "1547",
+    "1551"
+   ]
+  },
+  {
+   "id": "T13",
+   "frames": 86,
+   "start_s": 0.1,
+   "end_s": 8.7,
+   "vehicles": [
+    "1332",
+    "1339"
+   ]
+  },
+  {
+   "id": "T14",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "1034",
+    "1007"
+   ]
+  },
+  {
+   "id": "T15",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "487",
+    "488"
+   ]
+  },
+  {
+   "id": "T16",
+   "frames": 82,
+   "start_s": 0.0,
+   "end_s": 8.2,
+   "vehicles": [
+    "583",
+    "589"
+   ]
+  },
+  {
+   "id": "T17",
+   "frames": 42,
+   "start_s": 0.2,
+   "end_s": 4.3,
+   "vehicles": [
+    "2291",
+    "2293"
+   ]
+  },
+  {
+   "id": "T18",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "149",
+    "151"
+   ]
+  },
+  {
+   "id": "T19",
+   "frames": 86,
+   "start_s": 0.0,
+   "end_s": 8.5,
+   "vehicles": [
+    "2303",
+    "2318"
+   ]
+  },
+  {
+   "id": "T20",
+   "frames": 90,
+   "start_s": 0.0,
+   "end_s": 8.9,
+   "vehicles": [
+    "515",
+    "538"
+   ]
+  },
+  {
+   "id": "T21",
+   "frames": 90,
+   "start_s": 0.0,
+   "end_s": 8.9,
+   "vehicles": [
+    "1409",
+    "1481"
+   ]
+  },
+  {
+   "id": "T22",
+   "frames": 51,
+   "start_s": 2.9,
+   "end_s": 7.9,
+   "vehicles": [
+    "681",
+    "713"
+   ]
+  },
+  {
+   "id": "T23",
+   "frames": 90,
+   "start_s": 0.0,
+   "end_s": 8.9,
+   "vehicles": [
+    "897",
+    "901"
+   ]
+  },
+  {
+   "id": "T24",
+   "frames": 90,
+   "start_s": 0.0,
+   "end_s": 8.9,
+   "vehicles": [
+    "329",
+    "364"
+   ]
+  }
+ ],
+ "labelled": [
+  {
+   "id": "L01",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "1224",
+    "1364"
+   ]
+  },
+  {
+   "id": "L02",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "1754",
+    "1766"
+   ]
+  },
+  {
+   "id": "L03",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "842",
+    "784"
+   ]
+  },
+  {
+   "id": "L04",
+   "frames": 90,
+   "start_s": 0.0,
+   "end_s": 8.9,
+   "vehicles": [
+    "1729",
+    "1763"
+   ]
+  },
+  {
+   "id": "L05",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "2362",
+    "2367"
+   ]
+  },
+  {
+   "id": "L06",
+   "frames": 90,
+   "start_s": 0.0,
+   "end_s": 8.9,
+   "vehicles": [
+    "499",
+    "510"
+   ]
+  },
+  {
+   "id": "L07",
+   "frames": 82,
+   "start_s": 0.2,
+   "end_s": 8.3,
+   "vehicles": [
+    "903",
+    "966"
+   ]
+  },
+  {
+   "id": "L08",
+   "frames": 87,
+   "start_s": 0.0,
+   "end_s": 8.7,
+   "vehicles": [
+    "2103",
+    "2301"
+   ]
+  },
+  {
+   "id": "L09",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "6171",
+    "6201"
+   ]
+  },
+  {
+   "id": "L10",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "895",
+    "924"
+   ]
+  },
+  {
+   "id": "L11",
+   "frames": 84,
+   "start_s": 0.0,
+   "end_s": 8.3,
+   "vehicles": [
+    "3",
+    "8"
+   ]
+  },
+  {
+   "id": "L12",
+   "frames": 87,
+   "start_s": 0.0,
+   "end_s": 8.7,
+   "vehicles": [
+    "925",
+    "976"
+   ]
+  },
+  {
+   "id": "L13",
+   "frames": 82,
+   "start_s": 0.0,
+   "end_s": 8.2,
+   "vehicles": [
+    "1041",
+    "1090"
+   ]
+  },
+  {
+   "id": "L14",
+   "frames": 89,
+   "start_s": 0.0,
+   "end_s": 8.8,
+   "vehicles": [
+    "982",
+    "985"
+   ]
+  },
+  {
+   "id": "L15",
+   "frames": 89,
+   "start_s": 0.0,
+   "end_s": 8.8,
+   "vehicles": [
+    "760",
+    "794"
+   ]
+  },
+  {
+   "id": "L16",
+   "frames": 63,
+   "start_s": 0.0,
+   "end_s": 6.2,
+   "vehicles": [
+    "240",
+    "275"
+   ]
+  },
+  {
+   "id": "L17",
+   "frames": 88,
+   "start_s": 0.2,
+   "end_s": 8.9,
+   "vehicles": [
+    "1702",
+    "1796"
+   ]
+  },
+  {
+   "id": "L18",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "1250",
+    "1342"
+   ]
+  },
+  {
+   "id": "L19",
+   "frames": 89,
+   "start_s": 0.1,
+   "end_s": 8.9,
+   "vehicles": [
+    "1719",
+    "1941"
+   ]
+  },
+  {
+   "id": "L20",
+   "frames": 56,
+   "start_s": 0.0,
+   "end_s": 5.5,
+   "vehicles": [
+    "314",
+    "334"
+   ]
+  },
+  {
+   "id": "L21",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "1233",
+    "1404"
+   ]
+  },
+  {
+   "id": "L22",
+   "frames": 53,
+   "start_s": 0.0,
+   "end_s": 5.2,
+   "vehicles": [
+    "2478",
+    "2496"
+   ]
+  },
+  {
+   "id": "L23",
+   "frames": 87,
+   "start_s": 0.0,
+   "end_s": 8.7,
+   "vehicles": [
+    "2100",
+    "2101"
+   ]
+  },
+  {
+   "id": "L24",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "6178",
+    "6182"
+   ]
+  },
+  {
+   "id": "L25",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "1300",
+    "1392"
+   ]
+  },
+  {
+   "id": "L26",
+   "frames": 90,
+   "start_s": 0.0,
+   "end_s": 8.9,
+   "vehicles": [
+    "776",
+    "784"
+   ]
+  },
+  {
+   "id": "L27",
+   "frames": 87,
+   "start_s": 0.0,
+   "end_s": 8.7,
+   "vehicles": [
+    "715",
+    "761"
+   ]
+  },
+  {
+   "id": "L28",
+   "frames": 53,
+   "start_s": 3.3,
+   "end_s": 8.5,
+   "vehicles": [
+    "512",
+    "531"
+   ]
+  },
+  {
+   "id": "L29",
+   "frames": 51,
+   "start_s": 0.0,
+   "end_s": 5.0,
+   "vehicles": [
+    "365",
+    "368"
+   ]
+  },
+  {
+   "id": "L30",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "546",
+    "670"
+   ]
+  },
+  {
+   "id": "L31",
+   "frames": 58,
+   "start_s": 0.0,
+   "end_s": 5.7,
+   "vehicles": [
+    "731",
+    "754"
+   ]
+  },
+  {
+   "id": "L32",
+   "frames": 91,
+   "start_s": 0.0,
+   "end_s": 9.0,
+   "vehicles": [
+    "1626",
+    "1646"
+   ]
+  }
+ ]
+}

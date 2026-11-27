@@ -1,0 +1,8 @@
+{
+  "metric": "interaction_accuracy",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1.0,
+  "source": "TODO(author): privileged oracle (solution/ref holds the hidden answers themselves): measured interaction_accuracy = 1.0 in the oracle episode of `ale validate` run <validate-id> (engine <sha>, <date>)",
+  "note": "The oracle is the answer key, so it is deterministic and scores 1.0 on every event; full_at 1.0 makes the reward equal to the metric. The test list is tests/ref/clips.json; any change to it requires a new oracle run."
+}
