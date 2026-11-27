@@ -264,8 +264,8 @@ platforms = ["humanoid"]
 stages = ["assembly"]
 
 [g1_sonic_visual_navigation]
-title = "Walk a G1 through a visually cued course"
-summary = "Write a SONIC token controller that walks a G1 to two waypoints, follows a turn signal and holds each stop using a pelvis-mounted RGB-D camera."
+title = "Steer a G1 through offset openings"
+summary = "Drive a G1 through gaps in physical barriers using a pelvis-mounted RGB-D camera, follow a turn cue, and stop at both waypoints without touching the barriers."
 platforms = ["humanoid"]
 stages = ["control"]
 

@@ -1,18 +1,20 @@
-# Follow the lights on a G1
+# Navigate a G1 through offset openings
 
-Walk a Unitree G1 to a blue waypoint, hold still, pivot in the direction shown by a newly illuminated signal, then walk to a green waypoint and stop. All three maneuvers take place in one continuous MuJoCo world, with the same floating-base robot, contacts and SONIC decoder history. Your executable receives a pelvis-mounted RGB-D camera and robot-local sensors. It sends 64 integer finite scalar quantization (FSQ) codes for each 20 ms of motion. The released SONIC V1 decoder drives 29 body joints. The hands stay open.
+Drive a free-standing Unitree G1 through the openings in a row of storage barriers. Stop at a blue waypoint, turn in the direction signalled by a light, then walk to a green waypoint and stop. A route only counts when the robot clears every opening in order, avoids contact and completes all three stops. The same robot, physical world and SONIC V1 decoder history continue across all three maneuvers.
+
+Your executable receives a pelvis-mounted RGB-D camera and robot-local sensors. It sends 64 integer finite scalar quantization (FSQ) codes for each 20 ms of motion. The released SONIC V1 decoder drives 29 body joints. The hands stay open.
 
 ## Read the scene
 
-Each illuminated sphere has a 0.12 m radius and a center 1.03 m above the floor. Waypoint distance and turn direction vary between episodes. World origin and reset yaw vary independently of the course.
-
-| Visible lights | Required maneuver |
+| What the camera shows | What the robot must do |
 |---|---|
-| Blue | Walk along the pelvis heading at the start of this leg. Stop 1.50 m before the sphere center along that axis. Evaluation varies the walk between 3.25 and 5.75 m. |
-| Red or magenta at the old forward bearing, plus a yellow heading beacon | Red means pivot left, magenta means pivot right. The yellow sphere is 6 m from the pivot origin on the required heading, 80–100° from the leg-entry heading. It comes into view as the robot turns. Stay near the pivot origin. |
-| Green | Walk along the pelvis heading at entry to this last leg. Stop 1.50 m before the sphere. This walk ranges from 0.95 to 2.25 m. |
+| Storage barriers and a blue waypoint | Find each opening and cross it in order. Openings can be on either side of the initial heading. After the last barrier, return to the route centerline and stop 1.50 m before the blue sphere. Face the heading at the start of the route. |
+| A red or magenta signal and a yellow heading beacon | Pivot in place. Red means left and magenta means right. The yellow sphere is 6 m from the pivot origin on the required heading and comes into view during the turn. |
+| A green waypoint | Walk along the new heading and come to rest 1.50 m before the green sphere. |
 
-To qualify, the robot must remain upright, face within 10° of the required heading, travel at most 0.15 m/s horizontally, and rotate at most 0.25 rad/s for 0.75 s continuously. The walking stop disk has radius 0.25 m and the entire walk must stay within a 0.45 m lateral corridor. Maintain the first qualifying stop another 1.50 s for the turn signal. Signals change at the first five-tick boundary after the physical hold, adding up to four settled rows. The pivot stop disk has radius 0.30 m, with a 0.45 m maximum excursion and at most 15° of travel in the wrong direction. A fall, path violation, interrupted additional hold or timeout ends the course.
+Each 0.72 m high barrier has a real opening, 0.95–1.08 m wide, between two cabinet sections. The center of an opening lies 0.57–0.76 m to either side of the route centerline. Cabinet color can vary; the traversable space is visible in both RGB and depth. The first leg contains one or two barriers. With two barriers, the second opening may stay on the same side or switch sides. The first walk spans 5.5–7.25 m. During the approach, keep the pelvis within 1.58 m of the initial centerline. During the final walk, stay within 0.45 m of the new heading line. Walk past the center plane of each opening in order. Turn magnitude (80–100°), final distance (0.95–2.25 m), gate placement and robot reset pose vary across courses. The colored waypoint spheres have 0.12 m radius and sit 1.03 m above the floor. The camera provides geometry through aligned depth in millimetres.
+
+The left and right cabinet sections are each 2.4 m wide and 0.18 m deep. Measure the free passage from depth and leave room for the robot’s arms and legs. A stop requires an upright posture, heading error at most 10°, horizontal speed at most 0.15 m/s and yaw rate at most 0.25 rad/s for 0.75 s continuously. The walking stop disk has radius 0.25 m. Hold the first stop for another 1.50 s to reveal the turn. The pivot stop disk has radius 0.30 m with a maximum excursion of 0.45 m and at most 15° of travel in the wrong direction. A fall, collision, leaving the course, losing the additional standing hold or timing out ends the trial.
 
 ## Public practice
 
@@ -32,7 +34,14 @@ chmod +x submission/run.sh
 python practice.py --turn left --seed 7 --steps 20 --submission submission
 ```
 
-The inspect directory contains `rgb.png`, `depth-mm.png` and `calibration.json`. Omit `--steps` for a full course. Change `--turn` to `right` for the opposite signal. Other public host flags are `--first-m` (3–6), `--angle-deg` (75–105) and `--last-m` (0.8–2.5). The host prints the physical outcome, per-leg endpoint errors, dwell times, native row count, code changes and joint acceleration. `--trace FILE.jsonl.gz` saves selected observations and proposed and applied row counts. Practice command-line arguments are private to the simulation process during evaluation.
+The inspect directory contains `rgb.png`, `depth-mm.png` and `calibration.json`. To compare different physical passages on the same robot reset, run:
+
+```sh
+python practice.py --seed 7 --layout-seed 7 --gaps LR --turn left --submission submission
+python practice.py --seed 7 --layout-seed 7 --gaps RL --turn left --submission submission
+```
+
+`L` and `R` mean left and right as seen from the initial robot heading. The six practice patterns are `L`, `R`, `LL`, `LR`, `RL` and `RR`. The layout seed varies the physical furniture separately from the robot seed. Omitting `--gaps` lets the layout generator choose the pattern. Run `python practice.py --help` for turn, distance, step-limit and trace options. The practice host reports the raw physical outcome and motion costs. Evaluation supplies each participant process with sensor packets and accepts actions over standard input and output.
 
 ## Controller process
 
@@ -40,10 +49,12 @@ Print `READY` and flush. Read one JSON object per line and flush one reply per r
 
 The public observation protocol is `g1-sonic-visual-navigation/1`. It contains:
 
-- `tick` and `horizon` (2,400 native rows). The leg time limits are 1,300, 450 and 650 rows.
+- `tick` and `horizon` (3,100 native rows). The approach, pivot and departure time limits are 2,000, 450 and 650 rows.
 - `camera.rgb_png`, a base64-encoded 128 × 96 RGB PNG, and `camera.depth_mm_png`, a colocated 16-bit PNG. Depth measures optical-axis distance in millimetres. Zero marks invalid or more than 12 m. Pixel center is (63.5,47.5) with square pixels and a 75° vertical field of view. Camera origin in the pelvis frame is (0.28,0,0.33) m, looking along +x with image right along −y and up along +z. RGB and depth are rendered at the decision tick.
 - `observation.q` and `dq`, 29 joint angles and velocities in G1 hardware order. `base_gyro`, `gravity_body` and `velocity_body` are angular velocity, projected unit gravity and ideal linear velocity expressed in the pelvis frame. `yaw_rate_rad_s` is the measured vertical heading rate. Boolean `left_foot_contact` and `right_foot_contact` indicate more than 1 N of floor load. These are ideal simulator sensors.
 - `decoder_history`, the released decoder's public flat history of local measurements and preceding motor outputs.
-- `observation_id`, a content hash of the current public packet, and `last_observation_id`, the preceding packet selected for application (null on reset). On every five-tick boundary the verifier sends four requests in randomized order, including a scene intervention, relighting and an exact repeat. Other decisions have one live query. Public practice sends one live query per decision. A stateful controller should commit its preceding decision using that selected ID.
+- `observation_id`, a content hash of the current public packet, and `last_observation_id`, the preceding packet selected for application (null on reset). Each decision receives one live observation.
 
-The grader samples 16 fresh courses, balanced across turn directions. It counts complete physical courses on all assigned starts. It also measures whether the first native code row responds more often to a changed signed signal and displaced waypoint than to relighting the same beacon or repeating the same packet at the same pose. A response requires at least two changed coordinates. Full credit requires at least 15 of 16 strictly completed courses and both visual checks. With valid checks, partial credit is the completion count divided by 15, capped at one. Timing, smoothness and code use are diagnostics.
+## Scoring
+
+The primary metric is the fraction of assigned courses completed with zero obstacle contacts, all required passages and all three physical stops. Every part of the robot counts for obstacle contact, including feet and arms. The verifier checks native MuJoCo contacts at 2 ms intervals between 50 Hz commands. The terminal report records passages, contacts and stage completion so a reviewer can distinguish a missed opening from a failed stop. It also reports simulated time, applied FSQ rows and scalar codes, changes between successive rows and joint acceleration RMS. Each 16-course evaluation includes four single-gate courses, six with two same-side openings and six with opposite openings. Both initial gap sides and both pivot directions are balanced.
