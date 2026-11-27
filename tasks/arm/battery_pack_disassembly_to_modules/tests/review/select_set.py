@@ -8,6 +8,7 @@
     python3 select_set.py --draw-sealant   # rule 3, once: draws the sealant key and writes every pack's sealant seed
     python3 select_set.py --draw-appearance   # rule 4, once: the appearance key and every pack's appearance seed
     python3 select_set.py --draw-round2    # rules 5 to 7, once: their three keys and every pack's seeds and counts
+    python3 select_set.py --draw-round3    # rules 9 and 11, once: their two keys and every pack's seeds
     python3 select_set.py                  # re-derives both sets from the recorded keys and checks the files
 
 Rule 1, fixed before any pack was drawn or run:
@@ -88,6 +89,33 @@ the combinations and numbers the hidden packs carry (the documents state the ran
 - The seeds and counts go into each pack's entry (`seized_seed`, `seized_n`, `swollen_seed`, `swollen`, `foam_seed`,
   `foam_n`) of the two files above. None is drawn again or changed for any value it turns out to have or for how
   any program does with it.
+
+Rules 8 to 11, the third hardening round (2026-11-26, evening; written and committed before any of their values was
+drawn, after a frontier model scored 0.97 on the tree of rules 5 to 7). Rules 8 and 10 are rules of the cell with no
+values to draw; rules 9 and 11 each have a key of their own: 32 random bytes (os.urandom), drawn once by
+`--draw-round3` and recorded in tests/hidden/selection.json as `shank_key_hex` and `swollen3_key_hex`, independent of
+each other, of the earlier keys and of every seed. For pack k of the set <set> a rule's seed is the first 8 bytes of
+BLAKE2b("<name>|<set>|k", key = the rule's key) read little-endian. The rest follows from packcell/series.py
+(`DAMAGE`, `ENGAGE`, `SHANK`, `TRANSDUCER`, `WORK`, `CONSEQUENCE`, `SWOLLEN3`) and packcell/rules.py.
+
+- Rule 8, precision engagement (no draw). Full engagement within 0.8 mm (socket), 0.5 mm (Torx) and 2 degrees; a bit
+  that turns on a head under torque without driving it strips the head within 10 degrees of turning; a reamed Torx
+  recess takes no extractor.
+- Rule 9, the shank's strength (name "shank"). Per fastener, in the pack's order, three uniform draws from the seed
+  (`series._shank`): a corroded or seized fastener's shear torque is 0.70 to 1.00 times its thread's (a clean one's is
+  its thread's); its yield point 0.86 to 0.92 times its own shear torque; the angle reading's wind-up 1.2 to 1.8 (M6)
+  or 0.6 to 0.9 (M8) degrees per N m, six times that past yield. Working loose needs a loosening stall at 0.80 of the
+  fastener's own shear torque or more. The torque and angle readings carry the transducer noise of `TRANSDUCER`.
+- Rule 10, consequences (no draw). A safety event (live contact, a fastener short, a vented module, a dropped module)
+  condemns the pack: its credit is 0. A freed fastener falls off the bit when it is moved sideways before it is drawn
+  out of its hole, when the tip accelerates more than 4 m/s^2 or when the tool axis tilts more than 25 degrees; a loose
+  fastener at a seated busbar shorts it. The third protective stop in a pack ends the pack.
+- Rule 11, the swollen decision at the criterion (name "swollen3"). The packs that carry a swollen module are rule 6's;
+  every module's bump is drawn again from the seed (`series._swell` with `SWOLLEN3`): a swollen module's bulge 0.45 to
+  0.80 mm, every other module's crown 0.10 to 0.33 mm (uniform), semi-axes and centre as before. The criterion stays
+  0.4 mm.
+- The seeds go into each pack's entry (`shank_seed`, `swollen3_seed`) of the two files above. None is drawn again or
+  changed for any value it turns out to have or for how any program does with it.
 """
 
 import hashlib
@@ -152,6 +180,10 @@ def with_cells(sel, tag, packs):
                  for k, p in enumerate(packs)]
     if "seized_key_hex" in sel:
         packs = round2(sel, tag, packs)
+    if "shank_key_hex" in sel:
+        k9, k11 = bytes.fromhex(sel["shank_key_hex"]), bytes.fromhex(sel["swollen3_key_hex"])
+        packs = [dict(p, shank_seed=_seed(b"shank", tag, k, k9), swollen3_seed=_seed(b"swollen3", tag, k, k11))
+                 for k, p in enumerate(packs)]
     return packs
 
 
@@ -175,6 +207,20 @@ def round2(sel, tag, packs):
 
 
 def main():
+    if "--draw-round3" in sys.argv[1:]:
+        with open(SEL) as f:
+            sel = json.load(f)
+        if "shank_key_hex" in sel:
+            raise SystemExit("the keys of rules 9 and 11 are drawn already (once)")
+        when = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        for name in ("shank", "swollen3"):
+            sel[name + "_key_hex"] = os.urandom(32).hex()
+        sel["round3_rule"] = "tests/review/select_set.py (its docstring), rules 8 to 11"
+        sel["round3_drawn_utc"] = when
+        with open(SEL, "w") as f:
+            json.dump(sel, f, indent=1)
+            f.write("\n")
+        sys.argv.append("--refresh")
     if "--draw-round2" in sys.argv[1:]:
         with open(SEL) as f:
             sel = json.load(f)
@@ -257,7 +303,7 @@ def main():
             print(name, k, s["variant"], "harness", s["harness"], s["harness_covers"], "missing", s["missing"], "corroded", s["corroded"],
                   s["heads"], "value", s["value"], "cameras", "drawn" if "cameras" in p else "NOT DRAWN", "sealed",
                   s["sealed"] if "sealant_seed" in p else "NOT DRAWN", "seized", s["seized"], "swollen", s["swollen"],
-                  "pads", s["pads"])
+                  "pads", s["pads"], "weak", s["weak"], "bumps_mm", s["bumps_mm"])
     print("files match the key:", ok)
     return 0 if ok else 1
 

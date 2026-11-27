@@ -182,9 +182,9 @@ BIT_ON_HEAD = {
 }
 ENGAGE = {
     # lateral offset of the bit's axis from the fastener's (m) and angle between the axes (degrees)
-    "hex": {"full": 0.0020, "partial": 0.0035},
-    "torx": {"full": 0.0012, "partial": 0.0025},
-    "tilt_full_deg": 3.0, "tilt_partial_deg": 8.0,
+    "hex": {"full": 0.0008, "partial": 0.0035},       # (rule 8, 2026-11-26: full was 0.0020)
+    "torx": {"full": 0.0005, "partial": 0.0025},      # (rule 8: full was 0.0012)
+    "tilt_full_deg": 2.0, "tilt_partial_deg": 8.0,    # (rule 8: full was 3.0)
     "seat_force": 8.0,                 # axial force (N) below which the bit is not seated
     "torx_force_per_Nm": 1.5, "torx_force_base": 10.0,   # a Torx bit cams out below base + per_Nm x torque
     "seat_gap": 0.0015,                # the tip counts as on the head within this distance above it
@@ -248,11 +248,12 @@ SEALANT = {"p": {"lid": 0.35, "busbar": 0.25, "bracket": 0.25}, "d": (0.3, 0.9),
 # chosen with `weights` by group among the pack's present fasteners. Every fastener has a working factor `work`.
 SEIZED = {"n_dev": 1, "n_hidden": (2, 4), "max": 4, "weights": {"lid": 1.0, "busbar": 1.0, "bracket": 2.0},
           "breakaway": (1.15, 1.6), "work": (0.55, 0.80)}
-# Working a thread loose (rules.Rules._work): with the bit fully engaged, a loosening stall at `loosen` times the shear
-# torque or more (below it) held `loosen_s` in all, then a tightening stall at the assembly torque or more (below the
-# head's limit and the shear torque) held `tighten_s`, is one cycle; a cycle multiplies what the fastener's
-# breakaway exceeds a clean one's (1.15 x tighten) by its working factor.
-WORK = {"loosen": 0.85, "loosen_s": 0.5, "tighten_s": 0.25}
+# Working a thread loose (rules.Rules._work): with the bit fully engaged, a loosening stall at `loosen` times the
+# fastener's own shear torque or more (below it) held `loosen_s` in all, then a tightening stall at the assembly torque
+# or more (below the head's limit and the shear torque) held `tighten_s`, is one cycle; a cycle multiplies what the
+# fastener's breakaway exceeds a clean one's (1.15 x tighten) by its working factor. (Rule 9, 2026-11-26: `loosen` was
+# 0.85 of the thread's shear torque; it is now 0.80 of the fastener's own, which SHANK draws.)
+WORK = {"loosen": 0.80, "loosen_s": 0.5, "tighten_s": 0.25}
 
 # Swollen modules (the sixth lever, 2026-11-26; service manual, sections 7 and 9; rule 6). Every module's top plate
 # carries a smooth bump (drawn only, `rules`/`scene`): a healthy module's `crown`, a swollen module's `bulge` (heights in
@@ -272,6 +273,44 @@ SWOLLEN = {"dev": (0, 1, 1, 0), "hidden": (1, 1, 0, 1, 1, 0), "bulge": (0.0006, 
 # the busbars' fasteners that a harness remnant does not cover.
 FOAM = {"dev": (1, 0, 1, 0), "hidden": (2, 1, 1, 2, 0, 1), "max": 2, "weights": {"lid": 2.0, "busbar": 1.0},
         "side": (0.040, 0.060), "thick": (0.010, 0.014), "off": 0.008}
+
+# The third hardening round (2026-11-26, evening; rules 8 to 11 of tests/review/select_set.py; tests/README.md,
+# section 2), after a frontier model scored 0.97 on the tree of rules 5 to 7: what an expert who knows the procedure
+# still has to do well, and mistakes that cannot be undone.
+#
+# Rule 8, precision engagement (a rule; nothing drawn). ENGAGE's full tolerances are 0.8 mm for a socket, 0.5 mm for a
+# Torx bit and 2 degrees (they were 2.0 mm, 1.2 mm and 3 degrees). A bit that turns on a head under torque without
+# driving it (on the head but outside the full tolerances, one size off, a Torx bit that cams out for want of force)
+# damages the head within DAMAGE["deg"] degrees of turning: it is stripped at once. A cammed-out Torx recess is reamed
+# smooth and the extractor has nothing to bite on (it turns freely in it); a rounded hexagon still takes the extractor.
+DAMAGE = {"deg": 10.0}
+
+# Rule 9, the shank's strength (drawn per fastener from the pack's `shank_seed`, a key of its own). A corroded or a
+# seized fastener's shank has lost section: its shear torque is `strength` (uniform) times its thread's; a clean
+# fastener's is its thread's. Every shank yields at `yield` (uniform) times its own shear torque. The nutrunner's
+# angle reading winds up with the torque the bit holds: `compliance` degrees per N m (uniform per fastener, by thread),
+# elastic, and past the yield point `plastic` times that, a twist that stays. The shank shears at its own shear torque.
+SHANK = {"strength": (0.70, 1.00), "yield": (0.86, 0.92), "compliance": {"M6": (1.2, 1.8), "M8": (0.6, 0.9)},
+         "plastic": 6.0}
+# The nutrunner's transducers (rule 9): each torque sample carries noise of sigma `torque_sigma` plus `torque_rel` of
+# the reading, each angle sample `angle_sigma_deg` (the cell's own random stream, seeded per pack).
+TRANSDUCER = {"torque_sigma": 0.15, "torque_rel": 0.01, "angle_sigma_deg": 0.2}
+
+# Rule 10, consequences (rules; nothing drawn). `condemn`: a safety event quarantines the pack whole, as the facility
+# rule for a possible thermal event is (electrolyte and hydrogen fluoride contaminate what was sorted from it): the
+# pack's credit is 0. `magnet`: a freed fastener rides on the magnetic bit only while it is drawn straight out of its
+# hole first (`withdraw` along its axis before the bit has moved `side` sideways) and while the bit's tip accelerates
+# less than `accel` and the tool axis stays within `tilt_deg` of its axis; otherwise it falls where it is. A loose
+# fastener that comes within HV_MARGIN of a busbar that is still in its seat shorts it (`fastener_short`). `latch`:
+# the protective stop of that number in a pack latches the safety controller and the pack ends there.
+CONSEQUENCE = {"condemn": ("live_contact", "fastener_short", "module_vented", "module_dropped"),
+               "magnet": {"withdraw": {"M6": 0.015, "M8": 0.020}, "side": 0.0015, "accel": 4.0, "tilt_deg": 25.0},
+               "latch": 3}
+
+# Rule 11, the swollen decision at the criterion (drawn from the pack's `swollen3_seed`, a key of its own; which packs
+# carry a swollen module stays rule 6's): a swollen module's bulge is `bulge`, every other module's crown `crown`
+# (uniform, metres); semi-axes and centre as SWOLLEN. The criterion stays SWOLLEN["criterion"] (0.4 mm).
+SWOLLEN3 = {"bulge": (0.00045, 0.00080), "crown": (0.00010, 0.00033)}
 
 APPEARANCE = {"gain": (0.6, 1.3), "kelvin": (3500.0, 6500.0), "lamp": (0.75, 1.25), "patches": (4, 9),
               "patch_axes": (0.015, 0.07), "labels": (1, 4), "label_size": ((0.06, 0.12), (0.03, 0.06)),
@@ -507,18 +546,33 @@ def _seize(seed, n, fasteners):
         f["work"] = round(st.uniform(*SEIZED["work"]), 4)
 
 
-def _swell(seed, swollen, parts):
-    """Rule 6: every module's bump; one module of a pack that carries a swollen one has a bulge (SWOLLEN)."""
+def _swell(seed, swollen, parts, ranges=None):
+    """Rule 6: every module's bump; one module of a pack that carries a swollen one has a bulge (SWOLLEN). Rule 11
+    draws them again from a seed of its own with SWOLLEN3's heights (`ranges`)."""
+    ranges = ranges or SWOLLEN
     st = Stream(seed, "swollen")
     modules = [p for p in parts if p["kind"] == "module"]
     which = modules[int(st.u64() % len(modules))]["id"] if swollen else None
     for p in modules:
-        h = st.uniform(*SWOLLEN["bulge"]) if p["id"] == which else st.uniform(*SWOLLEN["crown"])
+        h = st.uniform(*ranges["bulge"]) if p["id"] == which else st.uniform(*ranges["crown"])
         p["bump"] = {"h": round(h, 6), "a": round(st.uniform(*SWOLLEN["a"]), 4), "b": round(st.uniform(*SWOLLEN["b"]), 4),
                      "dx": round(st.uniform(*SWOLLEN["dx"]), 4)}
         p["swollen"] = p["id"] == which
         if p["swollen"]:
             p["dest"] = "seat"
+
+
+def _shank(seed, fasteners):
+    """Rule 9: every fastener's shank (SHANK): its own shear torque, its yield point and its wind-up, in the pack's
+    order of fasteners, three draws each (a clean fastener's strength draw is made and not used)."""
+    st = Stream(seed, "shank")
+    for f in fasteners:
+        u, y, c = st.random(), st.uniform(*SHANK["yield"]), st.uniform(*SHANK["compliance"][f["thread"]])
+        weak = f["corroded"] or f["seized"]
+        lo, hi = SHANK["strength"]
+        f["shear"] = round((lo + (hi - lo) * u if weak else 1.0) * THREADS[f["thread"]]["shear"], 3)
+        f["yield"] = round(y * f["shear"], 3)
+        f["compliance"] = round(c, 4)
 
 
 def _pads(seed, n, fasteners, covered):
@@ -538,7 +592,8 @@ def _pads(seed, n, fasteners, covered):
 
 
 def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None, appearance_seed=None,
-              seized_seed=None, seized_n=0, swollen_seed=None, swollen=False, foam_seed=None, foam_n=0):
+              seized_seed=None, seized_n=0, swollen_seed=None, swollen=False, foam_seed=None, foam_n=0,
+              shank_seed=None, swollen3_seed=None):
     """One pack: the nominal pack of its variant plus its hidden differences. `variant` and `harness` ("none",
     "lid", "busbars") may be fixed by the caller (the selection of a set); everything else comes from the seed.
     `cameras` are the mounting offsets of the cell the pack is taken apart in ({name: 6 numbers}, MOUNT_TOL; drawn
@@ -547,7 +602,9 @@ def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None,
     none. `appearance_seed` (rule 4) gives the hall's light, the grime, dust and labels (APPEARANCE); without it the
     pack is clean under the nominal light. `seized_seed` with `seized_n` (rule 5), `swollen_seed` with `swollen`
     (rule 6) and `foam_seed` with `foam_n` (rule 7) give the seized fasteners, the modules' bumps and the foam pads;
-    without them there are none, every module is flat and every fastener's working factor is 0.7."""
+    without them there are none, every module is flat and every fastener's working factor is 0.7. `shank_seed`
+    (rule 9) gives every fastener's shank (SHANK); without it every shank has its thread's shear torque, yields only
+    there and does not wind up. `swollen3_seed` (rule 11) draws the modules' bumps again with SWOLLEN3's heights."""
     s = Stream(seed, "pack")
     v = s.choice(sorted(VARIANTS))
     variant = variant or v
@@ -589,12 +646,18 @@ def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None,
         f["seized"], f["work"] = False, 0.7
     if seized_seed is not None:
         _seize(seized_seed, int(seized_n), fasteners)
+    for f in fasteners:
+        f["shear"], f["yield"], f["compliance"] = THREADS[f["thread"]]["shear"], THREADS[f["thread"]]["shear"], 0.0
+    if shank_seed is not None:
+        _shank(shank_seed, fasteners)
     parts = [dict(p) for p in nom["parts"]]
     for p in parts:
         if p["kind"] == "module":
             p["bump"], p["swollen"] = {"h": 0.0, "a": 0.11, "b": 0.04, "dx": 0.0}, False
     if swollen_seed is not None:
         _swell(swollen_seed, bool(swollen), parts)
+    if swollen3_seed is not None:
+        _swell(swollen3_seed, bool(swollen), parts, SWOLLEN3)
     out = {"version": VERSION, "seed": int(seed), "variant": variant, "modules": nom["modules"],
            "module_ys": nom["module_ys"], "msd_y": nom["msd_y"], "bms_y": nom["bms_y"], "ribs": nom["ribs"],
            "placement": placement, "group_head": group_head, "parts": parts, "fasteners": fasteners, "harness": None,
@@ -613,7 +676,7 @@ def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None,
 
 
 ENTRY_KEYS = ("variant", "harness", "cameras", "sealant_seed", "appearance_seed", "seized_seed", "seized_n", "swollen_seed",
-              "swollen", "foam_seed", "foam_n")
+              "swollen", "foam_seed", "foam_n", "shank_seed", "swollen3_seed")
 
 
 def draw_entry(entry):
@@ -647,6 +710,8 @@ def summary(pack):
             "seized": sorted(f["id"] for f in fs if f.get("seized")),
             "swollen": [p["id"] for p in pack["parts"] if p.get("swollen")],
             "pads": [d["fastener"] for d in pack.get("pads", [])],
+            "weak": {f["id"]: f["shear"] for f in fs if f.get("shear", THREADS[f["thread"]]["shear"]) < THREADS[f["thread"]]["shear"]},
+            "bumps_mm": {p["id"]: round(p["bump"]["h"] * 1000, 3) for p in pack["parts"] if p["kind"] == "module"},
             "harness": pack["harness"]["on"] if pack["harness"] else "none",
             "harness_covers": pack["harness"]["covers"] if pack["harness"] else [],
             "placement": pack["placement"], "value": round(total_value(pack), 2)}

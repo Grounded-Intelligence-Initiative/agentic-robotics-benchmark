@@ -46,8 +46,8 @@ What a turning bit does on a head:
 The bit drives a fastener when all of this holds:
 
 - it is the head's own bit (table above);
-- the bit's axis is within 2 mm of the fastener's axis for a socket, 1.2 mm for a Torx bit, and the two axes are
-  within 3 degrees of each other;
+- the bit's axis is within 0.8 mm of the fastener's axis for a socket, 0.5 mm for a Torx bit, and the two axes are
+  within 2 degrees of each other;
 - the bit is pressed on the head with at least 8 N (the spindle's spring: stroke times the spring rate); a Torx bit
   in addition needs 10 N plus 1.5 N for every N m it holds, turning or stalled at its limit, or it cams out of the
   recess;
@@ -64,7 +64,7 @@ A spindle that is stalled at its limit on a fastener it should drive is doing no
 the head's limit and the thread's shear torque (the service manual's torque table; at the shear torque the shank
 twists off).
 
-**The extractor EX** bites into a stripped head: within 1.5 mm and 3 degrees, pressed on with at least 50 N, with
+**The extractor EX** bites into a stripped head: within 1.5 mm and 2 degrees, pressed on with at least 50 N, with
 the torque limit at 1.2 times the fastener's breakaway torque (below the shear torque, which holds for the extractor
 too); it turns the fastener out at half the spindle's speed.
 On a sound head it only does damage.

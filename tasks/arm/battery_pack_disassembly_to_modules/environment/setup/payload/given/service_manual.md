@@ -337,7 +337,7 @@ Lid and busbar fasteners are M6, bracket fasteners M8.
   by thread-locker; a seized fastener may look clean or rusty. Its breakaway is 1.15 to 1.6 times its thread's shear
   torque: no torque its shank survives turns it at first, and the spindle stalls at any limit below the shear
   torque. It comes loose by working, with the bit fully engaged and pressed on as for the torque it holds: (1) loosen
-  against a limit of at least 85 % of the shear torque (and below it) until the spindle has stalled there for 0.5 s in
+  against a limit of at least 80 % of the shear torque (and below it) until the spindle has stalled there for 0.5 s in
   all, then (2) tighten against a limit of at least the assembly torque (and below the head's limit) until it has
   stalled there for 0.25 s. Each such cycle lowers what the fastener's breakaway exceeds a clean one's by a factor of
   0.55 to 0.8 (one factor per fastener); one to five cycles bring a seized fastener's breakaway below 19.5 N m (M6) or
