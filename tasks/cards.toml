@@ -430,3 +430,9 @@ title = "Calibrate a warehouse robot's sensors from logs"
 summary = "Write a program that recovers a warehouse robot's camera and IMU mounts, sensor clocks and IMU biases from its driving logs, and flags faulty stretches, on robots it has never seen."
 platforms = ["ground"]
 stages = ["robot-description"]
+
+[uav_to_uav_tracking]
+title = "Train a UAV detector from onboard video"
+summary = "Train a visual model on UAV video and submit frozen weights that detect other UAVs in held-out flight sequences."
+platforms = ["uav"]
+stages = ["behavior"]

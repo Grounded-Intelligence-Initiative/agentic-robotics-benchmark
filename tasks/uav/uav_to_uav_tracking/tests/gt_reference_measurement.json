@@ -1,0 +1,68 @@
+{
+  "scope": "Measured GT and empty-prediction metric endpoints; not a learned model or an ALE lifecycle result",
+  "metric_source_sha256": "3ce36d1f21621289741c5c5214a4ffe9d8406a42e04f14031e2da95b870b6895",
+  "splits": {
+    "train": {
+      "annotations_sha256": "96e623a0db5a952645469011cb140b22ad632b097a2053accb05144d59e5f2c2",
+      "frames": 51951,
+      "annotations": 47291,
+      "negative_frames": 13384,
+      "sequences": 36,
+      "ground_truth_as_predictions": {
+        "uav_ap50": 1.0,
+        "uav_ap50_95": 1.0,
+        "uav_ap_small": 1.0,
+        "uav_ar300": 1.0
+      },
+      "empty_predictions": {
+        "uav_ap50": 0.0,
+        "uav_ap50_95": 0.0,
+        "uav_ap_small": 0.0,
+        "uav_ar300": 0.0
+      },
+      "status": "passed"
+    },
+    "val": {
+      "annotations_sha256": "95b81a45d5475cab53b9a23d03b44b622395416f89b17f7c239523c16006033d",
+      "frames": 1190,
+      "annotations": 1348,
+      "negative_frames": 282,
+      "sequences": 4,
+      "ground_truth_as_predictions": {
+        "uav_ap50": 1.0,
+        "uav_ap50_95": 1.0,
+        "uav_ap_small": 1.0,
+        "uav_ar300": 1.0
+      },
+      "empty_predictions": {
+        "uav_ap50": 0.0,
+        "uav_ap50_95": 0.0,
+        "uav_ap_small": 0.0,
+        "uav_ar300": 0.0
+      },
+      "status": "passed"
+    },
+    "test": {
+      "annotations_sha256": "d86c75cc95679a2c843e50fea6c4adc9d44d7589bf02c5ad6f3ad0bf1f8186ed",
+      "frames": 2475,
+      "annotations": 3491,
+      "negative_frames": 628,
+      "sequences": 10,
+      "ground_truth_as_predictions": {
+        "uav_ap50": 1.0,
+        "uav_ap50_95": 1.0,
+        "uav_ap_small": 1.0,
+        "uav_ar300": 1.0
+      },
+      "empty_predictions": {
+        "uav_ap50": 0.0,
+        "uav_ap50_95": 0.0,
+        "uav_ap_small": 0.0,
+        "uav_ar300": 0.0
+      },
+      "status": "passed"
+    }
+  },
+  "dcc_job": 62738778,
+  "source_commit": "68dbd88629c811da1267bd13313072092de5dbf9"
+}
