@@ -291,8 +291,13 @@ class Episode(object):
                 "lens_smeared": bool(self.smeared), "instruments": items}
 
     def summary(self):
+        """The procedure's record. A procedure the surgeon took the camera back in counts no usable step at all (version
+        0.3: a holder that had to be taken over did not assist that procedure); `usable_before_takeover` keeps the
+        steps that were usable before it, for the record only."""
         n = max(1, self.judged)
-        out = {"steps": int(self.judged), "usable_steps": int(self.usable), "useful_view_fraction": self.usable / n,
+        usable = 0 if self.taken_over else int(self.usable)
+        out = {"steps": int(self.judged), "usable_steps": usable, "useful_view_fraction": usable / n,
+               "usable_before_takeover": int(self.usable) if self.taken_over else None,
                "lens_contacts": int(self.contacts), "lens_touches": int(self.touches), "lens_smears": int(self.smear_serial),
                "lens_cleanings": int(self.cleanings),
                "first_usable_step": self.first_usable, "takeover": self.takeover, "takeover_step": self.takeover_step,

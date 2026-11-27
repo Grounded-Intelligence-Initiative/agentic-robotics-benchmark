@@ -7,7 +7,8 @@ controller one observation (the endoscope's frame, 1 to 3 control steps old as t
 holder's four joint readings) and applies the rate command it answers. The frames are drawn by an Isaac Sim process of its own account (endosim/
 render_server.py); the view is judged from the simulator's state, never from pixels (endosim/episode.py):
 
-    useful_view_fraction = usable steps / steps, over all procedures
+    useful_view_fraction = usable steps / steps, over all procedures (a procedure in which the surgeon took the camera
+                           back counts no usable step: version 0.3's gate)
 
 What keeps the number honest:
 

@@ -145,7 +145,8 @@ material that is what a real team has rather than the simulator's truth.
 | smoke that hides (`post.py`) | the plume over the energy device's tip given a dense core (weight 1.0, 45 px, 15 px above the tip, opacity to 0.97): above a density of 0.6 it hides any tip within 50 px of its centre; the events as in 0.2 (density above 0.6 on 9 to 41 % of the steps of the five smoky hidden procedures) | real smoke hides what it comes from; 0.2's smoke only tinted the picture |
 | the assistant | holds 2 to 4 cm beside the work (was 3 to 5.5), reaches into the work 3 times as often (0.012 a step) | telling the surgeon's instruments from the assistant's has to work in the middle of the work |
 | the camera head knocked (`procedure.draw_head_changes`) | once or twice per procedure (p = 0.5 each): first at U(8, 40) s, second at U(first + 15, 76) s; to an angle U(+-40) at least 15 degrees from the old, over 3 control steps | adapting online, not a constant: a program that identifies the rig once (as the episode's did) levels the wrong horizon after a knock |
-| irreversible consequences (`episode.Episode._take_over`) | the surgeon takes the camera back, and every later step of the procedure is not usable, when the lens reaches the tissue closing faster than 15 mm/s, when it touches the tissue a second time, or when a critical action (a clip applied: the jaws closed on it; the first half of a needle bite; the first second of an energy activation) is seen usable on fewer than a quarter of its steps; critical actions in the first 10 s, in the first 3 s at a new site, and overlapping the 4 s from a knock of the camera head are not judged. A smeared lens needs 10 s withdrawn (was 4 s) | the owner's request (2026-11-26): a mistake that ends the job. In 0.2 every error cost only the steps it lasted. Each is a clinical consequence with a mechanism, a line in the manual and observable precursors; none subtracts anything |
+| irreversible consequences (`episode.Episode._take_over`) | the surgeon takes the camera back, and every later step of the procedure is not usable, when the lens reaches the tissue closing faster than 15 mm/s, when it touches the tissue a second time, or when a critical action (a clip applied: the jaws closed on it; the first half of a needle bite; the first second of an energy activation) is seen usable on fewer than a quarter of its steps; critical actions in the first 10 s, in the first 3 s at a new site, and overlapping the 4 s from a knock of the camera head are not judged. A procedure taken over counts 0 (a completion gate). A smeared lens needs 10 s withdrawn (was 4 s) | the owner's request (2026-11-26): a mistake that ends the job. In 0.2 every error cost only the steps it lasted. Each is a clinical consequence with a mechanism, a line in the manual and observable precursors; nothing is subtracted, and the gate copies merged tasks' completion gates ("a run that does not count scores 0", `arm/lab_sample_handling`) |
+| the manual states facts, not methods | the sentences that said how the scope, the camera head and the latency are identified (from how the picture moves when the holder does) and that a map of the tissue goes out of date are gone; what a knock does to the picture, the ranges and what announces a critical action stay | merged tasks lowered frontier scores by taking methods out of the manual and keeping the facts (`arm/keyed_nut_peg_assembly`) |
 | tighter rules where perception error bites | horizon within 10 degrees (was 15); fine-work picture speed 32 px/s (was 48) | they cost the reference 0.4 and 1.4 points render-free; a narrower zoom band (26-38 px) and safe zone (0.25) were tried and rejected: they cost the reference 16 and 5 points, through the tips' depth spread and the holder's speed, not perception |
 | development material without 3D truth (`episode.Episode.annotation`, `recorder.py`) | labels on every 4th step, only the tips an annotator can see (inside the disk, out of the tissue, no tissue in the line of sight, not in a dense plume), marked with an error of 1.5 px per coordinate (at most 4); role, present, active, catalogue size, lens, joints, the lab's head angle; no depth, apparent size, fine-work flag, horizon error or judgement. The development look pool narrowed to 3 finishes, 2 palettes, staining to 0.3 | the episode's program rebuilt every development instrument's 3D path from the labels' depth, scored its commissioning sessions exactly against it and labelled its own session frames from it |
 | a commissioning bench of its own (`commission_procedures.json`) | the service plays ten procedures of its own (the development table, new seeds, rigs and salts, the graded look pool), nothing about them on file; a session ends at a takeover without saying why | no free judge and no free labels: what a real team has is unlabelled video from the target rooms |
@@ -223,8 +224,9 @@ tissue closing faster than `LENS_INJURY_SPEED` (15 mm/s: the clearance's drop ov
 when it touches the tissue a second time in a procedure, or when a critical action (`procedure._critical_actions`) is
 seen with a usable view on fewer than `CRITICAL_MIN_USABLE` (a quarter) of its steps, the episode records a takeover;
 the grader stops asking the controller and runs the rest of the procedure idle, every step judged `takeover`
-(not usable). The controller gets the next procedure's `reset` as usual. Nothing is subtracted: a takeover costs the
-steps that are left. `verification.json` reports `takeovers` and `takeover_<why>` counts, and each procedure's record
+(not usable), and the procedure counts no usable step at all, the steps before the takeover included (the gate,
+`Episode.summary`: a holder that had to be taken over did not assist that procedure; `usable_before_takeover` keeps
+them for the record). The controller gets the next procedure's `reset` as usual. Nothing else is subtracted. `verification.json` reports `takeovers` and `takeover_<why>` counts, and each procedure's record
 its takeover step and its critical actions (`critical_min_seen`).
 
 **What standing still costs.** A reply that is late (10 s), malformed or missing, and a used-up reply-time budget
@@ -467,8 +469,9 @@ with 3 takeovers for unseen critical actions; with the camera head's change know
 the cliffs alone cost a tracker with perfect detection about 15 %; detection, depth and the knocks come on top.
 
 **The frozen program of the version 0.2 episode** (`da1ac3b2`'s submission, unchanged; its own `holder_model.py` of
-0.2), native on the hidden set (tree `a647378`): **0.3586** (ratio 0.442 and reward 0.451 against the new anchor;
-version 0.2: 0.790). Per procedure 0.359 0.423 0.118 0.394 0.560 0.336 0.426 0.091 0.434 0.365 0.263 0.536. The surgeon
+0.2), native on the hidden set (tree `a647378`, before the per-procedure gate): 0.3586; **with the gate (the
+procedures taken over counting 0, recomputed from the same run's records) 0.2310** (ratio 0.285 and reward 0.29
+against the new anchor; version 0.2: 0.790). Per procedure 0.359 0.423 0.118 0.394 0.560 0.336 0.426 0.091 0.434 0.365 0.263 0.536. The surgeon
 took the camera back in 6 of 12 procedures, every procedure with a critical action (all `critical_unseen`; 20 critical
 actions judged); no lens contact; lock 381 of 434. Failed: zone 38 %, zoom 19 %, horizon 45 %, motion 14 %, takeover
 22 %. What breaks it: it fits the rig once and never forgets the evidence, so every knock of the camera head leaves the
@@ -504,7 +507,7 @@ frames named the causes it could see (instruments lost for seconds behind stale 
 during a clip, false knocks), but the clip-and-cut procedure `c08` ended at the same step in all four tries and
 nothing on its side said why. That is the information rule working: no judge. It was frozen after about 1 h 20 min of
 work from the moment the development set was ready (its sha256 are kept with it), then run once on the hidden set:
-**0.2871** (ratio 0.354 and reward 0.361 against the new anchor). Per procedure 0.259 0.451 0.073 0.346 0.558 0.063
+0.2871 before the per-procedure gate; **with it 0.2278** (ratio 0.281 and reward 0.29 against the new anchor). Per procedure 0.259 0.451 0.073 0.346 0.558 0.063
 0.539 0.141 0.455 0.106 0.070 0.385. The surgeon took the camera back in 6 of 12 procedures, again every procedure with
 a critical action (all `critical_unseen`); no lens contact; lock 282 of 384. Failed: zone 50 %, zoom 38 %, horizon
 33 %, motion 12 %, takeover 33 % (the steps after a takeover count under every rule they fail as well). It lost most
@@ -519,8 +522,9 @@ set recorded in 8.5 min (renderer start included; 10.5 to 16 min in the earlier 
 session on `c05` with the example through the launcher, 200 steps, "14 asked, 0 changed the action", exit 0. The
 canary found 10 of 10 markers in every native run of this entry, the worst at 0.70 to 1.13 px from the model.
 
-**What this says about difficulty.** Everything measured points well under version 0.2's 0.90 of the reference: the
-unchanged episode program 0.44, the fresh-agent proxy 0.35, both taken over in every procedure with a critical action.
+**What this says about difficulty.** Everything measured points well under version 0.2's 0.90 of the reference: with
+the per-procedure gate the unchanged episode program reaches 0.285 of it and the fresh-agent proxy 0.281 (0.44 and
+0.35 without the gate), both taken over in every procedure with a critical action.
 The proxy is not an estimate of a frontier agent (round 2: the adapted baseline reached 0.70 of the reference and the
 fresh episode 0.90), and a fresh agent reads from the first minute that the head is knocked, that tips hide, and what
 ends a procedure. What it then has to do is execution, not a constant to read off: depth without depth labels (the
@@ -546,6 +550,11 @@ the 2 h session and the 3 sessions are exercised only by a frontier episode);
 the proxy's and the episode program's run-to-run spread (each was run once on the hidden set); the moving mesh's
 stale captures beyond the frame clock's check (section 6). Next on the validate host: rebuild, `ale validate` (the
 anchor from its oracle), one frontier episode.
+
+**Added last, after the proxy's run (the owner's request, from a study of merged tasks).** The per-procedure gate (a
+procedure taken over counts 0) and the manual's methods taken out (facts kept). The gate changes no run: the
+reference is never taken over, and the episode program's and the proxy's gated values above are recomputed from their
+records. Neither was measured by a new proxy run.
 
 **Review items.** Version 0.2's review items stay as fixed. New in this version: the canary's renderer restart (the
 `validate-a8caaec5` failure), the takeover's reporting in `verification.json` (`takeovers`, `takeover_<why>`,

@@ -29,8 +29,8 @@ A control step's view is usable when (`~/given/holder_manual.md`, section 6, has
 5. the lens is clean. A lens that touches tissue is smeared: the picture is blurred and stained and no view is usable
    until the scope has been held withdrawn in its cannula for 10 s. Nothing reports a smeared lens but the picture.
 
-Some mistakes end a procedure for the holder: **the surgeon takes the camera back**, and no later step of that
-procedure is usable. That happens when the lens is driven into the tissue (it reaches the tissue closing faster than
+Some mistakes end a procedure for the holder: **the surgeon takes the camera back, and that procedure counts 0**, the
+steps before the takeover included (a holder that had to be taken over did not assist that procedure). That happens when the lens is driven into the tissue (it reaches the tissue closing faster than
 15 mm/s), when the lens touches the tissue a second time in a procedure, and when a critical action (a clip being
 applied, a needle bite, the first second of an energy activation) is seen with a usable view on fewer than a quarter
 of its steps (manual, section 6, has the exact rules and what announces a critical action).
@@ -39,8 +39,7 @@ An instrument that is being exchanged does not count while it is away (from the 
 is back at its place); the assistant's third instrument, when there is one, never counts.
 
 **Your score is the fraction of control steps with a usable view, over 12 recorded procedures you have not seen**
-(800 steps each). There are no other terms: a takeover subtracts nothing, it leaves the rest of
-that procedure unusable. Every procedure starts with the scope withdrawn at the home pose, and the place where the
+(800 steps each), a procedure the surgeon took the camera back in counting 0. There are no other terms. Every procedure starts with the scope withdrawn at the home pose, and the place where the
 surgeon works travels through the cavity: a camera that stays where it is sees almost nothing usable. The procedures
 differ in kind (dissection, suturing, exploration, clipping and cutting), in the instruments, their look and their
 size, in the tissue and how it moves, in smoke and highlights, in the scope fitted, the camera head's angle and when

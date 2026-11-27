@@ -71,16 +71,14 @@ exposure, and the light comes from the scope's own tip, so what is near is brigh
 shutter is open for half a control step: when the holder moves the picture fast, the picture is blurred along its
 motion.
 
-Which scope is fitted is decided by the surgical team for each procedure and is not reported to the holder: the two
-are told apart by how the picture moves when the holder does.
+Which scope is fitted is decided by the surgical team for each procedure and is not reported to the holder.
 
 **The camera head.** The camera head is clamped onto the scope's eyepiece by hand when the scope is set up for a
 procedure, at whatever angle the scrub nurse leaves it: its angle h on the eyepiece is anywhere within +-40 degrees of
 the eyepiece's reference mark (`holder_model.HEAD_ANGLE_MAX_DEG`; spread evenly over that range in the installations we
 know), and not reported to the holder. It turns the picture about the view direction (`R_WC` above,
 `holder_model.camera_pose(q, scope, head)`), so it decides which way the picture moves when a joint does, and where the
-horizon is: the roll that levels the picture is `holder_model.level_roll(pan, tilt, scope, head)`. It is identified,
-like the scope, from how the picture moves when the holder does.
+horizon is: the roll that levels the picture is `holder_model.level_roll(pan, tilt, scope, head)`.
 
 **The camera head is knocked during the procedure.** The camera cable is pulled, the head is bumped: once or twice in
 a procedure, equally often, the head turns on the eyepiece to another angle and stays there. The first time comes at a
@@ -94,8 +92,7 @@ one.
 control unit, routing, recording): 1, 2 or 3 control steps (0.1 to 0.3 s; `holder_model.LATENCY_STEPS`), each about
 equally common, the same for the whole procedure, and not reported. The frame in an observation shows the scene and
 the holder as they were that many control steps earlier (early in a procedure, a frame from before the start shows
-the start). The joint readings in the same observation are current. The latency shows in when the picture starts to
-move after a commanded motion.
+the start). The joint readings in the same observation are current.
 
 ## 5. The set-up in the operating room
 
@@ -110,8 +107,7 @@ move after a commanded motion.
   the tissue with an instrument, it follows the instrument: the left hand holds it while it dissects with the right
   and when it stretches the tissue aside, the right hand while it applies a clip; the tissue round the grip is dragged
   with the instrument's tip, fully at the grip and less with distance (a gaussian of 10 to 18 mm), and springs back when
-  the instrument lets go. Instruments that rest on the tissue move with it. A map of the tissue built from earlier
-  frames is out of date wherever the tissue has moved since.
+  the instrument lets go. Instruments that rest on the tissue move with it.
 * The surgeon works on the floor of the cavity in front of the camera trocar, roughly x within +-0.10 m and y from
   0.03 to 0.17 m, and the place of work travels through that area during a procedure.
 * The surgeon's two instruments come through trocars to the left and to the right of the camera trocar, nominally at
@@ -180,15 +176,17 @@ is not asked again until the next procedure begins. It happens when
   3 s after the work has moved to a new place, and those that overlap the 4 s from the moment the camera head is
   knocked (section 4) are not held against the holder.
 
-The score is still the fraction of usable steps: a takeover subtracts nothing, it only leaves the rest of that
-procedure without a usable view.
+**A procedure the surgeon took the camera back in counts 0.** A holder that had to be taken over did not assist that
+procedure: none of its steps counts as usable, the ones before the takeover included. Nothing else is subtracted, and
+the other procedures count as they are.
 
 **Which instruments count.** The surgeon's two instruments count; the assistant's never does. An exchange of
 instruments takes one of the surgeon's instruments out through its trocar for a while and brings it, or another
 instrument in its place, back. That instrument stops counting the moment it starts to withdraw and counts again when
 its tip is back within 10 mm of the place where it will work. While it is away, only the other one counts.
 
-The score of a procedure is the fraction of its control steps with a usable view. There is nothing else in it.
+The score of a procedure is the fraction of its control steps with a usable view, or 0 if the surgeon took the camera
+back in it. There is nothing else in it.
 
 ## 7. What differs from one procedure to the next
 
