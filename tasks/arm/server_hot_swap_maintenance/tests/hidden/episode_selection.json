@@ -1,0 +1,343 @@
+{
+ "rule": "candidates are taken in index order; a candidate is kept when the reference completed it (credit 1) in its run over the wire; the first N kept form the set. The set therefore holds only work orders the reference completes; it says nothing of the others' difficulty.",
+ "n": 10,
+ "order_salt": "srv-order-51b7",
+ "frozen_sha256": {
+  "srv_sim.py": "3080355267090e29fafae23af4da9a45d8229de7c3d15958579d9c9527fa7154",
+  "srv_env.py": "3f95fd39c20e4fc88a65def716429fbdf6e25c60d0a89e0f51000b3d3d4ae126",
+  "episode.py": "439f066e83e956ce815ddee8a80caced2900d0c535f769495e6e29380128d890",
+  "srv_grade.py": "07457ad64f454c34e0e12da8c311bec950d2fa7279a7890206878119e1d83702"
+ },
+ "graded_order": [
+  {
+   "unit": "u2",
+   "candidate": 5
+  },
+  {
+   "unit": "u7",
+   "candidate": 11
+  },
+  {
+   "unit": "u4",
+   "candidate": 7
+  },
+  {
+   "unit": "u1",
+   "candidate": 4
+  },
+  {
+   "unit": "u8",
+   "candidate": 12
+  },
+  {
+   "unit": "u9",
+   "candidate": 13
+  },
+  {
+   "unit": "u3",
+   "candidate": 6
+  },
+  {
+   "unit": "u0",
+   "candidate": 2
+  },
+  {
+   "unit": "u5",
+   "candidate": 8
+  },
+  {
+   "unit": "u6",
+   "candidate": 10
+  }
+ ],
+ "candidates": [
+  {
+   "index": 0,
+   "credit": 0.0,
+   "steps": 6000,
+   "end": "time",
+   "incident": null,
+   "failed_slots": [
+    9
+   ],
+   "failed_fan": 2,
+   "kept": false
+  },
+  {
+   "index": 1,
+   "credit": 0.0,
+   "steps": 6000,
+   "end": "time",
+   "incident": null,
+   "failed_slots": [
+    10
+   ],
+   "failed_fan": 3,
+   "kept": false
+  },
+  {
+   "index": 2,
+   "credit": 1.0,
+   "steps": 2483,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    2
+   ],
+   "failed_fan": 2,
+   "kept": true
+  },
+  {
+   "index": 3,
+   "credit": 0.0,
+   "steps": 4142,
+   "end": "incident",
+   "incident": "a fan module was dropped (f3)",
+   "failed_slots": [
+    3
+   ],
+   "failed_fan": 3,
+   "kept": false
+  },
+  {
+   "index": 4,
+   "credit": 1.0,
+   "steps": 2462,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    10
+   ],
+   "failed_fan": 2,
+   "kept": true
+  },
+  {
+   "index": 5,
+   "credit": 1.0,
+   "steps": 2162,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    0
+   ],
+   "failed_fan": 1,
+   "kept": true
+  },
+  {
+   "index": 6,
+   "credit": 1.0,
+   "steps": 2426,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    9
+   ],
+   "failed_fan": 2,
+   "kept": true
+  },
+  {
+   "index": 7,
+   "credit": 1.0,
+   "steps": 3055,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    1
+   ],
+   "failed_fan": 3,
+   "kept": true
+  },
+  {
+   "index": 8,
+   "credit": 1.0,
+   "steps": 2579,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    6
+   ],
+   "failed_fan": 0,
+   "kept": true
+  },
+  {
+   "index": 9,
+   "credit": 0.0,
+   "steps": 4139,
+   "end": "incident",
+   "incident": "a fan module was dropped (f0)",
+   "failed_slots": [
+    6
+   ],
+   "failed_fan": 0,
+   "kept": false
+  },
+  {
+   "index": 10,
+   "credit": 1.0,
+   "steps": 2308,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    0
+   ],
+   "failed_fan": 1,
+   "kept": true
+  },
+  {
+   "index": 11,
+   "credit": 1.0,
+   "steps": 2092,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    0
+   ],
+   "failed_fan": 0,
+   "kept": true
+  },
+  {
+   "index": 12,
+   "credit": 1.0,
+   "steps": 2182,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    8
+   ],
+   "failed_fan": 0,
+   "kept": true
+  },
+  {
+   "index": 13,
+   "credit": 1.0,
+   "steps": 2121,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    0
+   ],
+   "failed_fan": 2,
+   "kept": true
+  },
+  {
+   "index": 14,
+   "credit": 1.0,
+   "steps": 2082,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    1
+   ],
+   "failed_fan": 1,
+   "kept": false
+  },
+  {
+   "index": 15,
+   "credit": 0.0,
+   "steps": 6000,
+   "end": "time",
+   "incident": null,
+   "failed_slots": [
+    0
+   ],
+   "failed_fan": 3,
+   "kept": false
+  },
+  {
+   "index": 16,
+   "credit": 1.0,
+   "steps": 2055,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    5
+   ],
+   "failed_fan": 2,
+   "kept": false
+  },
+  {
+   "index": 17,
+   "credit": 1.0,
+   "steps": 2327,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    2
+   ],
+   "failed_fan": 2,
+   "kept": false
+  },
+  {
+   "index": 18,
+   "credit": 0.0,
+   "steps": 6000,
+   "end": "time",
+   "incident": null,
+   "failed_slots": [
+    3
+   ],
+   "failed_fan": 3,
+   "kept": false
+  },
+  {
+   "index": 19,
+   "credit": 1.0,
+   "steps": 2224,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    0
+   ],
+   "failed_fan": 1,
+   "kept": false
+  },
+  {
+   "index": 20,
+   "credit": 0.0,
+   "steps": 6000,
+   "end": "time",
+   "incident": null,
+   "failed_slots": [
+    10
+   ],
+   "failed_fan": 2,
+   "kept": false
+  },
+  {
+   "index": 21,
+   "credit": 1.0,
+   "steps": 2495,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    9
+   ],
+   "failed_fan": 2,
+   "kept": false
+  },
+  {
+   "index": 22,
+   "credit": 0.0,
+   "steps": 2932,
+   "end": "incident",
+   "incident": "overheat: fan bay 2 stayed empty too long",
+   "failed_slots": [
+    11
+   ],
+   "failed_fan": 0,
+   "kept": false
+  },
+  {
+   "index": 23,
+   "credit": 1.0,
+   "steps": 2100,
+   "end": "done",
+   "incident": null,
+   "failed_slots": [
+    4
+   ],
+   "failed_fan": 0,
+   "kept": false
+  }
+ ]
+}
