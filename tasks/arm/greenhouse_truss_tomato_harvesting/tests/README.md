@@ -291,3 +291,15 @@ session takes up to a minute, and one asked for in the sandbox's first minutes w
 cell, the rules, the rows, the reference or the grader changed; `environment/` did, so `ale validate` ran again
 (below). Also corrected: two stale comments (`task.toml`'s verifier estimate counted 600 frames; the Dockerfile's
 header named another task's cell).
+
+**2026-11-27, 16:56 to 17:04: `ale validate` again, on the tree with the warm-up.** Run `validate-75ad8c0a` on the
+tree of `9734d8af`, the pinned engine `bfb7505`:
+
+```
+ok    grounded-intelligence-initiative/greenhouse_truss_tomato_harvesting: untouched={'reward': 0.0}, oracle={'reward': 1.0}
+```
+
+Untouched 0.0 (no submission). Oracle: verify 426 s (the canary 127 s, the six rows 31 to 47 s each),
+`mean_row_yield` 1.00000 in the steps of every earlier run (218, 241, 270, 356, 251, 300), 27 of 27, probe lock 39 of
+40, no protective stop, the margins unchanged. `tests/anchor.json`: the value stays 1.0; its `source` now names this
+run (and the first one).
