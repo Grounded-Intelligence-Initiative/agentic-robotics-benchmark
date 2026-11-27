@@ -6,6 +6,12 @@
 # hand unscrews the lid in regrasp cycles and sets it down, drops the listed pieces in from the tray, puts the lid
 # back, turns it until it catches and then until the closing torque reaches 0.6 N m; both hands let go. Runs as the
 # agent account with the agent's timeouts and network policy; reads nothing outside solution/.
+#
+# Dual mode (experiment, never merged into main), for both items in this order (the program must be in place before
+# the graded start freezes it): 1. main's oracle above writes the reference and its token into the submission; 2.
+# play_graded.py starts the graded episode with the same token (the graded episode's service compares its sha256 with
+# the one it holds; at that start it freezes the submission folder, which then holds step 1's controller), plays it
+# with the same reference through ~/graded/client.py and finishes it.
 set -euo pipefail
 SUB="${ALE_HOME:-/home/user}/submission"
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -22,3 +28,5 @@ exec /opt/venv/bin/python3 -I oracle_main.py
 SH
 chmod +x "$SUB/run.sh"
 echo "[oracle] submission ready at $SUB" >&2
+MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa /opt/venv/bin/python3 -B "$HERE/play_graded.py"
+echo "[oracle] the graded episode is played and finished" >&2

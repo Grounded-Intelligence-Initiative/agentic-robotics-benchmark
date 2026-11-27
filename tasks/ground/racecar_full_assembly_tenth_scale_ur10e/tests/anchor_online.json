@@ -1,0 +1,8 @@
+{
+ "metric": "assembly_score",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 1.0,
+ "source": "the privileged reference program's own score on the graded episode hidden-3, the third episode of the fixed hidden set: the hidden-set selection kept it because the reference program fastens all 8 slots on it with no unplanned contact and no safety violation in three environments (tests/hidden/selection.json, rule 4); the graded episode's cell is the same cell on the same seed, stratum and layout digest, with the same privileged mode (oracle_nominal_layout false); measured 2026-11-24 in the task image (a local run of the graded episode's service, environment/setup/online, with the oracle driving it through the agent-side client): episode_score 1.0 (8 / 8 slots LOCKED, no safety violation, no unplanned contact, 172.1 s simulated, 253 s of wall clock); the same in ale validate validate-72a457f1 (engine bfb7505, the dual mode at bd336559)",
+ "note": "assembly_score is already on [0, 1]; the live item: the score of the one graded episode (the counted mates' weight / 11.5, times scoring.safety_violation_factor 0.3 after a hard safety violation)"
+}

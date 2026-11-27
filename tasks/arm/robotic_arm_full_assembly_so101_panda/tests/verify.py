@@ -1,4 +1,29 @@
-"""Grader of robotic_arm_full_assembly_so101_panda (the whole arm from loose parts, camera-only): runs as ROOT in the verify stage.
+"""Grader of robotic_arm_full_assembly_so101_panda (the whole arm from loose parts, camera-only), DUAL MODE (experimental;
+never merged into main): runs as ROOT in the verify stage.
+
+Dual mode: one session, one verify, two scoring items, reward = their mean.
+  * The offline item is main's grading, unchanged (everything below this paragraph, from main's tests/verify.py): the
+    agent's program /home/user/submission/assemble.py run on 3 hidden episodes, main's gates, budgets and score,
+    against main's anchor (tests/anchor_offline.json, byte-identical to main's tests/anchor.json). The program graded is
+    the one FROZEN at the earlier of the graded start and the start window's close (prep_s after the graded episode's
+    service started): the service had its root supervisor copy the submission into
+    /var/lib/arb-online/submission_snapshot then (before a start is charged); the submission at the session's end (the
+    one the engine restored here, as on main) only when the session ended before the window closed without a start, or
+    there is no usable record. A window-close copy that failed scores the program 0 (no fallback).
+  * The online item is the graded episode the agent played itself through that service
+    (environment/setup/online/service.py): the record /var/lib/arb-online/record.json, checked and scored by
+    tests/online_record.py against tests/anchor_online.json (its episode_score is this grader's per-episode value: the
+    cell's stage score, 0 with a safety violation).
+  * main() here, in this order: the lockdown below (_early_lockdown, at import: the agent account's processes stopped
+    as on main); the record read and checked; the frozen program put in place of the restored submission
+    (_frozen_program); main's offline grading (_main_locked, whose write_verdict now keeps the offline item's verdict
+    instead of writing it); the online item; reward = (offline reward + online reward) / 2, each the unrounded reward
+    against its own anchor, cap and full_at, written once through robotics_grader.ratio_rewards against
+    tests/anchor.json (dual_mode_score, 1.0 by construction), both items in the metrics (offline_*, online_*).
+  The hooks, all in this file: the docstring's paragraph, the import of online_record, write_verdict (kept, not
+  written), _offline_zero, _replace_submission, _frozen_program, _write_dual and main(); everything else is main's.
+
+Main's description of the offline grading follows.
 
 The agent left /home/user/submission/assemble.py (solve(cell): a camera-only program that assembles the hidden kit's
 whole arm with the Panda). Verification is separate (task.toml): this runs in a fresh verifier sandbox from the task
@@ -189,6 +214,7 @@ from arm.assembly_info import netaudit  # noqa: E402
 from arm.assembly_info.client import launcher_argv  # noqa: E402
 from common.seeds import seed_rng  # noqa: E402
 import episode_trace  # noqa: E402  (the maintainers' replay record; never a scoring input)
+import online_record  # noqa: E402  (dual mode: the graded episode's record and the frozen program; stdlib only)
 
 GT = os.path.join(STAGE_DIR, "gt")                               # the hidden kit: hardware-design/, derived/a2_assembly, derived/a2_info
 PANDA = os.path.join(ROOT_GIVEN, "panda")
@@ -449,17 +475,20 @@ def run_episode(cfg, seed, rn, privileged, kit_info, plan, trace_tag=None):
     return summary
 
 
+OFFLINE = {}             # dual mode: the offline item's verdict, kept by write_verdict for the combined verdict (main)
+OFFLINE_ANCHOR = "anchor_offline.json"      # main's tests/anchor.json, byte-identical
+ONLINE = os.path.join(STAGE_DIR, "online.json")
+
+
 def write_verdict(rewards, metrics):
-    """One gated `reward` in the benchmark kit's envelope (robotics_grader.ratio_rewards against anchor.json: value 1.0 =
-    the oracle, full_at 1.0, so reward = assembly_score x the gates); the gate, the criterion and every statistic go to
-    `metrics`. In the engine (`ALE_VERIFY_PYTHON` set) the kit writes reward.json and verification.json, the criteria
-    text as the `diagnostic`; the metrics keep the names and the filter of this grader's records on the earlier engine
-    API (finite numbers only, '.' and '/' in a name replaced by '_'). Elsewhere the envelope goes to
-    ROBOTICS_GRADER_VERDICT_PATH, else verdict.local.json in the stage folder."""
+    """The offline item's verdict (dual mode): built exactly as main's grader builds its verdict
+    (robotics_grader.ratio_rewards of assembly_score against main's anchor, here tests/anchor_offline.json, value 1.0 =
+    the oracle, full_at 1.0, so the item's reward = assembly_score x the gates; the metrics with main's names and filter:
+    finite numbers only, '.' and '/' in a name replaced by '_'), but kept in OFFLINE instead of written: main() writes the
+    task's one verdict, the mean of both items. Returns assembly_score."""
     from robotics_grader import ratio_rewards, read_anchor
-    from robotics_grader import write_verdict as kit_write_verdict
     overall = float(rewards["assembly_score"])
-    anchor, meta = read_anchor()
+    anchor, meta = read_anchor(OFFLINE_ANCHOR)
     extra = {k: float(v) for k, v in metrics.items()}
     extra.update({k: float(rewards[k]) for k in GATES + CRITERIA})
     verdict = ratio_rewards(overall, anchor, higher_is_better=meta.get("direction", "higher") == "higher",
@@ -467,6 +496,125 @@ def write_verdict(rewards, metrics):
     text = ("contract_ok %.0f (the program imports, exposes solve, passes the route gate and the network audit and steps the "
             "cell; no late write, no surviving process); assembly_score %.4f (episode mean of the fastened mates' weight / 18 "
             "on the hidden episodes, an episode with a safety violation scoring 0)") % (rewards["contract_ok"], rewards["assembly_score"])
+    recorded = {}
+    for k, v in sorted(verdict["metrics"].items()):
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(v):
+            recorded[k.replace(".", "_").replace("/", "_")] = v
+    OFFLINE.clear()
+    OFFLINE.update(rewards=dict(verdict["rewards"]), metrics=recorded, diagnostic=text, assembly_score=overall)
+    return overall
+
+
+def _offline_zero(reason, metrics):
+    """The offline item at 0 without running the program (dual mode: the program was frozen over the submission's size
+    cap, or its window-close freeze failed)."""
+    log("[grader] offline item 0: " + reason)
+    recorded = {k.replace(".", "_").replace("/", "_"): float(v) for k, v in metrics.items()
+                if isinstance(v, (int, float)) and math.isfinite(float(v))}
+    recorded.update({"ratio": 0.0, "contract_ok": 0.0, "assembly_score": 0.0})
+    OFFLINE.clear()
+    OFFLINE.update(rewards={"reward": 0.0}, metrics=recorded, diagnostic="offline item 0: " + reason, assembly_score=0.0)
+
+
+def _replace_submission(src):
+    """The restored /home/user/submission becomes a copy of the frozen program `src` (regular files and directories only,
+    as main's snapshot keeps them), and main's root-owned snapshot of the submission (SNAPSHOT, taken by _early_lockdown
+    from the restored one) is taken again from it: main's grading below then runs on the frozen program."""
+    os.makedirs(SUBMISSION, exist_ok=True)
+    for name in os.listdir(SUBMISSION):
+        p = os.path.join(SUBMISSION, name)
+        if os.path.isdir(p) and not os.path.islink(p):
+            shutil.rmtree(p)
+        else:
+            os.unlink(p)
+    runner.copy_regular_files(src, SUBMISSION)
+    os.makedirs(RUNS_ROOT, exist_ok=True)
+    os.chmod(RUNS_ROOT, 0o755)
+    lockdown.snapshot_dir(SUBMISSION, SNAPSHOT)
+
+
+def _frozen_program(rec, why):
+    """Step 3 of the dual mode (the freeze): which program the offline item grades. The service froze the program at the
+    earlier of the graded start and the start window's close (prep_s after its start); `rec` is its record in either
+    case (online_record.read_record). Returns (mode, info):
+      "snapshot": the record says the program was frozen (started, or prep_window_closed) and the copy is whole: the
+          frozen copy (its file count and digest checked against the record; a mismatch is a task error) replaces the
+          restored submission;
+      "zero": the program was frozen over the offline submission's size cap (nothing was copied), or its window-close
+          copy failed: the offline item scores 0 (it never falls back to the session-end submission);
+      "session_end": the session ended before the start window closed, without a start, or there is no usable record:
+          the submission the engine restored, the session's end, graded as on main."""
+    frozen = rec is not None and (rec.get("started") is True or rec.get("prep_window_closed") is True)
+    if not frozen:
+        why_end = ("no usable record of the graded episode (%s)" % why) if rec is None else \
+            "the session ended before the start window closed, without a start"
+        return "session_end", {"status": "not_frozen", "reason": why_end + ": the program in the submission folder at "
+                                                                         "the session's end is graded"}
+    at = rec.get("snapshot_at") or ("graded_start" if rec.get("started") is True else "prep_window")
+    status = rec.get("snapshot_status")
+    if status == "too_large":
+        return "zero", {"status": "too_large", "at": at, "reason": "the program in /home/user/submission was over the "
+                                                                   "submission's size cap when it froze (at %s): "
+                                                                   "nothing of it is graded" % at}
+    if status != "ok":
+        if rec.get("started") is not True and at == "prep_window":
+            return "zero", {"status": "freeze_failed", "at": at,
+                            "reason": "the program could not be frozen when the start window closed (snapshot_status "
+                                      "%r): the program item scores 0, with no fallback to the submission at the "
+                                      "session's end" % (status,)}
+        fail("the record says the program was frozen (at %s) but holds no usable copy (snapshot_status %r)" % (at, status))
+    files, size, digest = online_record.snapshot_digest()
+    if digest != rec.get("snapshot_sha256") or files != rec.get("snapshot_files"):
+        fail("the frozen program (%d files, sha256 %s) does not match its record (%r files, sha256 %r)" % (
+            files, digest, rec.get("snapshot_files"), rec.get("snapshot_sha256")))
+    if os.getuid() == 0:
+        _replace_submission(online_record.SNAPSHOT_DIR)
+    return "snapshot", {"status": "ok", "at": at, "files": files, "bytes": size, "sha256": digest,
+                        "reason": "the program frozen at %s (%d files, %d bytes) is graded" % (at, files, size)}
+
+
+def _write_dual(mode, frozen, rec, on):
+    """Steps 6 and 7 of the dual mode: reward = (offline reward + online reward) / 2, each the item's unrounded reward
+    against its own anchor, cap and full_at; written once, through robotics_grader.ratio_rewards against
+    tests/anchor.json (dual_mode_score, 1.0 by construction), with both items' metrics (offline_*, online_*)."""
+    from robotics_grader import ratio_rewards, read_anchor
+    from robotics_grader import write_verdict as kit_write_verdict
+    off_r = float(OFFLINE["rewards"]["reward"])
+    on_r = float(on["rewards"]["reward"])
+    combined = (off_r + on_r) / 2.0
+    anchor, meta = read_anchor()
+    extra = {"offline_reward": off_r, "online_reward": on_r,
+             "offline_assembly_score": float(OFFLINE.get("assembly_score", 0.0)),
+             "online_assembly_score": float(on.get("assembly_score", 0.0)),
+             "snapshot_ok": 1.0 if frozen.get("status") == "ok" else 0.0,
+             "snapshot_files": float(frozen.get("files", 0) or 0), "snapshot_bytes": float(frozen.get("bytes", 0) or 0),
+             "offline_graded_frozen_program": 1.0 if mode == "snapshot" else 0.0,
+             "offline_graded_session_end": 1.0 if mode == "session_end" else 0.0,
+             "snapshot_at_graded_start": 1.0 if frozen.get("at") == "graded_start" else 0.0,
+             "snapshot_at_prep_window": 1.0 if frozen.get("at") == "prep_window" else 0.0,
+             "online_started": 0.0 if rec is None else 1.0}
+    for r in online_record.END_REASONS:
+        extra["online_end_reason." + r] = 1.0 if (rec is not None and rec.get("ended") and rec.get("end_reason") == r) else 0.0
+    for prefix, item in (("offline_", OFFLINE), ("online_", on)):
+        for k, v in sorted((item.get("metrics") or {}).items()):
+            name = prefix + str(k)
+            if name not in extra:
+                try:
+                    f = float(v)
+                except (TypeError, ValueError):
+                    continue
+                if math.isfinite(f):
+                    extra[name] = f
+    verdict = ratio_rewards(combined, anchor, cap=1.0, higher_is_better=True,
+                            metric_name=meta.get("metric", "dual_mode_score"), locks_ok=True, extra=extra,
+                            full_at=meta.get("full_at", 1.0))
+    text = ("dual_mode_score %.4f = (offline item %.4f + online item %.4f) / 2. Offline item (%s): %s. Online item: %s"
+            % (combined, off_r, on_r, frozen.get("reason"), OFFLINE.get("diagnostic"), on.get("diagnostic")))
+    log("[grader] " + text)
     if os.environ.get("ALE_VERIFY_PYTHON"):
         recorded = {}
         for k, v in sorted(verdict["metrics"].items()):
@@ -477,10 +625,10 @@ def write_verdict(rewards, metrics):
             if math.isfinite(v):
                 recorded[k.replace(".", "_").replace("/", "_")] = v
         kit_write_verdict({"rewards": verdict["rewards"], "metrics": recorded}, diagnostic=text)
-        return overall
+        return combined
     kit_write_verdict(verdict, path=os.environ.get("ROBOTICS_GRADER_VERDICT_PATH")
-                      or os.path.join(STAGE_DIR, "verdict.local.json"))
-    return overall
+                      or os.path.join(STAGE_DIR, "verdict.local.json"), diagnostic=text)
+    return combined
 
 
 def _restore_modes():
@@ -511,11 +659,21 @@ def main():
               "submission_late_writes", "late_writes_quarantined", "late_write_gate_active", "submission_snapshot"):
         metrics[k] = float(EARLY.get(k, -1.0 if k == "stage_lock_latency_ms" else 0.0))
     try:
-        _main_locked(cfg, rewards, metrics)
+        online = load_json(ONLINE)
+        rec_any, why_any = online_record.read_record(online)         # 2. the graded episode's record
+        rec, why = online_record.load_record(online)                 # ... of a started episode (O9)
+        mode, frozen = _frozen_program(rec_any, why_any)             # 3. the program the offline item grades
+        log("[grader] dual mode: %s" % frozen["reason"])
+        if mode == "zero":
+            _offline_zero(frozen["reason"], metrics)
+        else:
+            _main_locked(cfg, rewards, metrics)                      # 4. main's offline grading, unchanged
+        on = online_record.online_verdict(rec, why)                  # 5. the online item
+        _write_dual(mode, frozen, rec, on)                           # 6, 7. the mean, written once
     finally:
         _restore_modes()
         if FREEZER[0] is not None:
-            FREEZER[0].stop()                       # after the verdict (written by _main_locked); the frozen stay stopped
+            FREEZER[0].stop()                       # after the verdict (written by _write_dual); the frozen stay stopped
 
 
 def _main_locked(cfg, rewards, metrics):

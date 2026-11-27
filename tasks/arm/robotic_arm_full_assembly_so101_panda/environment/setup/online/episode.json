@@ -1,0 +1,8 @@
+{
+ "episode": "graded-01",
+ "seed": 7285987757863183689,
+ "seed_sha256": "6595eabd8680db6ffff19484315f61772792049a578a8ac640e94b831d89b982",
+ "oracle_token_sha256": "6b17fde5b280516c295d30fbbc1d203d915b8171932eb9a895238142315262f1",
+ "draw": "2026-11-24T04:33:26Z, with OS entropy: python3 -c 'import secrets; print(secrets.randbits(63))' -> the seed, a 63-bit episode seed as the offline verifier draws one per hidden episode (tests/verify.py: seed_rng(...).derive('episodes').seeds(n, bits=63)); the cell builds the episode from it exactly as offline (FullArmInfoServer.reset in the hidden mode: the jittered bench layout around tests/hidden/bench_plan.json, the fixture's jitter, the cameras' mounts and lenses, the lighting, the F/T bias)",
+ "note": "root-only in the setup stage (/opt/ale/setup, 0700): the service's worker reads it as root before it drops privileges; oracle_token_sha256 = tests/hidden/oracle_token.sha256"
+}

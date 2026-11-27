@@ -1,8 +1,8 @@
 {
  "direction": "higher",
  "full_at": 1.0,
- "metric": "assembly_score",
- "note": "assembly_score is the episode mean of the fastened mates' weight / 18 times the gates, already on [0, 1]; ratio = score / 1.0, reward = ratio",
- "source": "the oracle's own measured assembly_score under ale validate: the privileged reference assembler fastens all 15 mates on every hidden episode (validate-615b0cef and validate-fd4d0991, 2026-10-22)",
+ "metric": "dual_mode_score",
+ "note": "dual mode (experimental): reward = (offline reward + online reward) / 2, each the item's unrounded reward (robotics_grader.ratio_rewards against its own anchor: tests/anchor_offline.json, main's anchor.json byte-identical, and tests/anchor_online.json; both assembly_score with value 1.0 and full_at 1.0); the mean is written through ratio_rewards once more against this anchor with cap 1.0 and full_at 1.0, so the reward is the mean itself. The offline item grades the program frozen at the earlier of the graded start and the start window's close (or at the session's end when the session ends before the window closes without a start) exactly as main does; the online item scores the graded episode's record (tests/online_record.py).",
+ "source": "By construction: each item is normalised by its own measured anchor (the privileged reference assembler fastens all 15 mates offline on every hidden episode, main's anchor, and on the graded episode online, tests/anchor_online.json), so an oracle that reaches both anchors scores 1.0. Confirmed by ale validate's oracle pass: validate-c0ab404d (2026-11-24, engine bfb7505, a clean checkout of 7cdfa917 made with umask 022): dual_mode_score 1.0 = (offline reward 1.0 + online reward 1.0) / 2; the offline item graded the privileged program frozen at the graded start (2 files) on the three hidden episodes as main does (15 / 15 mates on each, 4414 s of verify); the online item scored graded-01: 15 / 15 mates, 481.7 s simulated. Untouched: 0.0.",
  "value": 1.0
 }

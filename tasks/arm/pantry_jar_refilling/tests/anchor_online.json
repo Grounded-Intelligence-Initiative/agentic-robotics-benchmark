@@ -1,0 +1,8 @@
+{
+ "metric": "mean_episode_credit",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 0.98,
+ "note": "the dual mode's graded-episode item: the credit (episode.Episode.score: the listed jars done over the two listed, halved for a disturbed unlisted jar, a fallen jar or a piece off the counter; 0 after an unstable simulation) of the ONE graded episode the agent plays itself, read from the graded episode's record (/var/lib/arb-online/record.json); ratio = credit / value, reward = clamp(ratio / full_at, 0, 1). full_at as on main.",
+ "source": "the privileged reference (solution/solve.sh: main's reference, oracle/reference.py driven by oracle/wire_world.Oracle on the token's truth) played by the oracle through the agent-side client on the graded episode ep06 (unit u1): measured credit 1.0 (both listed jars, mint and sugar, filled and closed again; not halved; no fault) in a container of the dual mode's task image on 2026-11-24, ending at step 5692, the same step as this episode's run in main's anchor validate (validate-d09be24d, episode 6: credit 1.0, 5692 steps), so the graded episode reproduces the offline episode step for step; confirmed by the dual mode's validate, validate-f08649b8 (engine bfb7505, commit ceb6204f): credit 1.0 on ep06, step 5692."
+}

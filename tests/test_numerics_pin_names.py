@@ -134,7 +134,9 @@ class PantryJarRefilling(unittest.TestCase):
         check = (self.TASK / "tests/numerics_check.py").read_text()
         self.assertIn('CONTROLLER_ENV = {"PATH": "/opt/venv/bin:/usr/local/bin:/usr/bin:/bin", "HOME": "/tmp", "LANG": "C.UTF-8"}', check)
         self.assertIn("env=dict(CONTROLLER_ENV)", check)
-        verify = (self.TASK / "tests/verify.py").read_text()
+        # main's verifier (in the dual mode of the experimental branch it lives on byte for byte as
+        # tests/offline_verify.py, which the dual tests/verify.py runs for the program item)
+        verify = (self.TASK / "tests/offline_verify.py").read_text()
         self.assertIn('"PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin"', verify, "run.sh starts with this PATH")
         self.assertIn('json.load(fh)["fingerprint"]', verify)
 

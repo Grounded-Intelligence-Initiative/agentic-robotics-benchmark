@@ -1,10 +1,20 @@
 # Refill the pantry jars
 
 You are a robotics engineer. Two Franka Pandas stand side by side at a kitchen counter with three screw-top jars and
-a tray of refill pieces. They see through cameras and feel through wrist force sensors. Write the controller that
-refills the jars on a refill list. It runs closed loop against a simulator and is graded on jars and counters you have
-not seen. You have 2 hours of wall time (see "Session time" below for how to read the time left). Whatever is in
-`/home/user/submission/` when the time ends is graded, so keep a working controller there.
+a tray of refill pieces. They see through cameras and feel through wrist force sensors. The job is to refill the jars
+on a refill list, on jars and counters you have not seen. You are scored on **two items, equally weighted**:
+
+1. **The controller**: a controller that refills the jars, which you leave in `/home/user/submission/` and which the
+   grader runs closed loop against the simulator on 12 hidden episodes ("Your controller").
+2. **The graded episode**: one of those hidden episodes, which you play yourself, live, through the graded episode's
+   service, step by step, with whatever programs you write ("The graded episode").
+
+The controller graded is the one in `/home/user/submission/` at the moment you start the graded episode, or when its
+start window closes if you have not started it by then: that folder is frozen at that moment, and nothing you change
+in it afterwards counts ("How you are scored"). You have **2 hours** to prepare, shared by both items (writing and
+testing the controller, getting ready for the graded episode); start the graded episode within them, with your
+controller in place. From its start you have up to **3 hours** to play it. The session lasts at most 5 hours (see
+"Session time" below for how to read the time left).
 
 **The counter.** World frame: z up, metres; the counter top is at z = 0.80. The left arm's base is at (0, 0.28), the
 right arm's at (0, -0.28), both facing +x.
@@ -68,7 +78,9 @@ values are not given: your controller has to find out, for example from the wris
 | `task_card.md` | The counter's numbers in one place. |
 | `practice_grader/grade.py` | Runs your controller over the wire, as the grader does, on the practice units; prints the raw credit. |
 | `helpers/wire_skeleton.py` | Optional boilerplate for the wire (no control logic): copy it into your submission. |
-| `session_time.sh` | Prints the minutes of your session used and left (see "Session time"). |
+| `session_time.sh` | Prints the minutes of your session used and left, and of the 2-hour preparation window (see "Session time"). |
+| `graded/client.py` | The client of the graded episode's service: `connect_graded()`, then `start`, `step`, `observe`, `status`, `finish` (see "The graded episode"). |
+| `graded/run_graded.py` | Runs your controller (`run.sh`) in the graded episode over the grading wire (see "The graded episode"). |
 
 Python is `/opt/venv/bin/python3` (MuJoCo 3.16, numpy, scipy, OpenCV, Pillow; robosuite 1.5.2's robot model files).
 There is no network.
@@ -133,7 +145,8 @@ An episode ends at the first of:
   - both hands (the gripper sites) are at least 12 cm from every jar's top;
 - an unstable simulation (an arm joint faster than 8 rad/s, or a jar, lid or piece faster than 5 m/s), which scores 0.
 
-The score is the mean credit over the graded episodes.
+Your controller's result is the mean credit over its graded episodes, and the graded episode's is its credit ("How
+you are scored").
 
 ## Observation and action
 
@@ -176,7 +189,21 @@ Joint angles in an action (a null-space posture, a joint step's q) are clipped t
 wrist. Images are large (a 640 x 480 image is about 1.2 MB on the wire) and each one you ask for costs 0.2 s of your
 controller's time budget (see "Grading"), so ask for one only when you need it.
 
-## Deliverable and grading
+## How you are scored
+
+The score is the mean of the two items, each relative to its own hidden reference value: your controller's (the mean
+credit over the 12 hidden episodes, "Your controller") and the graded episode's (its credit, "The graded episode").
+
+**The freeze.** The controller graded is the one in `/home/user/submission/` at the earlier of two moments: when you
+start the graded episode (before anything of it is simulated), or when its start window closes (2 hours after the
+service's start, below) if you have not started it by then. At that moment the graded episode's service copies the
+folder out of your reach (regular files and folders only, symbolic links skipped; with more than 5000 files or 200 MB,
+or more than 20,000 entries or 32 levels of folders, nothing is copied and the controller scores 0), and the grader
+runs that copy. Nothing you change in the folder afterwards counts, so the controller can use neither what you see in
+the graded episode nor the time after the window: finish it before you start. Only if your session ends before the
+start window closes, without a start, is the controller graded the one in the folder when the session ends.
+
+## Your controller (the first item)
 
 Put your controller in `/home/user/submission/` with a `run.sh`.
 
@@ -242,16 +269,82 @@ episode, not on your replies.
 - **The grading sandbox** has 4 CPUs and 12 GB of memory, like yours, and the same image.
 - **One process.** Your controller runs as one process for the whole run, so it may carry what it learns from one
   episode to the next.
+- **Which controller.** The controller graded is the one frozen when you start the graded episode, or when its start
+  window closes ("How you are scored").
+
+## The graded episode (the second item: one episode you play live)
+
+You play one episode yourself, live, during this session: the **graded episode**, one of the 12 hidden episodes your
+controller is graded on (a scored unit's jars, with that episode's jar places, refill list, tray and noise; the
+observation names the unit). It is that episode on the grader's simulator with the same rules: at most 12000 control
+steps (20 simulated minutes), the end after 20 finished steps, the credit, and the unstable simulation or simulator
+fatal error that score 0 ("Credit"). The simulation advances only with your steps, never while you think. No
+controller process is involved: no time budget, no image price, no deadline per request, no restarts, no repeated
+step indices, no `READY`. You drive it from your session with scripts of your own (`/opt/venv/bin/python3`):
+
+```python
+import sys; sys.path.insert(0, "/home/user/graded")
+from client import connect_graded, decode_image
+
+g = connect_graded()           # the graded episode's service; once the episode has started, this resumes it
+print(g.status())              # started, ended, steps, images, the windows' time left
+obs = g.start()                # ONCE per session: your controller is frozen; the first observation (five images)
+hold = {"l": [0, 0, 0, 0, 0, 0, -1], "r": [0, 0, 0, 0, 0, 0, -1], "cams": 0}
+for _ in range(20):
+    obs = g.step(hold)         # the action format above; returns the next observation
+g.close()                      # the episode stays where it is (no simulated time passes)
+
+g = connect_graded()           # later, from another script: continue where it stands
+obs = g.observe()              # the latest observation again, images included; nothing is simulated
+obs = g.step(dict(hold, cams=1))       # the overhead image in the next observation
+g.finish()                     # ends the graded episode now
+```
+
+`/opt/venv/bin/python3 /home/user/graded/run_graded.py --start` runs your controller (`run.sh`, from a fresh copy of
+the submission) in the graded episode as the grading wire would: `reset`, then `act` with the episode's own step index
+`t` (not 0 when it continues an episode). Without `--start` it continues the episode where it stands; `--steps N`
+stops after N steps (the episode stays where it is), `--finish` ends the episode when the run stops. It applies the
+wire's deadlines (`READY` within 120 s, each reply within 30 s), and a missed one stops the run with nothing applied
+for that step.
+
+- **Once, and persistent.** `start()` is accepted once per session: it is charged the moment it is accepted and never
+  refunded (later calls raise `GradedError("already_started")`). The episode lives in the service, not in your
+  connection or script: a script that ends, crashes or closes its connection leaves it where it is, and the next
+  `connect_graded()` resumes it. One connection at a time: `connect_graded()` raises `GradedError("busy")` while
+  another connection holds the episode (end that script first); a connection that sends nothing for 900 s is closed.
+  A malformed action is refused (`GradedError("bad_action")`) and simulates nothing.
+- **Practice stays yours.** The simulator, the practice units, the practice grader and everything you wrote stay
+  available before and after the start: they run the given files on the practice units, never on a scored unit.
+- **Two windows.** Start the graded episode within 2 hours of the service's start (the service starts with your
+  sandbox, a few minutes before your session begins; `status()["prep_window_left_s"]` counts down); after that
+  `start()` raises `GradedError("prep_window_closed")`, this item scores 0, and your controller is graded as it was in
+  the folder when the window closed. Once started, the episode lasts at most 3 hours of wall clock
+  (`status()["graded_window_left_s"]`).
+- **How it ends.** At its own end (12000 steps, 20 finished steps, an unstable simulation or a simulator fatal error),
+  when you call `finish()`, when its 3 hours run out, or when your session ends, whichever comes first. It is then
+  credited as it stands, as "Credit" credits an episode at its end: nothing is simulated after the end. If your session
+  ends first, the episode counts as it stood after your last step. Once it has ended, the service answers `status()`,
+  `observe()` and `finish()` only (`GradedError("episode_over")` to a step).
+- **How it is scored.** This item is the episode's credit ("Credit": 0, 0.5 or 1, halved by its penalties), relative to
+  its own hidden reference value. The service tells you nothing about the credit (`done` says only that the episode is
+  over): judge the jars by what you see and feel.
+
+The time budget, the image price, the deadlines, the restarts and the repeated step indices are your controller's, in
+its 12 hidden episodes and in the practice grader; the graded episode has none of them.
 
 ## Session time
 
-Your session is stopped 2 hours after it started, and what is in `/home/user/submission/` at that moment is graded.
-- **How to read the time.** `bash /home/user/session_time.sh` prints the minutes used and the minutes left, from a
-  time stamp written when your sandbox was set up (a few minutes before your session started, so you have slightly
-  more than it says, never less). Run it whenever you plan your next step; do not estimate the time from memory or
-  from how much work you have done.
-- **Use the time.** Stopping early earns nothing: the score is the controller's, not the session's. If the script
-  says there is time left, there is.
+Your session is stopped 5 hours after it started: the 2-hour preparation window, then the graded episode's up to 3
+hours. Your controller is graded as frozen at the graded start, or at the close of the preparation window if you have
+not started by then; the graded episode as it stood after your last step.
+- **How to read the time.** `bash /home/user/session_time.sh` prints the minutes used and the minutes left of the
+  2-hour preparation window and of the 5-hour session, from a time stamp written when your sandbox was set up (a few
+  minutes before your session started, and just before the graded episode's service started, so you have slightly
+  more than it says, never less). Once the graded episode has started, `status()` gives its own time left. Run it
+  whenever you plan your next step; do not estimate the time from memory or from how much work you have done.
+- **Use the time.** Stopping early earns nothing: the score is your controller's and your graded episode's, not the
+  session's. If the script says there is time left, there is.
 - **Keep a working controller in the folder** from early on, and put a new version there only after you have run it.
-  Make your last change at least 10 minutes before the end: an edit that is cut off, or never run, is what gets
-  graded.
+  It is frozen when you start the graded episode, or when the preparation window closes: make your last change before
+  that, and at least 10 minutes before the window closes if you have not started; an edit that is cut off, or never
+  run, is what gets graded.

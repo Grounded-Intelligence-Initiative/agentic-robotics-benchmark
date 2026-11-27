@@ -1,0 +1,9 @@
+{
+ "task": "tensegrity_strut_assembly_3bar_panda",
+ "episode": "graded-01",
+ "seed_sha256": "8f65ccbacab33285617524403467b3ee0b2e25a19c34d6912fd5c06ab375051f",
+ "record": "/var/lib/arb-online/record.json",
+ "format": "arb-online-record/1",
+ "draw": "2026-11-24T04:32:38Z, with OS entropy: python3 -c 'import secrets; print(secrets.randbits(63))', one episode seed in the offline verifier's own seed width (it draws 3 fresh 63-bit seeds per verify: tests/verify.py, stream.derive('episodes').seeds(n, bits=63)). The episode id is graded-01; seed_sha256 is the sha256 of the seed's decimal ASCII form. The seed itself lives root-only in environment/setup/online/episode.json (the service's worker reads it as root before it drops privileges).",
+ "note": "the graded episode of the online item, the same for every model: verify.py checks the record's task, episode and seed_sha256 against this file"
+}

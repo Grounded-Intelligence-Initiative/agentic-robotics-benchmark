@@ -1,5 +1,5 @@
 {
- "given/cell/cell_api.md": "266753463b467b3c435f3212db77464be0a8d4e3e149bc33afe14e84f64d2c67",
+ "given/cell/cell_api.md": "6e28ee2ade695c729ca7b97ef507d8dcb6c61146be9d1a81f129686624ee7a6a",
  "given/cell/cell_config.json": "2c2099709967b3ab9926a28f4a6d1de95f9d5eaf43e7d5f7f79a757ea3bc6865",
  "given/cell/cell_manual.md": "0b20a75686f841682bc5ed5c786998bbe6848d3223377400b2e6b4418d13bb8a",
  "given/kit.json": "fa26fc59cd84494dae61d7ed3f3818a70e220af04c05122b0faf9d1b5626072b",
@@ -21,6 +21,7 @@
  "given/lib/arm/assembly_info/cell_info.py": "0210b492dd77e69149c783692575594393fbefa3188dbff9c83aef4438bb6d06",
  "given/lib/arm/assembly_info/cell_render.py": "7bff622355dc58e2812e2ef450ddb88ecfc34ad464868cc57674cd914157a8ee",
  "given/lib/arm/assembly_info/client.py": "4f6fb4a5703c7e4aa3092af541ca55a3ffa0b6974dd09032cb4a411838a1323c",
+ "given/lib/arm/assembly_info/graded.py": "533e61c4ab5156c0ffde99c30fc7e7035121f45d4d8b35a061a79aa9908d2e9a",
  "given/lib/arm/assembly_info/layout_info.py": "d1c9441bdef4a4bc2dee37281381f221cbfed8ed601c98f32fbc80d16311dec2",
  "given/lib/arm/assembly_info/netaudit.py": "e7ab773f22a95ad9a02100fa419293a0a75086f96d7f188dc240c9eb47922916",
  "given/lib/arm/assembly_six/__init__.py": "0ebca951a6eba8a15de1fea5efc05c7604fed007df6d32161702280ad83ad4b7",

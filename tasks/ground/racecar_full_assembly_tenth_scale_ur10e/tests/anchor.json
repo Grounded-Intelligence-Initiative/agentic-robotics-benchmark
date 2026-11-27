@@ -1,8 +1,8 @@
 {
+ "metric": "dual_mode_score",
  "direction": "higher",
+ "value": 1.0,
  "full_at": 1.0,
- "metric": "assembly_score",
- "note": "assembly_score = contract_ok x the mean over the four fixed hidden episodes of stage_e x (1 if the episode is hard_ok, else grader_config.json scoring.safety_violation_factor = 0.3), stage_e = the counted mates' weight / 11.5; already on [0, 1]; ratio = score / 1.0, reward = ratio",
- "source": "the oracle's own assembly_score by construction: the privileged reference program inside the cell fastens all 8 slots on each of the four fixed hidden episodes, which the hidden-set selection requires of every kept episode (tests/review/select_set.py, rule 4); every ale validate of the task records it (oracle 1.0)",
- "value": 1.0
+ "source": "1.0 by construction (the mean of the program item, main's assembly_score against main's anchor in anchor_offline.json, and the live item, the graded episode's assembly_score against the online anchor in anchor_online.json, each normalised by its own measured anchor), confirmed 2026-11-24 by ale validate validate-72a457f1 (engine bfb7505, the dual mode at bd336559): the oracle scored dual_mode_score 1.0 (offline_reward 1.0: main's privileged reference program frozen at the graded start, the 4 fixed hidden episodes, 8 / 8 slots each, every layout digest checked; online_reward 1.0: the privileged reference program on hidden-3, 8 / 8); untouched 0.0",
+ "note": "dual mode: reward = (offline_reward + online_reward) / 2; the components' anchors are anchor_offline.json (main's anchor.json, byte-identical) and anchor_online.json (the live item's)"
 }

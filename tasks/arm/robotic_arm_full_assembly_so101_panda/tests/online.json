@@ -1,0 +1,9 @@
+{
+ "task": "robotic_arm_full_assembly_so101_panda",
+ "episode": "graded-01",
+ "seed_sha256": "6595eabd8680db6ffff19484315f61772792049a578a8ac640e94b831d89b982",
+ "record": "/var/lib/arb-online/record.json",
+ "format": "arb-online-record/1",
+ "draw": "2026-11-24T04:33:26Z, with OS entropy: python3 -c 'import secrets; print(secrets.randbits(63))', one 63-bit episode seed in the offline verifier's own seed width (its hidden episodes are drawn per run, 63 bits each, around the fixed hidden bench plan tests/hidden/bench_plan.json, on the hidden kit tests/gt). The episode id is graded-01; seed_sha256 is the sha256 of the seed's decimal ASCII form. The seed itself lives root-only in environment/setup/online/episode.json (the service's worker reads it as root before it drops privileges).",
+ "note": "the graded episode of the dual mode's online item, the same for every model: verify.py checks the record's task, episode and seed_sha256 against this file"
+}

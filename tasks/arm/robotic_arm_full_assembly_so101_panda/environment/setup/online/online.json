@@ -1,0 +1,33 @@
+{
+ "task": "robotic_arm_full_assembly_so101_panda",
+ "episode": "episode.json",
+ "cell_dir": "/opt/arb-online-cell",
+ "cell_config": "grader_config.json",
+ "kit_dir": "gt",
+ "kit_info": "gt/kit_info.json",
+ "bench_plan": "hidden/bench_plan.json",
+ "cache_dir": "/var/cache/arb-online-cell",
+ "panda_dir": "/opt/task-assets/payload/given/panda",
+ "user": "arbcell",
+ "agent_user": "user",
+ "socket": "/run/arb-online/cell.sock",
+ "state_dir": "/var/lib/arb-online",
+ "prep_s": 21600,
+ "graded_s": 10800,
+ "idle_timeout_s": 900,
+ "send_timeout_s": 300,
+ "call_timeout_s": 900,
+ "record_min_interval_s": 0.5,
+ "requests_log_max_bytes": 33554432,
+ "max_restarts": 3,
+ "start_timeout_s": 1500,
+ "require_seccomp": true,
+ "trace_every_s": 300,
+ "snapshot_max_bytes": 62914560,
+ "env": {
+  "MUJOCO_GL": "osmesa",
+  "PYOPENGL_PLATFORM": "osmesa",
+  "ARB_AGENT_RENDER_DIR": "/opt/task-assets/payload/render",
+  "MESA_SHADER_CACHE_DISABLE": "true"
+ }
+}

@@ -47,6 +47,20 @@ CPU-time backstop of 4 x the wall cap applies per process; every process of the 
 episode ends; a program that breaks the wire (crash, malformed line, exit) ends ITS episode with what it achieved so
 far and the other episodes still run.
 
+## The graded episode
+
+Besides the program, you play one hidden episode of this cell yourself during your session (the instruction says how
+it is drawn and scored). `arm.assembly_info.client.connect_graded()` connects to its service over a Unix socket
+(`/run/arb-graded/graded.sock`, or `$ARB_GRADED_SOCKET`) and returns a `GradedCell`: the calls above, plus `status()`,
+`start()` and `close()`; a `solve(cell)` runs on it unchanged. Before `start()` every call except `status()` answers
+`not_started`. The episode keeps the per-episode rules of this cell (650 s of simulated time, 450 camera frames, at
+most 500 ticks per `step`, the safety rules and the safety factor, the same `describe()`); the program's wall-clock cap
+(3100 s), its silence rule (120 s) and its CPU-time backstop do not apply to it, although `describe()["budgets"]` lists
+them: nothing moves between your requests. It lives in the service, not in your connection: closing the connection
+(`close()`, or the end of your script) leaves it where it is and the next `connect_graded()` resumes it; one connection
+at a time (another one raises `CellError("busy: ...")`); `finish()` ends it for good. An error of the service raises
+`CellError("<code>: <detail>")`; the cell's own errors are the ones above.
+
 ## Rendering your own frames
 
 MuJoCo's own renderer (`mujoco.Renderer`, or the render layer's `"mujoco"` backend) draws a different picture than the

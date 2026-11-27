@@ -1,0 +1,15 @@
+{
+ "note": "the dual mode's graded episode, for the verifier's cross-check of the record (tests/verify.py). The graded episode is one episode of the offline grader's fixed hidden set (hidden/episodes.json: 12 episodes in the grader's order), drawn once with OS entropy; the episode, its unit and its seed live root-only in environment/setup/online/episode.json, where the graded episode's service reads them. seed_sha256 = sha256 of the seed's decimal string.",
+ "format": "arb-online-record/1",
+ "task": "pantry_jar_refilling",
+ "episode": "ep06",
+ "seed_sha256": "6eca0a59adde762476f82a88a20580459977c9143dfb7b0a66e832203fde591a",
+ "draw": {
+  "when_utc": "2026-11-24T04:34:05Z",
+  "from": "hidden/episodes.json['episodes'] (sha256 7c8246e3627313ebc74c3570a6c2c1856b288a5b6c5187011a9288bfb3f7f0d8), the offline grader's 12 hidden episodes in order",
+  "how": "python3: secrets.randbelow(12) (OS entropy), once; index 6 -> ep06 (unit u1)"
+ },
+ "record": "/var/lib/arb-online/record.json",
+ "prep_s": 7200,
+ "graded_s": 10800
+}

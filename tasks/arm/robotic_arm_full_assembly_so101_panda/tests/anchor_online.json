@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "full_at": 1.0,
+ "metric": "assembly_score",
+ "note": "assembly_score of the online item is one episode's score, already on [0, 1]: the cell's stage score of the graded episode as it ended (the achieved mates' weight / 18: a servo seat or a bracket 1.0, a horn mate 1.5 when its link is fastened within 3 deg of the design rotation), 0 with a safety violation, as the offline verifier scores each episode; ratio = score / 1.0, reward = ratio.",
+ "source": "Measured: the privileged reference assembler (tests/arm/assembly_full/reference.py; environment/setup/online/cell is its byte copy) inside the graded episode's cell service on graded-01 (tests/online.json), started with the oracle token (the privileged mode, as offline: the cell built from the episode's seed on the bench plan's nominal layout) and driven through the agent-side client (solution/solve.sh), in the task image as setup.sh starts the service (2026-11-24): episode_score 1.0, all 15 mates fastened, no safety violation, 481.7 s simulated, about 51 min of wall clock on a loaded host. Confirmed by ale validate's oracle pass, validate-c0ab404d (2026-11-24, engine bfb7505, a clean checkout of 7cdfa917): episode_score 1.0, 15 / 15 mates, 481.7 s simulated, 23.8 min of agent phase.",
+ "value": 1.0
+}

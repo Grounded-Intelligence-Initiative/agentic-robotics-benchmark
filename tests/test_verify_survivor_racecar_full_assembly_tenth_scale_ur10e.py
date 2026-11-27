@@ -24,6 +24,10 @@ _HERE = Path(__file__).resolve()
 _CANDIDATES = [_HERE.parents[1] / "tasks" / "ground" / SLUG, _HERE.parents[2] / SLUG]
 TASK = next((p for p in _CANDIDATES if (p / "tests" / "verify.py").is_file()), _CANDIDATES[0])
 VERIFY = TASK / "tests" / "verify.py"
+# dual mode: verify.py stops the agent account first (step 1), then runs main's grader, tests/offline_verify.py (main's
+# verify.py with two hooks), whose own verify-start lockdown runs again on the program it grades
+OFFLINE_VERIFY = VERIFY.with_name("offline_verify.py")
+MAIN_GRADER = OFFLINE_VERIFY if OFFLINE_VERIFY.is_file() else VERIFY
 FAMILY = "contract"   # "contract": the survivor reason zeroes contract_ok; "void": a survivor raises a task error
 
 
@@ -63,14 +67,16 @@ class _Survivor:
         self.proc.wait()
 
 
-def _functions(names):
-    tree = ast.parse(VERIFY.read_text())
+def _functions(names, path=VERIFY):
+    tree = ast.parse(path.read_text())
     body = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in names]
-    assert {n.name for n in body} == set(names), "verify.py lacks %s" % (set(names) - {n.name for n in body})
-    return compile(ast.Module(body=body, type_ignores=[]), str(VERIFY), "exec")
+    assert {n.name for n in body} == set(names), "%s lacks %s" % (path.name, set(names) - {n.name for n in body})
+    return compile(ast.Module(body=body, type_ignores=[]), str(path), "exec")
 
 
 class SurvivorAtVerifyStart(unittest.TestCase):
+    VERIFY = VERIFY
+
     def setUp(self):
         self.survivor = _Survivor()
         self.addCleanup(self.survivor.close)
@@ -113,7 +119,7 @@ class SurvivorAtVerifyStart(unittest.TestCase):
               "STAGE_DIR": str(self.tmp / "stage"), "HOME": str(self.tmp / "home"), "AGENT_USER": "user",
               "SUBMISSION": str(self.tmp / "home" / "submission"), "LATE_GATE_MAX_GAP_S": 600.0, "WATCH_ROOTS": [],
               "RUNS_ROOT": str(self.tmp / "runs"), "SNAPSHOT": str(self.tmp / "snap"), "QUARANTINE": str(self.tmp / "q")}
-        exec(_functions(["_proc_state", "_still_running", "_early_lockdown"]), ns)
+        exec(_functions(["_proc_state", "_still_running", "_early_lockdown"], self.VERIFY), ns)
         fn = ns["_early_lockdown"]
         out = fn(Freezer()) if fn.__code__.co_argcount else fn()
         return out, logs
@@ -141,8 +147,9 @@ class SurvivorAtVerifyStart(unittest.TestCase):
         self.assertFalse(any("outlived" in m for m in logs), logs)
 
     def test_a_survivor_reason_zeroes_the_contract(self):
-        """the main path turns any early-lockdown reason into contract_ok 0 before an episode runs"""
-        tree = ast.parse(VERIFY.read_text())
+        """the main path turns any early-lockdown reason into contract_ok 0 before an episode runs (main's grader:
+        tests/offline_verify.py in the dual mode)"""
+        tree = ast.parse(MAIN_GRADER.read_text())
         fns = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
         self.assertIn("_main_locked", fns)
         src = ast.unparse(fns["_main_locked"])
@@ -158,6 +165,12 @@ class SurvivorAtVerifyStart(unittest.TestCase):
         """main() voids the run on agent_processes_running, never on the kill's raw survivor count."""
         if FAMILY != "void":
             self.skipTest("contract family: the reason list is the gate")
+
+
+@unittest.skipUnless(OFFLINE_VERIFY.is_file(), "no tests/offline_verify.py (not the dual mode)")
+class SurvivorAtVerifyStartMainGrader(SurvivorAtVerifyStart):
+    """The same checks on main's own verify-start lockdown, which the dual mode's verify.py runs with main's grading."""
+    VERIFY = OFFLINE_VERIFY
 
 
 if __name__ == "__main__":

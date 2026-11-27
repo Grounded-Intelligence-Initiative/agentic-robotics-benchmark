@@ -6,7 +6,17 @@ freeze works, what the zero-cost evidence of development shows and what is left 
 tooling for this task (the generators of the givens and the drawings, the integration and quality-control harnesses,
 the probes and their evidence files) is not part of the repository: this note and `hidden/selection.json` carry what a
 maintainer needs, and "How to redo" lists the checks that run from the repository. No value of the hidden set (seeds,
-layout digests, the bench plan, the oracle token) appears outside `hidden/`.
+layout digests, the bench plan, the oracle token) appears outside `hidden/`, except on the dual-mode branch (below).
+
+**Dual mode (experimental branch, never merged into main).** `verify.py` grades two items: main's grader, unchanged, is
+`offline_verify.py` (main's `verify.py` with a verdict hook), run on the program frozen at the graded start; the live
+item is the record of the one graded episode the agent plays during its session (`online.json`, `anchor_online.json`;
+`anchor_offline.json` is main's `anchor.json`). The graded episode's service needs the hidden material in the agent's
+sandbox, root-only while the agent works (`/opt/ale/setup`): `environment/setup/online/` holds the drawn episode (the
+third of `hidden/episodes.json`: its seed, stratum and layout digest), byte copies of `hidden/bench_plan.json`,
+`hidden/oracle_token.sha256` and `grader_config.json`, and a byte copy of the cell's code (`arm/`, `render/`,
+`render_filament/`, `common/`, `room/`, `episode_trace.py`); `verify.py` checks the record's digests of all of them
+against this folder.
 
 ## What is here
 

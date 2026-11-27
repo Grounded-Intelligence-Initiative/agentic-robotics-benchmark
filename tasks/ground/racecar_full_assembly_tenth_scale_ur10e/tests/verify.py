@@ -1,66 +1,54 @@
-"""Grader of racecar_full_assembly_tenth_scale_ur10e (a tenth-scale car built on its work stand from its rolling chassis
-and eight loose units, camera-only): runs as ROOT in the verify stage.
+"""Grader of racecar_full_assembly_tenth_scale_ur10e, dual mode (experimental): two scoring items of one task, one
+session, one verify. Runs as ROOT in the verify stage (separate verification: a fresh verifier sandbox holding only the
+declared artifacts, restored root-owned: the submission and the graded episode's record directory).
 
-The agent left /home/user/submission/assemble.py (solve(cell): a camera-only program that builds the car with the cell's
-6-DoF arm and its gripper). Verification is separate (task.toml): this runs in a fresh verifier sandbox from the task
-image, into which the engine restored only the submission (root-owned); nothing else of the agent's sandbox is here.
-This grader:
-  0. FIRST, stdlib only (`_early_lockdown`, the six-servo pattern; tests/test.sh closed the stage folder already): records
-     the upload time, freezes and kills every process of the agent account and keeps it stopped until the verdict is
-     written (`arm.verify_freeze`), locks the stage, snapshots the submission root-owned, gates late writes, quarantines
-     late entries elsewhere;
-  1. checks the root-owned copy of the givens at /opt/arb against given_hashes.json (tests/test.sh builds it from the
-     image's task assets and tests/setup_payload/; a mismatch is a task error), reads the fixed hidden set
-     (hidden/episodes.json, format racecar-asm-set/1: four pre-registered episodes, one per stratum, each with its seed
-     and its layout digest; a malformed set is a task error whose message names no value of it), then unpacks the
-     cell's hidden kit (gt/: kit.json + meshes/, never in the repository) into this root-only stage folder
-     (`fetch_hidden_gt`): from a maintainer's local copy assets/gt.tar.xz when it is present (an engine asset root),
-     else downloaded from the benchmark's asset dataset (grader_config.json "hidden_gt"); either way its sha256 and its
-     file count must be the pinned ones (a mismatch, a failed download or a member outside gt/ is a task error);
-  2. checks that netguard.py holds in this sandbox (selftest; a task error otherwise) and puts a root-owned copy where
-     the runner account can read it: every agent process (the import check and the episodes) starts through it, so the
-     program and everything it starts cannot create an AF_INET / AF_INET6 socket (the verify stage has egress, and the
-     public repository holds the solution and the hidden set); the wire to the cell is a pipe pair;
-  3. gates: contract_ok = assemble.py is a regular file that parses and defines solve, the route gate (no weight files,
-     no training calls, size cap), the network audit (static: no networking import, no computed import, no started
-     program; runtime: no outbound network activity while the program runs), the module imports under the run regime,
-     >= 1 step call, no late write, no surviving process; per episode the safety rule (`safety_factor`, since v1.7:
-     an episode with a safety violation, i.e. hard_ok false: a robot link other than the gripper's four pad boxes
-     above the robot-contact limit grader_config.json safety.robot_force_N on one body (`contact_limit`; 150 N since
-     v1.8, 30 N in v1.0-v1.7; the cell's watch reads the same number), or a unit pressed on the environment or another
-     unit above 150 N for 0.2 s, keeps grader_config.json scoring.safety_violation_factor of its stage score, one
-     factor per episode however many violations; the episode goes on; 0 = the rule of v1.0-v1.6, the episode zeroed);
-     a unit off the bench or faster than 3 m/s is only scrapped (it and what it carries count nothing);
-  4. the oracle token: submission/.oracle_token whose sha256 equals hidden/oracle_token.sha256 switches the cells to the
-     privileged mode (the call `reference_assemble`; stat privileged_mode); a wrong token is ignored (stat
-     oracle_token_mismatch); the privileged mode plays the same four hidden episodes (oracle_nominal_layout false);
-  5. runs the program once per hidden episode on the race-car cell (`arm.assembly_car.server.CarInfoServer`) as
-     `nobody` from a read-only copy; at every reset the layout the cell built must have the hidden set's layout digest
-     (a mismatch is a task error: the kit, the bench plan, the layout code or the configuration changed after the set
-     was selected);
-  6. criterion: assembly_score = contract_ok x (1/4) sum over the episodes of stage_score x (1 if hard_ok else the
-     safety factor) (`episode_values`), stage_score = the counted mates' weight / 11.5 (a mate counts
-     when its slot is fastened in a counting orientation and neither its unit nor a loose unit on its carrier chain is
-     scrapped); every statistic goes to the metrics (the ungated mean, the hard-rule counts and the factor among them),
-     finite numbers only;
-  7. (a record only) every agent episode's replay trace and summary under /opt/arb-verify/out (root-only).
-Untouched sandbox: no assemble.py -> contract_ok 0 -> 0.
-Oracle: the token + `reference_assemble` (the privileged reference program inside the cell) -> 8 / 8 on every episode -> 1.
+  * The program item (offline): main's grader, unchanged. tests/offline_verify.py is main's tests/verify.py with two
+    hooks (the verdict is handed back instead of written; main(finish=False) leaves the stage modes and the freezer to
+    this file); it runs the agent's assemble.py solve(cell) under netguard on the 4 fixed hidden episodes
+    (hidden/episodes.json), as on main, with main's gates, budgets, lockdown, kit download, safety factor and record.
+    The program it grades is the one frozen when the graded episode started (/var/lib/arb-online/submission_snapshot:
+    the graded episode's root supervisor copied the submission folder there before the start was charged), or when the
+    preparation window closed if the episode was never started (a freeze at the window's close that failed, after the
+    service's retries, scores the program item 0); the submission as the session left it (as on main) only when the
+    session ended before the window closed or there is no usable record.
+  * The live item (online): the record of the ONE graded episode the agent played itself during its session (episode 3
+    of the fixed hidden set, drawn once; tests/online.json), scored as main scores one episode (the counted mates'
+    weight / 11.5 when the episode ended, times the safety factor 0.3 after a hard safety violation; 0 when the
+    episode never started).
+  * reward = the mean of the two components, each normalised by its own anchor, cap and full_at (anchor_offline.json is
+    main's anchor.json; anchor_online.json the online item's), written once through ratio_rewards against
+    tests/anchor.json (dual_mode_score; 1.0 by construction).
+
+Order:
+  1. stop the agent account's processes as main's verifier does (kill, then keep them frozen until the verdict;
+     stdlib only, before anything else is imported);
+  2. read and check the record (tests/online.json: format, task, episode, seed digest; the episode is the hidden set's
+     entry online.json names, with its seed digest and its layout digest); the record also names the cell the graded
+     episode ran: its code's digest, its configuration's, the bench plan's, the oracle digest's and the hidden kit's,
+     which must be this folder's own (the offline grader's cell; a mismatch is a task error);
+  3. pick the program: the snapshot when the record says the program was frozen (its digest checked against the
+     record: a mismatch is a task error); none when the frozen submission was over main's size cap or the freeze at the
+     window's close failed (the program item then scores 0); the restored submission only when the session ended
+     before the window closed or the record is unusable;
+  4. main's offline grading of that program (main's own lockdown runs on it: kill, freezer, stage lock, late-write gate,
+     its root-owned snapshot, then the hidden set, the kit's download, netguard, the gates and the 4 episodes): the
+     offline component;
+  5. the live component from the record;
+  6. reward = (offline_reward_exact + online_reward_exact) / 2;
+  7. the verdict, written once; its metrics carry both components, both raw metrics, the freeze and the episode's end,
+     and every metric of each component under "offline." / "online.".
+Untouched sandbox: no program, no record -> 0. Oracle: the reference program frozen at the start (main's privileged
+grading with its token, 1.0) and the privileged reference program on the graded episode (1.0) -> 1.
 """
 
-import ast
+import hashlib
 import json
 import math
 import os
 import pwd
-import re
-import shutil
 import stat as statmod
-import subprocess
 import sys
-import tempfile
 import time
-import traceback
 
 sys.dont_write_bytecode = True
 
@@ -69,23 +57,19 @@ sys.path.insert(0, STAGE_DIR)
 
 HOME = os.environ.get("ALE_HOME", "/home/user")
 AGENT_USER = os.path.basename(HOME.rstrip("/")) or "user"
-SUBMISSION = os.path.join(HOME, "submission")
-ROOT_PAYLOAD = os.environ.get("ARB_ROOT_PAYLOAD", "/opt/arb")
-ROOT_GIVEN = os.path.join(ROOT_PAYLOAD, "given")
-RUNS_ROOT = os.path.join(ROOT_PAYLOAD, "runs")
-# the scenery of the agent cameras' renderer (arm/assembly_car/agent_render.py), from the same root-owned copy
-os.environ.setdefault("ARB_AGENT_RENDER_DIR", os.path.join(ROOT_PAYLOAD, "render"))
-SNAPSHOT = os.path.join(RUNS_ROOT, "_submission_snapshot")
-QUARANTINE = os.path.join(RUNS_ROOT, "_quarantine")
-STICKY_DIRS = [d for d in ("/tmp", "/dev/shm", "/var/tmp", "/run/lock") if os.path.isdir(d)]
-WATCH_ROOTS = STICKY_DIRS + [HOME]
-LATE_GATE_MAX_GAP_S = 600.0
+ONLINE = os.path.join(STAGE_DIR, "online.json")
+RECORD_FORMAT = "arb-online-record/1"
+END_REASONS = ("done", "finish", "graded_window", "worker_restart", "cell_error")
+SNAPSHOT_STATUSES = ("ok", "too_large", "failed")
+# the cell the graded episode must have run: the offline grader's own code (environment/setup/online/cell is a byte copy
+# of these packages of this folder) and files
+CODE_PACKAGES = ("arm", "render", "render_filament", "common", "room")
+CODE_FILES = ("episode_trace.py",)
 
-from arm.assembly_cell import runner  # noqa: E402  (stdlib only)
 from arm.assembly_six import lockdown  # noqa: E402  (stdlib only)
 from arm import verify_freeze  # noqa: E402  (stdlib only)
 
-FREEZER = [None]        # the agent account's verify_freeze.AgentFreezer: started by _early_lockdown, stopped after the verdict
+FREEZER = [None]        # the agent account's verify_freeze.AgentFreezer: from _early_lockdown until the verdict
 
 
 def log(msg):
@@ -117,13 +101,12 @@ def _still_running(uid, bound_s=3.0):
 
 
 def _early_lockdown():
-    out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "stage_locked": 0.0, "stage_parent_locked": 0.0,
-           "stage_lock_latency_ms": -1.0, "submission_late_writes": 0.0, "late_writes_quarantined": 0.0, "late_write_gate_active": 0.0,
-           "submission_snapshot": 0.0, "saved": None, "parent": None, "t_ref": None, "late": [], "reasons": []}
+    """Step 1: the agent account stopped as main's verifier stops it (killed, then kept frozen until the verdict). The
+    rest of main's lockdown (stage lock, late-write gate, its snapshot of the program) runs with main's grading in
+    step 4, on the program step 3 picks."""
+    out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "agent_processes_running": 0.0, "reasons": []}
     if os.getuid() != 0:
         return out
-    t_ref = lockdown.stage_upload_time(STAGE_DIR)
-    out["t_ref"] = t_ref
     try:
         uid = pwd.getpwnam(AGENT_USER).pw_uid
     except KeyError:
@@ -131,121 +114,26 @@ def _early_lockdown():
     if uid is not None and uid != 0:
         killed, left = lockdown.stop_and_kill_uid(uid, grace_s=8.0)
         out["agent_processes_killed"], out["agent_processes_left"] = float(killed), float(left)
-    # the image's supervisord (PID 1) respawns the agent account's desktop within seconds of the kill, and the respawned
-    # session runs the account's autostart entries: every process of the account stays SIGSTOPped (polled every 0.1 s; a
-    # stopped process does not exit, so it is not respawned) until the verdict is written
+    # the image's init respawns the agent account's desktop within seconds of the kill: every process of the account
+    # stays SIGSTOPped (polled every 0.1 s) until the verdict is written
     FREEZER[0] = verify_freeze.AgentFreezer.for_user(AGENT_USER).start()
     if out["agent_processes_left"]:
-        # in the separate verifier a process that outlives the kill is the image's own (its respawned desktop): it is frozen
-        # with the rest of the account; only a process that is still running once the freezer had its turn voids the contract
         running = _still_running(uid)
         if running:
-            out["reasons"].append("%d process(es) of the agent account survived the kill at verify start and could not be "
-                                  "stopped" % len(running))
+            out["agent_processes_running"] = float(len(running))
+            out["reasons"].append("%d process(es) of the agent account survived the kill at verify start and could "
+                                  "not be stopped" % len(running))
         else:
-            log("[grader] %d process(es) of the agent account (the image's respawned desktop) outlived the kill at verify "
-                "start: frozen until the verdict" % int(out["agent_processes_left"]))
-    out["saved"] = runner.lock_stage(STAGE_DIR)
-    out["stage_locked"] = 1.0 if out["saved"] is not None else 0.0
-    parent = os.path.dirname(os.path.abspath(STAGE_DIR))
-    if parent and parent not in ("/", os.path.abspath(HOME)) and os.path.isdir(parent):
-        try:
-            mode = statmod.S_IMODE(os.lstat(parent).st_mode)
-            os.chmod(parent, 0o700)
-            saved_mode = os.environ.get("ARB_STAGE_PARENT_MODE")
-            out["parent"] = (parent, int(saved_mode, 8) if saved_mode else mode)
-            out["stage_parent_locked"] = 1.0
-        except (OSError, ValueError):
-            pass
-    gate_active = t_ref is not None
-    cfg_json = os.path.join(STAGE_DIR, "config.json")
-    if gate_active and os.path.isfile(cfg_json):
-        try:
-            gate_active = (os.lstat(cfg_json).st_ctime - t_ref) <= LATE_GATE_MAX_GAP_S
-        except OSError:
-            pass
-    out["late_write_gate_active"] = 1.0 if gate_active else 0.0
-    if os.path.isdir(SUBMISSION):
-        if gate_active:
-            out["late"] = lockdown.late_entries(SUBMISSION, t_ref)
-            out["submission_late_writes"] = float(len(out["late"]))
-            if out["late"]:
-                out["reasons"].append("%d entr%s of the submission written after the agent phase ended (%s)" % (
-                    len(out["late"]), "y" if len(out["late"]) == 1 else "ies", ", ".join(e[0] for e in out["late"][:5])))
-        os.makedirs(RUNS_ROOT, exist_ok=True)
-        os.chmod(RUNS_ROOT, 0o755)
-        lockdown.snapshot_dir(SUBMISSION, SNAPSHOT)
-        out["submission_snapshot"] = 1.0
-    if gate_active:
-        q = 0
-        for root in WATCH_ROOTS:
-            late = lockdown.late_entries(root, t_ref, exclude=(SUBMISSION, RUNS_ROOT, STAGE_DIR))
-            if late:
-                log("[grader] %d late entr%s under %s quarantined" % (len(late), "y" if len(late) == 1 else "ies", root))
-                q += lockdown.quarantine(root, late, QUARANTINE)
-        out["late_writes_quarantined"] = float(q)
-    out["stage_lock_latency_ms"] = lockdown.process_age_ms()
+            log("[grader] %d process(es) of the agent account (the image's respawned desktop) outlived the kill at "
+                "verify start: frozen until the verdict" % int(out["agent_processes_left"]))
     return out
 
 
-EARLY = _early_lockdown() if __name__ == "__main__" else {"saved": None, "parent": None, "reasons": [], "late": [], "t_ref": None}
+EARLY = _early_lockdown() if __name__ == "__main__" else {"reasons": []}
 
-import hashlib  # noqa: E402
-
-import numpy as np  # noqa: E402
-
-from arm.assembly_cell import wire  # noqa: E402
-from arm.assembly_car import layout as LY  # noqa: E402
-from arm.assembly_car.cell import load_kit  # noqa: E402
-from arm.assembly_car.server import CarInfoServer  # noqa: E402
-from arm.assembly_info import netaudit  # noqa: E402
-from arm.assembly_info.client import launcher_argv  # noqa: E402
-import episode_trace  # noqa: E402  (the maintainers' replay record; never a scoring input)
-
-GT = os.path.join(STAGE_DIR, "gt")                               # the cell's hidden kit: kit.json + meshes/ (fetch_hidden_gt)
-LOCAL_GT = os.path.join(STAGE_DIR, "assets", "gt.tar.xz")        # a maintainer's local copy of the same tarball (engine asset root)
-ROBOT_DIR = os.path.join(ROOT_GIVEN, "robot")                    # the given robot models (universal_robots_ur10e/, robotiq_2f85/)
-HIDDEN = os.path.join(STAGE_DIR, "hidden")
-# The maintainers' record (the agent program's stderr, the replay traces, the episode summaries) lives outside /opt/ale: the
-# engine deletes its stage folders before it keeps a sandbox, and the record is read from a kept one (the verifier
-# sandbox: run with `[sandbox_retention] verifier = "keep"`). Root-only (0700).
-RECORD_ROOT = os.environ.get("ARB_RECORD_ROOT", "/opt/arb-verify")
-LOGS = os.path.join(RECORD_ROOT, "logs")
-OUT = os.path.join(RECORD_ROOT, "out")
-CRITERIA = ["assembly_score"]
-GATES = ["contract_ok"]
-SUSPICIOUS = ("/opt/ale", "ALE_STAGE_DIR", "ALE_VERIFICATION", "hidden/bench_plan", "hidden/episodes", "hidden/selection",
-              "oracle_token", "verify/gt", "ALE_VERIFY", "tests/gt", "/opt/ale/tests", ".ale-solution", "verifier/gt", "/opt/arb-verify")
-# the fixed hidden set (hidden/episodes.json, selected by review/select_set.py): its format and the four strata
-# (arm/assembly_car/layout.py STRATA; the stand's yaw sign x the stick pack's lead end)
-SET_FORMAT = "racecar-asm-set/1"
-STRATA = ("yaw+lead0", "yaw+lead180", "yaw-lead0", "yaw-lead180")
-SEED_LIMIT = 1 << 63
-
-
-def record_dir(path):
-    """`path` under the root-only record root, created on demand; never a scoring input."""
-    os.makedirs(RECORD_ROOT, exist_ok=True)
-    os.chmod(RECORD_ROOT, 0o700)
-    os.makedirs(path, exist_ok=True)
-    return path
-
-
-def program_source():
-    return SNAPSHOT if os.getuid() == 0 and os.path.isdir(SNAPSHOT) else SUBMISSION
-
-
-def fail(reason):
-    log("[grader] TASK ERROR: " + reason)
-    raise SystemExit(1)
-
-
-def sha256_file(p):
-    h = hashlib.sha256()
-    with open(p, "rb") as f:
-        for b in iter(lambda: f.read(1 << 20), b""):
-            h.update(b)
-    return h.hexdigest()
+import offline_verify as OV  # noqa: E402  (main's grader; its own lockdown runs only when called, in step 4)
+from robotics_grader import fail, ratio_rewards, read_anchor  # noqa: E402
+from robotics_grader import write_verdict as kit_write_verdict  # noqa: E402
 
 
 def load_json(p):
@@ -253,620 +141,359 @@ def load_json(p):
         return json.load(f)
 
 
-def root_payload_ok(expected):
-    problems = []
-    owner = 0 if os.getuid() == 0 else os.getuid()
-    if not os.path.isdir(ROOT_PAYLOAD):
-        return False, ["%s missing (tests/test.sh builds it)" % ROOT_PAYLOAD]
-    for rel, digest in expected.items():
-        p = os.path.join(ROOT_PAYLOAD, rel)
-        try:
-            st = os.lstat(p)
-        except OSError:
-            problems.append("missing " + rel)
-            continue
-        if os.path.islink(p) or st.st_uid != owner or (st.st_mode & 0o022):
-            problems.append("not a root-owned, group/world-unwritable regular file: " + rel)
-            continue
-        if sha256_file(p) != digest:
-            problems.append("differs " + rel)
-    return not problems, problems
+def _reject_constant(name):
+    raise ValueError("non-finite number %s" % name)
 
 
-# ------------------------------------------------------------------------------------------------ the fixed hidden set
-def load_hidden_set(cfg, hidden_dir):
-    """The fixed hidden set (`hidden_dir`/episodes.json, SET_FORMAT): [{seed, stratum, layout_digest}] in the file's order.
-    Exactly cfg["episodes"] episodes; every seed an int in [0, 2**63) and distinct; every stratum one of STRATA (one
-    episode per stratum when the set has as many episodes as there are strata); every layout digest 64 lower-case hex
-    digits. Anything else is a task error whose message names no value of the set. Stdlib only."""
-    path = os.path.join(hidden_dir, "episodes.json")
+def _finite(v):
+    if isinstance(v, bool):
+        return None
     try:
-        with open(path) as fh:
-            doc = json.load(fh)
-    except (OSError, ValueError):
-        fail("the fixed hidden set (hidden/episodes.json) is missing or does not parse")
-    if not isinstance(doc, dict) or doc.get("format") != SET_FORMAT:
-        fail("the fixed hidden set is not in the %s format" % SET_FORMAT)
-    eps = doc.get("episodes")
-    try:
-        n = int(cfg.get("episodes", len(STRATA)))
+        f = float(v)
     except (TypeError, ValueError):
-        fail("grader_config.json: episodes is not a number")
-    if not isinstance(eps, list):
-        fail("the fixed hidden set has no list of episodes")
-    if len(eps) != n:
-        fail("the fixed hidden set holds %d episode(s); grader_config.json expects %d" % (len(eps), n))
-    out = []
-    for k, e in enumerate(eps, 1):
-        if not isinstance(e, dict):
-            fail("episode %d of the fixed hidden set is not an object" % k)
-        seed, stratum, digest = e.get("seed"), e.get("stratum"), e.get("layout_digest")
-        if type(seed) is not int or not 0 <= seed < SEED_LIMIT:
-            fail("episode %d of the fixed hidden set: its seed is not an integer in [0, 2**63)" % k)
-        if not isinstance(stratum, str) or stratum not in STRATA:
-            fail("episode %d of the fixed hidden set: its stratum is not one of the %d strata" % (k, len(STRATA)))
-        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
-            fail("episode %d of the fixed hidden set: its layout digest is not 64 lower-case hex digits" % k)
-        out.append({"seed": seed, "stratum": stratum, "layout_digest": digest})
-    if len(set(e["seed"] for e in out)) != len(out):
-        fail("the fixed hidden set repeats a seed")
-    if len(out) == len(STRATA) and sorted(e["stratum"] for e in out) != sorted(STRATA):
-        fail("the fixed hidden set does not hold one episode per stratum")
-    return out
+        return None
+    return f if math.isfinite(f) else None
 
 
-def check_layout_digest(k, entry, got, nominal=False):
-    """True when episode k's cell has the hidden set's layout (a task error otherwise); False when it was not compared (the
-    privileged mode's nominal layout, oracle_nominal_layout true)"""
-    if nominal:
-        return False
-    if got != entry["layout_digest"]:
-        fail("episode %d: the cell built a layout that is not the fixed hidden set's (its layout digest differs): the kit, the "
-             "bench plan, the layout code or grader_config.json's layout block changed after the set was selected" % k)
-    return True
+def sha256_file(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as fh:
+        for b in iter(lambda: fh.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
 
 
-# ------------------------------------------------------------------------------------------------ the cell's hidden kit
-def fetch_hidden_gt(cfg, stage_dir=None, local=None):
-    """The cell's hidden kit (gt/: kit.json with the bodies, slots and carve keys, meshes/ with the units' visual meshes and
-    collision pieces) is not in the repository: one tarball, pinned in grader_config.json ("hidden_gt": its URL at an
-    asset-dataset commit, its sha256 and its file count). When a maintainer's local copy assets/gt.tar.xz is in this stage
-    folder (an engine asset root; `local`), that file is used; ARB_HIDDEN_GT_TARBALL (a maintainer's copy) likewise;
-    otherwise the tarball is downloaded here at verify start (verification has network; the agent's sandbox never held
-    it and the image has no copy). Either way it must have the pinned sha256, every member must be under gt/ and be a
-    file or a folder, and gt/ must hold the pinned number of files and kit.json: anything else is a task error (nothing
-    is scored without the exact kit). Unpacked into gt/ of the root-only stage folder. Returns (files, seconds, source)."""
-    import tarfile
-    import urllib.request
-    stage_dir = stage_dir or STAGE_DIR
-    gt = os.path.join(stage_dir, "gt")
-    spec = cfg["hidden_gt"]
-    url, want = spec["url"], spec["sha256"]
-    tries, backoff = max(1, int(spec.get("tries", 4))), float(spec.get("backoff_s", 5.0))
-    t0 = time.time()
-    tarball = os.path.join(stage_dir, ".gt.tar.xz")
-    part = os.path.join(stage_dir, ".gt.part")
-    for p in (part, gt):
-        shutil.rmtree(p, ignore_errors=True)
-    if os.path.exists(tarball):
-        os.remove(tarball)
-    local = local if local is not None else os.path.join(stage_dir, "assets", "gt.tar.xz")
-    env = os.environ.get("ARB_HIDDEN_GT_TARBALL")
-    if env:
-        src, source = env, "maintainer copy"
-    elif os.path.isfile(local) and not os.path.islink(local):
-        src, source = local, "local copy"
-    else:
-        src, source = tarball, "download"
-        for k in range(tries):
-            try:
-                with urllib.request.urlopen(url, timeout=120) as r, open(tarball, "wb") as fh:
-                    for block in iter(lambda: r.read(1 << 20), b""):
-                        fh.write(block)
-                break
-            except Exception as e:  # noqa: BLE001 - retried, then a task error
-                log("[grader] the cell's kit: download %d/%d failed: %r" % (k + 1, tries, e))
-                if os.path.exists(tarball):
-                    os.remove(tarball)
-                if k == tries - 1:
-                    fail("could not download the cell's kit from %s: %r" % (url, e))
-                time.sleep(backoff * (k + 1))
-    got = sha256_file(src)
-    if got != want:
-        fail("the cell's kit (%s) has sha256 %s; grader_config.json pins %s" % (source, got, want))
-    os.makedirs(part, mode=0o700)
-    with tarfile.open(src, "r:xz") as tf:
-        bad = [m.name for m in tf.getmembers() if not (m.isfile() or m.isdir()) or not (m.name == "gt" or m.name.startswith("gt/"))]
-        if bad:
-            fail("the cell's kit tarball holds unexpected members: %s" % bad[:5])
-        tf.extractall(part, filter="data")
-    os.rename(os.path.join(part, "gt"), gt)
-    os.chmod(gt, 0o700)
-    shutil.rmtree(part, ignore_errors=True)
-    if os.path.exists(tarball):
-        os.remove(tarball)
-    n = sum(len(fns) for _dp, _dn, fns in os.walk(gt))
-    if n != int(spec["files"]) or not os.path.isfile(os.path.join(gt, "kit.json")):
-        fail("the cell's kit unpacked to %d files (kit.json %s); grader_config.json expects %d"
-             % (n, os.path.isfile(os.path.join(gt, "kit.json")), int(spec["files"])))
-    dt = time.time() - t0
-    log("[grader] the cell's kit (%s): %d files, sha256 %s..., in %.1f s" % (source, n, got[:12], dt))
-    return n, dt, source
-
-
-# ------------------------------------------------------------------------------------------------ netguard
-def netguard_folder(stage_dir=None):
-    """(folder, guard path): netguard.py's selftest as this process (a task error when the filter does not hold here),
-    then a root-owned 0755 folder (under /run when writable) with a 0644 copy of it, which the runner account can read
-    (the stage folder is 0700)."""
-    src = os.path.join(stage_dir or STAGE_DIR, "netguard.py")
+# ----------------------------------------------------------------------------------------------- step 2: the record
+def read_record(path, expected, max_bytes):
+    """(record, None) for a record of this task's graded episode (a regular file within the size limit, valid JSON,
+    format, task, episode and seed digest equal to online.json), or (None, reason)."""
     try:
-        chk = subprocess.run([sys.executable, "-I", "-S", src, "selftest"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                             universal_newlines=True, timeout=60)
-        ok, text = chk.returncode == 0, chk.stdout.strip()
-    except (OSError, subprocess.SubprocessError) as e:
-        ok, text = False, repr(e)
-    if not ok:
-        fail("netguard does not hold in this sandbox: %s" % text[-300:])
-    base = "/run" if os.path.isdir("/run") and os.access("/run", os.W_OK) else None
-    folder = tempfile.mkdtemp(prefix="arb-netguard-", dir=base)
-    os.chmod(folder, 0o755)
-    guard = os.path.join(folder, "netguard.py")
-    shutil.copyfile(src, guard)
-    os.chmod(guard, 0o644)
-    return folder, guard
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return None, "no record of the graded episode at %s" % path
+    except OSError as e:
+        return None, "the record cannot be examined: %s" % e
+    if not statmod.S_ISREG(st.st_mode):
+        return None, "the record is not a regular file"
+    if st.st_size > max_bytes:
+        return None, "the record is larger than %d bytes" % max_bytes
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(fd, "rb") as fh:
+            blob = fh.read(max_bytes + 1)
+        if len(blob) > max_bytes:
+            return None, "the record is larger than %d bytes" % max_bytes
+        rec = json.loads(blob.decode("utf-8"), parse_constant=_reject_constant)
+    except (OSError, ValueError, UnicodeDecodeError) as e:
+        return None, "the record is not valid JSON: %s" % (str(e)[:200],)
+    if not isinstance(rec, dict):
+        return None, "the record is not a JSON object"
+    for key in ("format", "task", "episode", "seed_sha256"):
+        if rec.get(key) != expected.get(key):
+            return None, "the record's %s is %r, not %r" % (key, rec.get(key), expected.get(key))
+    return rec, None
 
 
-def guarded(guard, program_dir, argv):
-    """argv started through netguard (no IP sockets for it and everything it starts), cwd = program_dir"""
-    if not guard:
-        return list(argv)
-    return [sys.executable, "-I", "-S", guard, "exec", program_dir] + list(argv)
-
-
-# ------------------------------------------------------------------------------------------------ the contract
-def route_gate(cfg, src):
-    rg = cfg.get("route_gate", {})
-    forb_ext = tuple(rg.get("forbidden_extensions", []))
-    calls = rg.get("forbidden_calls", [])
-    total, problems, suspicious = 0, [], 0
-    for dp, _, fns in os.walk(src):
-        for fn in fns:
-            p = os.path.join(dp, fn)
-            try:
-                total += os.lstat(p).st_size
-            except OSError:
-                continue
-            if fn.lower().endswith(forb_ext):
-                problems.append("weight file %s" % os.path.relpath(p, src))
-            if fn.endswith((".py", ".sh")) and not os.path.islink(p):
-                try:
-                    text = open(p, encoding="utf-8", errors="replace").read()
-                except OSError:
+def code_digest(root):
+    """sha256 over the sorted "<path>\\0<size>\\0<sha256>\\n" lines of the cell code under `root` (the packages
+    CODE_PACKAGES, no __pycache__, no .pyc, and CODE_FILES): environment/setup/online/graded_cell.py code_digest, the
+    same function, computed by the graded episode's service over its copy."""
+    files = []
+    for pkg in CODE_PACKAGES:
+        for dirpath, dirnames, filenames in os.walk(os.path.join(root, pkg)):
+            dirnames[:] = sorted(d for d in dirnames if d != "__pycache__")
+            for name in sorted(filenames):
+                if name.endswith(".pyc"):
                     continue
-                for c in calls:
-                    if c in text:
-                        problems.append("%s uses %s" % (os.path.relpath(p, src), c))
-                suspicious += sum(1 for line in text.splitlines() if any(s in line for s in SUSPICIOUS))
-    if total > rg.get("max_submission_mb", 60) * 1024 * 1024:
-        problems.append("submission larger than %d MB" % rg.get("max_submission_mb", 60))
-    return problems, suspicious
+                p = os.path.join(dirpath, name)
+                with open(p, "rb") as fh:
+                    blob = fh.read()
+                files.append((os.path.relpath(p, root), len(blob), hashlib.sha256(blob).hexdigest()))
+    for name in CODE_FILES:
+        with open(os.path.join(root, name), "rb") as fh:
+            blob = fh.read()
+        files.append((name, len(blob), hashlib.sha256(blob).hexdigest()))
+    h = hashlib.sha256()
+    for rel, size, digest in sorted(files):
+        h.update(rel.encode("utf-8", "surrogateescape") + b"\0" + str(int(size)).encode() + b"\0" + digest.encode() + b"\n")
+    return h.hexdigest()
 
 
-def library_digests():
-    """sha256 of every .py file of the shipped library (a submission may carry copies of it)."""
-    out = set()
-    for pkg in ("arm", "common", "render"):
-        d = os.path.join(ROOT_GIVEN, "lib", pkg)
-        for dp, _dn, fns in os.walk(d):
-            for fn in fns:
-                if fn.endswith(".py"):
-                    out.add(sha256_file(os.path.join(dp, fn)))
-    return out
+def check_cell(rec, cfg):
+    """The graded episode ran the offline grader's cell on the fixed hidden set's episode: the digests the service
+    recorded equal this folder's (a mismatch is a task error: the copy under environment/setup/online drifted from the
+    grader's)."""
+    kit_info = os.path.join(STAGE_DIR, "kit_info.json")
+    want = {"cell_code_sha256": code_digest(STAGE_DIR),
+            "grader_config_sha256": sha256_file(os.path.join(STAGE_DIR, "grader_config.json")),
+            "bench_plan_sha256": sha256_file(os.path.join(STAGE_DIR, "hidden", "bench_plan.json")),
+            "kit_info_sha256": sha256_file(kit_info) if os.path.isfile(kit_info) else None,
+            "oracle_digest_sha256": sha256_file(os.path.join(STAGE_DIR, "hidden", "oracle_token.sha256")),
+            "kit_tarball_sha256": cfg["hidden_gt"]["sha256"], "kit_files": int(cfg["hidden_gt"]["files"])}
+    # the graded episode is the fixed hidden set's entry that online.json names (its seed digest, its layout digest)
+    expected = load_json(ONLINE)
+    entry = OV.load_hidden_set(cfg, os.path.join(STAGE_DIR, "hidden"))[int(expected["hidden_index"]) - 1]
+    if hashlib.sha256(str(entry["seed"]).encode("ascii")).hexdigest() != expected["seed_sha256"]:
+        fail("tests/online.json does not name an episode of the fixed hidden set")
+    want["layout_digest"] = entry["layout_digest"]
+    want["stratum"] = entry["stratum"]
+    bad = [k for k, v in want.items() if rec.get(k) != v]
+    if bad:
+        fail("the graded episode did not run the offline grader's cell: the record's %s differ from this folder's "
+             "(environment/setup/online must be a byte copy of the grader's cell, configuration and hidden files)"
+             % ", ".join(bad))
 
 
-class Runner(object):
-    def __init__(self, cfg):
-        self.acct = runner.runner_account(cfg.get("runner_account", "nobody"), AGENT_USER)
-        self.name, self.uid, self.gid = self.acct if self.acct else (None, None, None)
-        self.lib_dirs = {p: os.path.join(ROOT_GIVEN, "lib", p) for p in ("arm", "common", "render")}
-        self.cpu_s = float(cfg.get("cpu_cap_factor", 4.0)) * float(cfg["wall_cap_s"])
-        self.killed = self.left = self.unclean_runs = self.stray_files = self.symlinks_skipped = 0
-        os.makedirs(RUNS_ROOT, exist_ok=True)
-        os.chmod(RUNS_ROOT, 0o755)
-
-    def prepare(self, tag, program_dir, private=False):
-        root = os.path.join(RUNS_ROOT, tag)
-        if os.path.isdir(root):
-            shutil.rmtree(root, ignore_errors=True)
-        owner = (self.uid, self.gid) if (self.acct and not private) else None
-        dirs = runner.prepare_run_dir(root, program_dir, self.lib_dirs, owner=owner, private=private)
-        self.symlinks_skipped = max(self.symlinks_skipped, dirs["skipped"])
-        return dirs
-
-    def env(self, dirs, extra=None):
-        e = runner.child_env(dirs["home"], dirs["tmp"], dirs["lib"], ROOT_GIVEN, extra=extra)
-        e["LP_NUM_THREADS"] = "2"
-        return e
-
-    def snapshot(self, exclude):
-        return {r: runner.snapshot_tree(r, exclude) for r in WATCH_ROOTS}
-
-    def kill_runner_processes(self, grace_s=8.0):
-        if not self.acct:
-            return 0
-        killed, left = lockdown.stop_and_kill_uid(self.uid, grace_s=grace_s)
-        self.killed += killed
-        self.left += left
-        if left:
-            self.unclean_runs += 1
-        return left
-
-    def cleanup(self, dirs, before):
-        self.kill_runner_processes()
-        if before is not None and self.acct:
-            for r in WATCH_ROOTS:
-                after = runner.snapshot_tree(r, (dirs["root"],))
-                new, modified = runner.tree_changes(before[r], after, self.uid)
-                self.stray_files += len(new) + len(modified)
-                runner.sweep_new_entries(r, before[r], after, self.uid, (dirs["root"],))
-        shutil.rmtree(dirs["root"], ignore_errors=True)
+def live_score(rec):
+    """(episode_score, None) for a started episode with a usable score, or (None, reason)."""
+    if rec is None:
+        return None, "no record"
+    if rec.get("started") is not True:
+        return None, "the graded episode was never started"
+    score = _finite(rec.get("episode_score"))
+    if score is None or score < 0.0:
+        return None, "the record's episode_score is not a finite number >= 0: %r" % (rec.get("episode_score"),)
+    return score, None
 
 
-def contract_check(cfg, rn, guard):
-    src = program_source()
-    path = os.path.join(src, "assemble.py")
-    if not os.path.isfile(path) or os.path.islink(path):
-        return False, "no assemble.py (regular file) in the submission", 0, []
-    try:
-        tree = ast.parse(open(path, encoding="utf-8", errors="replace").read())
-    except SyntaxError as e:
-        return False, "assemble.py does not parse: %s" % e, 0, []
-    has_solve = any(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "solve" for n in ast.walk(tree)) or \
-        any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "solve" for t in n.targets) for n in ast.walk(tree)) or \
-        any(isinstance(n, (ast.Import, ast.ImportFrom)) and any((a.asname or a.name) == "solve" for a in n.names) for n in ast.walk(tree))
-    if not has_solve:
-        return False, "assemble.py defines no solve", 0, []
-    problems, suspicious = route_gate(cfg, src)
-    if problems:
-        return False, "route gate: " + "; ".join(problems[:5]), suspicious, []
-    net = netaudit.scan_imports(src, allow_digests=library_digests())
-    if net:
-        return False, "network audit: networking import(s) %s" % ", ".join("%s: %s" % x for x in net[:5]), suspicious, net
-    dirs = rn.prepare("import_check", src)
-    before = rn.snapshot((dirs["root"],)) if rn.acct else None
-    code = ("import sys, importlib; sys.path.insert(0, sys.argv[1]); sys.path.insert(0, sys.argv[2]); "
-            "m = importlib.import_module('assemble'); assert callable(m.solve)")
-    argv = guarded(guard, dirs["program"], [sys.executable] + runner.PYTHON_FLAGS + ["-c", code, dirs["lib"], dirs["program"]])
-    argv = runner.wrap_limits(argv, cpu_s=120, user=rn.name)
-    try:
-        r = subprocess.run(argv, cwd=dirs["program"], env=rn.env(dirs), capture_output=True, text=True, timeout=120, start_new_session=True)
-        ok, why = r.returncode == 0, ("ok" if r.returncode == 0 else "importing assemble.py failed: " + (r.stderr.strip().splitlines() or ["?"])[-1][:300])
-    except subprocess.TimeoutExpired:
-        ok, why = False, "importing assemble.py took more than 120 s"
-    finally:
-        rn.cleanup(dirs, before)
-    return ok, why, suspicious, []
+# ----------------------------------------------------------------------------------------------- step 3: the program
+def tree_digest(files):
+    """sha256 of the sorted file list with sizes and contents (environment/setup/online/graded_server.py computes the
+    same over the files it copied): one line "<path>\\0<size>\\0<sha256 of the content>\\n" per regular file."""
+    h = hashlib.sha256()
+    for rel, size, digest in sorted(files):
+        h.update(rel.encode("utf-8", "surrogateescape") + b"\0" + str(int(size)).encode() + b"\0" +
+                 digest.encode() + b"\n")
+    return h.hexdigest()
 
 
-def token_state():
-    """(privileged, mismatch): the submission's .oracle_token against hidden/oracle_token.sha256."""
-    p = os.path.join(program_source(), ".oracle_token")
-    want_p = os.path.join(HIDDEN, "oracle_token.sha256")
-    if not os.path.isfile(p) or os.path.islink(p) or not os.path.isfile(want_p):
-        return False, False
-    try:
-        tok = open(p, "rb").read().strip()
-        want = open(want_p).read().strip()
-    except OSError:
-        return False, False
-    got = hashlib.sha256(tok).hexdigest()
-    return (got == want), (got != want)
+def snapshot_digest(root):
+    """(digest, files, bytes) of the restored snapshot; a symlink or a special file in it is a task error (the service
+    copies regular files and directories only)."""
+    files, total = [], 0
+    if not os.path.isdir(root) or os.path.islink(root):
+        return tree_digest([]), 0, 0
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        for name in sorted(dirnames):
+            if os.path.islink(os.path.join(dirpath, name)):
+                fail("the frozen program holds a symlink (%s): it was not written by the graded episode's service"
+                     % os.path.relpath(os.path.join(dirpath, name), root))
+        for name in sorted(filenames):
+            p = os.path.join(dirpath, name)
+            st = os.lstat(p)
+            if not statmod.S_ISREG(st.st_mode):
+                fail("the frozen program holds a non-regular file (%s)" % os.path.relpath(p, root))
+            files.append((os.path.relpath(p, root), st.st_size, sha256_file(p)))
+            total += st.st_size
+    return tree_digest(files), len(files), total
 
 
-# ------------------------------------------------------------------------------------------------ one episode
-def run_episode(cfg, k, ep, rn, privileged, plan, kit, uv, guard, trace_tag=None):
-    server = CarInfoServer(GT, ROBOT_DIR, plan, config=cfg, mode="hidden", privileged=privileged, render=True, log=log, kit=kit, uv=uv)
-    r = server.reset(ep["seed"], stratum=ep["stratum"])
-    checked = check_layout_digest(k, ep, r["layout_digest"], nominal=r["nominal"])
-    trace = None
-    tcfg = cfg.get("episode_trace") or {}
-    if trace_tag and tcfg.get("agent"):
-        try:
-            trace = episode_trace.EpisodeTrace(server, every_ticks=int(tcfg.get("every_ticks", 4)), log=log)
-        except Exception as e:  # noqa: BLE001 - a record only
-            log("[grader] episode trace not attached: %r" % (e,))
-    record_dir(LOGS)
-    wire_error, t0 = None, time.time()
-    dirs = rn.prepare("agent_ep%02d" % k, program_source())
-    before = rn.snapshot((dirs["root"],)) if rn.acct else None
-    argv = guarded(guard, dirs["program"], launcher_argv(sys.executable, dirs["lib"], dirs["program"]))
-    # the privileged reference program runs inside one call (reference_assemble): its own wall-clock cap
-    wall_cap = float(cfg["privileged_wall_cap_s"] if privileged else cfg["wall_cap_s"])
-    proc = None
-    sampler = netaudit.SocketSampler(uid=rn.uid if rn.acct else None, pids_fn=None if rn.acct else (lambda: []),
-                                     period_s=float(cfg.get("socket_sample_s", 0.5)))
-    counters = netaudit.NetCounters()
-    try:
-        with counters, sampler:
-            try:
-                proc = wire.AgentProcess(argv, cwd=dirs["program"], user=rn.name, env=rn.env(dirs, None), cpu_s=rn.cpu_s,
-                                         stderr_path=os.path.join(LOGS, "agent_ep%02d.log" % k))
-                reason = wire.serve_episode(server, proc, wall_cap, float(cfg["silence_s"]), log=log)
-            finally:
-                if proc is not None:
-                    proc.terminate()
-                rn.cleanup(dirs, before)             # every process of the runner account is gone before the counters are read
-    except Exception:  # noqa: BLE001
-        wire_error = traceback.format_exc()
-        reason = "wire_error"
-        if not server.done:
-            server._end(reason)
-    if wire_error:
-        log("[grader] episode %d: wire error\n%s" % (k, wire_error))
-    summary = server.finalize(None)
-    summary["episode_wall_s"] = time.time() - t0
-    summary["end_reason"] = reason
-    summary["layout_digest_checked"] = bool(checked)
-    if trace is not None:
-        try:
-            trace.detach()
-            summary["trace_dir"] = trace.save(os.path.join(OUT, "trace"), trace_tag, summary, extra={"episode": int(k), "privileged": bool(privileged)})
-        except Exception as e:  # noqa: BLE001 - a record only
-            log("[grader] episode trace not written: %r" % (e,))
-    summary["remote_sockets_seen"] = int(sampler.max_seen)
-    summary["socket_samples"] = int(sampler.samples)
-    summary["net_outbound"] = int(counters.total)
-    summary["net_delta"] = dict(counters.delta)
-    return summary
+def choose_program(rec, snapshot_root):
+    """(program folder or None, facts): None means the program item scores 0 (the frozen submission was over main's
+    cap, or the freeze at the window's close failed). The snapshot is used when the record says the program was
+    frozen, at the start or at the close of the preparation window; the submission as the session left it only when
+    the session ended before the window closed (nothing frozen, nothing to freeze yet) or there is no usable record.
+    A failed freeze never falls back to the session-end submission: that would give the program prep_s + graded_s."""
+    restored = os.path.join(HOME, "submission")
+    facts = {"program_snapshot": 0.0, "program_session_end": 0.0, "program_too_large": 0.0,
+             "program_freeze_failed": 0.0}
+    status = rec.get("snapshot_status") if rec is not None else None
+    frozen = rec is not None and (rec.get("started") is True or rec.get("prep_window_closed") is True)
+    if rec is not None and rec.get("started") is True and status not in ("ok", "too_large"):
+        fail("the record of a started graded episode holds no usable freeze of the program (snapshot_status %r)"
+             % (status,))
+    if frozen and status == "ok":
+        digest, n, size = snapshot_digest(snapshot_root)
+        if digest != rec.get("snapshot_sha256") or n != int(rec.get("snapshot_files") or 0):
+            fail("the frozen program (%d files, %d bytes) does not match its record (%s files, digest %s...)" % (
+                n, size, rec.get("snapshot_files"), str(rec.get("snapshot_sha256"))[:12]))
+        facts["program_snapshot"] = 1.0
+        log("[grader] the program frozen at %s: %d files, %d bytes" % (rec.get("snapshot_at"), n, size))
+        return snapshot_root, facts
+    if frozen and status == "too_large":
+        facts["program_too_large"] = 1.0
+        log("[grader] the program frozen at %s was over main's submission cap (%s): the program item scores 0" % (
+            rec.get("snapshot_at"), rec.get("snapshot_reason")))
+        return None, facts
+    if frozen:                                    # the window closed and its freeze failed (or never ran)
+        facts["program_freeze_failed"] = 1.0
+        log("[grader] the freeze when the preparation window closed failed (snapshot_status %r after %s attempt(s)): "
+            "the program item scores 0" % (status, rec.get("snapshot_attempts")))
+        return None, facts
+    facts["program_session_end"] = 1.0
+    log("[grader] no freeze of the program on record (%s): the submission as the session left it" % (
+        "no usable record" if rec is None else "snapshot_status %r" % (status,)))
+    return restored, facts
 
 
-# ------------------------------------------------------------------------------------------------ the safety rule
-def safety_factor(cfg):
-    """grader_config.json scoring.safety_violation_factor: the share of its stage score that an episode with a safety
-    violation keeps (since v1.7, the owner's decision of 2026-11-16: either hard rule of the cell's watch, one
-    factor per episode however many violations; the episode goes on). A number in [0, 1], else a task error; 0 is the
-    rule of v1.0-v1.6 (the episode zeroed)."""
-    v = (cfg.get("scoring") or {}).get("safety_violation_factor")
-    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(float(v)) or not 0.0 <= float(v) <= 1.0:
-        fail("grader_config.json scoring.safety_violation_factor must be a number in [0, 1]")
-    return float(v)
+# ----------------------------------------------------------------------------------------------- step 4: offline
+def offline_component(program_dir):
+    """(reward_exact, raw assembly_score, metrics) of main's grading of the program at `program_dir` (None: 0, no
+    grading). Main's write_verdict would score main's verdict against tests/anchor.json; here the same formula runs
+    against anchor_offline.json (main's anchor.json, byte-identical)."""
+    anchor, meta = read_anchor("anchor_offline.json")
+    if program_dir is None:
+        return 0.0, 0.0, {"contract_ok": 0.0, "assembly_score": 0.0, "graded": 0.0}
+    captured = {}
 
+    def sink(rewards, metrics):
+        captured["rewards"], captured["metrics"] = dict(rewards), dict(metrics)
+        return float(rewards["assembly_score"])
 
-def contact_limit(cfg):
-    """grader_config.json safety.robot_force_N: the robot-contact limit, N (a robot link other than the gripper's four pad
-    boxes pressing on one body harder than this is a safety violation; the cell's watch takes it from the same key,
-    CarInfoServer.cell_config). A finite number > 0, else a task error; 150 since v1.8 (the owner's decision of
-    2026-11-17), 30 in v1.0-v1.7."""
-    v = (cfg.get("safety") or {}).get("robot_force_N")
-    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(float(v)) or not float(v) > 0.0:
-        fail("grader_config.json safety.robot_force_N must be a finite number > 0")
-    return float(v)
-
-
-def episode_values(agent, factor):
-    """the scored value of each episode summary: its stage score, times `factor` when the episode broke a hard rule
-    (hard_ok false; one factor however many violations)"""
-    return [float(s["stage_score"]) * (1.0 if s["hard_ok"] else factor) for s in agent]
-
-
-def rule_words(factor):
-    """the diagnostic's words for the safety rule (factor 0: the words of v1.0-v1.6)"""
-    if factor == 0.0:
-        return "an episode with a hard safety violation scoring 0"
-    return "an episode with a hard safety violation keeping %s %% of its score" % ("%.10g" % (100.0 * factor))
-
-
-# ------------------------------------------------------------------------------------------------ the verdict
-def write_verdict(rewards, metrics):
-    """One gated `reward` in the benchmark kit's envelope (robotics_grader.ratio_rewards against anchor.json: value 1.0 =
-    the oracle, full_at 1.0, so reward = assembly_score x the gates); the gate, the criterion and every statistic go to
-    `metrics` (finite numbers only, '.' and '/' in a name replaced by '_'). In the engine (`ALE_VERIFY_PYTHON` set) the
-    kit writes reward.json and verification.json, the criteria text as the `diagnostic`; elsewhere the envelope goes to
-    ROBOTICS_GRADER_VERDICT_PATH, else verdict.local.json in the stage folder."""
-    from robotics_grader import ratio_rewards, read_anchor
-    from robotics_grader import write_verdict as kit_write_verdict
+    OV.SUBMISSION = program_dir                   # the program main's grading copies, gates and runs
+    OV.EARLY = OV._early_lockdown()               # main's lockdown, on that program
+    OV.VERDICT_SINK[0] = sink
+    OV.main(finish=False)                         # main's grading; a grader-side failure ends the run as a task error
+    if "rewards" not in captured:
+        fail("main's grading ended without a verdict")
+    rewards, metrics = captured["rewards"], captured["metrics"]
     overall = float(rewards["assembly_score"])
-    anchor, meta = read_anchor()
     extra = {}
-    for k, v in metrics.items():
-        try:
-            v = float(v)
-        except (TypeError, ValueError):
-            continue
-        if math.isfinite(v):
-            extra[k.replace(".", "_").replace("/", "_")] = v
-    extra.update({k: float(rewards[k]) for k in GATES + CRITERIA})
+    for k, v in metrics.items():                  # main's write_verdict: finite numbers, plus the gates and criteria
+        f = _finite(v)
+        if f is not None:
+            extra[k] = f
+    extra.update({k: float(rewards[k]) for k in OV.GATES + OV.CRITERIA})
     verdict = ratio_rewards(overall, anchor, higher_is_better=meta.get("direction", "higher") == "higher",
-                            metric_name=meta.get("metric", "assembly_score"), extra=extra, full_at=meta.get("full_at", 1.0))
-    text = ("contract_ok %.0f (the program imports, exposes solve, passes the route gate and the network audit and steps the "
-            "cell; no late write, no surviving process); assembly_score %.4f (episode mean of the fastened mates' weight / 11.5 "
-            "on the %d fixed hidden episodes, %s)") % (
-                rewards["contract_ok"], rewards["assembly_score"], int(metrics.get("episodes", 0)),
-                rule_words(float(metrics.get("safety_violation_factor", 0.0))))
+                            metric_name=meta.get("metric", "assembly_score"), extra=extra,
+                            full_at=meta.get("full_at", 1.0))
+    out = dict(verdict["metrics"], graded=1.0)
+    return float(verdict["rewards"]["reward"]), overall, out
+
+
+# ----------------------------------------------------------------------------------------------- step 5: online
+def record_extra(rec):
+    """The record's facts (finite numbers only): its per-episode statistics and its counters."""
+    extra = {}
+    for k, v in sorted((rec.get("metrics") or {}).items()):
+        f = _finite(v)
+        if f is not None:
+            extra[str(k)] = f
+    for k in ("steps", "ticks", "sim_time_s", "camera_frames", "requests", "status_requests", "wall_s_since_start",
+              "started_after_s", "record_writes", "requests_log_dropped"):
+        f = _finite(rec.get(k))
+        if f is not None:
+            extra[k] = f
+    extra["episode_ended"] = 1.0 if rec.get("ended") is True else 0.0
+    extra["cell_done_sim_cap"] = 1.0 if rec.get("cell_done_reason") == "sim_cap" else 0.0
+    extra["privileged_mode"] = 1.0 if rec.get("privileged") is True else 0.0
+    extra["oracle_token_mismatch"] = 1.0 if rec.get("oracle_token_mismatch") is True else 0.0
+    return extra
+
+
+def online_component(rec, why):
+    """(reward_exact, raw episode_score, metrics, reason) of the live item; 0 without a started episode."""
+    anchor, meta = read_anchor("anchor_online.json")
+    score, why_live = live_score(rec) if rec is not None else (None, why)
+    if score is None:
+        return 0.0, 0.0, {"record_ok": 1.0 if rec is not None else 0.0, "started": 0.0}, why_live
+    if rec.get("score_error"):
+        fail("the graded episode's record reports that the cell could not score it: %s" % (rec["score_error"],))
+    extra = dict(record_extra(rec), record_ok=1.0, started=1.0)
+    verdict = ratio_rewards(score, anchor, higher_is_better=meta.get("direction", "higher") == "higher",
+                            metric_name=meta.get("metric", "assembly_score"), locks_ok=True, extra=extra,
+                            full_at=meta.get("full_at", 1.0))
+    return float(verdict["rewards"]["reward"]), score, dict(verdict["metrics"]), None
+
+
+# ----------------------------------------------------------------------------------------------- steps 6-7
+def emit(verdict, diagnostic):
+    """The verdict through the kit, once: in the engine (`ALE_VERIFY_PYTHON` set) reward.json and verification.json,
+    the metric names with '.' and '/' replaced by '_' (finite numbers only); elsewhere verdict.local.json in the
+    stage folder."""
     recorded = {}
     for k, v in sorted(verdict["metrics"].items()):
-        try:
-            v = float(v)
-        except (TypeError, ValueError):
-            continue
-        if math.isfinite(v):
-            recorded[k] = v
+        f = _finite(v)
+        if f is not None:
+            recorded[k.replace(".", "_").replace("/", "_")] = f
     if os.environ.get("ALE_VERIFY_PYTHON"):
-        kit_write_verdict({"rewards": verdict["rewards"], "metrics": recorded}, diagnostic=text)
-        return overall
-    kit_write_verdict({"rewards": verdict["rewards"], "metrics": recorded}, path=os.environ.get("ROBOTICS_GRADER_VERDICT_PATH")
-                      or os.path.join(STAGE_DIR, "verdict.local.json"), diagnostic=text)
-    return overall
+        kit_write_verdict({"rewards": verdict["rewards"], "metrics": recorded}, diagnostic=diagnostic)
+        return
+    kit_write_verdict({"rewards": verdict["rewards"], "metrics": recorded},
+                      path=os.environ.get("ROBOTICS_GRADER_VERDICT_PATH") or os.path.join(STAGE_DIR, "verdict.local.json"),
+                      diagnostic=diagnostic)
 
 
-def _restore_modes():
-    runner.unlock_stage(EARLY.get("saved"))
-    mode = os.environ.get("ARB_STAGE_MODE")
-    if mode:
-        try:
-            os.chmod(STAGE_DIR, int(mode, 8))
-        except (OSError, ValueError):
-            pass
-    parent = EARLY.get("parent")
-    if parent:
-        try:
-            os.chmod(parent[0], parent[1])
-        except OSError:
-            pass
+def _main_dual():
+    t0 = time.time()
+    expected = load_json(ONLINE)
+    cfg = load_json(os.path.join(STAGE_DIR, "grader_config.json"))
+    for reason in EARLY.get("reasons") or []:
+        log("[grader] note: %s (main's lockdown checks again before the program runs)" % reason)
+    # 2. the record
+    rec, why = read_record(expected.get("record", "/var/lib/arb-online/record.json"), expected,
+                           int(expected.get("record_max_bytes", 1 << 20)))
+    if rec is None:
+        log("[grader] record: %s" % why)
+    else:
+        check_cell(rec, cfg)
+    # 3. the program
+    program_dir, program_facts = choose_program(rec, expected.get("snapshot_dir",
+                                                                  "/var/lib/arb-online/submission_snapshot"))
+    # 4. the program item (main's grading)
+    off_reward, off_raw, off_metrics = offline_component(program_dir)
+    # 5. the live item
+    on_reward, on_raw, on_metrics, on_why = online_component(rec, why)
+    # 6. the mean
+    combined = (off_reward + on_reward) / 2.0
+    anchor, meta = read_anchor()
+    extra = {"offline_reward": off_reward, "online_reward": on_reward, "offline_assembly_score": off_raw,
+             "online_assembly_score": on_raw, "record_ok": 1.0 if rec is not None else 0.0,
+             "graded_episode_started": 1.0 if (rec is not None and rec.get("started") is True) else 0.0,
+             "snapshot_files": float((rec or {}).get("snapshot_files") or 0),
+             "snapshot_bytes": float((rec or {}).get("snapshot_bytes") or 0),
+             "agent_processes_running_at_start": float(EARLY.get("agent_processes_running", 0.0)),
+             "dual_verify_wall_s": time.time() - t0}
+    extra.update(program_facts)
+    status = (rec or {}).get("snapshot_status")
+    for s in SNAPSHOT_STATUSES:
+        extra["snapshot_status." + s] = 1.0 if status == s else 0.0
+    extra["snapshot_status.none"] = 1.0 if status is None else 0.0
+    extra["snapshot_at.start"] = 1.0 if (rec or {}).get("snapshot_at") == "start" else 0.0
+    extra["snapshot_at.prep_window"] = 1.0 if (rec or {}).get("snapshot_at") == "prep_window" else 0.0
+    end = (rec or {}).get("end_reason")
+    for r in END_REASONS:
+        extra["online_end_reason." + r] = 1.0 if end == r else 0.0
+    extra["online_end_reason.session_end"] = 1.0 if (rec is not None and rec.get("started") is True and
+                                                     rec.get("ended") is not True) else 0.0
+    for k, v in off_metrics.items():
+        f = _finite(v)
+        if f is not None:
+            extra["offline." + k] = f
+    for k, v in on_metrics.items():
+        f = _finite(v)
+        if f is not None:
+            extra["online." + k] = f
+    # 7. the verdict, once
+    verdict = ratio_rewards(combined, anchor, cap=1.0, higher_is_better=True,
+                            metric_name=meta.get("metric", "dual_mode_score"), extra=extra,
+                            full_at=meta.get("full_at", 1.0))
+    text = ("dual_mode_score %.4f = (offline %.4f + online %.4f) / 2. Program item: assembly_score %.4f of main's "
+            "grading on the hidden episodes (%s). Live item: %s." % (
+                combined, off_reward, on_reward, off_raw,
+                "the program frozen at the graded start" if program_facts["program_snapshot"] and
+                (rec or {}).get("snapshot_at") == "start" else
+                "the program frozen when the preparation window closed" if program_facts["program_snapshot"] else
+                "the frozen submission was over main's size cap, not graded" if program_facts["program_too_large"]
+                else "the freeze at the window's close failed, not graded" if program_facts["program_freeze_failed"]
+                else "the submission as the session left it",
+                ("assembly_score %.4f on the graded episode %s, ended %s" % (
+                    on_raw, rec.get("episode"),
+                    rec.get("end_reason") if rec.get("ended") else "with the session (as of the last request)"))
+                if on_why is None else "0 (%s)" % on_why))
+    log("[grader] " + text)
+    emit(verdict, text)
 
 
 def main():
-    cfg = load_json(os.path.join(STAGE_DIR, "grader_config.json"))
-    rewards = dict((k, 0.0) for k in GATES + CRITERIA)
-    metrics = {"grader_exception": 0.0, "episodes": float(cfg.get("episodes", 4)),
-               "root_payload_ok": 0.0, "agent_deprivileged": 0.0, "runner_uid": -1.0, "privileged_mode": 0.0, "oracle_token_mismatch": 0.0,
-               "runner_processes_killed": 0.0, "runner_processes_left": 0.0, "runner_unclean_runs": 0.0, "netguard_active": 0.0,
-               "stray_files_removed": 0.0, "suspicious_lines": 0.0, "agent_wire_errors": 0.0, "remote_sockets_seen": 0.0, "net_outbound_events": 0.0,
-               "network_imports": 0.0, "illegal_call_count": 0.0}
-    for k in ("stage_locked", "stage_parent_locked", "stage_lock_latency_ms", "agent_processes_killed", "agent_processes_left",
-              "submission_late_writes", "late_writes_quarantined", "late_write_gate_active", "submission_snapshot"):
-        metrics[k] = float(EARLY.get(k, -1.0 if k == "stage_lock_latency_ms" else 0.0))
-    guard_dir = [None]
     try:
-        _main_locked(cfg, rewards, metrics, guard_dir)
+        _main_dual()
     finally:
-        if guard_dir[0]:
-            shutil.rmtree(guard_dir[0], ignore_errors=True)
-        _restore_modes()
+        OV._restore_modes()                       # main's: the stage folder, its parent and its files (step 4's lock)
+        if OV.FREEZER[0] is not None:
+            OV.FREEZER[0].stop()
         if FREEZER[0] is not None:
-            FREEZER[0].stop()                       # after the verdict (written by _main_locked); the frozen stay stopped
-
-
-def _main_locked(cfg, rewards, metrics, guard_dir):
-    t_start = time.time()
-    expected = load_json(os.path.join(STAGE_DIR, "given_hashes.json"))
-    ok_root, problems = root_payload_ok(expected)
-    metrics["root_payload_ok"] = 1.0 if ok_root else 0.0
-    if not ok_root:
-        fail("the root-owned copy of the givens at %s is unusable: %s" % (ROOT_PAYLOAD, "; ".join(problems[:5])))
-    episodes = load_hidden_set(cfg, HIDDEN)
-    metrics["hidden_set_episodes"] = float(len(episodes))
-    factor = safety_factor(cfg)
-    metrics["safety_violation_factor"] = factor
-    limit = contact_limit(cfg)
-    metrics["robot_contact_limit_N"] = limit
-    gt_files, gt_s, gt_source = fetch_hidden_gt(cfg)
-    metrics["hidden_gt_files"] = float(gt_files)
-    metrics["hidden_gt_fetch_s"] = float(gt_s)
-    metrics["hidden_gt_local"] = 1.0 if gt_source != "download" else 0.0
-    plan = load_json(os.path.join(HIDDEN, "bench_plan.json"))
-    guard_dir[0], guard = netguard_folder()
-    metrics["netguard_active"] = 1.0
-    rn = Runner(cfg)
-    if FREEZER[0] is not None and rn.acct and rn.uid == FREEZER[0].uid:
-        FREEZER[0].stop()        # no `nobody` in the image: the runner fell back to the agent account, whose programs must run
-        log("[grader] runner account = the agent account: the verify-stage freezer is stopped")
-    metrics["runner_uid"] = float(rn.uid) if rn.acct else -1.0
-    metrics["agent_deprivileged"] = 1.0 if rn.acct else 0.0
-    privileged, mismatch = token_state()
-    metrics["privileged_mode"] = 1.0 if privileged else 0.0
-    metrics["oracle_token_mismatch"] = 1.0 if mismatch else 0.0
-    ok, why, suspicious, net = contract_check(cfg, rn, guard)
-    if ok and EARLY.get("reasons"):
-        ok, why = False, "; ".join(EARLY["reasons"])
-    metrics["suspicious_lines"] = float(suspicious)
-    metrics["network_imports"] = float(len(net))
-    log("[grader] contract_ok=%s (%s); privileged %s; runner %s under netguard; lock latency %.0f ms" % (
-        ok, why, privileged, rn.name or "self", metrics["stage_lock_latency_ms"]))
-    if not ok:
-        rewards["contract_ok"] = 0.0
-        _finish_stats(rn, metrics, t_start)
-        write_verdict(rewards, metrics)
-        return
-    kit = load_kit(GT)
-    uv = LY.unit_geometry(kit)
-    n = len(episodes)
-    agent = []
-    step_calls = illegal = 0
-    for k, ep in enumerate(episodes, 1):
-        log("[grader] episode %d/%d (stratum %s)" % (k, n, ep["stratum"]))
-        s_a = run_episode(cfg, k, ep, rn, privileged, plan, kit, uv, guard, trace_tag="agent_ep%02d" % k)
-        metrics["episode_traces_written"] = metrics.get("episode_traces_written", 0.0) + (1.0 if s_a.get("trace_dir") else 0.0)
-        log("[grader]   stage score %.3f (%d / 8 mates) hard_ok %s sim %.1f s wall %.1f s frames %d end %s scrapped %s sustained %.0f N "
-            "violations %s" % (s_a["stage_score"], s_a["n_achieved"], s_a["hard_ok"], s_a["sim_time_s"], s_a["episode_wall_s"],
-                               s_a["camera_frames_total"], s_a["end_reason"], sorted(s_a["scrapped"]),
-                               s_a["watch"].get("max_part_force_sustained_N", 0.0), [v["what"] for v in s_a["violations"]][:3]))
-        agent.append(s_a)
-        step_calls += s_a["step_calls"] + s_a["calls"].get("reference_assemble", 0)
-        illegal += s_a["illegal_call_count"]
-        metrics["agent_wire_errors"] += 1.0 if s_a["end_reason"] == "wire_error" else 0.0
-        metrics["remote_sockets_seen"] = max(metrics["remote_sockets_seen"], float(s_a["remote_sockets_seen"]))
-        metrics["net_outbound_events"] += float(s_a.get("net_outbound", 0))
-        for ck, cv in (s_a.get("net_delta") or {}).items():
-            metrics["net_" + ck] = metrics.get("net_" + ck, 0.0) + float(max(0, cv))
-    vals = episode_values(agent, factor)
-    log("[grader] safety rule: robot-contact limit %s N, factor %s (an episode with a safety violation keeps that share of "
-        "its stage score); scored per episode %s" % ("%.10g" % limit, "%.10g" % factor, ["%.4f" % v for v in vals]))
-    for s_a, v in zip(agent, vals):
-        s_a["episode_value"] = v                     # the record (out/episodes.json): the episode's scored value
-    steps_gate = 1.0 if step_calls > 0 else 0.0
-    clean_gate = 1.0 if rn.unclean_runs == 0 else 0.0
-    net_gate = 1.0 if (metrics["remote_sockets_seen"] <= 0 and metrics["net_outbound_events"] <= 0) else 0.0
-    gate = steps_gate * clean_gate * net_gate
-    rewards["contract_ok"] = gate
-    if not net_gate:
-        log("[grader] contract_ok 0: network activity during an episode (%d outbound events, %d remote sockets seen)" % (
-            metrics["net_outbound_events"], metrics["remote_sockets_seen"]))
-    rewards["assembly_score"] = float(max(0.0, min(1.0, gate * float(np.mean(vals)))))
-    episode_metrics(agent, metrics)
-    metrics["illegal_call_count"] = float(illegal)
-    metrics["step_calls"] = float(step_calls)
-    record_dir(OUT)
-    with open(os.path.join(OUT, "episodes.json"), "w") as f:
-        json.dump([{k: v for k, v in s.items() if k not in ("events",)} for s in agent], f, indent=1, default=float)
-    _finish_stats(rn, metrics, t_start)
-    overall = write_verdict(rewards, metrics)
-    log("[grader] rewards %s overall %.4f (verify wall %.0f s)" % ({k: round(v, 4) for k, v in rewards.items()}, overall, metrics["verify_wall_s"]))
-
-
-def episode_metrics(agent, metrics):
-    """the statistics of the episodes (metrics only, never the score): the ungated mean, every slot's mate
-    rate, LOCKED_OFF, scrapped units, the mates voided by a scrapped carrier (the compute module and the LiDAR on a scrapped
-    deck) and by their own unit's scrapping, the hard-violation rate, frames per camera, sim / wall time, the largest
-    sustained part force"""
-    def mean(xs):
-        xs = [float(x) for x in xs]
-        return float(np.mean(xs)) if xs else 0.0
-    metrics["stage_score_mean_ungated"] = mean(s["stage_score"] for s in agent)
-    metrics["mates_achieved_mean"] = mean(s["n_achieved"] for s in agent)
-    metrics["mates_fastened_mean"] = mean(s["n_fastened"] for s in agent)
-    metrics["all_mates_rate"] = mean(1.0 if s["all_mates"] else 0.0 for s in agent)
-    metrics["locked_off_mean"] = mean(len(s["locked_off"]) for s in agent)
-    metrics["scrapped_units_mean"] = mean(len(s["scrapped"]) for s in agent)
-    metrics["void_carrier_scrapped_mean"] = mean(s["coupling_metrics"]["void_carrier_scrapped"] for s in agent)
-    metrics["void_unit_scrapped_mean"] = mean(s["coupling_metrics"]["void_unit_scrapped"] for s in agent)
-    metrics["hard_violation_rate"] = mean(0.0 if s["hard_ok"] else 1.0 for s in agent)
-    metrics["robot_contact_episodes"] = float(sum(1 for s in agent if s["robot_contact_violations"]))
-    metrics["part_force_episodes"] = float(sum(1 for s in agent if s["part_force_violations"]))
-    metrics["mean_sim_time_s"] = mean(s["sim_time_s"] for s in agent)
-    metrics["mean_episode_wall_s"] = mean(s["episode_wall_s"] for s in agent)
-    metrics["max_part_force_sustained_N"] = max([float(s["watch"].get("max_part_force_sustained_N", 0.0)) for s in agent] or [0.0])
-    metrics["camera_frames_mean"] = mean(s["camera_frames_total"] for s in agent)
-    for cam in ("top", "wrist"):
-        metrics["camera_frames_mean." + cam] = mean(s["camera_frames"].get(cam, 0) for s in agent)
-    metrics["render_wall_s_mean"] = mean(s["render_wall_s"] for s in agent)
-    metrics["layout_digest_checked"] = float(sum(1 for s in agent if s.get("layout_digest_checked")))
-    if agent:
-        for mid in agent[0]["weights"]:
-            metrics["mate_rate." + mid] = mean(1.0 if any(r["id"] == mid and r["achieved"] for r in s["mates"]) else 0.0 for s in agent)
-    return metrics
-
-
-def _finish_stats(rn, metrics, t_start):
-    metrics["runner_processes_killed"] = float(rn.killed)
-    metrics["runner_processes_left"] = float(rn.left)
-    metrics["runner_unclean_runs"] = float(rn.unclean_runs)
-    metrics["stray_files_removed"] = float(rn.stray_files)
-    metrics["submission_symlinks_skipped"] = float(rn.symlinks_skipped)
-    metrics["agent_processes_frozen"] = float(len(FREEZER[0].frozen)) if FREEZER[0] is not None else 0.0
-    metrics["verify_wall_s"] = time.time() - t_start
-    shutil.rmtree(RUNS_ROOT, ignore_errors=True)
+            FREEZER[0].stop()                     # after the verdict; the frozen stay stopped
 
 
 if __name__ == "__main__":

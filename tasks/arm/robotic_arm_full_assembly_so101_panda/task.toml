@@ -11,9 +11,35 @@
 # wrist, rendered by MuJoCo's Filament on CPU Vulkan in a baked factory hall; noisy F/T, no part poses, no mate events). Score = the episode mean of the fastened mates' weight / 18. The oracle submits
 # the privileged reference assembler (tests/arm/assembly_full/reference.py) with a 256-bit token: it runs inside the cell
 # on the bench plan's nominal layout. Grader knobs live in tests/grader_config.json.
+#
+# DUAL MODE (experimental, 2026-11-24; never merged into main): one session, one verify, two scoring items, reward =
+# their mean, each normalised by its own anchor (tests/anchor_offline.json = main's, tests/anchor_online.json; the
+# combined dual_mode_score in tests/anchor.json is 1.0 by construction).
+# * The offline item is main's grading above, unchanged, of the program FROZEN at the earlier of the graded start and the
+#   start window's close (prep_s after the service's start): then (before a start is charged) the graded episode's
+#   service has its root supervisor copy /home/user/submission into /var/lib/arb-online/submission_snapshot (the agent's
+#   own regular files and directories, no link followed, main's 60 MB cap), so the program keeps main's preparation
+#   time; the submission at the session's end is graded only when the session ends before the window closes, without a
+#   start, or there is no usable record.
+# * The online item is the graded episode the agent plays itself during its session, through the graded episode's cell
+#   service (environment/setup/online/service.py, started by environment/setup/setup.sh; the cell byte copies of the
+#   verifier's cell code, the hidden kit, the hidden bench plan and the grader configuration, served as the dedicated
+#   `arbcell` account over a unix socket; the client ~/given/lib/arm/assembly_info/graded.py's connect_graded()):
+#   graded-01, one 63-bit episode seed drawn once with OS entropy (tests/online.json), the same rules and score as an
+#   offline episode; it can be started once, within prep_s = 21600 s (main's agent budget, shared by the program and the
+#   preparation) of the service's start, and ends at the agent's finish, at the cell's own end, graded_s = 10800 s after
+#   its start, or when the session ends (the last record applies). Its record goes to /var/lib/arb-online, which the
+#   agent can neither read nor write.
+# There is no practice facility. The oracle (solution/solve.sh) leaves main's privileged program in the submission, then
+# starts the graded episode with the oracle token (the cell rebuilt from the episode's seed in the privileged mode, as
+# offline) and runs the reference assembler through the client.
 
 schema_version = "1.4+ale.1"
-artifacts = ["/home/user/submission"]
+# Where the agent leaves its program (assemble.py and its helper modules), and the graded episode's record directory
+# (record.json, requests.jsonl, the program frozen at the start in submission_snapshot/, the replay record in trace/),
+# written by the service as its own account and by its root supervisor; the engine collects both as root after the
+# agent phase.
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/robotic_arm_full_assembly_so101_panda"
@@ -48,11 +74,14 @@ tags = ["assembly", "mujoco", "panda", "code-as-policy", "camera-only", "rgbd", 
 cpus = 8
 memory_mb = 16384
 
-# [agent] timeout_sec: 6 h; [verifier] timeout_sec: the collision pieces once (~5 min) + 3 x (cell build ~10 s + program
+# [agent] timeout_sec (dual mode): prep_s + graded_s = 21600 + 10800 = 32400 s: main's 6 h for the program and the
+# preparation (the start window, counted from the service's start), then 3 h for the graded episode (the online
+# variant's default graded window: the oracle's episode, the reference assembler inside one call, takes about 30-40 min
+# of wall clock). [verifier] timeout_sec (main's): the collision pieces once (~5 min) + 3 x (cell build ~10 s + program
 # <= 2400 s wall); the oracle's verify: 3 x the reference assembler (~500 s simulated, ~30-40 min wall each). The
 # verifier sandbox's start and tests/test.sh's copy of the givens count against it too.
 [agent]
-timeout_sec = 21600
+timeout_sec = 32400
 network_mode = "no-network"
 
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never

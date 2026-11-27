@@ -1,0 +1,7 @@
+{
+ "note": "The graded episode of the dual mode (hidden: root-only at /opt/ale/setup/online while the agent works; the graded episode's service reads it as root before it drops privileges). Drawn once on 2026-11-24T04:17:15Z with OS entropy, python3 -c 'import secrets; print(secrets.randbelow(4))' -> 2, from the offline grader's fixed hidden set (tests/hidden/episodes.json, format racecar-asm-set/1: four pre-registered episodes, one per stratum): its third episode, with its seed, its stratum and its layout digest (the cell's layout must have that digest, as offline). tests/online.json holds this id and the sha256 of the seed's decimal text.",
+ "episode": "hidden-3",
+ "seed": 4645450495380593091,
+ "stratum": "yaw-lead0",
+ "layout_digest": "d89a2f0699b12c26e2438f328f43fd1bcb2eff547e0542797e488f313d0d1536"
+}

@@ -1,0 +1,11 @@
+{
+ "note": "The graded episode the record must name (verify.py checks format, task, episode and seed_sha256 against the record, and that the episode is entry hidden_index (1-based) of the fixed hidden set hidden/episodes.json, with that entry's layout digest and stratum; the seed itself lives only in hidden/episodes.json and environment/setup/online/graded_episode.json, root-only while the agent works). seed_sha256 = sha256 of the seed's decimal text. record / record_max_bytes: where the engine restores the record and the largest record verify.py reads; snapshot_dir: the program frozen at the graded start (or when the preparation window closed), which the program item grades.",
+ "format": "arb-online-record/1",
+ "task": "racecar_full_assembly_tenth_scale_ur10e",
+ "episode": "hidden-3",
+ "hidden_index": 3,
+ "seed_sha256": "761fd791a36a4f8d09d3718dbe9370f017cd02a96f2333a4051269cc5c3b8344",
+ "record": "/var/lib/arb-online/record.json",
+ "record_max_bytes": 1048576,
+ "snapshot_dir": "/var/lib/arb-online/submission_snapshot"
+}

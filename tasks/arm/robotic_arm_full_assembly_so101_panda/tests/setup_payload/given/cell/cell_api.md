@@ -38,6 +38,45 @@ aborts the episode; a CPU-time backstop of 4 x the wall cap applies per process;
 killed when the episode ends; a program that breaks the wire (crash, malformed line, exit) ends ITS episode with what it
 achieved so far and the other episodes still run.
 
+These are the program run's budgets. The graded episode you drive yourself in this session (below) keeps the cell's own
+limits (1200 s of simulated time, 600 camera frames, 500 ticks per `step`, the safety watch) and has none of the program
+run's: no wall-clock cap of 2400 s, no 120 s silence abort, no CPU backstop; only its two windows (the instruction).
+`describe()["budgets"]` is the cell's and describes the program run.
+
+## The graded episode (this session)
+
+`arm.assembly_info.graded.connect_graded()` connects to the graded episode's cell service (a unix socket,
+`/run/arb-online/cell.sock`) and returns a `GradedInfoCell`: the same `InfoCell` proxy your program's `solve(cell)` gets
+(every call above), plus `start()`, `status()` and `close()`. The rules (one start, the freeze of your program, the two
+windows, how the episode ends and is scored) are in the instruction.
+
+```python
+import sys
+sys.path.insert(0, "/home/user/given/lib")
+from arm.assembly_info.graded import connect_graded
+from arm.assembly_info.client import decode_frame
+
+cell = connect_graded()
+print(cell.status())          # started, ended, steps, sim_time, camera_frames, the time left in each window
+cell.start()                  # ONCE per session: freezes /home/user/submission, then starts the graded episode
+rgb, depth = decode_frame(cell.get_camera("top"))
+r = cell.step(20)
+cell.close()                  # disconnects; the episode stays where it is (connect_graded() again to go on)
+```
+
+* Before `start()` the cell's calls answer `not_started`; after the episode's end they answer `episode_over` (`finish()`
+  then answers `{"ok": true}`). The service's own errors carry a detail: `CellError("<code>: <detail>")`.
+* One client at a time: a second connection gets `CellError` `busy`. A connection that sends nothing for 15 minutes is
+  closed by the service (the episode stays; the proxy connects again by itself before its next request).
+* The episode lives in the service: a script that ends or crashes, or a closed connection, leaves it where it is.
+  Nothing moves between requests (the Panda holds its targets; the simulation advances only inside `step`).
+* A request line that is not one JSON object with a `method` is answered `bad_request` and changes nothing (a program
+  that breaks the wire ends its episode; here the episode goes on).
+* The first camera frame of the graded episode opens the cell's camera render session: it takes about 25-100 s of wall
+  clock. From then on the cell holds about 8 GB of the sandbox's memory (about 3.7 GB before).
+* Your program runs on it as `solve(connect_graded())` if you want. A program never connects to the service itself:
+  it receives its cell as `solve(cell)`, and when it is graded on the hidden episodes the service does not exist.
+
 ## Rendering your own frames
 
 MuJoCo's own renderer (`mujoco.Renderer`, or the render layer's `"mujoco"` backend) draws a different picture than the

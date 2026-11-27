@@ -1,0 +1,43 @@
+{
+ "note": "the dual mode's graded episode, read by graded_service.py's worker only (as root, before it drops privileges; /opt/ale/setup is root-only while the agent works). It is entry 6 of the offline grader's fixed hidden set (tests/hidden/episodes.json: 12 episodes, 2 on each of the 6 hidden units, in the grader's order), drawn once on 2026-11-24T04:34:05Z with OS entropy (secrets.randbelow(12) -> index 6, unit u1); the same episode serves every model. unit is tests/units.json's u1 (the three jars' hidden properties), seed the entry's. seed_sha256 = sha256 of the seed's decimal string (tests/online.json holds it for the verifier's cross-check); oracle_token_sha256 = tests/hidden/oracle_token.sha256 (the reference's token).",
+ "episode": "ep06",
+ "index": 6,
+ "unit_id": "u1",
+ "unit": {
+  "jars": [
+   {
+    "kind": "berry",
+    "lid_r": 0.029,
+    "jar_r": 0.0278,
+    "jar_h": 0.1246,
+    "mass": 0.632,
+    "mu": 0.438,
+    "tau": 0.418,
+    "turns": 2.0
+   },
+   {
+    "kind": "mint",
+    "lid_r": 0.033,
+    "jar_r": 0.0307,
+    "jar_h": 0.1325,
+    "mass": 0.29,
+    "mu": 0.646,
+    "tau": 0.217,
+    "turns": 2.0
+   },
+   {
+    "kind": "sugar",
+    "lid_r": 0.035,
+    "jar_r": 0.0324,
+    "jar_h": 0.1059,
+    "mass": 0.257,
+    "mu": 0.698,
+    "tau": 0.568,
+    "turns": 2.5
+   }
+  ]
+ },
+ "seed": 13554570225224615895,
+ "seed_sha256": "6eca0a59adde762476f82a88a20580459977c9143dfb7b0a66e832203fde591a",
+ "oracle_token_sha256": "e8479b7a96c90371386486a40db61622d5f50dcd45ebb57d035e01ff70900b4f"
+}

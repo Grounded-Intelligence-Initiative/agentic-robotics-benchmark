@@ -1,0 +1,7 @@
+{
+ "episode": "graded-01",
+ "seed": 6701320570403051011,
+ "seed_sha256": "8f65ccbacab33285617524403467b3ee0b2e25a19c34d6912fd5c06ab375051f",
+ "oracle_token_sha256": "e5468d1ab31cda6596f4260c9a87f2176d0859e5771773af6a4453c007ef259c",
+ "note": "the graded episode of the dual mode's online item: one 63-bit episode seed in the offline verifier's own seed width (tests/verify.py draws its 3 hidden episode seeds per verify from OS entropy, 63 bits each), drawn once on 2026-11-24 04:32:38Z with python3 -c 'import secrets; print(secrets.randbits(63))'; the cell builds its layout from the seed as for a hidden episode (arm/assembly_strut/server.py reset: the draw, the reach check's redraws); root-only at /opt/ale/setup while the agent works, read by the service's worker as root before it drops privileges; tests/online.json holds the id and the seed's sha256 (of its decimal ASCII form)"
+}

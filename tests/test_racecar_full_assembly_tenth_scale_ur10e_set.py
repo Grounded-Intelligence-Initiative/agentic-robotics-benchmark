@@ -33,7 +33,8 @@ _HERE = Path(__file__).resolve()
 _CANDIDATES = [_HERE.parents[1] / "tasks" / "ground" / SLUG, _HERE.parents[2] / SLUG]
 TASK = next((p for p in _CANDIDATES if (p / "tests" / "verify.py").is_file()), _CANDIDATES[0])
 TESTS = TASK / "tests"
-VERIFY = TESTS / "verify.py"
+# the grader's set functions: in the dual mode (the experimental branch) main's grader is tests/offline_verify.py
+VERIFY = TESTS / "offline_verify.py" if (TESTS / "offline_verify.py").is_file() else TESTS / "verify.py"
 HIDDEN = TESTS / "hidden"
 SET_PATH = HIDDEN / "episodes.json"
 SELECTION_PATH = HIDDEN / "selection.json"
@@ -73,14 +74,17 @@ def _layout_strata():
 
 
 def _agent_visible_texts():
-    """(relative path, text) of every agent-visible text file: instruction.md and environment/**"""
+    """(relative path, text) of every agent-visible text file: instruction.md and environment/**, less
+    environment/setup/online/ (the dual mode's graded episode service: root-only at /opt/ale/setup/online while the
+    agent works, like tests/)"""
     out = []
     p = TASK / "instruction.md"
     if p.is_file():
         out.append(("instruction.md", p.read_text(errors="replace")))
     env = TASK / "environment"
+    online = env / "setup" / "online"
     for dp, dns, fns in os.walk(env):
-        dns[:] = [d for d in dns if d != "__pycache__"]
+        dns[:] = [d for d in dns if d != "__pycache__" and Path(dp) / d != online]
         for fn in fns:
             q = Path(dp) / fn
             if q.suffix.lower() in TEXT_EXT or fn.startswith(("Dockerfile", "requirements")):
