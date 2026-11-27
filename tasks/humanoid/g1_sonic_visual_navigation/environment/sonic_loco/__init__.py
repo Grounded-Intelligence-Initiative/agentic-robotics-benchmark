@@ -1,0 +1,295 @@
+"""Native 50 Hz token control of a free-base G1/Dex3 on a flat floor."""
+import hashlib
+import math
+from pathlib import Path
+
+import mujoco
+import numpy as np
+
+from sonic_sim.decoder import DEFAULT_Q, Decoder, DecoderHistory
+
+from .model import BODY_JOINTS, FINGER_JOINTS, PHYSICS_DT, RIGHT_CLOSURE, SIDES, SUBSTEPS, floor_contacts, make_model
+
+
+def _integer(value, name, low, high):
+    if type(value) is not int or not low <= value <= high:
+        raise ValueError(f"{name} must be an integer in [{low}, {high}]")
+    return value
+
+
+def _draw(seed, field, low, high):
+    data = hashlib.blake2b(field.encode("ascii"), key=seed.to_bytes(8, "little"),
+                           person=b"g1loco.reset.v1", digest_size=8).digest()
+    return low + (high - low) * ((int.from_bytes(data, "little") >> 11) * 2.0**-53)
+
+
+def _wrap(angle):
+    return math.atan2(math.sin(angle), math.cos(angle))
+
+
+def _angle(matrix):
+    return math.atan2(matrix[3], matrix[0])
+
+
+class LocomotionSession:
+    """A CPU ONNX decoder, 29 body motors, 14 finger motors and unconstrained native dynamics."""
+
+    def __init__(self, assets_root, seed, horizon=1000):
+        self.horizon = _integer(horizon, "horizon", 1, 100_000)
+        root = Path(assets_root).resolve()
+        self._decoder = Decoder(root / "policy/model_decoder.onnx")
+        self.model = model = make_model(root / "menagerie_g1")
+        self._pelvis = model.body("pelvis").id
+        self._torso = model.body("torso_link").id
+        self._feet = [model.site(s + "_foot").id for s in SIDES]
+        self._floor = model.geom("floor").id
+        joints = [model.joint(name).id for name in BODY_JOINTS]
+        self._qadr = model.jnt_qposadr[joints].copy()
+        self._vadr = model.jnt_dofadr[joints].copy()
+        self._motors = [model.actuator(name).id for name in BODY_JOINTS]
+        self._fingers = [model.actuator(name).id for name in FINGER_JOINTS]
+        self._sole_side = {geom: side for side, name in enumerate(SIDES) for geom in range(model.ngeom)
+                           if model.geom_bodyid[geom] == model.body(name + "_ankle_roll_link").id
+                           and model.geom_type[geom] == mujoco.mjtGeom.mjGEOM_SPHERE}
+        if len(self._sole_side) != 8 or model.jnt_type[0] != mujoco.mjtJoint.mjJNT_FREE:
+            raise ValueError("The G1 model must have eight sole spheres and a floating base")
+        self._renderer = None
+        self._render_size = None
+        self._ego_renderer = None
+        self._ego_camera = model.camera("egocentric").id
+        self._visual_meshes = np.flatnonzero(model.geom_group == 2)
+        self.beacons = ()
+        self.reset(seed)
+
+    def reset(self, seed):
+        """Reset posture, contacts and history. World XY and yaw use independent keyed draws."""
+        _integer(seed, "seed", 0, 2**64-1)
+        self.beacons = ()
+        self.data = data = mujoco.MjData(self.model)
+        self.tick = 0
+        self._history = DecoderHistory()
+        self.last_target = None
+        self.last_substeps = ()
+        self._sample = None
+        self._fall_time = None
+        self._distance = self._accel_square = self._target_square = 0.
+        self._foot_paths = np.zeros(2)
+        data.qpos[self._qadr] = DEFAULT_Q
+        data.ctrl[self._motors] = DEFAULT_Q
+        data.qpos[:2] = [_draw(seed, axis, -.15, .15) for axis in ("world-x", "world-y")]
+        yaw = _draw(seed, "world-yaw", -math.pi, math.pi)
+        data.qpos[3:7] = (math.cos(yaw / 2), 0., 0., math.sin(yaw / 2))
+        mujoco.mj_forward(self.model, data)
+        gap = min(data.geom_xpos[g, 2] - self.model.geom_size[g, 0] for g in self._sole_side)
+        data.qpos[2] += .0002 - gap
+        mujoco.mj_forward(self.model, data)
+        self._measure(data.time, data.qvel[:3])
+        return self.state
+
+    def _measure(self, time_s, velocity):
+        d = self.data
+        pos = d.xpos[self._pelvis]
+        torso = d.xpos[self._torso]
+        rotation = d.xmat[self._pelvis]
+        torso_rotation = d.xmat[self._torso]
+        feet = d.site_xpos[self._feet]
+        heading, torso_heading = _angle(rotation), _angle(torso_rotation)
+        yaw_rate = 0.
+        previous = self._sample
+        if previous is not None:
+            elapsed = time_s - previous["time_s"]
+            delta = _wrap(heading - previous["heading_rad"])
+            yaw_rate = delta / elapsed
+            heading = previous["heading_rad"] + delta
+            torso_heading = previous["torso_heading_rad"] + _wrap(torso_heading - previous["torso_heading_rad"])
+            self._distance += float(np.linalg.norm(pos[:2] - previous["base_xy"]))
+            old_feet = np.asarray([previous["left_foot_pos"], previous["right_foot_pos"]])
+            self._foot_paths += np.linalg.norm(feet[:, :2] - old_feet[:, :2], axis=1)
+            delta_v = velocity[:2] - previous["velocity_xy"]
+            self._accel_square += float(delta_v @ delta_v) / elapsed
+        load_l, load_r, other = floor_contacts(self.model, d, self._floor, self._sole_side)
+        upright = bool(pos[2] > .45 and rotation[8] > .55)
+        if not upright and self._fall_time is None:
+            self._fall_time = float(time_s)
+        self._sample = dict(
+            time_s=float(time_s), elapsed_s=float(time_s), base_xy=pos[:2].tolist(),
+            torso_xy=torso[:2].tolist(), velocity_xy=velocity[:2].tolist(), heading_rad=heading,
+            torso_heading_rad=torso_heading, yaw_rate_rad_s=yaw_rate, pelvis_height_m=float(pos[2]),
+            torso_height_m=float(torso[2]), torso_tilt_rad=math.acos(float(np.clip(torso_rotation[8], -1., 1.))),
+            left_foot_pos=feet[0].tolist(), right_foot_pos=feet[1].tolist(),
+            left_foot_load_n=load_l, right_foot_load_n=load_r, other_ground_load_n=other,
+            left_foot_contact=load_l > 1., right_foot_contact=load_r > 1.,
+            upright=upright, fallen=self._fall_time is not None, first_fall_time_s=self._fall_time,
+            distance_m=self._distance, left_foot_path_xy_m=float(self._foot_paths[0]),
+            right_foot_path_xy_m=float(self._foot_paths[1]),
+            base_acceleration_xy_rms_m_s2=math.sqrt(self._accel_square/time_s) if time_s else 0.,
+        )
+        return self._sample
+
+    def _proprio(self):
+        d = self.data
+        m = self._sample
+        return dict(q=d.qpos[self._qadr].copy(), dq=d.qvel[self._vadr].copy(),
+                    base_pos=d.xpos[self._pelvis].copy(), base_quat=d.xquat[self._pelvis].copy(),
+                    base_gyro=d.qvel[3:6].copy(), gravity_body=-d.xmat[self._pelvis].reshape(3,3)[2].copy(),
+                    torso_pos=d.xpos[self._torso].copy(), torso_quat=d.xquat[self._torso].copy(),
+                    base_velocity_world=d.qvel[:3].copy(), heading_rad=m["heading_rad"],
+                    yaw_rate_rad_s=m["yaw_rate_rad_s"], left_foot_pos=d.site_xpos[self._feet[0]].copy(),
+                    right_foot_pos=d.site_xpos[self._feet[1]].copy(), left_foot_contact=m["left_foot_contact"],
+                    right_foot_contact=m["right_foot_contact"])
+
+    @property
+    def state(self):
+        metrics = {k: v.copy() if isinstance(v, list) else v for k,v in self._sample.items()}
+        metrics["target_step_rms_rad"] = math.sqrt(self._target_square / self.tick) if self.tick else 0.
+        reason = "fall" if metrics["fallen"] else ("time_limit" if self.tick >= self.horizon else None)
+        return dict(tick=self.tick, seconds=self.tick/50, observation=self._proprio(), metrics=metrics,
+                    done=reason is not None, reason=reason)
+
+    def decoder_history(self):
+        obs = self._proprio()
+        packed,_ = self._history.observation(np.zeros(64, dtype=np.float32), obs["q"], obs["dq"],
+                                            obs["base_gyro"], obs["gravity_body"])
+        return packed[64:].copy()
+
+    def step(self, token, left_hand=0., right_hand=0.):
+        """Decode one finite normalized token row, then integrate ten 2 ms free-base steps."""
+        if self._fall_time is not None or self.tick >= self.horizon:
+            raise ValueError("episode has ended")
+        row = np.asarray(token)
+        if row.shape != (64,) or row.dtype.kind not in "fiu":
+            raise ValueError("token must contain 64 finite real values")
+        with np.errstate(over="ignore"):
+            row = np.asarray(row, dtype=np.float32)
+        hands = np.asarray([left_hand, right_hand])
+        if not np.isfinite(row).all():
+            raise ValueError("token must fit finite float32")
+        if (hands.shape != (2,) or hands.dtype.kind not in "fiu" or not np.isfinite(hands).all()
+                or np.any((hands < 0) | (hands > 1))):
+            raise ValueError("hand closure must be in [0, 1]")
+        obs = self._proprio()
+        target = self._decoder.decode_step(row, self._history, obs["q"], obs["dq"], obs["base_gyro"], obs["gravity_body"])
+        previous = DEFAULT_Q if self.last_target is None else self.last_target
+        self._target_square += float(np.mean((target-previous)**2))
+        self.last_target = target
+        d = self.data
+        d.ctrl[self._motors] = target
+        d.ctrl[self._fingers] = np.concatenate((-RIGHT_CLOSURE*hands[0], RIGHT_CLOSURE*hands[1]))
+        samples = []
+        for i in range(SUBSTEPS):
+            start, velocity = float(d.time), d.qvel[:3].copy()
+            mujoco.mj_step(self.model, d)
+            # MuJoCo's solved contacts and derived transforms refer to the start
+            # of this interval. Match them to that same instant's free-joint velocity.
+            if i:
+                samples.append(self._measure(start, velocity))
+        mujoco.mj_forward(self.model, d)
+        samples.append(self._measure(d.time, d.qvel[:3]))
+        # A grader may annotate its returned samples. Keep the private state used
+        # by the next transition independent of those returned containers.
+        self._sample = {k: v.copy() if isinstance(v, list) else v for k,v in samples[-1].items()}
+        self.last_substeps = tuple(samples)
+        self.tick += 1
+        return self.state
+
+    def relative_goal(self, world_xy, world_heading=None):
+        """Express a world target in the pelvis heading frame (forward, left, counterclockwise)."""
+        xy = np.asarray(world_xy, dtype=float)
+        if xy.shape != (2,) or not np.isfinite(xy).all():
+            raise ValueError("world_xy must contain two finite coordinates")
+        m = self._sample
+        dx,dy = xy - m["base_xy"]
+        yaw = m["heading_rad"]
+        c,s = math.cos(yaw), math.sin(yaw)
+        result = dict(forward_m=float(c*dx+s*dy), left_m=float(-s*dx+c*dy), distance_m=float(math.hypot(dx,dy)))
+        if world_heading is not None:
+            if not math.isfinite(world_heading):
+                raise ValueError("world heading must be finite")
+            result["heading_error_rad"] = _wrap(world_heading-yaw)
+        return result
+
+    @staticmethod
+    def _draw_beacons(renderer, beacons):
+        # World-anchored optical landmarks are visible in RGB and depth.
+        # They do not contact the robot or change its inertia.
+        for position, color in beacons:
+            scene = renderer.scene
+            if scene.ngeom >= scene.maxgeom:
+                raise RuntimeError("renderer geometry budget exhausted")
+            geom = scene.geoms[scene.ngeom]
+            mujoco.mjv_initGeom(geom, mujoco.mjtGeom.mjGEOM_SPHERE,
+                               np.full(3, .12), np.asarray(position), np.eye(3).ravel(),
+                               np.array([*color, 1.], dtype=np.float32))
+            geom.emission, geom.specular = .6, 0.
+            geom.segid = scene.ngeom
+            scene.ngeom += 1
+
+    def egocentric(self, beacons):
+        if self._ego_renderer is None:
+            self._ego_renderer = mujoco.Renderer(self.model, width=128, height=96)
+        renderer = self._ego_renderer
+        # Cull only full bounding spheres outside the camera frustum. llvmpipe
+        # would otherwise transform the detailed meshes behind the robot camera
+        # twice per control query. This affects drawing only.
+        cam = self._ego_camera
+        meshes = self._visual_meshes
+        xyz = ((self.data.geom_xpos[meshes] - self.data.cam_xpos[cam])
+               @ self.data.cam_xmat[cam].reshape(3, 3))
+        radius = self.model.geom_rbound[meshes]
+        forward = -xyz[:, 2]
+        slope_y = math.tan(math.radians(37.5))
+        slope_x = slope_y * (128 / 96)
+        hidden = meshes[(forward < -radius)
+                        | (np.abs(xyz[:, 0]) - slope_x*forward > radius*math.hypot(1., slope_x))
+                        | (np.abs(xyz[:, 1]) - slope_y*forward > radius*math.hypot(1., slope_y))]
+        self.model.geom_group[hidden] = 5
+        try:
+            renderer.update_scene(self.data, camera="egocentric")
+        finally:
+            self.model.geom_group[hidden] = 2
+        renderer.scene.flags[mujoco.mjtRndFlag.mjRND_SHADOW] = False
+        renderer.scene.flags[mujoco.mjtRndFlag.mjRND_REFLECTION] = False
+        self._draw_beacons(renderer, beacons)
+        rgb = renderer.render().copy()
+        renderer.enable_depth_rendering()
+        try:
+            metres = renderer.render()
+            valid = np.isfinite(metres) & (metres > 0) & (metres <= 12.)
+            mm = np.where(valid, np.rint(np.minimum(metres, 12.) * 1000.), 0).astype(np.uint16)
+        finally:
+            renderer.disable_depth_rendering()
+        return rgb, mm
+
+    def camera(self, name="overview", width=640, height=480):
+        """Capture the moving robot from a fixed world azimuth, for replay and review."""
+        if name not in ("overview","side","overhead"):
+            raise ValueError("camera must be overview, side or overhead")
+        _integer(width,"width",32,1280)
+        _integer(height,"height",32,960)
+        if self._render_size != (width,height):
+            if self._renderer is not None:
+                self._renderer.close()
+            self._renderer = mujoco.Renderer(self.model, width=width, height=height)
+            self._render_size = width,height
+        cam = mujoco.MjvCamera()
+        cam.lookat[:] = (*self._sample["base_xy"], .65)
+        cam.distance = 2.85
+        cam.azimuth,cam.elevation = {"overview":(117.,-16.),"side":(90.,-10.),"overhead":(90.,-88.)}[name]
+        self._renderer.update_scene(self.data,camera=cam)
+        self._draw_beacons(self._renderer, self.beacons)
+        return self._renderer.render().copy()
+
+    def close(self):
+        if self._ego_renderer is not None:
+            self._ego_renderer.close()
+            self._ego_renderer = None
+        if self._renderer is not None:
+            self._renderer.close()
+            self._renderer = None
+            self._render_size = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self,*exc):
+        self.close()
