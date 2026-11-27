@@ -86,7 +86,9 @@ program's **stdout is the wire**: print `READY` when you are ready, then only re
   remaining steps run with the holder standing still and are judged as they are, and before the next procedure the
   grader restarts your program (`run.sh` again, `READY` again), at most three times in the evaluation; after that the
   remaining procedures run with the holder standing still. An `action` that is not four finite numbers also ends
-  your control of that procedure, but your program is not restarted: it gets the next procedure's `reset`. The reply
+  your control of that procedure, but your program is not restarted: it gets the next procedure's `reset`. When the
+  surgeon takes the camera back, the requests of that procedure stop there too, and the next message is the next
+  procedure's `reset`. The reply
   that uses up the total time is still applied; control stops after it.
 * Your program runs in a fresh copy of this environment that holds nothing of yours but `/home/user/submission`: no
   `~/given`, no commissioning service, no file you left elsewhere, no network (your program is started under a
