@@ -3,8 +3,9 @@
 The agent-facing contract is `instruction.md`; the device is described in
 `environment/setup/payload/given/holder_manual.md` and implemented in `holder_model.py` beside it. This page records
 the design decisions, what the grader checks and why, what is known to be rough, and, in section 7, a dated status
-log: **what was verified, where, and what was not**. Version 0.3, 2026-11-26 (versions 0.1 of 2026-11-24 and 0.2 of
-2026-11-26 were too easy: section 7); the Task Name was registered in the coordination sheet on 2026-11-25.
+log: **what was verified, where, and what was not**. Version 0.4, 2026-11-27 (versions 0.1 of 2026-11-24 and 0.2 of
+2026-11-26 were too easy; 0.3 of 2026-11-26 was made harder again at the owner's request before its frontier episode:
+section 7); the Task Name was registered in the coordination sheet on 2026-11-25.
 
 **Design rule: the agent gets what the device's engineer would have, and nothing a camera holder in an operating
 room would not.** It gets the holder's kinematics and manual, the intrinsics of both scopes, a development set of
@@ -159,6 +160,16 @@ any value existed; `tests/review/draw_v3.py` then drew, once, a 64-bit `os.urand
 12757619781714779651, development 16688242537185592512, commissioning 3379130351603837604. From the key each procedure
 gets a salt that is mixed into every stream of its generator (so everything 0.3 adds or changes is drawn after its
 rule) and its head changes. Nothing was redrawn.
+
+**Version 0.4** (2026-11-26/27; the owner asked for the hardest version, after a study of merged tasks with low
+frontier scores). Two levers on top of 0.3, the rules committed (`a894f00`) before the units were drawn (`89c6415`,
+`tests/review/draw_v4.py`: keys hidden 13615089563888208410, development 11486367590968804959, commissioning
+3929384717746489771):
+
+| what | rule | why it is there |
+|---|---|---|
+| the holder is one unit of a series (`model.ZERO_TOL`, `GAIN_RANGE`, `VIEW_TOL_DEG`; `procedure.draw_unit`) | each joint's reading = its true value + a fixed zero offset (pan, tilt +-0.015 rad; insertion +-6 mm; roll +-0.07 rad); each joint moves at its clipped command x a gain in 0.8 to 1.2; the scope looks within +-2.5 degrees of its nominal direction of view; a procedure starts at the home pose its readings show; the view rules are judged on the true pose, a lens cleaned by the true insertion. Development recordings give their units' values (lab-measured); commissioning procedures run on other units; the reference is told its unit | merged tasks fell when an exact executable model became a datasheet with units that deviate (a docking task, `arm/lab_sample_handling`). The tolerances are sized so that what is judged stays knowable: the absolute pan and tilt, which the camera barely reveals, deviate little; the insertion (parallax), the roll and the view direction (the picture's motion) and the gains (the joint readings) are observable. Measured render-free: a controller with perfect perception that ignores its unit loses nothing (it servos on the picture), so this lever bites only on what an agent computes from its model: the lens's clearance and cleaning position, depth from geometry, the rotation a joint motion should give |
+| critical actions in every kind of procedure (`procedure._critical_actions`) | an inspection (an exploration's hold at a place) joins the clip, the needle bite and the energy activation; the settle after the work arrives at a new place is 2 s (was 3 s), and a critical action that starts within it counts from then on if half a second of it is left (it was dropped). Every hidden procedure now has 1 to 14 critical actions (0.3: six had none) | with the per-procedure gate of 0.3, a procedure without a critical action could only be lost to the lens; now every procedure is at stake. Suture pulls and retractions were tried and left out: the reference itself was taken over (a wide retraction cannot always be held in a usable view by any holder) |
 
 **Rendering** (`scene.py`, `render_server.py`, `post.py`). One headless Isaac Sim 6.2 process draws the frames: the
 RTX Real-Time path tracer through a Replicator render product at 640 x 480, one subframe per frame, the render
@@ -396,6 +407,10 @@ seeds); the graded ones are in neither the image nor the sandbox.
   takeover for a clash of the scope with an instrument's shaft was considered for version 0.3 and left out: the
   reference's own scope, taken as a 10 mm cylinder, overlapped an instrument's shaft by up to 7 mm on test procedures
   (render-free), so it would not stay clear with a margin.
+* **The units' deviations are small where the camera cannot see them.** Absolute pan and tilt are revealed only
+  through the kinematics' nonlinearity, so their zero offsets are kept to +-0.015 rad (a horizon bias of about a
+  degree against a limit of 10); a controller that servos on the picture barely feels the rest (status log). The lever
+  is sized to stay knowable rather than to bite.
 * The commissioning service ends a session at a takeover without saying why; a surgeon would say why. The service
   stays silent on purpose (no judgement of the view), and the manual gives the exact rules.
 * The instruments do not wait for the camera: a real surgeon slows down when the view lags.
