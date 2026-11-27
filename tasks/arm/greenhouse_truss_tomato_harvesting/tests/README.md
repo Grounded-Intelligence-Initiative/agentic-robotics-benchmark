@@ -205,7 +205,8 @@ one session, with the generic modules of `arm/battery_pack_disassembly_to_module
   truss delivered on twelve rows, one truss each lost on two (pressed onto a crate's floor with 27 and 31 N while
   being laid down). The lay-down was changed (an arc about the truss's lowest fruit, followed by the wrench, 3 cm/s,
   guarded at 2.5 N); the four rows re-run after it, those two among them: all delivered, the largest press 12.8 N, the
-  largest change of a fruit's velocity 0.83 m/s. Two review rows of the practice cultivar ran as well (below).
+  largest change of a fruit's velocity 0.83 m/s. On two review rows of the practice cultivar (Ambra, seeds 31 and
+  32) the reference delivered every ready truss as well (6 of 6 and 4 of 4).
 - *The grader end to end, natively* (`tests/verify.py` as an ordinary account, the canary included): no submission
   0 (no simulator started); the example program 0 on all six rows; the reference `mean_row_yield` 1.00000 (27 of 27
   ready trusses; 218, 241, 270, 356, 251, 300 steps; 214 to 328 s simulated; probe lock 39 of 40, 5 idle; the whole
