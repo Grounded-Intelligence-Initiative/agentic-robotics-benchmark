@@ -764,6 +764,7 @@ def round3_draws():
                     lo, hi = S.SWOLLEN3["bulge"] if q["swollen"] else S.SWOLLEN3["crown"]
                     assert lo <= q["bump"]["h"] <= hi
                     assert (q["bump"]["h"] >= S.SWOLLEN["criterion"]) == bool(q["swollen"])
+                    assert q["dest"] == ("seat" if q["swollen"] else "rack"), (q["id"], q["dest"])
     assert min(weak_n) >= 2
     # the agent's files (instruction, the given documents, the example) hold none of the new seeds or values
     secrets = [str(e[k]) for e in hidden + dev for k in ("shank_seed", "swollen3_seed")] + ["%.4f" % e["transducer"][0] for e in hidden]

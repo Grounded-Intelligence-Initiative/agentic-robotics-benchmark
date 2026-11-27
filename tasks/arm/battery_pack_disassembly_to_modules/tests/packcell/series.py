@@ -565,8 +565,8 @@ def _swell(seed, swollen, parts, ranges=None):
         p["bump"] = {"h": round(h, 6), "a": round(st.uniform(*SWOLLEN["a"]), 4), "b": round(st.uniform(*SWOLLEN["b"]), 4),
                      "dx": round(st.uniform(*SWOLLEN["dx"]), 4)}
         p["swollen"] = p["id"] == which
-        if p["swollen"]:
-            p["dest"] = "seat"
+        # (rule 11 draws the bumps again: a module that rule 6 had chosen and rule 11 does not goes to the rack)
+        p["dest"] = "seat" if p["swollen"] else DEST["module"]
 
 
 def _shank(seed, fasteners):

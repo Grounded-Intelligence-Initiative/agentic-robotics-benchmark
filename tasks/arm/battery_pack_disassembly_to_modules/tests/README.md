@@ -405,10 +405,24 @@ native runs on the author's server.
   account `packcell` from a private copy, the seccomp launcher, the kit's account clearing), the untouched sandbox
   scored 0.0 and the oracle 1.0. Not exercised there: an agent phase (the commissioning sessions as the agent
   reaches them), any cloud GPU model, a host with a CPU quota.
-- **Difficulty is not measured.** No frontier model has run the task. The design aims at 0.3 or below through
-  perception and engineering (millimetre localisation from RGB-D, per-fastener head classification, torque-trace
-  logic, the isolation order, a long horizon with limited commissioning), not through penalties; whether it lands
-  there, and whether it is too hard, is open until `ale run`.
+- **Difficulty of the third round is not measured by a frontier model.** Two Claude Opus 5.5 episodes ran earlier
+  versions: reward 0.84 before the second round and 0.97 on the second round's tree (section 6). The third round's
+  numbers are native proxies (section 6): the second episode's frozen program and a fresh-agent proxy that I adapted
+  from it under the agent's conditions. Neither is a frontier episode; only a new `ale run` on the pushed tip says
+  where a fresh agent lands, and whether the task is now too hard.
+- **The third round's cliffs are rules, stated as such.** Damage at once under load (rule 8), the magnet's limits and
+  the short check (rule 10) and the gate are rules of the cell, not physics: a socket does not slide over a hexagon
+  in PhysX, the magnet's hold is a threshold on the rigid tool centre point's acceleration, a short is a loose
+  fastener's body within 3 mm of a seated busbar's box. The transducer of rule 12 is linear with one gain and one
+  offset per cell; the shank's yield is a two-slope torque-angle law with a set above the knee. Each is in the
+  documents with its numbers, and the reference's distance from each is in the verdict's `margin_*` metrics.
+- **The completion gate makes a pack's credit nearly all or nothing**, so a submission's score moves in steps of a
+  sixth with each pack that is or is not taken apart, and two runs of a program that is close to an edge can differ
+  by that much. The reference is far from every edge (section 6).
+- **The arm's own tracking sets the floor of rule 8.** A bit's lateral offset is measured on the physics' tip, and
+  the arm's position drives follow their targets to a fraction of a millimetre at rest; the reference engages from
+  exact targets, so its offsets measure that floor (`margin_engaged_lat_mm_*`), which is the margin a program has
+  before its own perception error is counted.
 - **The job can be done without the privileged view, and it takes engineering** (section 6, the entries "2026-11-25,
   10:00 to 11:35" and "2026-11-25, 13:50 to 21:30"). The first perception baseline scored 1.00000 on the hidden set in
   about an hour of work, through two shortcuts: exact depth (a head typed by its height in one overhead frame) and
