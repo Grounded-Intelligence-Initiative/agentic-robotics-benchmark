@@ -350,16 +350,18 @@ the development set, and the status log's evidence for 0.3 is the frozen episode
 The development and commissioning procedures were drawn like the graded ones (same generator, same rule, other
 seeds); the graded ones are in neither the image nor the sandbox.
 
-## 6. Known limitations and open items (version 0.3)
+## 6. Known limitations and open items (version 0.4)
 
-* **Validated in the engine on one host.** `ale validate` passed on version 0.3 (`e4ffe330`, status log, 2026-11-26,
+* **Version 0.4 is measured natively only.** `ale validate` passed on version 0.3 (`e4ffe330`, status log, 2026-11-26,
   night) as on versions 0.1 and 0.2, all on an RTX 3090 with driver 535 and rootless Docker that limits the CPUs by
-  affinity instead of a quota; the anchor is version 0.3's validate oracle. Not exercised for any version: a cloud
-  GPU model, a host with a CPU quota.
-* **Difficulty is measured by proxies only for version 0.3.** The target is a frontier-model reward of roughly 0.3 or
-  below. Versions 0.1 and 0.2 were saturated by one Opus 5.5 episode each (rewards 1.0 and 0.92, status log). For
-  0.3 the evidence is the frozen program of the 0.2 episode and a fresh-agent proxy adapted from it on development
-  material only (status log). Only a new frontier episode settles it.
+  affinity instead of a quota. Version 0.4 changes the image's inputs (the service's procedures, the manual): a new
+  image, `ale validate` and its oracle's anchor are due. Not exercised for any version: a cloud GPU model, a host with
+  a CPU quota.
+* **Difficulty is measured by proxies only for version 0.4.** The target is a frontier-model reward of roughly 0.3 or
+  below. Versions 0.1 and 0.2 were saturated by one Opus 5.5 episode each (rewards 1.0 and 0.92, status log); version
+  0.3's episode was cut short twice by its host's memory. For 0.4 the evidence is the frozen programs (the 0.2
+  episode's, version 0.3's proxy), a bound with perfect detection of visible tips, and a proxy adapted to 0.4 (status
+  log). Only a frontier episode settles it.
 * **Cliffs make scores lumpy.** A takeover leaves the rest of a procedure unusable, so a submission's per-procedure
   score depends on when a single mistake happens, and two runs of a controller that reads the picture can differ
   more than in 0.2. That is the owner's choice (2026-11-26: a mistake that ends the job). The reference stays clear of
@@ -429,6 +431,77 @@ seeds); the graded ones are in neither the image nor the sandbox.
 Newest first. Each entry says where the numbers come from; "here" is the development server (Ubuntu 22.04,
 RTX 6000 Ada, NVIDIA driver 570.195.03, Isaac Sim 6.2.0.0 + Isaac Lab 3.0.0 in a native Python 3.12 venv, no root,
 no Docker).
+
+### 2026-11-26/27, night: version 0.4, the hardest version (trees `a894f00` to the commit of this entry; measured on `89c6415` and `2c87760`, the same task code)
+
+**Why.** The owner asked on 2026-11-26 (19:35, in the session doing this work) for the hardest version, after a
+study of about 24 merged tasks: what lowered frontier scores there was no judge and no truth for the graded quantity,
+a datasheet in place of an exact executable model with units that deviate, completion gates, and methods taken out
+of the manual. Version 0.3 already had the first, the gate and the manual's facts; version 0.4 adds a unit that
+deviates from its datasheet, and critical actions in every kind of procedure (section 2, "Version 0.4"). Version
+0.3 (`e4ffe330`) was pushed first, so that its `ale validate` and frontier episode could run overnight.
+
+**Rules and draws.** The rules were committed in `a894f00`; `tests/review/draw_v4.py` then drew one 64-bit
+`os.urandom` key per set and each procedure's unit (`89c6415`; keys in section 2). Nothing was redrawn. Two candidate
+critical actions were tried render-free before the rule commit and left out, because the reference itself was taken
+over: the suture's pull (a 0.4 to 0.8 s hold after a fast 1 to 6 cm swing) and the retraction (even counted from 1 s
+into its hold: two development and two commissioning procedures taken over per probe draw). The unit lever was sized
+render-free: the reference with its unit hidden from it (perfect perception, the nominal model) scored 0.8153 against
+0.81 on the hidden seeds with test units, so a controller that servos on the picture barely feels the unit; the
+tolerances were kept at what the camera can reveal rather than raised until they bite.
+
+**The reference** (the anchor, unchanged at 0.811). Native on the hidden set (tree `89c6415`): **0.8111458**, per
+procedure 0.8387 0.8000 0.8912 0.7000 0.7750 0.8213 0.7262 0.8562 0.8612 0.9087 0.8163 0.7388; no takeover; 71
+critical actions (every procedure has 1 to 14), the least seen usable on 0.727 of its steps; no lens contact; probe
+pairs 205 of 555 differing; 95.6 ms a frame. Render-free: 0.8118 on the hidden set, 0.8079 on the development set,
+0.7869 on the commissioning set, no takeover anywhere; a camera that never moves 0 on every procedure.
+
+**The frozen program of the version 0.2 episode** (unchanged) on version 0.4's hidden set (tree `2c87760`):
+**0.1194** (ratio 0.147, reward 0.15; on version 0.3 0.2310). The surgeon took the camera back in 9 of 12 procedures,
+all for an unseen critical action; it played to the end only in two explorations and one suturing procedure (0.393,
+0.450, 0.590). No lens contact; lock 308 of 363. A run of it started at 20:42 was stopped after 3 minutes because it had
+overlapped another session's Isaac run on the same GPU (my check had raced that run's start); this is the rerun.
+
+**The frozen version 0.3 proxy** (unchanged, the one that scored 0.2278 on version 0.3) on version 0.4's hidden set
+(tree `4428dbe`): **0.0880** (ratio 0.109, reward 0.11). The surgeon took the camera back in 10 of 12 procedures, the
+three explorations included (they now have inspections); only two suturing procedures played to the end (0.611 and
+0.445). No lens contact; lock 212 of 296. It was built for version 0.3, so this is the cost of version 0.4's levers
+to a program that does not know them, not an estimate of an agent that reads the new manual.
+
+**A bound with perfect detection of every visible tip** (render-free, the reference fed each tip where an annotator
+last saw it, held in the patient frame, its first sight free): 0.588 on version 0.4 (0.72 of the reference; 0.561 with
+the camera head's change known 20 steps late). The surgeon took the camera back in 3 procedures, the same three as in
+version 0.3, each when a tip left the picture and its held position went stale; all three explorations played to the
+end (0.71 to 0.80). So the information is there, and the levers do not take a controller over that sees what can be
+seen and keeps the instruments in the picture; what is lost is perception and tracking.
+
+**A fresh-agent proxy for version 0.4**: the version 0.3 proxy (frozen above) given what a careful agent adds after
+reading version 0.4's manual: cleaning at the insertion joint's stop for 10.6 s (the reading may be 6 mm off the true
+value), per-joint gains fitted from its own joint readings (within about 10 % on a made-up unit), commands divided by
+them. Three blind commissioning sessions (the new conditions): `c01` played to the end, `c08` was taken over at step
+149, `c05` (an exploration, with its inspections) played to the end. Frozen (sha256 kept with it) and run once on the
+hidden set (tree `2c87760`): **0.0748** (ratio 0.092, reward 0.09); taken over in 10 of 12 procedures, playing to the
+end only in exploration 1 (0.401) and suturing 4 (0.496); no lens contact; lock 185 of 273. Like every proxy here it
+is a lower bound on a fresh agent, not an estimate (version 0.3: proxy 0.281 of the reference, the episode 0.552).
+
+**Small checks** (native, tree `2c87760`): no submission 0; a camera that never moves 0 (lock 0 of 9); random rates 0
+(lock 7 of 7). The commissioning service: the development set recorded in 9 min, each recording's `meta.json` carrying
+its unit, then a session with the example controller, exit 0.
+
+**What this says about difficulty.** Version 0.3's frontier episode (`ale run` `8730128a` on
+`c91849a3`, the RTX 3090 host, the solver's sandbox capped at 25 GB after two attempts had died of the host's memory;
+claude-code 2.1.309, effort high, no web tools, the 2 h and 3 sessions) scored **reward 0.56** (uvf 0.447, ratio 0.552):
+taken over in 2 of 12 procedures, the other ten played to the end, 64 min used. It finished after version 0.4 was
+designed and committed (its levers at 20:0x, its units drawn at 20:13; the episode's result at 22:56), and nothing of
+0.4 was changed after it: in particular the critical-action line stays at a quarter, although that episode kept two
+procedures whose least-seen critical action was 0.35 and 0.36 (raising the line to catch them would fit the task to
+one episode on the hidden set). Its proxy had underestimated it: version 0.3's fresh-agent proxy reached 0.281 of the
+reference, the episode 0.552, the same gap of about a quarter of the reference as in round 2. Version 0.4 puts at
+stake the six procedures in which that episode had nothing to lose (the suturing and exploration ones, where it
+earned 0.186 to 0.675), and makes the holder a unit to be identified. Every number here points well below version
+0.3: the episode program at 0.147 of the reference, version 0.3's proxy at 0.109, a version 0.4 proxy at 0.092;
+a tracker with perfect detection of visible tips reaches 0.72. Whether a frontier agent stays under the 0.5 line only
+its episode can say; the expectation from the gap above is about 0.35 to 0.5 of the reference.
 
 ### 2026-11-26, night: version 0.3 through `ale validate`, on the RTX 3090 host (tree `e4ffe330`)
 
