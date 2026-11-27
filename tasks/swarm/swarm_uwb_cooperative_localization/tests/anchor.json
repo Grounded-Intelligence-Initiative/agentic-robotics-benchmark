@@ -1,0 +1,9 @@
+{
+  "metric": "position_rmse_m",
+  "direction": "lower",
+  "value": 0.0248,
+  "full_at": 0.85,
+  "source": "Measured: the reference localizer (solution/oracle: self-calibration of the radios' delays, 3-D antenna patterns and received-power curve, the flow scales and the NLOS model jointly with the trajectories of the three agent-visible flights, no ground truth; then per flight a joint robust least-squares fit of all drones' 20 Hz positions, heading parameters, each radio's thermal drift and each rack's excess per metre) scored position_rmse_m = 0.02483, pooled over 18 hidden flights (six disjoint 3-flight sets) simulated by tests/world.py and scored with the grader's metric (2026-11-27); its calibration ran from the payload's flights exactly as solution/solve.sh runs it.",
+  "reference_commit": "c9ca534d",
+  "note": "full_at: the six 3-flight aggregates measured 0.0235 to 0.0263 m (single flights 0.0220 to 0.0294 m), so the worst honest ratio is about 0.0248 / 0.0263 = 0.94; 0.85 clears it with margin. The previous reference (the version of this task before the 3-D patterns, the power curve, the thermal drift and the per-flight rack loads were added; it models the delays, an azimuth-only antenna pattern of two harmonics, one NLOS line and the flow scales, calibrated jointly) scored 0.090 m on 3 hidden flights of this world (per flight 0.122, 0.066 and 0.072 m), a reward of about 0.32."
+}

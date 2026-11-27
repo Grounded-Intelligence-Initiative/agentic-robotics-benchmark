@@ -1,0 +1,34 @@
+schema_version = "1.4+ale.1"
+
+# The agent leaves its localization program (run.sh, code, calibration) here.
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/swarm_uwb_cooperative_localization"
+
+[metadata]
+platform = "swarm"
+
+# Self-calibration from three truth-free flights, then batch estimation per flight: numpy/scipy
+# work on the CPU. The reference calibrates in a few minutes and localizes a 150 s flight of
+# eight drones in well under a minute.
+[environment]
+cpus = 2
+memory_mb = 4096
+
+[agent]
+timeout_sec = 10800
+network_mode = "no-network"
+
+# Separate verification: a fresh verifier sandbox with only /home/user/submission restored
+# (setup.sh does not run there, so the agent's flights are absent). The grader simulates
+# three hidden flights and runs the submission once per flight (program_timeout_s = 600 in
+# tests/grader_config.json): at most 3 x 600 s plus about 10 s of simulation per flight.
+[verifier]
+timeout_sec = 2400
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 2
+memory_mb = 4096
+gpus = 0

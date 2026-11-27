@@ -1,0 +1,7 @@
+# The task image's Python dependencies, the one list (environment/Dockerfile installs it into
+# the py3.12 /opt/venv). The grader imports numpy only; the agent gets the usual scientific
+# stack for identification work.
+numpy==2.2.6
+scipy==1.15.3
+pandas==2.2.3
+matplotlib==3.10.3
