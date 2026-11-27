@@ -41,6 +41,13 @@ class GaitPolicy:
             sideways = 0.0
             yaw_bias = np.clip(0.18 * steering, -0.19, 0.19)
             yaw_rate = np.clip(1.8 * steering - 0.08 * yaw_speed, -0.75, 0.75)
+        elif motion == "stage":
+            # Two-axis braking and sideways translation in the aisle frame.
+            stride = np.clip(0.75 * forward - 0.16 * speed + 0.025, -0.12, 0.25)
+            sideways = np.clip(0.78 * left - 0.14 * lateral_speed, -0.25, 0.25)
+            gain = np.clip(max(abs(forward) / 0.14, abs(left) / 0.14), 0.0, 1.0)
+            yaw_bias = np.clip(0.24 * heading_error, -0.16, 0.16)
+            yaw_rate = np.clip(2.0 * heading_error - 0.12 * yaw_speed, -0.65, 0.65)
         elif motion == "dock":
             # The final stopping point lies on the aisle axis. Translating and
             # turning independently avoids a late heading correction as the
