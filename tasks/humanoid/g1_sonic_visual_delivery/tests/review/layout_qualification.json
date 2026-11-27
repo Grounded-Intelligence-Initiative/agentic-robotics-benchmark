@@ -1,0 +1,220 @@
+{
+  "reference_commit": "e779210d153b69d82f15dfa01906c94552df94ad",
+  "image": "sha256:35af8cc0e1cec00e8dabac76cd7721c9519caf07c9ed205a6a0bb937aae0ee23",
+  "registration_sha256": "e28e308487a9a351fefc8c44cf759f212c5bb9d939dd4d2e9da84ae92dc96f72",
+  "generator": "For index i starting at 0, interpret the first eight SHA-256 bytes as an unsigned big-endian integer from nonce || UTF8(':'+start+':'+shape+':'+str(i)).",
+  "nonce_hex": "b4d85fe2374e89389a52e8f4574a907463fef22bf98c18cdef54b52deaeb5c8c",
+  "rule": "Test both distinct targets in order. Retain the first two layouts per stratum for which the frozen public reference achieves both strict terminal releases. Preserve every attempted outcome.",
+  "groups": [
+    {
+      "start": "near",
+      "shape": "box",
+      "qualified_seeds": [
+        5231543165336965472,
+        1273062132402630426
+      ],
+      "attempts": [
+        {
+          "seed": 5231543165336965472,
+          "cases": [
+            {
+              "side": "left",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 502
+            },
+            {
+              "side": "right",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 552
+            }
+          ]
+        },
+        {
+          "seed": 1273062132402630426,
+          "cases": [
+            {
+              "side": "left",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 534
+            },
+            {
+              "side": "right",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 583
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "start": "near",
+      "shape": "cylinder",
+      "qualified_seeds": [
+        14975466332055351514,
+        18204830155825577378
+      ],
+      "attempts": [
+        {
+          "seed": 14975466332055351514,
+          "cases": [
+            {
+              "side": "left",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 514
+            },
+            {
+              "side": "right",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 579
+            }
+          ]
+        },
+        {
+          "seed": 4647388052346854043,
+          "cases": [
+            {
+              "side": "left",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 512
+            },
+            {
+              "side": "right",
+              "outcome": "time_limit",
+              "complete": 0,
+              "applied_rows": 1100
+            }
+          ]
+        },
+        {
+          "seed": 18204830155825577378,
+          "cases": [
+            {
+              "side": "left",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 618
+            },
+            {
+              "side": "right",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 565
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "start": "far",
+      "shape": "box",
+      "qualified_seeds": [
+        8613041459822232171,
+        5711952660209909588
+      ],
+      "attempts": [
+        {
+          "seed": 8613041459822232171,
+          "cases": [
+            {
+              "side": "left",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 763
+            },
+            {
+              "side": "right",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 799
+            }
+          ]
+        },
+        {
+          "seed": 5711952660209909588,
+          "cases": [
+            {
+              "side": "left",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 722
+            },
+            {
+              "side": "right",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 817
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "start": "far",
+      "shape": "cylinder",
+      "qualified_seeds": [
+        12670073516093432886,
+        13863429524833005223
+      ],
+      "attempts": [
+        {
+          "seed": 9493393195701853040,
+          "cases": [
+            {
+              "side": "left",
+              "outcome": "time_limit",
+              "complete": 0,
+              "applied_rows": 1100
+            },
+            {
+              "side": "right",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 746
+            }
+          ]
+        },
+        {
+          "seed": 12670073516093432886,
+          "cases": [
+            {
+              "side": "left",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 863
+            },
+            {
+              "side": "right",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 797
+            }
+          ]
+        },
+        {
+          "seed": 13863429524833005223,
+          "cases": [
+            {
+              "side": "left",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 722
+            },
+            {
+              "side": "right",
+              "outcome": "success",
+              "complete": 1,
+              "applied_rows": 825
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

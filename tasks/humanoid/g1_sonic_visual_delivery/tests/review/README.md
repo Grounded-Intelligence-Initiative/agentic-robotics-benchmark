@@ -47,6 +47,12 @@ task_dir=$PWD/tasks/humanoid/g1_sonic_visual_delivery
 )
 ```
 
+## Scored layouts and generalization
+
+Each verdict independently selects one of two reference-qualified layouts for each near/far × box/cylinder combination. The continuous generator remains available in public practice. The reference was frozen before the qualification seeds were opened. Both signal directions were run in their registered order and the first two complete layouts in each stratum were retained. Across all attempted layouts, 18 of 20 directional runs completed. The qualification record includes every attempted seed and failure, the nonce and recipe, the exact source and image. [Qualification record](layout_qualification.json)
+
+Measurements on newly drawn, unqualified layouts describe generalization. They do not enter the finite challenge score. The initial official random-domain bootstrap completed 12 of 12 physical deliveries on four layouts, and the null anchor returned zero normalized reward. Trials sharing the same layout and signal had identical physical and motion measurements across all four repeated signals.
+
 ## Measurement
 
 The graded unit is one physical layout with three independently initialized controllers. The grader samples one of the six nonconstant three-signal sequences uniformly, then interleaves cases across layouts. Both destinations occur. Each receives its own fresh process, private copy of the submitted files, writable temporary area and randomized probe schedule. The layout earns one when all three episodes reach a correct, loaded, contained, released placement. Opposite lights cannot change the native dynamics before the controller takes a different action. The first fully qualified placement on the wrong pad terminates the case.

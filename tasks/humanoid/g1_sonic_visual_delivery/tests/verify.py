@@ -26,7 +26,7 @@ def panel_jobs(config, rng):
     """All three signal trials share the physical layout, including the robot's initial state."""
     jobs = []
     for pair, layout in enumerate(config["layouts"]):
-        seed = layout.get("seed")
+        seed = rng.choice(layout["eligible_seeds"]) if "eligible_seeds" in layout else layout.get("seed")
         if seed is None:
             seed = rng.seed(bits=64)
         # Draw each nonconstant three-member sequence with probability 1/6.
@@ -93,6 +93,9 @@ def episode(solver, job, config, assets):
         except SolverAborted:
             pass
         row = audit.report()
+        layout = config.get("layouts", [])
+        if layout and "eligible_seeds" in layout[pair]:
+            row["eligible_layout_index"] = layout[pair]["eligible_seeds"].index(seed)
         native = session.state["metrics"]
         row.update(pair=pair, start=start, shape=shape, side=side, outcome=reason, probes=probes, unlit_probes=unlit,
                    altered=changed, duplicate_changes=noise, wrong_pad=int(native["wrong_pad"]),
@@ -138,7 +141,7 @@ def summarize(rows):
             result[prefix + name] = int(row[key] == name)
         for key in ("walked", "docked", "contacted", "lifted", "wrong_pad", "disqualified", "fell", "complete",
                     "applied_rows", "simulated_s", "changed_coordinates", "joint_acceleration_samples",
-                    "joint_accel_square_sum", "dock_s", "first_contact_s", "lift_s", "place_s"):
+                    "joint_accel_square_sum", "dock_s", "first_contact_s", "lift_s", "place_s", "eligible_layout_index"):
             if row.get(key) is not None:
                 result[prefix + key] = row[key]
     return result

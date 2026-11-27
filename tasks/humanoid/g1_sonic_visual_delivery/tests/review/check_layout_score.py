@@ -18,6 +18,13 @@ def main():
         assert all(job[:4] == (0, "far", "cylinder", 19) for job in jobs)
         seen[sides] += 1
     assert len(seen) == 6
+    candidate = {"layouts": [{"start": "far", "shape": "cylinder", "eligible_seeds": [41, 51]}]}
+    sampled = set()
+    for stream in range(40):
+        chosen = {job[3] for job in panel_jobs(candidate, seed_rng(stream))}
+        assert len(chosen) == 1
+        sampled.update(chosen)
+    assert sampled == {41, 51}
     def row(side, ok):
         return defaultdict(int, pair=0, start="far", shape="cylinder", side=side,
                            outcome="success" if ok else "time_limit", complete=int(ok))
