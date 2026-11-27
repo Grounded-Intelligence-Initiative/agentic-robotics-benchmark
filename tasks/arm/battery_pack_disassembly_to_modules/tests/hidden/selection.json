@@ -488,5 +488,8 @@
  "shank_key_hex": "65192eb916d48e8f7a98decb4c6ac73bd8c118340ea5dcad8a1d8ed9ff2d6adb",
  "swollen3_key_hex": "a522d666ef3bb3ec5d3c650ee925d916341b89d231c6b6d7ad05063695ff870d",
  "round3_rule": "tests/review/select_set.py (its docstring), rules 8 to 11",
- "round3_drawn_utc": "2026-11-27T00:20:10Z"
+ "round3_drawn_utc": "2026-11-27T00:20:10Z",
+ "transducer_key_hex": "0df6ee8089fe6291f19129a46d95cfc26832f693c9d75adccc77ccbdafecba71",
+ "transducer_rule": "tests/review/select_set.py (its docstring), rule 12",
+ "transducer_drawn_utc": "2026-11-27T00:32:43Z"
 }
