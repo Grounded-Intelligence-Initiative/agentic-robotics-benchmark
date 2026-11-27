@@ -1,0 +1,1 @@
+{"metric":"mean_cleaning_score","direction":"higher","value":1.0,"full_at":1.0,"source":"Measured with the RGB-only joint controller on six development apartments (11,12,13,24,37,58), all complete at 200 ticks. Full completion means cleaning five requested spills, both deliveries in visual-card order, docking and leaving treatment powder and runners intact."}
