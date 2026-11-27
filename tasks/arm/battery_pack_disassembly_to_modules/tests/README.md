@@ -1457,8 +1457,7 @@ version land under 0.5 on its one frontier episode (01:05), with a band for the 
 reference, a step back (the noise first) above it, and no further relaxation in any case: not the latch at the fifth
 stop, not a wider Torx tolerance, not a drill-out for a damaged head.
 
-*On the final tree* (`b132827b`: `fbe32a85`'s task, upstream `main` merged; the user's own training job `train_d3.py`
-held GPUs 3 and 4 from 00:26, and these runs shared them with it, one at a time, by the user's own word):
+*On the final tree* (`b132827b`: `fbe32a85`'s task, upstream `main` merged; the GPUs shared with other jobs of the server):
 - the reference (`ref5`, GPU 4): 1.00000, every pack 1.0 in 1094 to 1499 steps, 822 to 1151 s simulated (the
   allowance 1.30 times its slowest pack), lock 99/99, no stop, strip, shear, drop or yield, no pack condemned or
   incomplete; its margins as `ref3`'s (the tip within 0.025 mm, 0.97 of a yield point, carried at 1.45 m/s^2);
