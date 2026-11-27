@@ -1,7 +1,13 @@
 {
   "metric": "strict_course_fraction",
   "direction": "higher",
-  "value": null,
-  "full_at": 1.0,
-  "source": "Awaiting the first official visual-navigation calibration panel."
+  "value": 1.0,
+  "full_at": 0.9375,
+  "unit": "strictly completed physical courses per assigned course",
+  "reference_commit": "634ca1c69cc6df500b38adc35c5cac4b22780543",
+  "source": "Official null-anchor run measured 16/16 strict successes (8 left, 8 right). The preregistered rule requires 15/16 for full credit and both signed-light and range feedback gates.",
+  "measurement": "review/anchor_measurement.json",
+  "measurement_sha256": "dfd9c8801494269eba263a7b25da37297bf4a0ec9906828dc662295911f86c19",
+  "preregistration": "review/scoring_protocol.md",
+  "preregistration_sha256": "43cf341dbf2e3b9a5ce3eea52575e46b8103cfece8bec8688354543260cc58e5"
 }

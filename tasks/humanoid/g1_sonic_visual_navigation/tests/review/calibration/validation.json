@@ -1,0 +1,45 @@
+{
+  "engine": {
+    "commit": "bfb75050aca2c54b45c5ab23bae6028a834a468a",
+    "version": "0.1.1"
+  },
+  "run_id": "validate-73995c30",
+  "schema_version": 1,
+  "tasks": [
+    {
+      "failures": [
+        {
+          "code": "oracle_not_full",
+          "message": "oracle reward must be one after rounding to two decimals, got {'reward': 0.0}"
+        }
+      ],
+      "name": "grounded-intelligence-initiative/g1_sonic_visual_navigation",
+      "oracle": {
+        "episode_id": "grounded-intelligence-initiative.g1_sonic_visual_navigation-oracle-e6feaef7",
+        "lock_digest": "sha256:6d8433ff2ba146a8a64f71554f6e8c32b5f064eee65a10042ca19d24df4d20ca",
+        "lock_path": "grounded-intelligence-initiative.g1_sonic_visual_navigation-oracle-e6feaef7/lock.json",
+        "result_path": "grounded-intelligence-initiative.g1_sonic_visual_navigation-oracle-e6feaef7/result.json",
+        "rewards": {
+          "reward": 0.0
+        },
+        "status": "completed"
+      },
+      "passed": false,
+      "reward_names": [
+        "reward"
+      ],
+      "spec_hash": "sha256:9ee4e76a683028a2bbd768d345ce2aee8205c9dd4717798011a5827913b1ae4e",
+      "untouched": {
+        "episode_id": "grounded-intelligence-initiative.g1_sonic_visual_navigation-untouched-7ef7494d",
+        "lock_digest": "sha256:27f2683d2aea081bf5a93760386da5a021ea33f73f181f2c1eab4911d3b214b4",
+        "lock_path": "grounded-intelligence-initiative.g1_sonic_visual_navigation-untouched-7ef7494d/lock.json",
+        "result_path": "grounded-intelligence-initiative.g1_sonic_visual_navigation-untouched-7ef7494d/result.json",
+        "rewards": {
+          "reward": 0.0
+        },
+        "status": "completed"
+      },
+      "warnings": []
+    }
+  ]
+}
