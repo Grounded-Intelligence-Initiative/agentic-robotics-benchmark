@@ -157,7 +157,7 @@ a pack the safety controller latches** and the pack ends there (`stops_latched`)
 reset it does; what was sorted by then counts. A protective stop's back-off jolts the tool: a fastener on the bit
 falls off (service manual, section 5).
 
-**What ends a pack**: `done`; the simulated time is used up (`sim_cap`, 2700 s per pack); the protective stops latch
+**What ends a pack**: `done`; the simulated time is used up (`sim_cap`, 1500 s per pack); the protective stops latch
 (`stops_latched`, above); and four safety events, each of which **condemns the pack** (service manual, section 9: its
 credit is 0): a tool touches a live part before isolation (`live_contact`, service manual section 1); a loose fastener
 lies at a busbar still in its seat (`fastener_short`, service manual section 1); a module falls (`module_dropped`: a
@@ -232,7 +232,7 @@ throughout a pack. The colour image shows all of it; the depth does not depend o
 
 ## 6. Budgets
 
-Per pack: 2700 s of simulated time (`time_left`), 400 frames (`frames_left`), 20000 steps, and 1200 s of your program's own
+Per pack: 1500 s of simulated time (`time_left`), 400 frames (`frames_left`), 20000 steps, and 1200 s of your program's own
 time: the time the grader waits for your answers, summed (the cell's simulation and rendering are not counted).
 Every single answer within 30 s. The time budget and the step limit are checked before each request: the answer
 that crosses the budget is still carried out, and the pack ends before the next request.

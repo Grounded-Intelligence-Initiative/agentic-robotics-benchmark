@@ -43,9 +43,9 @@ def main():
         ("READY                   within 120 s of the start", grader["step_timeout_s"] * 4 == 120),
         ("one action for step t, within 30 s", grader["step_timeout_s"] == 30),
         ("1 to 40 control ticks of\n0.05 s", (wire.DEFAULTS["max_ticks"], S.TICK) == (40, 0.05)),
-        ("2700 s of simulated time, 400 camera frames, 20000 steps, and 1200 s",
+        ("1500 s of simulated time, 400 camera frames, 20000 steps, and 1200 s",
          (grader["cell"]["sim_cap_s"], grader["cell"]["frame_budget"], grader["max_steps"], grader["controller_budget_s"])
-         == (2700.0, 400, 20000, 1200) == (wire.DEFAULTS["sim_cap_s"], wire.DEFAULTS["frame_budget"], 20000, 1200)),
+         == (1500.0, 400, 20000, 1200) == (wire.DEFAULTS["sim_cap_s"], wire.DEFAULTS["frame_budget"], 20000, 1200)),
         ("**six packs**", len(packs) == 6),
         ("four development packs", len(service["packs"]) == 4),
         ("**Three sessions in all, one at a time, never refunded**", service["sessions"] == 3),
@@ -67,7 +67,7 @@ def main():
         ("more than 64 processes of your account", grader["max_processes"] == 64),
         ("The grader stops 20,400 s after it starts", grader["verifier_deadline_s"] == 20400
          and grader["verifier_deadline_s"] + 1200 == int(re.search(r"\[verifier\]\ntimeout_sec = (\d+)", toml).group(1))),
-        ("about 15,000 s", "15,000 s with the canary" in toml),
+        ("about 12,500 s", "12,500 s with the canary" in toml),
         ("**seized** fasteners (up to four a pack", S.SEIZED["max"] == 4 and S.SEIZED["n_hidden"][1] <= 4
          and S.SEIZED["breakaway"][0] > 1.0),
 

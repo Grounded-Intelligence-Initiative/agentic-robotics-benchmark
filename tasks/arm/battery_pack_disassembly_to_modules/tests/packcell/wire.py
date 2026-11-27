@@ -25,7 +25,7 @@ from . import kin
 from . import series as S
 
 DEFAULTS = {
-    "sim_cap_s": 2700.0, "frame_budget": 400, "max_ticks": 40,
+    "sim_cap_s": 1500.0, "frame_budget": 400, "max_ticks": 40,
     "tcp_speed_max": 0.6, "tcp_rot_speed_max": 2.0, "joint_speed_max": [1.5, 1.5, 2.0, 2.5, 2.5, 2.5],
     "overload_force": 220.0, "overload_torque": 80.0, "overload_joint_error": 0.12, "stop_lock_s": 3.0,
     "tool_change_s": 2.0, "bit_change_s": 2.5, "settle_s": 1.5,

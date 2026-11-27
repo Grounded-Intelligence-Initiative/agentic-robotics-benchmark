@@ -150,7 +150,7 @@ DEV = [("P4", "busbars"), ("P5", "lid"), ("P6", "none"), ("P6", "lid")]
 SEL = os.path.join(TASK, "tests", "hidden", "selection.json")
 PACKS = os.path.join(TASK, "tests", "hidden", "packs.json")
 DEVFILE = os.path.join(TASK, "environment", "commission_service", "dev_packs.json")
-SERVICE = {"sessions": 3, "idle_s": 900, "start_timeout_s": 900, "cell": {"sim_cap_s": 2700.0, "frame_budget": 400}}
+SERVICE = {"sessions": 3, "idle_s": 900, "start_timeout_s": 900, "cell": {"sim_cap_s": 1500.0, "frame_budget": 400}}
 
 
 def draw(key, tag, table):

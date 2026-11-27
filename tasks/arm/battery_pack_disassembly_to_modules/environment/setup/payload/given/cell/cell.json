@@ -409,7 +409,7 @@
   "stop_lock_s": 3.0,
   "tool_change_s": 2.0,
   "bit_change_s": 2.5,
-  "sim_cap_s": 2700.0,
+  "sim_cap_s": 1500.0,
   "frame_budget": 400
  },
  "isolation_wait_s": 30.0

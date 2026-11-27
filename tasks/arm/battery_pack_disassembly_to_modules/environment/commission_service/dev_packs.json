@@ -3,7 +3,7 @@
  "idle_s": 900,
  "start_timeout_s": 900,
  "cell": {
-  "sim_cap_s": 2700.0,
+  "sim_cap_s": 1500.0,
   "frame_budget": 400
  },
  "packs": [

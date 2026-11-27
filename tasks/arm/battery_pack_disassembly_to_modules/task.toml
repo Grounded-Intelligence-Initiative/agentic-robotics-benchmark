@@ -53,14 +53,16 @@ gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-6000-Ada", "RTX-3090"]
 # Setup (environment/setup/setup.sh: the givens into the agent home, the commissioning service started; under a
 # minute) has no field: the engine bounds it at 1800 s. [agent] timeout_sec: 2 h, a condition of the job since the
 # third hardening round (with three commissioning sessions, never refunded; tests/README.md, section 2); a session
-# takes at most 15 to 20 minutes of wall clock (2700 s of simulated time at 10 to 15 ms a control tick, plus the
+# takes at most 8 to 12 minutes of wall clock (1500 s of simulated time at 10 to 15 ms a control tick, plus the
 # cell's start). [verifier] timeout_sec: a canary cell (start and first render on a cold cache: a few minutes), then six
-# packs, each a fresh cell process (start and build: 1 to 4 min) with at most 2700 s of simulated time (54,000 control
-# ticks: 9 to 14 min of wall clock), 400 frames (about 0.2 s each) and 1200 s of the controller's own time: about
-# 2,400 s a pack at the bounds, 14,400 s for the six, 15,000 s with the canary; 6 h leaves 6,600 s of margin. The
+# packs, each a fresh cell process (start and build: 1 to 4 min) with at most 1500 s of simulated time (30,000 control
+# ticks: 5 to 8 min of wall clock; the allowance since the third round, 1.39 times the reference's slowest hidden pack),
+# 400 frames (about 0.2 s each) and 1200 s of the controller's own time: about 2,000 s a pack at the bounds, 12,000 s
+# for the six, 12,500 s with the canary; 6 h leaves 9,100 s of margin. The
 # grader's own deadline (tests/grader_config.json verifier_deadline_s, 20,400 s) ends grading with a verdict 1,200 s
-# before the engine's limit, whatever runs then. The reference's packs take about 600 to 900 s of simulated time
-# each; its whole verify took 18 to 34 minutes natively (1076 to 2031 s, tests/README.md, section 6).
+# before the engine's limit, whatever runs then. The reference's packs take about 770 to 1080 s of simulated time
+# each since the third round; its whole verify took 18 to 34 minutes natively (1076 to 2031 s, tests/README.md,
+# section 6).
 [agent]
 timeout_sec = 7200
 network_mode = "no-network"

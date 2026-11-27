@@ -132,7 +132,7 @@ simulations of your own with.
 ## How you are graded
 
 The grader runs your program on a fixed hidden set of **six packs**, one after the other, each in its own cell (with
-its own camera mounting), with these limits per pack: 2700 s of simulated time, 400 camera frames, 20000 steps, and 1200 s of your program's
+its own camera mounting), with these limits per pack: 1500 s of simulated time, 400 camera frames, 20000 steps, and 1200 s of your program's
 own time (the time the grader waits for your answers, summed; simulation and rendering are not counted). The budget
 is checked before each request, so the answer that crosses it is still carried out.
 
@@ -144,7 +144,7 @@ start in a fresh cell (that restart is not one of the three); if the cell fails 
 program was started again, or your program could not be stopped completely, the pack counts 0; and if the processes
 of your account cannot all be stopped when grading ends, the run scores 0. The grader stops 20,400 s after it
 starts, whatever is running then: the packs graded by then count and the others count 0 (six packs at every limit
-above take about 15,000 s).
+above take about 12,500 s).
 
 A pack ends when your program sends `done`, when its simulated time is used up, at the third protective stop, at a
 safety event (a tool on a live part before isolation, a loose fastener on a busbar, a module that falls, a swollen
