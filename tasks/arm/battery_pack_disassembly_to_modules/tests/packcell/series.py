@@ -279,11 +279,13 @@ FOAM = {"dev": (1, 0, 1, 0), "hidden": (2, 1, 1, 2, 0, 1), "max": 2, "weights": 
 # still has to do well, and mistakes that cannot be undone.
 #
 # Rule 8, precision engagement (a rule; nothing drawn). ENGAGE's full tolerances are 0.8 mm for a socket, 0.5 mm for a
-# Torx bit and 2 degrees (they were 2.0 mm, 1.2 mm and 3 degrees). A bit that turns on a head under torque without
-# driving it (on the head but outside the full tolerances, one size off, a Torx bit that cams out for want of force)
-# damages the head within DAMAGE["deg"] degrees of turning: it is stripped at once. A cammed-out Torx recess is reamed
-# smooth and the extractor has nothing to bite on (it turns freely in it); a rounded hexagon still takes the extractor.
-DAMAGE = {"deg": 10.0}
+# Torx bit and 2 degrees (they were 2.0 mm, 1.2 mm and 3 degrees). A bit that is on a head without driving it (outside
+# the full tolerances, one size off, a Torx bit that cams out for want of force), run with a torque limit of
+# DAMAGE["torque"] or more, strips the head at once (amended 2026-11-26 21:00, before any run: it was "within 10 degrees
+# of turning", which a slow test turn could still read cheaply); below that limit the spindle stalls on the head and
+# nothing happens to it. A cammed-out Torx recess is reamed smooth and the extractor has nothing to bite on (it turns
+# freely in it); a rounded hexagon still takes the extractor.
+DAMAGE = {"torque": 1.0}
 
 # Rule 9, the shank's strength (drawn per fastener from the pack's `shank_seed`, a key of its own). A corroded or a
 # seized fastener's shank has lost section: its shear torque is `strength` (uniform) times its thread's; a clean
@@ -295,6 +297,11 @@ SHANK = {"strength": (0.70, 1.00), "yield": (0.86, 0.92), "compliance": {"M6": (
 # The nutrunner's transducers (rule 9): each torque sample carries noise of sigma `torque_sigma` plus `torque_rel` of
 # the reading, each angle sample `angle_sigma_deg` (the cell's own random stream, seeded per pack).
 TRANSDUCER = {"torque_sigma": 0.15, "torque_rel": 0.01, "angle_sigma_deg": 0.2}
+# Rule 12, a cell's own nutrunner (drawn per cell, like rule 2's camera offsets, with a key of its own): the torque
+# transducer of the cell a pack is taken apart in reads `gain` times the torque plus `offset` (N m) while the spindle
+# runs, and the spindle's controller stalls it where that reading meets the commanded limit; the angle encoder is
+# exact. A cell's values are in its entry (`transducer`: [gain, offset]); without them the transducer is ideal.
+TRANSDUCER_CELL = {"gain": (0.88, 1.12), "offset": (-0.30, 0.30)}
 
 # Rule 10, consequences (rules; nothing drawn). `condemn`: a safety event quarantines the pack whole, as the facility
 # rule for a possible thermal event is (electrolyte and hydrogen fluoride contaminate what was sorted from it): the
@@ -593,7 +600,7 @@ def _pads(seed, n, fasteners, covered):
 
 def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None, appearance_seed=None,
               seized_seed=None, seized_n=0, swollen_seed=None, swollen=False, foam_seed=None, foam_n=0,
-              shank_seed=None, swollen3_seed=None):
+              shank_seed=None, swollen3_seed=None, transducer=None):
     """One pack: the nominal pack of its variant plus its hidden differences. `variant` and `harness` ("none",
     "lid", "busbars") may be fixed by the caller (the selection of a set); everything else comes from the seed.
     `cameras` are the mounting offsets of the cell the pack is taken apart in ({name: 6 numbers}, MOUNT_TOL; drawn
@@ -604,7 +611,8 @@ def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None,
     (rule 6) and `foam_seed` with `foam_n` (rule 7) give the seized fasteners, the modules' bumps and the foam pads;
     without them there are none, every module is flat and every fastener's working factor is 0.7. `shank_seed`
     (rule 9) gives every fastener's shank (SHANK); without it every shank has its thread's shear torque, yields only
-    there and does not wind up. `swollen3_seed` (rule 11) draws the modules' bumps again with SWOLLEN3's heights."""
+    there and does not wind up. `swollen3_seed` (rule 11) draws the modules' bumps again with SWOLLEN3's heights.
+    `transducer` (rule 12, [gain, offset], drawn with the set) is the cell's nutrunner transducer; without it, ideal."""
     s = Stream(seed, "pack")
     v = s.choice(sorted(VARIANTS))
     variant = variant or v
@@ -662,7 +670,8 @@ def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None,
            "module_ys": nom["module_ys"], "msd_y": nom["msd_y"], "bms_y": nom["bms_y"], "ribs": nom["ribs"],
            "placement": placement, "group_head": group_head, "parts": parts, "fasteners": fasteners, "harness": None,
            "cameras": {name: [float(v) for v in (cameras or {}).get(name, [0.0] * 6)] for name in sorted(CAMERAS)},
-           "appearance": None if appearance_seed is None else _appearance(appearance_seed, variant, fasteners)}
+           "appearance": None if appearance_seed is None else _appearance(appearance_seed, variant, fasteners),
+           "transducer": {"gain": float(transducer[0]) if transducer else 1.0, "offset": float(transducer[1]) if transducer else 0.0}}
     if harness != "none":
         hs = Stream(seed, "harness")
         pts, covers = _harness_path(hs, harness, nom, fasteners)
@@ -676,7 +685,7 @@ def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None,
 
 
 ENTRY_KEYS = ("variant", "harness", "cameras", "sealant_seed", "appearance_seed", "seized_seed", "seized_n", "swollen_seed",
-              "swollen", "foam_seed", "foam_n", "shank_seed", "swollen3_seed")
+              "swollen", "foam_seed", "foam_n", "shank_seed", "swollen3_seed", "transducer")
 
 
 def draw_entry(entry):

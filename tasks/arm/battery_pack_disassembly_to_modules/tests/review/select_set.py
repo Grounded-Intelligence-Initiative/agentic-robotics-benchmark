@@ -9,6 +9,7 @@
     python3 select_set.py --draw-appearance   # rule 4, once: the appearance key and every pack's appearance seed
     python3 select_set.py --draw-round2    # rules 5 to 7, once: their three keys and every pack's seeds and counts
     python3 select_set.py --draw-round3    # rules 9 and 11, once: their two keys and every pack's seeds
+    python3 select_set.py --draw-round3b   # rule 12, once: its key and every cell's transducer
     python3 select_set.py                  # re-derives both sets from the recorded keys and checks the files
 
 Rule 1, fixed before any pack was drawn or run:
@@ -99,8 +100,9 @@ BLAKE2b("<name>|<set>|k", key = the rule's key) read little-endian. The rest fol
 (`DAMAGE`, `ENGAGE`, `SHANK`, `TRANSDUCER`, `WORK`, `CONSEQUENCE`, `SWOLLEN3`) and packcell/rules.py.
 
 - Rule 8, precision engagement (no draw). Full engagement within 0.8 mm (socket), 0.5 mm (Torx) and 2 degrees; a bit
-  that turns on a head under torque without driving it strips the head within 10 degrees of turning; a reamed Torx
-  recess takes no extractor.
+  on a head that it does not drive, run with a torque limit of 1 N m or more, strips the head at once (amended before
+  any run: the first text said "within 10 degrees of turning", which a slow test turn could still read cheaply); a
+  reamed Torx recess takes no extractor.
 - Rule 9, the shank's strength (name "shank"). Per fastener, in the pack's order, three uniform draws from the seed
   (`series._shank`): a corroded or seized fastener's shear torque is 0.70 to 1.00 times its thread's (a clean one's is
   its thread's); its yield point 0.86 to 0.92 times its own shear torque; the angle reading's wind-up 1.2 to 1.8 (M6)
@@ -116,6 +118,20 @@ BLAKE2b("<name>|<set>|k", key = the rule's key) read little-endian. The rest fol
   0.4 mm.
 - The seeds go into each pack's entry (`shank_seed`, `swollen3_seed`) of the two files above. None is drawn again or
   changed for any value it turns out to have or for how any program does with it.
+
+Rule 12, a cell's own nutrunner (2026-11-26, evening; written and committed before any value was drawn, after the
+draw of rules 9 and 11, when a study of the merged arm tasks showed that what made them hard was a scored unit whose
+values differ from the practice units' and must be identified on site). Every cell has its own torque transducer:
+it reads gain x torque + offset while the spindle runs, and the spindle stalls where the reading meets the commanded
+limit (packcell/series.py `TRANSDUCER_CELL`).
+
+- A key of 32 random bytes (os.urandom) is drawn once (`--draw-round3b`) and recorded in tests/hidden/selection.json
+  as `transducer_key_hex`, independent of the other keys and of every seed.
+- The cell of pack k of the set <set> gets the gain 0.88 + 0.24 u and the offset -0.30 + 0.60 v (N m), rounded to 4
+  decimals, where u and v are the first 8 bytes of BLAKE2b("transducer|<set>|<k>|gain" and "...|offset", key = that
+  key) read little-endian over 2^64.
+- The values go into each pack's entry (`transducer`) of the two files above. None is drawn again or changed for any
+  value it turns out to have or for how any program does with it.
 """
 
 import hashlib
@@ -134,7 +150,7 @@ DEV = [("P4", "busbars"), ("P5", "lid"), ("P6", "none"), ("P6", "lid")]
 SEL = os.path.join(TASK, "tests", "hidden", "selection.json")
 PACKS = os.path.join(TASK, "tests", "hidden", "packs.json")
 DEVFILE = os.path.join(TASK, "environment", "commission_service", "dev_packs.json")
-SERVICE = {"sessions": 10, "idle_s": 900, "start_timeout_s": 900, "cell": {"sim_cap_s": 2700.0, "frame_budget": 400}}
+SERVICE = {"sessions": 3, "idle_s": 900, "start_timeout_s": 900, "cell": {"sim_cap_s": 2700.0, "frame_budget": 400}}
 
 
 def draw(key, tag, table):
@@ -184,6 +200,14 @@ def with_cells(sel, tag, packs):
         k9, k11 = bytes.fromhex(sel["shank_key_hex"]), bytes.fromhex(sel["swollen3_key_hex"])
         packs = [dict(p, shank_seed=_seed(b"shank", tag, k, k9), swollen3_seed=_seed(b"swollen3", tag, k, k11))
                  for k, p in enumerate(packs)]
+    if "transducer_key_hex" in sel:
+        k12 = bytes.fromhex(sel["transducer_key_hex"])
+        u = lambda k, what: int.from_bytes(hashlib.blake2b(b"transducer|%s|%d|%s" % (tag, k, what), key=k12, digest_size=8).digest(),  # noqa: E731
+                                           "little") / float(2 ** 64)
+        lo_g, hi_g = S.TRANSDUCER_CELL["gain"]
+        lo_o, hi_o = S.TRANSDUCER_CELL["offset"]
+        packs = [dict(p, transducer=[round(lo_g + (hi_g - lo_g) * u(k, b"gain"), 4), round(lo_o + (hi_o - lo_o) * u(k, b"offset"), 4)])
+                 for k, p in enumerate(packs)]
     return packs
 
 
@@ -207,7 +231,19 @@ def round2(sel, tag, packs):
 
 
 def main():
-    if "--draw-round3" in sys.argv[1:]:
+    if "--draw-round3b" in sys.argv[1:]:
+        with open(SEL) as f:
+            sel = json.load(f)
+        if "transducer_key_hex" in sel:
+            raise SystemExit("the key of rule 12 is drawn already (once)")
+        sel["transducer_key_hex"] = os.urandom(32).hex()
+        sel["transducer_rule"] = "tests/review/select_set.py (its docstring), rule 12"
+        sel["transducer_drawn_utc"] = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        with open(SEL, "w") as f:
+            json.dump(sel, f, indent=1)
+            f.write("\n")
+        sys.argv.append("--refresh")
+    if "--draw-round3" in sys.argv[1:] and "--draw-round3b" not in sys.argv[1:]:
         with open(SEL) as f:
             sel = json.load(f)
         if "shank_key_hex" in sel:
