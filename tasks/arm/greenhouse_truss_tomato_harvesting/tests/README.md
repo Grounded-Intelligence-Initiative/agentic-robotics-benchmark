@@ -227,3 +227,21 @@ one session, with the generic modules of `arm/battery_pack_disassembly_to_module
   five within 1.2 mm and three wrong by 10 to 22 mm, where the quick detector took another stalk in some views. The
   mouth takes about 5 mm across and 7 mm along. So the information is in the frames, and a detector has to be more
   careful than this one among leaves; a full program without the privileged view is open work.
+
+**2026-11-27, 16:11 to 16:20: `ale validate` on the author's validate host.** Run `validate-bc3c4ffd` on the tree of
+`c32222a7`, the pinned engine `bfb7505` (0.1.1), at the first attempt:
+
+```
+ok    grounded-intelligence-initiative/greenhouse_truss_tomato_harvesting: untouched={'reward': 0.0}, oracle={'reward': 1.0}
+```
+
+The image built on the battery task's layers (the Dockerfile is that task's up to the cell's own account); setup
+started the commissioning service; the untouched sandbox scored 0.0 (no submission); the oracle episode's verify
+stage (the cell as the account `rowcell` from a private copy, the seccomp launcher, the kit's account clearing, the
+canary) took 435 s and measured `mean_row_yield` 1.00000: every row in the same steps as the native runs (218, 241,
+270, 356, 251, 300), 27 of 27 ready trusses, probe lock 39 of 40, no protective stop, the margins as in
+`tests/anchor.json`. Deviations of that host from an evaluation host: the NVIDIA driver 535 is below Omniverse RTX's
+R550 floor (the cell's driver check is off, the canary judges the frames); rootless Docker cannot set a CPU quota
+(the engine's `--cpus 8` was dropped; every exec'd process was pinned to 8 CPUs instead). `tests/anchor.json` keeps
+the value 1.0; only its `source` changed after this run. Not exercised by a validate: the agent phase (the
+commissioning sessions as an agent reaches them: checked natively only), any cloud GPU model.
