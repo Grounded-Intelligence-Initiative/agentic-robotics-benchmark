@@ -22,7 +22,10 @@ def _run(session, seed, render=False):
     actual = session.data
     model = session.model
     shadow = copy(actual)
-    assert (model.nq, model.nv, model.nu, model.neq) == (50, 49, 43, 0)
+    # Two independent furniture slides augment the released 43 robot actuators.
+    assert (model.nq, model.nv, model.nu, model.neq) == (52, 51, 45, 0)
+    assert all(model.jnt_type[j] == mujoco.mjtJoint.mjJNT_SLIDE
+               for j in (model.joint("shutter_right").id, model.joint("shutter_left").id))
     assert model.jnt_type[0] == mujoco.mjtJoint.mjJNT_FREE
     assert sum(model.geom_bodyid == 0) == 1 and model.geom("floor").id >= 0
     assert 0 not in model.actuator_trnid[:, 0]

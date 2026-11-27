@@ -11,7 +11,7 @@ from numbers import Real
 
 import numpy as np
 
-from sonic_loco.obstacles import LANE_HALF_WIDTH, Layout, make_layout
+from sonic_loco.obstacles import LANE_HALF_WIDTH, LATERAL, PLATE_OFFSET_X, Layout, make_layout
 from sonic_loco.score import (
     PhysicalScore, STRAIGHT_CORRIDOR_M, STOP_SPEED_M_S, STOP_YAW_RATE_RAD_S, STRAIGHT_DISK_M,
     TURN_DISK_M, YAW_TOLERANCE_RAD,
@@ -19,7 +19,7 @@ from sonic_loco.score import (
 
 PROTOCOL = "g1-sonic-visual-navigation/1"
 STAGES = ("approach", "pivot", "departure")
-STAGE_LIMITS = (2000, 450, 650)
+STAGE_LIMITS = (2600, 450, 650)
 HORIZON = sum(STAGE_LIMITS)
 EXTRA_APPROACH_HOLD = 75
 CHUNK = 5
@@ -104,6 +104,11 @@ class NavigationEpisode:
             raise ValueError("expected a physical obstacle layout")
         session.install_layout(self.layout)
         self.passages = []
+        self._shutter_crossing = None
+        self._previous_slides = session.actual_slides()
+        self._staging_finished = False
+        self.fork_staging_entry_s = None
+        self.fork_staging_slow_s = 0.
         self.course_boundary_violation = False
         self._last_approach_xyz_t = (0., 0., 0.)
         self._missed_passage = False
@@ -196,6 +201,12 @@ class NavigationEpisode:
         rgb, depth = self.session.mirrored_camera(self.layout, self.landmarks())
         return stamp_observation(dict(live, camera={"rgb_png": _png(rgb), "depth_mm_png": _png(depth)}))
 
+    def observe_swapped_phases(self):
+        """Audit-only RGB-D at the same robot pose with exchanged measured leaf travel fractions."""
+        live = self.observe()
+        rgb,depth = self.session.swapped_phase_camera(self.landmarks())
+        return stamp_observation(dict(live, camera={"rgb_png":_png(rgb), "depth_mm_png":_png(depth)}))
+
     def relight(self, live, brightness):
         """Render a different lamp exposure using exactly the live depth acquisition."""
         if live["tick"] != self.session.tick or live["last_observation_id"] != self.last_observation_id:
@@ -239,32 +250,68 @@ class NavigationEpisode:
                 and abs(sample["yaw_rate_rad_s"]) <= STOP_YAW_RATE_RAD_S)
 
     def _measure_passages(self, samples):
-        """Interpolate the pelvis crossing of each actual cabinet mid-plane in temporal order."""
+        """Interpolate actual native leaf and pelvis positions at each forward plane crossing."""
         positions = np.array([s["base_xy"] for s in samples])
-        local = (positions - self.session.layout_origin_xy) @ self.session.layout_axes
+        local = (positions-self.session.layout_origin_xy) @ self.session.layout_axes
         previous_x, previous_y, previous_t = self._last_approach_xyz_t
-        for (x, y), sample in zip(local, samples):
+        previous_slides = self._previous_slides
+        fork = self.layout.fork
+        leaf_x = fork.forward_m+PLATE_OFFSET_X
+        for (x,y),sample in zip(local,samples):
             now = sample["time_s"]
-            self.course_boundary_violation |= bool(abs(y) > LANE_HALF_WIDTH)
+            slides = sample["shutter_slides_m"]
+            self.course_boundary_violation |= bool(abs(y)>LANE_HALF_WIDTH)
+            def crossing(plane):
+                f = (plane-previous_x)/(x-previous_x)
+                return f, float(previous_y+f*(y-previous_y)), float(previous_t+f*(now-previous_t))
+            if not self.passages:
+                if not self._staging_finished and leaf_x-1. <= x < leaf_x:
+                    if self.fork_staging_entry_s is None:
+                        self.fork_staging_entry_s = now
+                    if math.hypot(*sample["velocity_xy"]) <= .10:
+                        self.fork_staging_slow_s += now-previous_t
+                if x < leaf_x <= previous_x:
+                    self._shutter_crossing = None
+                if previous_x < leaf_x <= x:
+                    self._staging_finished = True
+                    f, left, t = crossing(leaf_x)
+                    side = 1 if left>fork.island_center_m else -1
+                    i = 1 if side==1 else 0
+                    slide = previous_slides[i]+f*(slides[i]-previous_slides[i])
+                    lo,hi = fork.clear_bounds(side,slide)
+                    clearance = min(left-lo,hi-left)
+                    self._shutter_crossing = dict(side=side,native_time_s=t,tick=self.session.tick,
+                        forward_m=leaf_x,left_m=left,actual_slide_m=slide,clear_lo_m=lo,clear_hi_m=hi,
+                        clear_width_m=hi-lo,gap_edge_clearance_m=clearance)
+                    if clearance<=0:
+                        self._missed_passage = True
             index = len(self.passages)
             if index < len(self.layout.gates):
                 gate = self.layout.gates[index]
                 if previous_x < gate.forward_m <= x:
-                    fraction = (gate.forward_m-previous_x) / (x-previous_x)
-                    crossing_y = float(previous_y + fraction*(y-previous_y))
-                    crossing_t = float(previous_t + fraction*(now-previous_t))
-                    lo, hi = gate.edges
-                    clearance = min(crossing_y-lo, hi-crossing_y)
-                    if clearance > 0:
-                        self.passages.append(dict(gate_index=index, side=gate.side, tick=self.session.tick,
-                            native_time_s=crossing_t, forward_m=gate.forward_m, left_m=crossing_y,
-                            gap_edge_clearance_m=clearance,
-                            world_xy_m=(self.session.layout_origin_xy+self.session.layout_axes @
-                                        [gate.forward_m,crossing_y]).tolist()))
+                    _,left,t = crossing(gate.forward_m)
+                    if index==0:
+                        side = 1 if left>fork.island_center_m else -1
+                        lo,hi = fork.corridor(side)
+                        valid_leaf = self._shutter_crossing and self._shutter_crossing["side"]==side
                     else:
+                        side = gate.side
+                        lo,hi = gate.edges
+                        valid_leaf = True
+                    clearance = min(left-lo,hi-left)
+                    if clearance<=0 or not valid_leaf:
                         self._missed_passage = True
-            previous_x, previous_y, previous_t = x, y, now
-        self._last_approach_xyz_t = (previous_x, previous_y, previous_t)
+                    else:
+                        event = dict(gate_index=index,side=side,tick=self.session.tick,native_time_s=t,
+                            forward_m=gate.forward_m,left_m=left,gap_edge_clearance_m=clearance,
+                            world_xy_m=(self.session.layout_origin_xy+self.session.layout_axes @
+                                        [gate.forward_m,left]).tolist())
+                        if index==0:
+                            event["shutter_crossing"] = self._shutter_crossing
+                        self.passages.append(event)
+            previous_x,previous_y,previous_t,previous_slides = x,y,now,slides
+        self._last_approach_xyz_t = (previous_x,previous_y,previous_t)
+        self._previous_slides = previous_slides
 
     def _advance_row(self, codes):
         state = self.session.step((codes.astype(np.float32) - 16) / 16)
@@ -338,9 +385,20 @@ class NavigationEpisode:
         eligible = CODE_DIM * max(0, rows - 1)
         stages = [*self._completed] if self.done else [*self._completed, self._stage_record()]
         contact = self.session.first_obstacle_contact
+        fork = self.layout.fork
+        apertures = []
+        for name,side in LATERAL:
+            lo,hi = fork.corridor(side)
+            apertures.append(dict(side=side,left_m=(hi+lo)/2,gap_width_m=hi-lo,gap_min_m=lo,gap_max_m=hi,
+                                  stroke_m=self.layout.stroke(side)))
+        geometry = [dict(gate_kind="timed_fork",forward_m=fork.forward_m,apertures=apertures)]
+        if self.layout.tail is not None:
+            g = self.layout.tail
+            geometry.append(dict(asdict(g),gate_kind="fixed_offset",side=g.side,gap_min_m=g.edges[0],
+                                 gap_max_m=g.edges[1]))
         return {"success": self.reason == "success", "reason": self.reason, "stages": stages,
-                "gate_layout": [dict(asdict(g), side=g.side, gap_min_m=g.edges[0], gap_max_m=g.edges[1])
-                                for g in self.layout.gates],
+                "gate_layout": geometry, "service":self.layout.service, "phases_right_left_s":self.layout.phases,
+                "fork_staging_entry_s":self.fork_staging_entry_s,"fork_staging_slow_s":self.fork_staging_slow_s,
                 "required_gates": len(self.layout.gates), "passed_gates": len(self.passages),
                 "passages": list(self.passages), "obstacle_contact": contact is not None,
                 "obstacle_contact_substeps": self.session.obstacle_contact_substeps,

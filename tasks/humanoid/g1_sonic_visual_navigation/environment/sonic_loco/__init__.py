@@ -9,7 +9,7 @@ import numpy as np
 
 from sonic_sim.decoder import DEFAULT_Q, Decoder, DecoderHistory
 
-from .obstacles import LANE_HALF_WIDTH, MAX_GATES, PANEL_HEIGHT, PANEL_LENGTH, heading_axes
+from .obstacles import LANE_HALF_WIDTH, LATERAL, PANEL_HEIGHT, PANEL_LENGTH, PLATE_OFFSET_X, cycle, heading_axes
 from .model import BODY_JOINTS, FINGER_JOINTS, PHYSICS_DT, RIGHT_CLOSURE, SIDES, SUBSTEPS, floor_contacts, make_model
 
 
@@ -45,14 +45,16 @@ class LocomotionSession:
         self._torso = model.body("torso_link").id
         self._feet = [model.site(s + "_foot").id for s in SIDES]
         self._floor = model.geom("floor").id
-        self.gate_geom_ids = {}
-        self._gate_mocaps = {}
-        for i in range(MAX_GATES):
-            for side in ("minus_y", "plus_y"):
-                name = f"gate_{i}_{side}"
-                gid = model.geom(name+"_cabinet").id
-                self.gate_geom_ids[gid] = (i, side)
-                self._gate_mocaps[gid] = model.body_mocapid[model.body(name).id]
+        names = ("fork_island", "fork_right_jamb", "fork_left_jamb", "shutter_right", "shutter_left",
+                 "gate_1_minus_y_cabinet", "gate_1_plus_y_cabinet")
+        self.gate_geom_ids = {model.geom(name).id:(int(name.startswith("gate_1_")),name) for name in names}
+        self._gate_mocaps = {name:model.body_mocapid[model.body(name+"_anchor").id] for name in names}
+        self._leaf_bodies = [model.body("shutter_"+side).id for side,_ in LATERAL]
+        self._rail_bodies = [model.body("shutter_"+side+"_anchor").id for side,_ in LATERAL]
+        joints = [model.joint("shutter_"+side).id for side,_ in LATERAL]
+        self._leaf_q = model.jnt_qposadr[joints].copy()
+        self._leaf_v = model.jnt_dofadr[joints].copy()
+        self._leaf_u = [model.actuator("shutter_"+side).id for side,_ in LATERAL]
         self._stripe_mocaps = [model.body_mocapid[model.body("lane_"+s).id] for s in ("minus_y","plus_y")]
         # The original robot is a single body tree rooted at its free pelvis.
         root = model.body_rootid[self._pelvis]
@@ -84,6 +86,7 @@ class LocomotionSession:
         self.beacons = ()
         self.data = data = mujoco.MjData(self.model)
         self.tick = 0
+        self.layout = None
         self.obstacle_contact_substeps = 0
         self.first_obstacle_contact = None
         for mid in (*self._gate_mocaps.values(), *self._stripe_mocaps):
@@ -107,30 +110,54 @@ class LocomotionSession:
         self._measure(data.time, data.qvel[:3])
         return self.state
 
-    def install_layout(self, layout):
-        """Place kinematic furniture once at reset. Native collision and all cameras share MjData."""
-        if self.tick:
-            raise ValueError("furniture must be configured at reset")
-        state = self._sample
-        self.layout_origin_xy = np.asarray(state["base_xy"]).copy()
-        self.layout_yaw = state["heading_rad"]
-        self.layout_axes = heading_axes(self.layout_yaw)
+    def _place_furniture(self, data, layout):
+        fork = layout.fork
         quat = (math.cos(self.layout_yaw/2), 0., 0., math.sin(self.layout_yaw/2))
         def place(mid, x, y, z):
-            self.data.mocap_pos[mid] = (*((self.layout_origin_xy + self.layout_axes @ [x,y])), z)
-            self.data.mocap_quat[mid] = quat
-        for gid, (i, side) in self.gate_geom_ids.items():
-            mid = self._gate_mocaps[gid]
-            if i >= len(layout.gates):
-                self.data.mocap_pos[mid] = (0., 0., -4.)
-                continue
-            gate = layout.gates[i]
-            y = (gate.edges[0] - PANEL_LENGTH/2 if side == "minus_y" else gate.edges[1] + PANEL_LENGTH/2)
-            place(mid, gate.forward_m, y, PANEL_HEIGHT/2)
-            self.model.geom_rgba[gid, :3] = gate.rgb
+            data.mocap_pos[mid] = (*((self.layout_origin_xy + self.layout_axes @ [x,y])), z)
+            data.mocap_quat[mid] = quat
+        def cabinet(name, x, y, color):
+            place(self._gate_mocaps[name], x, y, PANEL_HEIGHT/2)
+            if data is self.data:
+                self.model.geom_rgba[self.model.geom(name).id,:3] = color
+        cabinet("fork_island", fork.forward_m, fork.island_center_m, fork.rgb)
+        for side, sign in LATERAL:
+            lo,hi = fork.corridor(sign)
+            outer = hi if sign==1 else lo
+            cabinet("fork_"+side+"_jamb", fork.forward_m, outer+sign*PANEL_LENGTH/2, fork.rgb)
+            place(self._gate_mocaps["shutter_"+side], fork.forward_m+PLATE_OFFSET_X, (hi+lo)/2, .38)
+        for sign, name in [(-1,"gate_1_minus_y_cabinet"), (1,"gate_1_plus_y_cabinet")]:
+            if layout.tail is None:
+                data.mocap_pos[self._gate_mocaps[name]] = (0., 0., -4.)
+            else:
+                lo,hi = layout.tail.edges
+                outer = hi if sign==1 else lo
+                cabinet(name,layout.tail.forward_m,outer+sign*PANEL_LENGTH/2,layout.tail.rgb)
         for mid, sign in zip(self._stripe_mocaps, (-1,1)):
-            place(mid, 4., sign * LANE_HALF_WIDTH, .0015)
+            place(mid, 4., sign*LANE_HALF_WIDTH, .0015)
+
+    def install_layout(self, layout):
+        if self.tick:
+            raise ValueError("furniture must be configured at reset")
+        self.layout = layout
+        self.layout_origin_xy = np.asarray(self._sample["base_xy"]).copy()
+        self.layout_yaw = self._sample["heading_rad"]
+        self.layout_axes = heading_axes(self.layout_yaw)
+        self._place_furniture(self.data,layout)
+        self._strokes = tuple(layout.stroke(sign) for _,sign in LATERAL)
+        for i,phase in enumerate(layout.phases):
+            frac,rate = cycle(phase)
+            self.data.qpos[self._leaf_q[i]] = self.data.ctrl[self._leaf_u[i]] = frac*self._strokes[i]
+            self.data.qvel[self._leaf_v[i]] = rate*self._strokes[i]
         mujoco.mj_forward(self.model, self.data)
+
+    def actual_slides(self):
+        """Solved positions at the transform timestamp, including intermediate 2 ms samples."""
+        if self.layout is None:
+            return (0.,0.)
+        d = self.data
+        return tuple(float(sign*((d.xpos[leaf,:2]-d.xpos[rail,:2])@self.layout_axes[:,1]))
+                     for (_,sign),leaf,rail in zip(LATERAL,self._leaf_bodies,self._rail_bodies))
 
     def _obstacle_contact(self, time_s):
         for contact in self.data.contact:
@@ -181,7 +208,7 @@ class LocomotionSession:
             self._fall_time = float(time_s)
         obstacle_contact = self._obstacle_contact(time_s)
         self._sample = dict(
-            obstacle_contact=obstacle_contact, time_s=float(time_s), elapsed_s=float(time_s), base_xy=pos[:2].tolist(),
+            obstacle_contact=obstacle_contact, shutter_slides_m=self.actual_slides(), time_s=float(time_s), elapsed_s=float(time_s), base_xy=pos[:2].tolist(),
             torso_xy=torso[:2].tolist(), velocity_xy=velocity[:2].tolist(), heading_rad=heading,
             torso_heading_rad=torso_heading, yaw_rate_rad_s=yaw_rate, pelvis_height_m=float(pos[2]),
             torso_height_m=float(torso[2]), torso_tilt_rad=math.acos(float(np.clip(torso_rotation[8], -1., 1.))),
@@ -247,6 +274,9 @@ class LocomotionSession:
         samples = []
         for i in range(SUBSTEPS):
             start, velocity = float(d.time), d.qvel[:3].copy()
+            if self.layout is not None:
+                for u, phase, stroke in zip(self._leaf_u, self.layout.phases, self._strokes):
+                    d.ctrl[u] = cycle(start+phase)[0]*stroke
             mujoco.mj_step(self.model, d)
             # MuJoCo's solved contacts and derived transforms refer to the start
             # of this interval. Match them to that same instant's free-joint velocity.
@@ -296,10 +326,16 @@ class LocomotionSession:
     def mirrored_camera(self, layout, beacons):
         """Render the same physical pose with mirrored cabinet openings in a detached MjData."""
         mirror = copy(self.data)
-        for gid, (index, _) in self.gate_geom_ids.items():
-            if index < len(layout.gates):
-                shift = -2. * layout.gates[index].left_m * self.layout_axes[:, 1]
-                mirror.mocap_pos[self._gate_mocaps[gid], :2] += shift
+        self._place_furniture(mirror,layout.mirrored())
+        mirror.qpos[self._leaf_q] = self.data.qpos[self._leaf_q][::-1]
+        mujoco.mj_forward(self.model, mirror)
+        return self.egocentric(beacons, probe=True, view_data=mirror)
+
+    def swapped_phase_camera(self, beacons):
+        """Exchange only the two measured travel fractions on a detached native world."""
+        mirror = copy(self.data)
+        strokes = np.asarray(self._strokes)
+        mirror.qpos[self._leaf_q] = strokes*(self.data.qpos[self._leaf_q]/strokes)[::-1]
         mujoco.mj_forward(self.model, mirror)
         return self.egocentric(beacons, probe=True, view_data=mirror)
 

@@ -12,13 +12,18 @@ import sys
 from navigation_io import Course, HORIZON, NavigationEpisode, validate_action
 from practice_wire import WireError, solver
 from sonic_loco import LocomotionSession
-from sonic_loco.obstacles import GAP_PATTERNS, make_layout
+from sonic_loco.obstacles import make_layout
 
 
 def run(args, course):
     with ExitStack() as stack:
         session = stack.enter_context(LocomotionSession(args.assets_root, args.seed, horizon=HORIZON))
-        layout = make_layout(args.layout_seed, course.first_m, gaps=args.gaps)
+        if (args.right_phase_s is None) != (args.left_phase_s is None):
+            raise ValueError("supply both phase offsets together")
+        phases = None if args.right_phase_s is None else (args.right_phase_s,args.left_phase_s)
+        layout = make_layout(args.layout_seed,course.first_m,tail=None if args.tail=="auto" else args.tail,
+                             service=None if args.service=="auto" else args.service,
+                             phase_seed=args.phase_seed,phases=phases)
         episode = NavigationEpisode(session, course, layout=layout)
         if args.inspect:
             args.inspect.mkdir(parents=True, exist_ok=True)
@@ -55,7 +60,13 @@ def main():
     parser.add_argument('--turn', choices=('left', 'right'), default='left')
     parser.add_argument('--seed', type=int, default=7)
     parser.add_argument('--layout-seed', type=int, default=7, help='independent furniture layout seed')
-    parser.add_argument('--gaps', choices=GAP_PATTERNS, help='override opening sides, L=starting left, R=right')
+    parser.add_argument('--tail', choices=('auto','none','left','right'), default='auto',
+                        help='choose the optional downstream fixed opening')
+    parser.add_argument('--service', choices=('auto','both','left','right'), default='auto',
+                        help='choose which first-wall leaves have full travel')
+    parser.add_argument('--phase-seed', type=int, help='independently sample both shutter phases')
+    parser.add_argument('--right-phase-s', type=float, help='right phase at reset in [0,12) seconds')
+    parser.add_argument('--left-phase-s', type=float, help='left phase at reset in [0,12) seconds')
     parser.add_argument('--first-m', type=float, default=6.25)
     parser.add_argument('--angle-deg', type=float, default=90.)
     parser.add_argument('--last-m', type=float, default=1.5)

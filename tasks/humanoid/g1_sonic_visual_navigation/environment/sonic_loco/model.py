@@ -5,7 +5,7 @@ import mujoco
 import numpy as np
 
 from sonic_sim.decoder import EFFORT_LIMIT, KD, KP
-from .obstacles import MAX_GATES, PANEL_DEPTH, PANEL_HEIGHT, PANEL_LENGTH
+from .obstacles import ISLAND_WIDTH, LATERAL, PANEL_DEPTH, PANEL_HEIGHT, PANEL_LENGTH, PLATE_DEPTH, PLATE_WIDTH
 
 
 SIDES = ("left", "right")
@@ -39,13 +39,28 @@ def make_model(root):
     ET.SubElement(asset, "material", name="floor_mat", texture="tiles", texrepeat="4 4", texuniform="true")
     ET.SubElement(xml.find("worldbody"), "geom", name="floor", type="plane", size="0 0 .05", material="floor_mat")
     world = xml.find("worldbody")
-    for i in range(MAX_GATES):
-        for side in ("minus_y", "plus_y"):
-            name = f"gate_{i}_{side}"
-            body = ET.SubElement(world, "body", name=name, mocap="true", pos=f"{2+i*2} 0 .36")
-            ET.SubElement(body, "geom", name=name+"_cabinet", type="box", group="0",
-                          size=f"{PANEL_DEPTH/2} {PANEL_LENGTH/2} {PANEL_HEIGHT/2}",
-                          rgba=".09 .56 .62 1", contype="2", conaffinity="1")
+    # The slide rails and cabinets are anchored once at reset. A moving leaf is
+    # a finite-mass body with one native joint, actuator, and collision geometry.
+    actuators = xml.find("actuator")
+    furniture = [("fork_island", ISLAND_WIDTH), ("fork_left_jamb", PANEL_LENGTH),
+                 ("fork_right_jamb", PANEL_LENGTH), ("gate_1_minus_y_cabinet", PANEL_LENGTH),
+                 ("gate_1_plus_y_cabinet", PANEL_LENGTH)]
+    for name, width in furniture:
+        body = ET.SubElement(world, "body", name=name+"_anchor", mocap="true", pos="0 0 -4")
+        ET.SubElement(body, "geom", name=name, type="box", group="0",
+                      size=f"{PANEL_DEPTH/2} {width/2} {PANEL_HEIGHT/2}",
+                      rgba=".09 .56 .62 1", contype="2", conaffinity="1")
+    for side, sign in LATERAL:
+        name = "shutter_"+side
+        anchor = ET.SubElement(world, "body", name=name+"_anchor", mocap="true", pos="0 0 -4")
+        body = ET.SubElement(anchor, "body", name=name)
+        ET.SubElement(body, "joint", name=name, type="slide", axis=f"0 {sign} 0",
+                      limited="true", range="-.015 1.13", damping="3")
+        ET.SubElement(body, "geom", name=name, type="box", group="0",
+                      size=f"{PLATE_DEPTH/2} {PLATE_WIDTH/2} {PANEL_HEIGHT/2}",
+                      rgba=".88 .38 .06 1", mass="3", contype="2", conaffinity="1")
+        ET.SubElement(actuators, "position", name=name, joint=name, kp="5000", kv="210",
+                      ctrllimited="true", ctrlrange="0 1.13", forcerange="-500 500")
     for side in ("minus_y", "plus_y"):
         body = ET.SubElement(world, "body", name="lane_"+side, mocap="true")
         ET.SubElement(body, "geom", type="box", name="lane_"+side+"_stripe",
