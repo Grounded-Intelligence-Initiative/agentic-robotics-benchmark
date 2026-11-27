@@ -1,0 +1,150 @@
+CALIBRATION PROCEDURE: THE MAKER'S CALIBRATION VIDEO, WRITTEN OUT BY THE LAB
+
+The maker's setup guide asks that its calibration video be watched in full before the actuators are calibrated.
+The video itself is not kept with these records. This file is the lab's written account of what the video shows,
+joint by joint and in the video's order of work. Actuators are named by their slot numbers and names (01 to 25).
+The figures named below (fig01 to fig11, beside this file) show the parts that make each reference; see FIGURES
+at the end.
+
+1. BEFORE STARTING
+
+- Calibration zeroes every actuator, so that the maker's walking controller runs correctly. It is done in the
+  maker's app, Humanoid Manager, on a phone or a laptop; the maker recommends a laptop for the larger view.
+- Starting position: the unit lies on its back on floor mats, both arms along its sides, both legs straight.
+- The app's Actuators page has three tabs: Actuator ID, Liveness Check and Calibration. First the liveness
+  check: all 25 actuators must answer and light up on the screen. Then the Calibration tab: confirm the warning
+  and enable calibration.
+- Left and right are the unit's own: facing the unit, its left side is on your right. The maker suggests a
+  sticky note on each side so that the sides are not confused.
+- In the video one person does every step: the dominant hand holds the limb, the other hand works the app.
+- After each Calibrate the app shows a green tick for that actuator, and its reading is zero radians.
+
+2. HIP PITCH: 01 L_hip_pitch, THEN 07 R_hip_pitch (figure 1)
+
+With the hand under the calf, the leg is lifted and pushed toward the head until the steel tab of the hip-pitch
+bracket meets the orange metal stop plate on the hip and locks against it. The leg is kept pushed and held there
+by hand while Calibrate is clicked. When the app shows the actuator calibrated and reading zero radians, the leg
+is lowered. The right leg is done the same way.
+
+3. HIP ROLL: 02 L_hip_roll, THEN 08 R_hip_roll (figure 2)
+
+Two M4 x 10 bolts serve as a temporary stop. A bolt is put by hand into the free hole on the inner, lower side
+of the roll actuator's ring face. With the hand under the calf, the leg is lifted a little so that it moves
+freely, then swung inward until the hip-roll bracket rests on the bolt head and locks there. It is held there
+while Calibrate is clicked. The bolt is then taken out and used in the same way on the right roll actuator: the
+right calf lifted a little, the leg swung inward onto the bolt head, Calibrate. When both hip rolls are done
+the bolts are removed; the maker stresses not to forget them.
+
+4. HIP YAW: 03 L_hip_yaw, THEN 09 R_hip_yaw (figure 3)
+
+The yaw actuator sits inside the hip, out of sight; it turns the leg about the leg's own long axis. With the
+hand under the calf, the leg is lifted a little and turned so that the toes go inward. On the way, the plastic
+thigh cover catches on the metal of the roll actuator. The cover's edge is lifted over the metal with a
+finger, and the leg is turned on as far as it goes, until the thigh cover bottoms out against the metal
+hip-roll bracket. It is held there while Calibrate is clicked; then the leg may be turned back. The right leg
+is done the same way, turned the other way round so that its toes go inward too.
+
+5. KNEE: 04 L_knee, THEN 10 R_knee (figure 4)
+
+The leg is lifted all the way up and the shank pushed until the knee locks out. The maker uses the lock-out
+because the knee then always sits at the mechanical end of its travel. Calibrate is clicked. The right knee
+is done the same way.
+
+6. ANKLE: 05+06 L_ankle_A + L_ankle_B, THEN 11+12 R_ankle_A + R_ankle_B (figure 5)
+
+The maker calls the ankle a very important part of the calibration: if it is not done correctly, the walking
+controller will likely not work properly. The two ankle actuators of a foot sit on the shank, each driving the
+foot through a crank and a bar. By turning the foot by hand, first one way and then the other, each crank in
+turn is brought to where its metal piece sits exactly between two screws. The foot is then turned back to its
+neutral position, where it looks very straight and flat; the maker gives this as the sign that the step was
+done right. Both actuators of the foot are calibrated together with Calibrate Both. The right foot is done the
+same way.
+
+7. WAIST: 23 waist_yaw (figure 6)
+
+The metal part above the waist and the metal part below it are brought into line, fully aligned, by eye.
+Calibrate is clicked. This completes the lower body.
+
+8. ARMS: 13 TO 17 LEFT, THEN 18 TO 22 RIGHT (figures 7, 8 and 9)
+
+The maker calls the upper body much simpler than the lower body. Both arms are taken in hand.
+- First a check on each shoulder: the face with the circle of six bolts (the front face of HM1_400_01A, where it
+  is bolted on the shoulder-roll actuator; right: HM1_300_01A) must face toward you. If the smooth face (the
+  back face of HM1_400_03A; right: HM1_300_03A) shows instead, the arm is in the wrong orientation and is turned
+  until the six-bolt face shows. This must be right on both sides.
+- Left arm: the arm is turned outward about its own axis as far as it goes, until it cannot turn any further
+  (figure 7). The elbow is bent up as far as it goes, so that the arm folds like a wing (figure 9). The arm is
+  laid down on the floor beside the body and pushed inward all the way, until the upper arm meets the torso at
+  the armpit (figure 8).
+- Right arm: the same, turned the other way round (outward on its own side), elbow bent up, laid down on the
+  floor, pushed in against the armpit.
+- As a final check, the wrist and the elbow of each arm are pressed down so that the arm stays in this
+  position.
+- The left arm's actuators are then calibrated in turn, from this one position: 13 L_shoulder_pitch,
+  14 L_shoulder_roll, 15 L_shoulder_yaw, 16 L_elbow, 17 L_wrist_yaw. Then the right arm's: 18 R_shoulder_pitch,
+  19 R_shoulder_roll, 20 R_shoulder_yaw, 21 R_elbow, 22 R_wrist_yaw. The video names no reference for the
+  wrist yaw: it is calibrated as it lies.
+- On the app's view both arms now show green.
+
+9. NECK: 24 neck_yaw AND 25 neck_pitch (figures 10 and 11)
+
+With one hand behind the head, the head is pushed all the way up, chin toward the chest, as far as it goes
+(figure 11). Held there, the head is set so that the vertical seam on the back of the head runs straight down
+the middle and divides the part below it in half (figure 10). Still holding, Calibrate is clicked on
+24 neck_yaw, then on 25 neck_pitch. All 25 actuators now show green.
+
+10. CHECK CALIBRATION
+
+Before the check the unit is put back in its starting position: the head let down to rest all the way; the legs
+spread a little, roughly parallel to each other; on each side the front thigh cover (HM1_600_04C; right:
+HM1_500_04C) centred on the middle of the metal hip-roll bracket. Check Calibration is then clicked: every
+actuator should show a green tick, and the calibration is complete. The maker also shows what a wrong position
+looks like: with one hip yaw turned all the way out, the check reports many errors; with the leg turned back to
+the middle, and the ankles set right, the check shows all green again. After this the unit can be stood up and
+driven.
+
+FIGURES
+
+Each figure is an exploded view of the two parts that meet at a reference, or of the features that are lined
+up: the parts are drawn apart and turned, and the marked faces are the faces that meet (or the features that
+are lined up). The marks are orange; every part is drawn grey, whatever its real colour. A large part is drawn
+only near its marks: the edge of the figure cuts it. The figures of the legs and arms show the left side; the
+right side's parts are named in brackets. Part numbers are those of the CAD export.
+
+ 1  fig01_hip_pitch.png      hip pitch: the steel tab of the hip-pitch bracket HM1_200_04B and the stop plate
+                             HM1_200_03A, with the faces that meet when the leg is pushed toward the head
+                             (right: HM1_200_05B and HM1_200_02A).
+ 2  fig02_hip_roll.png       hip roll: the roll actuator HM1_200_14X with the temporary M4 x 10 bolt in the hole
+                             of its ring face, and the hip-roll bracket HM1_600_01B, with the side of the bolt
+                             head and the bracket face that rests on it (right: the matching free hole of
+                             HM1_200_13X and the bracket HM1_500_01B).
+ 3  fig03_hip_yaw.png        hip yaw: the thigh cover HM1_600_14C and the hip-roll bracket HM1_600_01B, with the
+                             faces that meet when the leg is turned toes-in as far as it goes (right:
+                             HM1_500_14C and HM1_500_01B). The thigh cover that catches first and is lifted over
+                             is HM1_600_04C (right: HM1_500_04C); it is not marked.
+ 4  fig04_knee.png           knee: the shank cover HM1_600_10C and the thigh cover HM1_600_03C, with the faces
+                             that meet at the lock-out (right: HM1_500_10C and HM1_500_03C).
+ 5  fig05_ankle_crank.png    ankle: the two cranks HM1_600_17B and HM1_600_18B, drawn off their actuators
+                             HM1_600_15X and HM1_600_16X, with each crank's metal piece and, for each crank, the
+                             two screws it is set between, of the six countersunk M3 x 12 screws that hold the
+                             shank cover HM1_600_10C on that actuator (right: HM1_500_17B, HM1_500_18B,
+                             HM1_500_15X, HM1_500_16X and HM1_500_10C).
+ 6  fig06_waist.png          waist: the plate HM1_200_16A below the waist and the plate HM1_100_02A above it,
+                             with the edges that are lined up.
+ 7  fig07_shoulder_yaw.png   shoulder yaw: the cover HM1_400_15C and the aluminium part HM1_400_05A, with the
+                             faces of the cover's tab and of the part that meet when the arm is turned out as
+                             far as it goes (right: HM1_300_15C and HM1_300_05A).
+ 8  fig08_shoulder_roll.png  shoulder roll: the upper-arm covers HM1_400_13C and HM1_400_14C, where they join,
+                             and the torso shell HM1_100_01C, with the faces that meet at the armpit (right:
+                             HM1_300_13C and HM1_300_14C).
+ 9  fig09_elbow.png          elbow: the metal tabs HM1_400_09A and HM1_400_10A of the forearm and HM1_400_07A and
+                             HM1_400_08A of the upper arm. The marked faces, of HM1_400_09A and HM1_400_07A, meet
+                             when the elbow is bent up as far as it goes; HM1_400_10A and HM1_400_08A, on the far
+                             side, meet in the same way and are not marked (right: HM1_300_09A, HM1_300_10A,
+                             HM1_300_07A and HM1_300_08A).
+10  fig10_neck_yaw.png       neck yaw: the head shell halves HM1_700_06C and HM1_700_07C, with the seam between
+                             them on the back of the head, and the plate HM1_100_03A below the head, with the
+                             middle that the seam is set on.
+11  fig11_neck_pitch.png     neck pitch: the head covers HM1_700_06C and HM1_700_07C and the torso shell
+                             HM1_100_01C, with the faces that meet when the head is pushed forward as far as it
+                             goes.

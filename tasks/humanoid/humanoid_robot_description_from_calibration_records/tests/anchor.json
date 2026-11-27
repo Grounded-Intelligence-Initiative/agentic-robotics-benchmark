@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "full_at": 1.0,
+ "metric": "description_score",
+ "note": "description_score = gate x M x D of the static grader (tests/rd04), already on [0, 1]; ratio = score / 1.0, reward = ratio",
+ "source": "the reference's own measured description_score: the crated unit's own files score exactly 1.0 (every error of the unit's own description lies far inside every band's full end, so every log band reads 1); measured by the grader in the task image, not a published figure",
+ "value": 1.0
+}

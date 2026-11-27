@@ -1,0 +1,249 @@
+ACCEPTANCE SHEET: the description files of unit 01
+
+This sheet states how the two files you hand in are checked and scored. Every rule that can set the score or a part of
+it to zero is printed here with its numbers.
+
+
+1. WHAT YOU HAND IN
+
+Two files in /home/user/submission/:
+  unit.xml          the given 25-joint model file (robot_25dof.xml) corrected to the unit as crated
+  calibration.yaml  the unit's home table and its two ankle maps (format unit-calibration/1, section 3)
+
+No other file in the folder is read. Nothing submitted is executed: unit.xml is read as data and compiled by MuJoCo
+3.14.0, and calibration.yaml is read by PyYAML's yaml.safe_load; no script, plugin or included file is run or opened.
+
+check_submission.py beside this sheet runs the grader's own gate (gate.py beside it is the file the grader runs) on a
+folder and prints every rule that fails. It knows nothing about the unit: a PASS says that the files can be scored,
+not that they are right. A submission that fails the gate scores 0.
+
+
+2. unit.xml
+
+2.1 Fixed: the given model's tree. As compiled, your file keeps the given model's 26 link bodies (each by its name,
+with the given parent, its position within 1e-6 m and its orientation within 1e-6 rad of the given ones in the
+parent's frame; for pelvis_link that is its place in the world, where its free joint starts), the given model's 25
+hinges (each by its name, on the given body, its axis within 1e-6 rad, the point its axis passes through within 1e-6 m
+and its ref within 1e-6 rad of the given ones) and the free joint of pelvis_link; it has no other joint. So every
+quantity below lives in the given model's link frames, and a joint angle means the same in your file as in the given
+one.
+
+2.2 Free. Everything else the whitelist allows: masses, centres of mass and inertias, geoms (primitives or the given
+meshes), sites, joint ranges, and bodies without a joint added below a link (they move with that link). Only the
+compiled model is read.
+
+2.3 Read by the grader.
+  - Every body's mass and centre of mass, as compiled.
+  - Site "imu", on any body of the unit: its frame is the inertial unit's axes.
+  - Sites "left_sole" and "right_sole", of type box, on left_ankle_roll_link and right_ankle_roll_link or on a body
+    fixed below that link: the box's -z face is the foot's contact plane, and its x and y extents are the tread: the
+    length and width of the flat bottom face of the foot as crated, the face that lies on a level plate, not the
+    outline of the shoe.
+  - The hinges and bodies through the fixed tree.
+
+2.4 The whitelist. unit.xml is checked element by element before anything is compiled.
+  Allowed and not read by the grader: visual (and its children), statistic, camera, light, sensor (and its children),
+    material, texture (built in only), keyframe, option (any attribute), contact/exclude.
+  Allowed and read: mujoco, compiler, default, asset/mesh (the given model's 26 mesh files only), worldbody, body,
+    inertial, joint, freejoint, geom, site.
+  Forbidden anywhere: actuator, attach, composite, custom, deformable, equality, extension, flex, flexcomp, frame,
+    hfield, include, instance, numeric, pair, plugin, replicate, size, skin, tendon, text, tuple; and every element
+    not listed below.
+  Where each element may stand (any other place is refused):
+    inside <mujoco>: <asset>, <compiler>, <contact>, <default>, <keyframe>, <option>, <sensor>, <statistic>, <visual>,
+      <worldbody>
+    inside <option>: <flag>
+    inside <visual>: <global>, <headlight>, <map>, <quality>, <rgba>, <scale>
+    inside <default>: <camera>, <default>, <geom>, <joint>, <light>, <material>, <mesh>, <site>
+    inside <asset>: <material>, <mesh>, <texture>
+    inside <material>: <layer>
+    inside <worldbody>: <body>, <camera>, <geom>, <light>, <site>
+    inside <body>: <body>, <camera>, <freejoint>, <geom>, <inertial>, <joint>, <light>, <site>
+    inside <contact>: <exclude>
+    inside <sensor>: any sensor element (none inside it)
+    inside <keyframe>: <key>
+  Compiler: angle="radian" must be stated; the attributes allowed: angle, assetdir, autolimits, balanceinertia,
+    coordinate, eulerseq, exactmeshinertia, inertiafromgeom, inertiagrouprange, meshdir, strippath, texturedir,
+    usethread; meshdir, assetdir and texturedir are allowed and ignored (the grader compiles the given meshes by file
+    name); fusestatic, discardvisual and alignfree are refused.
+  Refused attributes (unless false or 0): <compiler> fusestatic, discardvisual, alignfree; <freejoint> align; <body>
+    mocap, gravcomp; <geom> fluidshape, fluidcoef.
+  Meshes: a file attribute naming one of the given model's 26 mesh files (any folder: the file name decides); no
+    inline data (vertex, normal, texcoord, face) and no built-in mesh (builtin, params).
+  Textures: built in only (gradient, checker, flat); no file attribute.
+  Every other attribute of an allowed element is free (no band on friction, contact or solver parameters: nothing is
+    simulated).
+  Caps: 64 bodies besides the world, 512 geoms, 64 sites; 1048576 bytes.
+
+
+3. calibration.yaml (format unit-calibration/1)
+
+One YAML document, a mapping of exactly these keys; any other key at any level is refused. Angles are in rad.
+
+  schema: unit-calibration/1
+  home_table: 25 rows in firmware slot order, row i = {slot: i, actuator, sign, home_rad}
+    actuator   slot i's name, in slot order (below)
+    sign       the integer 1 or -1
+    home_rad   a finite number, |home_rad| <= 6.3
+  ankle_map: {left: ..., right: ...}, each foot
+    axes       [A, B]: row index i is motor A, column index j is motor B
+    extent     [[-0.787, 0.787], [-0.787, 0.787]] (fixed)
+    nodes      19 (fixed): node i lies at -0.787 + i x 1.574 / 18 rad on both axes
+    pitch      19 rows of 19 numbers: the foot's pitch hinge angle (rad) at (A_i, B_j)
+    roll       19 rows of 19 numbers: the foot's roll hinge angle (rad) at (A_i, B_j)
+    every value finite, with |value| <= 1.6
+
+The slots in order (0 to 24): L_hip_pitch, L_hip_roll, L_hip_yaw, L_knee, L_ankle_A, L_ankle_B, R_hip_pitch,
+R_hip_roll, R_hip_yaw, R_knee, R_ankle_A, R_ankle_B, L_shoulder_pitch, L_shoulder_roll, L_shoulder_yaw, L_elbow,
+L_wrist_yaw, R_shoulder_pitch, R_shoulder_roll, R_shoulder_yaw, R_elbow, R_wrist_yaw, waist_yaw, neck_yaw, neck_pitch.
+
+The home table. A drive reports r, its output angle from its stored zero, in its own sense; the unit's stack reads
+q = sign x r + home_rad (FN23 of the lab's notes). For the 21 joint drives q is the model file's joint angle. For an
+ankle motor q is its coordinate in the firmware's ankle map, A = 2.02 pitch - 0.8 roll and B = -2.02 pitch - 0.8 roll
+(pitch and roll: the model file's foot hinge angles).
+
+The ankle maps. Between nodes a map is bilinear in A and B; outside the extent the bilinear formula of the nearest
+edge cell is extended. The axes are the motors' q in the convention above; under it every command inside the
+firmware's ankle box (pitch 0.35 rad, roll 0.1 rad) lies inside the extent. A table in another ankle convention moves
+the readings and the firmware's clamp with it.
+
+The file has at most 262144 bytes. It is read with yaml.safe_load after a scan of its tokens that refuses &-labels,
+*-references and !-tags. YAML reads a number such as 1e-5 as text: write 1.0e-05.
+
+
+4. THE GATE
+
+The score is 0 when any of these rules fails (check_submission.py prints each failure under its rule's name):
+  - files.folder: The submission folder exists and is a folder, not a symbolic link.
+  - files.caps: The submission folder holds at most 20000 entries (files, folders, links and other entries, at any
+      depth below it) and its regular files at most 209715200 bytes (200 MiB) in all, by the larger of their total
+      size and the disk space they take: the grader's own measure, taken before it copies the folder and following no
+      link. A folder beyond either cap is not copied and is graded as an empty folder, so that files.missing fails.
+  - files.missing: unit.xml and calibration.yaml lie in the submission folder, each a regular file (not a symbolic
+      link, a folder or a special file). No other file of the folder is read.
+  - files.size: unit.xml has at most 1048576 bytes (1 MiB); calibration.yaml at most 262144 bytes (256 KiB).
+  - files.late_write: Nothing in the submission folder was written after the session ended: the grader's own check of
+      each entry's change and modification times against the moment the grading stage was set up (the checker cannot
+      run it).
+  - xml.declaration: unit.xml is UTF-8 text with no DOCTYPE and no ENTITY declaration.
+  - xml.parse: unit.xml is well-formed XML and its root element is <mujoco>.
+  - xml.forbidden: No element of the forbidden list appears anywhere: actuator, attach, composite, custom, deformable,
+      equality, extension, flex, flexcomp, frame, hfield, include, instance, numeric, pair, plugin, replicate, size,
+      skin, tendon, text, tuple (pair: the contact pair).
+  - xml.unlisted: Every element is on the whitelist and sits where the whitelist allows it.
+  - xml.compiler: Some <compiler> states angle="radian" and none states another unit; a compiler attribute is one of:
+      angle, assetdir, autolimits, balanceinertia, coordinate, eulerseq, exactmeshinertia, inertiafromgeom,
+      inertiagrouprange, meshdir, strippath, texturedir, usethread (meshdir, assetdir and texturedir are ignored).
+  - xml.refused: These attributes are refused unless false or 0: fusestatic, discardvisual and alignfree on
+      <compiler>, align on <freejoint>, mocap and gravcomp on <body>, fluidshape and fluidcoef on <geom>.
+  - xml.mesh: Every <mesh> of the assets has a file attribute whose file name (its last path component) is one of the
+      given model's 26 mesh files; none is given by inline data (vertex, normal, texcoord, face) or built in (builtin,
+      params). The grader compiles its own copy of the named file.
+  - xml.texture: Every <texture> is built in (builtin gradient, checker or flat) and names no file.
+  - xml.caps: unit.xml has at most 64 bodies besides the world, 512 geoms and 64 sites.
+  - model.compile: unit.xml compiles in MuJoCo 3.14.0 without an error (with the given meshes, its meshdir, assetdir
+      and texturedir dropped).
+  - model.warning: The compile raises no warning (MuJoCo warns, for example, when the XML contains a NaN).
+  - tree.bodies: The given model's 26 link bodies are present, each by its name and with the given model's parent.
+      Further bodies may be added; they carry no joint.
+  - tree.frames: Each link body's position (within 1e-6 m) and orientation (within 1e-6 rad) in its parent's frame
+      equal the given model's.
+  - tree.joints: There are exactly 26 joints: the given model's 25 hinges, each by its name, a hinge and on its given
+      body, and one free joint, on pelvis_link.
+  - tree.hinges: Each hinge's axis (within 1e-6 rad), its position, the point its axis passes through (within 1e-6 m),
+      and its ref (within 1e-6 rad) equal the given model's.
+  - sites.imu: A site named imu lies on a body of the unit: pelvis_link, a link below it, or a body fixed to one.
+  - sites.sole: Sites left_sole and right_sole are of type box, on left_ankle_roll_link and right_ankle_roll_link or
+      on a body fixed below that link (no joint in between).
+  - mass.total: The total mass is at least 20 kg and at most 60 kg.
+  - mass.link: Each of the 26 link bodies has a mass above 0 kg. A body added below a link may have no mass of its
+      own.
+  - numbers.finite: Every compiled number the grader reads is finite: each body's mass, centre of mass, inertia frame
+      and principal inertias, and the position, orientation and size of the sites imu, left_sole and right_sole.
+  - yaml.encoding: calibration.yaml is UTF-8 text.
+  - yaml.properties: calibration.yaml uses no &-label, no *-reference and no !-tag (YAML's node labels, references to
+      them and type tags).
+  - yaml.parse: calibration.yaml is one YAML document that yaml.safe_load reads.
+  - cal.top: The document is a mapping of exactly three keys: schema, home_table, ankle_map.
+  - cal.schema: schema is the text unit-calibration/1.
+  - cal.home_table: home_table is a list of exactly 25 rows, row i for firmware slot i.
+  - cal.row: Row i is a mapping of exactly slot, actuator, sign, home_rad: slot is the integer i, actuator slot i's
+      name, sign the integer 1 or -1, home_rad a finite number with |home_rad| <= 6.3.
+  - cal.ankle_map: ankle_map is a mapping of exactly left and right; each foot a mapping of exactly axes, extent,
+      nodes, pitch and roll.
+  - cal.foot: Per foot: axes is [A, B]; extent is [[-0.787, 0.787], [-0.787, 0.787]]; nodes is 19; pitch and roll are
+      each 19 rows of 19 finite numbers with |value| <= 1.6 (rad).
+  - gate.internal: The gate ran to its end (an unexpected error inside it is reported under this code).
+
+
+5. THE SCORE
+
+  score = gate x M x D
+  L(e) = clip(ln(zero / e) / ln(zero / full), 0, 1)        e: one error; full and zero: its band below
+
+A term is the mean of L over its samples (an error that is not finite scores 0); a family is the mean of its terms; M
+is the weighted sum of the families; D is the mean over the postures of flat x weight x upright. A description that
+equals the unit scores 1.
+
+5.1 M: 240 samples of the unit's bus over its range of motion. Each sample is the unit at one posture with its pelvis
+at one attitude: the 25 readings and the gravity vector of the inertial unit that it gives. Your angles are your home
+table and ankle maps applied to the readings; your kinematics are MuJoCo's on your compiled unit.xml.
+
+  Each family with its weight; each term with its unit, its band and its error:
+  feet (weight 0.4)
+    position (mm; full 5.9, zero 34.1): per sample and foot, the distance in the pelvis link's frame between your
+      files' and the unit's position of the tread centre (a fixed point of the ankle-roll link)
+    normal (deg; full 1.03, zero 4.07): per sample and foot, the angle between your files' and the unit's ankle-roll z
+      axes in the pelvis link's frame
+    heading (deg; full 0.65, zero 2.57): per sample and foot, the rotation about the unit's sole normal between your
+      files' and the unit's ankle-roll x axes
+  arms (weight 0.1)
+    elbow (deg; full 0.195, zero 2.72): per sample and side, the forearm's attitude against the upper arm (the elbow),
+      your files against the unit
+  trunk (weight 0.2)
+    attitude (deg; full 0.115, zero 3): per sample, the angle between the gravity in the torso link's
+      (waist_yaw_link's) frame that your imu site and kinematics predict from the sample's gravity vector, and the
+      unit's
+  weight (weight 0.2)
+    centre of mass (mm; full 3.9, zero 34.9): at each of the 10 postures' reading vectors as planned on the unit, your
+      files' centre of mass in your feet frame against the unit's in its feet frame (horizontal)
+  sole (weight 0.1)
+    plane (mm; full 0.28, zero 5): per foot, the distance along the unit's sole normal, at its tread centre, from its
+      tread plane to your contact plane
+    footprint (mm; full 0.49, zero 19): per foot, the largest distance from a corner of either tread rectangle to the
+      nearest corner of the other
+
+  In the position term the tread centre is the unit's own point, fixed in the ankle-roll link's frame (the centre of
+  the unit's tread): your files place it by your angles and kinematics, the unit by its own, and your sole sites do
+  not enter that term.
+
+  The feet frame (here and in D): the origin at the midpoint of the two tread centres; x the mean of the two
+  ankle-roll links' x axes projected on the plate (the horizontal), normalised; z up.
+
+5.2 D: 10 static postures, planned by the grader on your files and set down by the unit.
+  - Planning, on your files: each sole box's -z face flat on a level plate, the feet at set positions with yaw 0, the
+    pelvis at the posture's drop, pitch and shift. Each leg by inverse kinematics on your tree (least-squares Newton
+    on six degrees of freedom, at most 60 iterations from a fixed start). The readings through your home table; the
+    ankle motors through the inverse of your ankle maps (Newton from the inverse of the firmware's linear map, a
+    finite-difference Jacobian with step 1e-6, at most 40 iterations to 1e-12); each ankle command clamped to pitch
+    0.35 rad and roll 0.1 rad in your file's firmware coordinates, as the firmware clamps it.
+  - The unit at those readings: its own home table; each ankle's motors through their own senses and zeros and the
+    ankle's two-rod linkage as crated; a foot attitude beyond the ankle's mechanical range moved to the nearest
+    attitude inside it; the 21 joints stopped at their mechanical stops; one rigid body.
+  - Set down: the body held at the plan's pelvis attitude and lowered onto the level plate; then it comes to rest by
+    quasi-static toppling (about the first contact point, then the contact edge, in the sense gravity tips it, until
+    the centre of mass lies over the hull of the touching corners; a corner touches within 1e-7 m; each rotation exact
+    to the next contact; at most 200 steps).
+
+  Per posture, flat x weight x upright, each an L of its error:
+    flat (deg; full 0.94, zero 4.29): the worse sole's tilt to the plate at the first contact
+    weight (mm; full 6.5, zero 24.3): the unit's centre of mass at rest, in its feet frame at rest, against the one
+      your files predict in the planned feet frame (horizontal)
+    upright (deg; full 0.525, zero 4): the torso link's z axis at rest against the planned one
+
+5.3 Rules that set a posture or a sample to 0.
+  - A posture whose leg inverse kinematics leaves a residual above 1e-9 (m or rad) scores 0.
+  - A posture whose ankle-map inverse fails (|det J| below 1e-12, a value that is not finite, or a residual above
+    1e-9) scores 0.
+  - A fall scores 0: more than 25 deg of rotation while coming to rest, balanced on a point, or no further contact.
+  - An error that is not finite scores 0 for its sample.

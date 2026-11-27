@@ -1,0 +1,8 @@
+DAMP RECORD: unit 01, day 2, 2026-10-13
+
+After step 4 the stack was put in Damp; each leg, foot and arm and the head were moved by hand and released; after
+20 s at rest the inertial unit's gravity vector was logged for 2 s. Mean, in the inertial unit's axes (FN7):
+
+gx 0.132
+gy -0.001
+gz -0.991
