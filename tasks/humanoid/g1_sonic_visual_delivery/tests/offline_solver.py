@@ -4,13 +4,14 @@ import hashlib
 import os
 from pathlib import Path
 import pwd
+import shutil
 import tempfile
 import subprocess
 import sys
 
 import numpy as np
 
-from robotics_grader import Solver, SolverAborted, agent_user, clear_agent_account, deprivileged, require
+from robotics_grader import Solver, SolverAborted, SolverMissing, agent_user, clear_agent_account, deprivileged, require
 from delivery_io import validate_action
 
 
@@ -50,6 +51,40 @@ def check_numerics():
     digest = hashlib.sha256(np.asarray(a @ b, dtype="<f8").tobytes()).hexdigest()
     require(digest == "f83f8230aa5e4c8b0e595efe592952b387120788d96d7aed3696fea03728c0cc",
             "float64 matrix product differs from the pinned CPU runtime")
+
+
+@contextmanager
+def submission_template(submission):
+    """Preserve the uploaded tree in a root-only directory. Give each member new file inodes."""
+    submission = Path(submission)
+    if submission.is_symlink() or not submission.is_dir() or not (submission / "run.sh").is_file():
+        raise SolverMissing("missing submission/run.sh")
+    def copy_contents(source, destination):
+        # Preserve ownership and permissions of private weights. Archive mode retains symlinks.
+        subprocess.run(["/bin/cp", "-a", "--reflink=auto", "--", str(source) + "/.", destination], check=True)
+
+    def clear_contents():
+        # Preserve the actual submission directory, which may be a mounted artifact.
+        for child in submission.iterdir():
+            if child.is_symlink() or not child.is_dir():
+                child.unlink()
+            else:
+                shutil.rmtree(child)
+
+    with tempfile.TemporaryDirectory(prefix=".delivery-template-") as private:
+        saved = Path(private) / "submission"
+        saved.mkdir()
+        copy_contents(submission, saved)
+        try:
+            @contextmanager
+            def installed():
+                clear_contents()
+                copy_contents(saved, submission)
+                yield submission
+            yield installed
+        finally:
+            clear_contents()
+            copy_contents(saved, submission)
 
 
 @contextmanager

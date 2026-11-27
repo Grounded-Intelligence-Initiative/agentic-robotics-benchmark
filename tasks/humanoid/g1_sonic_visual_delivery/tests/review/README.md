@@ -45,7 +45,7 @@ vendor/ale/.venv/bin/ale validate tasks/humanoid/g1_sonic_visual_delivery
 
 ## Measurement
 
-The graded unit is one physical layout with two separately initialized controllers and opposite signals. Each receives its own fresh process, writable temporary area and randomized probe schedule. The layout earns one when both controllers reach a correct, loaded, contained, released placement. Opposite lights cannot change the native dynamics before the controller takes a different action. The first fully qualified placement on the wrong pad terminates the case.
+The graded unit is one physical layout with two separately initialized controllers and opposite signals. Each receives its own fresh process, private copy of the submitted files, writable temporary area and randomized probe schedule. The layout earns one when both controllers reach a correct, loaded, contained, released placement. Opposite lights cannot change the native dynamics before the controller takes a different action. The first fully qualified placement on the wrong pad terminates the case.
 
 A far start must satisfy forward pelvis and ankle travel, foot rise, alternating real support and continuous docking before hand contact. A near start already lies within reach and must satisfy the docking dwell. Torso and object progress come from simulated contact loads, geom extents, velocities and native positions. The independent scorer uses the resolved pose/contact solve in each 2 ms interval, object velocity from immediately before integration, and pelvis planar velocity at the end of that interval. Its criterion must agree with native scene success for a scored delivery.
 

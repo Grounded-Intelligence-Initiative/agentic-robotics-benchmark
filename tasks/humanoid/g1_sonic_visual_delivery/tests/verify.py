@@ -15,7 +15,7 @@ from sonic_sim import DeliverySession
 from robotics_grader import (SolverAborted, SolverMissing, VerifierDeadline, clear_agent_account,
                              deprivileged, ratio_rewards, read_anchor, require, seed_rng, stage_config, write_verdict)
 from mobile_score import AuditedSession
-from offline_solver import OfflineSolver, check_numerics, episode_scratch, offline_command, solver_environment
+from offline_solver import OfflineSolver, check_numerics, episode_scratch, offline_command, solver_environment, submission_template
 
 
 def panel_jobs(config, rng):
@@ -155,13 +155,15 @@ def verify():
             output, errors = check.communicate(timeout=15)
             require(check.returncode == 0 and output.strip() == "offline", "offline launcher self-test failed: " + errors[-200:])
 
-        @contextmanager
-        def fresh_solver():
-            with episode_scratch() as scratch, OfflineSolver(scratch, step_timeout=config["step_timeout_s"]) as solver:
-                yield solver
-
         try:
-            metrics, rows = run_panel(fresh_solver, config, seed_rng())
+            home = Path(os.environ.get("ALE_HOME", "/home/user"))
+            with submission_template(home / "submission") as install:
+                @contextmanager
+                def fresh_solver():
+                    with install() as submission, episode_scratch() as scratch:
+                        with OfflineSolver(scratch, submission=submission, step_timeout=config["step_timeout_s"]) as solver:
+                            yield solver
+                metrics, rows = run_panel(fresh_solver, config, seed_rng())
         except (SolverAborted, SolverMissing) as exc:
             return zero(str(exc))
         score = metrics["paired_delivery_fraction"]
