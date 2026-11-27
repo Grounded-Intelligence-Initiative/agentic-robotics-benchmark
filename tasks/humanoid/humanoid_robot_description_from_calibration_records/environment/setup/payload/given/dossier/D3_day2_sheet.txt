@@ -1,0 +1,79 @@
+CALIBRATION SHEET: unit 01, day 2, 2026-10-13
+
+Set-up. Hung from the gantry hook by its chain to the two shoulder shackles; powered; the lab's stack with the
+template home table (FN25; 25 rows, sign and home in rad, 4 decimals); the template's zero posture commanded (all
+q = 0) except the two shoulder rolls, which the stack held 0.2618 rad out (L_shoulder_roll -0.2618, R_shoulder_roll
++0.2618) from its first ramp to the end of step 4, and, from the start of its levelling in step 3, the hip-pitch and
+knee drives of each leg (see step 3); FN4 gains.
+
+Jog check, before the template was filled. At the drive level, one drive at a time, the others holding: a reading
+change of +0.05 rad.
+
+no.  actuator          what moved
+01   L_hip_pitch       moved against the model file's joint axis
+02   L_hip_roll        moved with the model file's joint axis
+03   L_hip_yaw         moved with the model file's joint axis
+04   L_knee            moved against the model file's joint axis
+05   L_ankle_A         the other motor held: toe up, outer edge down
+06   L_ankle_B         the other motor held: toe up, outer edge up
+07   R_hip_pitch       moved with the model file's joint axis
+08   R_hip_roll        moved against the model file's joint axis
+09   R_hip_yaw         moved against the model file's joint axis
+10   R_knee            moved against the model file's joint axis
+11   R_ankle_A         the other motor held: toe up, outer edge down
+12   R_ankle_B         the other motor held: toe down, outer edge down
+13   L_shoulder_pitch  moved with the model file's joint axis
+14   L_shoulder_roll   moved against the model file's joint axis
+15   L_shoulder_yaw    moved with the model file's joint axis
+16   L_elbow           moved against the model file's joint axis
+17   L_wrist_yaw       moved against the model file's joint axis
+18   R_shoulder_pitch  moved with the model file's joint axis
+19   R_shoulder_roll   moved against the model file's joint axis
+20   R_shoulder_yaw    moved with the model file's joint axis
+21   R_elbow           moved against the model file's joint axis
+22   R_wrist_yaw       moved with the model file's joint axis
+23   waist_yaw         moved with the model file's joint axis
+24   neck_yaw          moved against the model file's joint axis
+25   neck_pitch        moved with the model file's joint axis
+
+Order of work: hip yaw (feet squared), hip roll (knee plates taped), ankles (level), then the feet squared again;
+each Calibrate clicked at the end of its own step.
+
+Steps 1 and 4, feet squared. A 1 m straightedge across the toes of both feet, set parallel to the flat of the
+pelvis's front cover (part HM1_200_15C): a second straightedge held flat on the cover's face, and the two
+perpendicular distances from it to the two ends of the 1 m straightedge made equal. The straight inner edge of each
+sole plate (part HM1_600_39C on the left foot, HM1_500_39C on the right) squared to the 1 m straightedge with a try
+square, to about 0.5 mm over the edge; one foot at a time, that hip-yaw drive in Damp, the rest holding; Calibrate.
+Template hip-yaw rows set to 0. Done at step 1 and again at step 4.
+
+Step 2, knee plates taped. Both hip-roll drives in Damp, the rest holding. Tape between the inner faces of the two
+inner knee plates (part HM1_600_08A on the left knee, HM1_500_08A on the right), on each plate's centre line through
+the knee axle, 5 mm inside its upper end and 5 mm inside its lower end: the upper gap and the lower gap set equal to
+about 0.5 mm. Tape from the centre of the flat of the pelvis's front cover (part HM1_200_15C) to the knee axle's
+centre on each plate: the two set equal to about 0.5 mm. Calibrate left, right. Template hip-roll rows set to 0. The
+hips and knees were not touched between the taping and the levelling.
+
+Step 3, ankles levelled. Each leg's levelling began with its hip-pitch and knee drives in Damp and the leg lifted
+forward by hand, to bring the sole within reach of the level; the stack then held those two drives at the readings
+they had at that moment (the lab's hold-here script, FN26). The legs so held were not at the zero posture, and their
+posture was not written down. After both feet were levelled, and before step 4, both legs were sent back to the zero
+posture. Left leg first, its ankle drives in Damp. Digital level (display to 0.1 deg; it repeats to about 0.1 deg)
+on the flat of the pelvis's front cover (part HM1_200_15C), lying along its horizontal edge (roll) and standing on
+its edge (pitch); then on the bottom of the bare sole plate (part HM1_600_39C on the left foot, HM1_500_39C on the
+right), lengthwise (pitch) and crosswise (roll). The foot turned by hand until each sole reading equalled the
+cover's; Calibrate Both; the ankle drives back on at the zero posture; hand off. Then the right leg. Differences,
+sole minus cover: left pitch 0.0, left roll 0.0, right pitch 0.0, right roll 0.0 deg.
+
+Photographs. The state stream was not being logged during the calibration steps of day 2, so no reading exists of
+where the hips and knees actually stood while they held; the photographs are the only record of the unit's posture
+at the two levellings. After each Calibrate Both (left leg, then right leg), with the ankle drives back on at the
+new zero and hands off, the technician photographed the unit with the lab's phone from where he stood. There is no
+scale, no marker and no calibration target in them, and the phone's camera data were not kept. The files, in photos/
+beside this sheet: after the left leg's Calibrate Both, day2_L1.jpg, day2_L2.jpg, day2_L3.jpg, day2_L4.jpg,
+day2_L5.jpg and day2_L6.jpg; after the right leg's Calibrate Both, day2_R1.jpg, day2_R2.jpg, day2_R3.jpg,
+day2_R4.jpg, day2_R5.jpg and day2_R6.jpg. The last two of each set were taken from closer to the leg just
+calibrated.
+
+The table as left on the unit: the template with the hip-roll and hip-yaw rows at 0.
+
+The damp record, taken after step 4, is in D3_damp_record.txt.

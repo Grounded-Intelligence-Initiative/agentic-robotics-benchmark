@@ -1,0 +1,127 @@
+LAB NOTES: THE LAB'S CONTROL STACK (unit 01)
+
+The notes of the stack that drove unit 01 on day 2: the firmware notes that apply on the lab's stack, the lab's own
+notes FN23 to FN26 and the conventions of the records. Angles are in radians unless a note says otherwise; the model
+file is the maker's 25-joint model, robot_25dof.xml.
+
+FIRMWARE NOTES ON THE LAB'S STACK
+
+FN1   latch margin 0.02 rad beyond the limit of FN24 in firmware coordinates (ankles: pitch / roll of the reported
+      motors through the inverse linear map), any mode, every cycle, one sample; the latch acts on the REPORTED
+      reading (the reply's position, truncated to its step: FN19), not on the true angle
+FN3   STAND pose in the 25-joint model's angles: hip pitch L -0.15 / R +0.15, knee +0.45 / -0.45, ankle pitch
+      (firmware) -0.30 / +0.30, shoulder pitch -0.25 / +0.25, roll -0.05 / +0.05, elbow +0.40 / -0.40, wrist yaw
+      +0.05 / -0.05 (each 0.05 rad inside its limit in the model file), the rest 0; cosine ramp 2 s
+FN4   gains (kp N m/rad / kd N m s/rad): hips, knees 150 / 5; waist 65 / 5; shoulder pitch 57 / 5, roll 86 / 5, yaw
+      96 / 5; elbow, wrist 40 / 2; neck 40 / 2; ankle motors 27.5 / 1.25 each
+FN5   ankle gains per drive in motor units; the maker's policy card prints the joint-space equivalents
+      224.42 / 10.201 (pitch) and 35.20 / 1.600 (roll)
+FN6   damping constants: in DAMP, in FAULT_DAMP and with kp 0: KP 0 and KD = FN4's kd of the slot (a kd sent with kp
+      0 is replaced); kd 0 with kp above 0: KP as sent, KD = FN4's kd of the slot
+FN7   inertial axes: the axes of the inertial chip as mounted on the motion control board; the board's axes are
+      parallel to the body it is screwed to: x forward, y left, z up with the unit at the model's zero, within
+      0.1 deg
+FN8   attitude filter: revised Madgwick at 1 kHz on the inertial unit's gyro and accelerometer, gain 0.5,
+      acceleration rejection 10 deg, initialised from the accelerometer at boot
+FN9   timing: cycle 2 ms; a command is taken at the first cycle at or after its arrival plus the command delay;
+      state every 5 ms, its timestamp_us counted from the firmware's first boot (a restart does not reset it);
+      alerts every 20th packet
+FN10  clamps: positions to the stack's limits (FN24) (ankles before the map); kp 0-500, kd 0-5 with INVALID_GAINS; a
+      non-finite gain array replaced by the defaults
+FN11  trajectories in DAMP or an unarmed STAND: dropped, unreported
+FN12  2 s trajectory timeout: DAMP, not latched, no alert; STAND accepted again
+FN13  reported temperature = winding node; warning 60 C, latch 80 C
+FN14  KT register = the maker's Kt; segmented compensation off
+FN15  velocity target and feed-forward torque 0
+FN17  command fields (humanoid.io.RobotCommand), field by field: mode (1): DAMP (0) is never dropped, whatever its
+      other fields and its protocol_version (the maker: "never dropped - always accepted"); STAND (1) is a stand
+      request, also with a payload, and is dropped while fault-damped (FAULT_DAMP); MOVE (2) needs a trajectory
+      payload: a MOVE without a payload is dropped; FAULT_DAMP (5) or any other value: dropped. command_control (2):
+      POLICY (0) or TRAJECTORY (1): a trajectory whose command_control does not match its payload is dropped (the
+      field's default, 0, is POLICY: a trajectory must carry TRAJECTORY). policy (3): dropped (MOVE/POLICY is not
+      installed on the lab's units). all_trajectory (5): positions, kp, kd, 25 entries each (FN6, FN10, FN11);
+      positions not 25 or not all finite: dropped. eol (9): dropped. timestamp_us (6): ignored. sequence (7): echoed
+      in RobotState.last_cmd_sequence by every command the firmware takes (one taken and ignored in FAULT_DAMP
+      included), never by a dropped one. protocol_version (8): a command with any value but 1 is dropped, a DAMP
+      excepted. firmware_epoch_id (11): ignored (FN18). Bytes that do not parse are dropped. Every drop is silent
+FN18  firmware_epoch_id: ignored on intake; RobotState carries the boot count
+FN19  command and reply fields encoded by truncation: code = floor((x - lo) (2^b - 1) / (hi - lo)) of the value
+      clipped to [lo, hi], read back as lo + code (hi - lo) / (2^b - 1), so LSB = (hi - lo) / (2^b - 1); command KP
+      uint12 over 0-500 (LSB 0.1221), KD uint9 over 0-5 (LSB 0.009785), position uint16 over +-12.5 rad (LSB
+      3.815e-4 rad), speed uint12 over +-18 rad/s (LSB 8.791e-3 rad/s); replies: position and speed the same, phase
+      current uint12 over +- the model's peak phase current (LSB 0.01465 A for the RJ-5660 and RJ-5669, 0.02930 A
+      RJ-8867, 0.004884 A RJ-5378, 0.009768 A RJ-6381), temperature uint8 = 2 T + 50 (0.5 C steps); so the zero
+      speed target is held as -0.004396 rad/s, FN4's kp 150 as 149.939, and a reply reads on average half a step
+      below the value
+FN20  drive heartbeat: the firmware writes every drive's frame every cycle; a drive that receives no frame for 0.5 s
+      disables itself (no current: friction and stops only), and the next frame after such a time-out re-enables it
+FN21  alert fields of the state stream (humanoid.io.Alert; at most 48 active, one entry per alert id): severity =
+      id // 16 (0 critical, 1 warning, 2 info); value and threshold = the nearest integer (ties to even) to 1000 |x|
+      of the alert's quantity x in its unit, clipped to the uint32 range, NaN as 0: JOINT_OUT_OF_RANGE the reading
+      in rad (the ankles: the firmware's pitch or roll, FN1) and the latch threshold it passed (the limit of
+      FN24 +- 0.02 rad), MOTOR_TEMP_HIGH and MOTOR_OVERTEMP the reported temperature and 60 / 80 C, FALL_DETECTED
+      the tilt acos(-g_z) of the delayed gravity reading and the tilt at g_z = -0.5 (60 deg), INVALID_GAINS the
+      first clamped gain as sent and its maximum (500 N m/rad or 5 N m s/rad), MOTOR_COMM_LOSS 1 and 1 (cycles), an
+      injected fault its injected value and threshold; source_id = the drive slot (0 for a fall); first_set_us = 500
+      x the ticks from the firmware's first boot to the tick it was first raised (the clock of timestamp_us, FN9);
+      error_flags: bit 0 latched, bit 1 + id for each critical alert raised since boot
+
+THE LAB'S OWN NOTES
+
+FN23  readout convention: Calibrate stores the drive's present output angle as its zero, in the drive. A drive
+      reports r, its output angle from that zero, in its own sense. The lab's stack holds one home table per unit:
+      q = sign x r + home. For the 21 joint drives q is the model file's joint angle, and sign is +1 when r grows as
+      the joint turns in the positive sense about the model file's joint axis. For an ankle motor q is its
+      coordinate in the firmware's map (A = 2.02 pitch - 0.8 roll, B = -2.02 pitch - 0.8 roll; pitch and roll are
+      the model file's foot hinge angles): sign is +1 when r grows as the motor turns the way that raises its own
+      coordinate, the other motor still, and home is that coordinate of the foot's attitude at the moment the
+      motor's zero was stored. The stream reports q, the ankles as their two motors; commands are 25 targets in q
+      (ankle slots: pitch and roll, clamped at 0.35 and 0.10 rad, then mapped). Limits and latches act on q. Every
+      record says whether it is in r or in q under the template.
+FN24  the stack's limits on q: on the 21 joint drives the model file's ranges widened by 0.1 rad at each end, the
+      two wrist yaws' by 0.35 rad at each end; on the ankles the firmware box, 0.35 rad pitch and 0.10 rad roll;
+      latch margin FN1.
+FN25  template home table: The stack cannot run without a home table. For a partner's unit the lab fills a template
+      from the model file: where the maker's procedure stores a zero at an end stop, the home is the model file's
+      limit on that side; elsewhere 0; ankle motors 0; signs from the jog check.
+      Rows for unit 01, as filled:
+      no.  actuator            sign  home (rad)
+      01   L_hip_pitch         -1    -1.5700
+      02   L_hip_roll          +1     0.0000
+      03   L_hip_yaw           +1    +0.7854
+      04   L_knee              -1     0.0000
+      05   L_ankle_A           -1     0.0000
+      06   L_ankle_B           +1     0.0000
+      07   R_hip_pitch         +1    +1.5700
+      08   R_hip_roll          -1     0.0000
+      09   R_hip_yaw           -1    -0.7854
+      10   R_knee              -1     0.0000
+      11   R_ankle_A           +1     0.0000
+      12   R_ankle_B           +1     0.0000
+      13   L_shoulder_pitch    +1     0.0000
+      14   L_shoulder_roll     -1     0.0000
+      15   L_shoulder_yaw      +1    -1.5708
+      16   L_elbow             -1    +2.0944
+      17   L_wrist_yaw         -1     0.0000
+      18   R_shoulder_pitch    +1     0.0000
+      19   R_shoulder_roll     -1     0.0000
+      20   R_shoulder_yaw      +1    +1.5708
+      21   R_elbow             -1    -2.0944
+      22   R_wrist_yaw         +1     0.0000
+      23   waist_yaw           +1     0.0000
+      24   neck_yaw            -1     0.0000
+      25   neck_pitch          +1    -0.3400
+FN26  hold-here script: a script on the lab's laptop, run with the names of one or more drives. For each drive named
+      it sends that drive's present reading (q, as the state stream reports it: FN23) as the drive's target, at the
+      stack's gains for that drive (FN4), in the stack's trajectory command (FN17); every other drive keeps the
+      target and gains it had.
+
+THE RECORDS
+
+- Every recorded gravity vector is in the inertial unit's axes (FN7).
+- A recorded gravity vector is the attitude filter's estimate of the direction of gravity (FN8): a unit vector,
+  (0, 0, -1) when the inertial unit's z axis points straight up.
+- The inertial unit is the inertial chip on the motion control board. In a model of the unit its site is where that
+  chip sits in the unit as built: the board's place in the unit and the chip's place on the board decide it; its
+  axes are those of FN7.
+- The gantry chain splits into two legs to the two shoulder shackles.
