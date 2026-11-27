@@ -168,14 +168,16 @@ class Rules(object):
         self.windup = 0.0
         hit = self.under_tip(tip, axis)
         free = (E["free_torque"], speed)
+        if limit < E["free_torque"]:
+            free = (limit, 0.0)                         # a limit under the spindle's own drag stalls it
         if hit is None:
-            self.angle += speed * dt
+            self.angle += free[1] * dt
             return free
         fid, lat, gap, tilt = hit
         f = self.fast[fid]
         g = self.grade(f, lat, gap, tilt, force)
         if g == "none":
-            self.angle += speed * dt
+            self.angle += free[1] * dt
             return free
         th = S.THREADS[f["thread"]]
         running = E["running_fraction"] * th["tighten"]

@@ -401,6 +401,8 @@ def main():
     checks += round2_rules()
     checks += huge_numbers()
     checks += round2_draws()
+    checks += round3_rules()
+    checks += round3_draws()
     print("ok: %d checks" % checks)
 
 
@@ -644,6 +646,135 @@ def huge_numbers():
         except ValueError:
             pass
     return 1
+
+
+def round3_rules():
+    """Checks 22 to 27 (the third round, rules 8 to 12): immediate head damage under load, the reamed Torx recess,
+    the shank's own strength, yield and wind-up, working at 80 % of the own shear torque, the short check, the
+    condemned and the incomplete pack."""
+    import math
+    import json
+    packs = json.load(open(os.path.join(os.path.dirname(HERE), "hidden", "packs.json")))["packs"]
+    pack = S.draw_entry(packs[1])
+    r = rules.Rules(pack)
+
+    def turn(fid, rpm, limit, ticks, off=0.0, force=45.0):
+        out = []
+        for _ in range(ticks):
+            f = r.fast[fid]
+            tq, sp = r.spindle(f["top"] + np.array([off, 0.0, 0.0]), -r.n, force, rpm * 2 * math.pi / 60, limit, S.TICK)
+            out.append((tq, math.degrees(r.angle + r.windup)))
+        return out
+    seated = [f for f in r.fast.values() if not f["missing"]]
+    weak = next(f for f in seated if f["shear"] < S.THREADS[f["thread"]]["shear"] and f["breakaway"] > f["shear"])
+    seated = [f for f in seated if f["id"] != weak["id"]]
+    # 22. a Torx bit 1 mm off a T30 head: below 1 N m it stalls and harms nothing; at 1 N m the recess is reamed at once
+    t30 = next(f for f in seated if f["head"] == "T30")
+    r.bit = "T30"
+    turn(t30["id"], -60, 0.9, 5, off=0.001)
+    assert not t30["stripped"] and t30["wear"] == 0.0
+    turn(t30["id"], -60, 1.0, 1, off=0.001)
+    assert t30["stripped"]
+    # ... and the extractor finds nothing to bite on in it; within 0.5 mm the bit drives a head
+    r.bit = "EX"
+    assert turn(t30["id"], -300, 15.0, 3, force=60.0)[-1][0] == S.ENGAGE["free_torque"] and t30["status"] == "seated"
+    s10 = next(f for f in seated if f["head"] == "S10" and not f["corroded"] and not f["seized"])
+    r.bit = "S10"
+    turn(s10["id"], -300, 15.0, 30, off=0.0007)
+    assert s10["status"] == "captured" and not s10["stripped"] and abs(s10["engaged_lat"] - 0.0007) < 1e-9
+    r.captured = None
+    # 23. a socket 1 mm off a hexagon (outside 0.8 mm) strips it at once
+    s10b = next(f for f in seated if f["head"] == "S10" and f["id"] != s10["id"] and f["status"] == "seated")
+    turn(s10b["id"], -60, 5.0, 1, off=0.001)
+    assert s10b["stripped"]
+    # 24. a weakened shank: elastic wind-up below its yield point, a set above it, sheared at its own shear torque
+    r.bit = weak["head"]
+    c = weak["compliance"]
+    a1 = turn(weak["id"], -60, 0.80 * weak["yield"], 2, force=60.0)[-1][1]
+    a2 = turn(weak["id"], -60, 0.85 * weak["yield"], 2, force=60.0)[-1][1]
+    assert abs((a1 - a2) - c * 0.05 * weak["yield"]) < 1e-6 and not weak.get("yielded")
+    a3 = turn(weak["id"], -60, weak["yield"] + 0.5, 2, force=60.0)[-1][1]
+    # elastic to the new torque plus the set: (plastic - 1) x compliance x what lies above the yield point
+    assert weak.get("yielded") and abs((a2 - a3) - (c * (weak["yield"] + 0.5 - 0.85 * weak["yield"]) + (S.SHANK["plastic"] - 1) * c * 0.5)) < 1e-6
+    assert weak["status"] == "seated" and not weak["sheared"]
+    # working counts at 80 % of the own shear torque, not below it
+    b0 = weak["breakaway"]
+    turn(weak["id"], -60, 0.79 * weak["shear"], 12, force=60.0)
+    turn(weak["id"], 60, S.THREADS[weak["thread"]]["tighten"] + 0.2, 6, force=60.0)
+    assert weak["breakaway"] == b0
+    turn(weak["id"], -60, 0.81 * weak["shear"], 12, force=60.0)
+    turn(weak["id"], 60, S.THREADS[weak["thread"]]["tighten"] + 0.2, 6, force=60.0)
+    assert weak["breakaway"] < b0 and weak["cycles"] == 1
+    turn(weak["id"], -60, weak["shear"] + 0.01, 1, force=60.0)
+    assert weak["sheared"] and r.captured == weak["id"]
+    r.captured = None
+    # 25. a loose fastener at a seated busbar shorts it (a safety event); one in a bin does not
+    bus = next(p for p in r.part.values() if p["kind"] == "busbar")
+    loose = next(f for f in seated if f["status"] == "seated")
+    loose["status"] = "free"
+    bn = S.CELL["bins"]["fasteners_left"]["center"]
+    r.short_check({loose["id"]: np.array([bn[0], bn[1], S.TABLE_Z + 0.01])})
+    assert r.ended is None
+    r.short_check({loose["id"]: bus["seat"][:3, 3] + [0, 0, 0.004]})
+    assert r.ended == "fastener_short" and r.condemned()
+    r.ended = None
+    bus["left_seat"] = True
+    r.short_check({loose["id"]: bus["seat"][:3, 3] + [0, 0, 0.004]})
+    bus["left_seat"] = False
+    assert r.ended is None
+    # 26. every condemning event and the latch are named in the series' rule
+    assert set(S.CONSEQUENCE["condemn"]) == {"live_contact", "fastener_short", "module_vented", "module_dropped"}
+    assert S.CONSEQUENCE["latch"] == 3 and S.DAMAGE["torque"] == 1.0
+    # 27. a limit under the spindle's drag stalls it off a head as well
+    r.bit = "S10"
+    far = r.fast[s10b["id"]]["top"] + np.array([0.05, 0.05, 0.0])
+    assert r.spindle(far, -r.n, 20.0, -1.0, 0.1, S.TICK) == (0.1, 0.0)
+    return 6
+
+
+def round3_draws():
+    """Checks 28 and 29 (rules 9, 11, 12): the drawn values lie in the ranges the documents state, every set shows
+    them, and none of them is in a file the agent can read."""
+    import json
+    tests = os.path.dirname(HERE)
+    task = os.path.dirname(tests)
+    hidden = json.load(open(os.path.join(tests, "hidden", "packs.json")))["packs"]
+    dev = json.load(open(os.path.join(task, "environment", "commission_service", "dev_packs.json")))["packs"]
+    weak_n = []
+    for name, entries in (("hidden", hidden), ("dev", dev)):
+        for e in entries:
+            assert "shank_seed" in e and "swollen3_seed" in e and len(e["transducer"]) == 2
+            g, o = e["transducer"]
+            assert S.TRANSDUCER_CELL["gain"][0] <= g <= S.TRANSDUCER_CELL["gain"][1] and S.TRANSDUCER_CELL["offset"][0] <= o <= S.TRANSDUCER_CELL["offset"][1]
+            p = S.draw_entry(e)
+            n = 0
+            for f in p["fasteners"]:
+                th = S.THREADS[f["thread"]]
+                if f["corroded"] or f["seized"]:
+                    assert S.SHANK["strength"][0] * th["shear"] - 1e-3 <= f["shear"] <= th["shear"] + 1e-3
+                    n += f["shear"] < th["shear"]
+                else:
+                    assert f["shear"] == th["shear"]
+                assert S.SHANK["yield"][0] - 1e-3 <= f["yield"] / f["shear"] <= S.SHANK["yield"][1] + 1e-3
+                lo, hi = S.SHANK["compliance"][f["thread"]]
+                assert lo <= f["compliance"] <= hi
+            weak_n.append(n)
+            for q in p["parts"]:
+                if q["kind"] == "module":
+                    lo, hi = S.SWOLLEN3["bulge"] if q["swollen"] else S.SWOLLEN3["crown"]
+                    assert lo <= q["bump"]["h"] <= hi
+                    assert (q["bump"]["h"] >= S.SWOLLEN["criterion"]) == bool(q["swollen"])
+    assert min(weak_n) >= 2
+    # the agent's files (instruction, the given documents, the example) hold none of the new seeds or values
+    secrets = [str(e[k]) for e in hidden + dev for k in ("shank_seed", "swollen3_seed")] + ["%.4f" % e["transducer"][0] for e in hidden]
+    for dp, _dns, fns in os.walk(os.path.join(task, "environment")):
+        if "commission_service" in dp:
+            continue
+        for fn in fns:
+            blob = open(os.path.join(dp, fn), "rb").read()
+            for x in secrets:
+                assert x.encode() not in blob, (fn, x)
+    return 2
 
 
 if __name__ == "__main__":
