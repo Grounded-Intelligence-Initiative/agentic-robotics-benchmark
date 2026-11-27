@@ -319,7 +319,21 @@ class Reference(object):
         stroke = press(limit) / SPRING
         yield from self.go(mk(DOCK_R, top + [0, 0, 0.012]), z_safe, yaw="free")
         R = T_of(self.tr["tcp_target"])[:3, :3]
+        # (rule 8) a Torx bit drives within 0.5 mm, a socket within 0.8 mm: pressed on, the arm's position drives leave
+        # the tip a few tenths of a millimetre off its command. The privileged view gives the tip; off by more than
+        # 0.05 mm, the bit is lifted clear of the head (nothing is loaded yet), the command shifted by what the tip
+        # lacked, and it is pressed on again
+        corr = np.zeros(3)
         yield from self.move(mk(R, top - [0, 0, stroke]), 0.03)
+        for _ in range(3):
+            yield from self.wait(0.15)
+            d = top - np.array(self.tr["tip"])
+            d[2] = 0.0
+            if float(np.linalg.norm(d)) < 5e-5:
+                break
+            corr = corr + d
+            yield from self.move(mk(R, top + corr + [0, 0, 0.004]), 0.03)
+            yield from self.move(mk(R, top + corr - [0, 0, stroke]), 0.03)
         start = self.o["spindle"]["angle_deg"]
         stalls = 0
         for _ in range(60):
@@ -335,7 +349,7 @@ class Reference(object):
                     # stalled at the limit: a corroded fastener; raise the limit as far as is safe, press harder
                     limit = safe
                     stroke = press(limit) / SPRING
-                    yield from self.move(mk(R, top - [0, 0, stroke]), 0.03)
+                    yield from self.move(mk(R, top + corr - [0, 0, stroke]), 0.03)
                     continue
                 # stalled at the safe limit: a seized fastener; work it (service manual, section 7) until its
                 # breakaway is below the safe limit (the privileged view says what it is now)
