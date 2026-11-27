@@ -1,0 +1,47 @@
+# TV remote search and retrieval: a Franka Panda on a floor rail in a living room has to find a
+# TV remote that is out of sight in one of seven places (under either seat pad of a settee, under a
+# hat that lies in one of a chest's drawers, loose in another drawer, in a basket on the chest under
+# a book, on the floor under the chest, or on the floor under the settee, where only a clothes
+# hanger reaches it), tell it from a second, light grey remote that lies in another of those
+# places, and take it out, from two RGB-D cameras, joint readings and a wrist force sensor.
+# The grader drives the agent's controller over a stdio wire on a fixed hidden set of 12 episodes.
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/tv_remote_search_and_retrieval"
+
+[metadata]
+platform = "arm"
+
+[environment]
+cpus = 4
+memory_mb = 12288
+
+# 6 hours: the agent is not told where the remote may be; it has to work the places out and
+# develop the manipulation each one takes (lifting a seat pad, pulling a drawer by its knob and
+# taking a hat out of it, tipping a basket out, reaching in under the chest, fetching the hanger and
+# sweeping with it) against the simulator, whose episodes of up to 4800
+# control steps take one to three minutes each with camera images.
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+# 12 episodes of at most 4800 control steps. Measured in the task image on one core (CPU
+# rendering): about 5 ms a control step and 30 ms an image, so about 20 s of simulation for an
+# episode; the reference's whole verify takes under 10 minutes. Worst case: the controller's
+# budget of 900 s an episode (its replies plus 0.2 s charged for an image; grader_config.json),
+# 120 s for READY at the start and after each of three restarts, and a slow host at five times
+# those costs: 12 x (900 + 4800 x (0.025 + 0.15)) + 4 x 120 = 21360 s. The grader's own wall cap
+# (12000 s, grader_config.json) stops starting episodes before the stage's limit: an episode not
+# started by then scores 0, and the last one started ends within 900 + 840 s of it, so the verdict
+# is written by 12000 + 1740 + 120 = 13860 s.
+[verifier]
+timeout_sec = 14400
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 4
+memory_mb = 12288
+gpus = 0

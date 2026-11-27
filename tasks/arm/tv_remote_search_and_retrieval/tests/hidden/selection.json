@@ -1,0 +1,1999 @@
+{
+ "format": "tv_remote_search_and_retrieval episode selection 2",
+ "rule": "Selection of the fixed hidden episode set (a maintainer's tool; the grader never runs it).\n\nThe rule, fixed before any candidate was drawn (it is also in the pull request's pre-registration):\n\n1. Freeze. The grader's episode loop and world (tests/remote_grade.py, tests/episodes.py, tests/remote_env.py,\n   tests/grader_config.json), the launcher and the numerics fingerprint (tests/nonet_exec.py,\n   tests/numerics_check.py, tests/numerics.json), the room's files' pin (environment/assets.sha256) and the reference\n   (solution/solver/*.py, solution/solve.sh) are committed first: `draw` refuses to start while any of them differs\n   from the checkout's HEAD and records their sha256 and the commit; `run` and `make` refuse to go on when any of\n   them differs from the recorded hashes.\n2. Draw. `draw` takes the set's key from os.urandom(32) (hex) and writes it to the record before any candidate runs.\n   Place p's candidate i (i = 0, 1, 2, ...) has the 64-bit seed\n   int.from_bytes(blake2b(b\"candidate|<p>|<i>\", key=key, digest_size=8).digest(), \"little\").\n3. Composition. 12 episodes: two per place for under the settee, under the chest, under the hat, in the basket and\n   loose in a drawer; one under each seat pad (the two pads are one place).\n4. Run. Candidates i = 0..BATCH-1 of every place, then the next BATCH of a place that is still short, up to\n   MAX_CANDIDATES. A candidate in which more than HIDDEN_PIXELS pixels of the TV remote show in either camera at the\n   start is rejected unplayed. Otherwise the privileged reference plays it three times over the real wire\n   (remote_grade.run_episodes with that one episode and the oracle submission as solution/solve.sh lays it out, given\n   the token truth; the probe lock at the grader's rate with a fresh OS-entropy stream per run), stopping at the first\n   run that is not kept.\n5. Keep. A candidate is kept when each of the three wire runs scores 1.0 within STEP_MARGIN of the step cap (so no\n   graded episode needs the reference to use more than 60 % of its steps). Per place the first kept candidates in\n   candidate order are the place's episodes. Every candidate tried is recorded: kept, or rejected with its runs.\n6. Void. If a place is short after MAX_CANDIDATES, the draw is void: `draw --void REASON` records why and draws a\n   new key; the record keeps every draw. A frozen file that changes after a draw voids it too\n   (`draw --void REASON --refreeze`).\n7. Order. `make` shuffles the 12 (places in the order of PLAN, a place's episodes in candidate order; a Fisher-Yates\n   in which position i swaps with int.from_bytes(blake2b(b\"order|<i>\", key=key, digest_size=8).digest(), \"little\")\n   mod (i + 1), i from 11 down to 1) and writes tests/hidden/episodes.json in that order: the graded order.",
+ "plan": [
+  [
+   "left_cushion",
+   1
+  ],
+  [
+   "right_cushion",
+   1
+  ],
+  [
+   "under_sofa",
+   2
+  ],
+  [
+   "under_chest",
+   2
+  ],
+  [
+   "under_hat",
+   2
+  ],
+  [
+   "in_box",
+   2
+  ],
+  [
+   "in_drawer",
+   2
+  ]
+ ],
+ "wire_runs": 3,
+ "batch": 4,
+ "max_candidates": 16,
+ "hidden_pixels": 8,
+ "step_margin": 0.6,
+ "frozen": {
+  "tests/remote_grade.py": "37b6eea426fecc9ad00545fc467a26fad8f6f1167312207ccad7ad7982e56a7f",
+  "tests/episodes.py": "05c718aadd5fb434fbda8662120cbef4a5b3123c883be101e7385583d4f47c72",
+  "tests/remote_env.py": "0e8054b8d9c0659791ebe4eea759e87d248acbef329af6481ab9546a0c3051ad",
+  "tests/grader_config.json": "94807255728d655bc41e8828018427f480544412d6b94dfe0f7a69210ba0fae4",
+  "tests/nonet_exec.py": "21681d1866479ce3f1943a9d366c3b134097c39c6e3c5dd8bc02f309679bdefb",
+  "tests/numerics_check.py": "1e43ec12fc27f7ced4d8c6080cdeda1b59b55ff943f1345e02f2bd348dc8a70e",
+  "tests/numerics.json": "565cc617cead0b61c3b73835c7d86ba3a080c5d6912cf53de03c6c43ca6d9557",
+  "environment/assets.sha256": "d165989e83b6f0e5346c490c80d172c30b1182c3fc53c5ff6d37a25daba4ccac",
+  "solution/solver/main.py": "5f4328cb0be6cd3413adf7ad77951dcdf25320f831c48332c4d0437f0e836e06",
+  "solution/solver/oracle.py": "44dfeeb9a6249cb648a82894c3c6c0be8597e0bf8963fe9cd527632fe42e3707",
+  "solution/solver/search_skills.py": "7331c0e0d38d4674c0251dd3882238e4e1fba8b1d495dec04ec403e954f16f6c",
+  "solution/solver/skills.py": "7aa343d9dfa32ba13ce81eb2fc521c3e63c12115e7806d5903895e839c1f1cd5",
+  "solution/solver/kin.py": "1aeabc2ca9e141aee315d577f5e2865d50ba43e594a4654043a43ba0596fd8f7",
+  "solution/solve.sh": "10dfe9af0c72e2aa9fba0abe0170d75f28d7d6cfa92a8ce4437d8f1044c6f37b"
+ },
+ "frozen_commit": "aaa2ffe4565627fec0dfc79ef70bf83145624459",
+ "draws": [
+  {
+   "key": "7a234b62dec547c461c8910fdaac40ae746c20647596c3162c022e63242e8df3",
+   "drawn": "2026-11-27T01:19:22Z",
+   "status": "void",
+   "candidates": [
+    {
+     "place": "left_cushion",
+     "index": 0,
+     "seed": 11384217441942404740,
+     "wire": [
+      {
+       "score": 0.2,
+       "ended": "time",
+       "steps": 4800,
+       "probes": 42,
+       "probes_passed": 0,
+       "wall_s": 33.4,
+       "controller_s": 13.12
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "rejected"
+    },
+    {
+     "place": "left_cushion",
+     "index": 1,
+     "seed": 7656693115775535136,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2032,
+       "probes": 19,
+       "probes_passed": 0,
+       "wall_s": 18.8,
+       "controller_s": 7.55
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2032,
+       "probes": 15,
+       "probes_passed": 0,
+       "wall_s": 18.1,
+       "controller_s": 7.48
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2032,
+       "probes": 25,
+       "probes_passed": 0,
+       "wall_s": 18.4,
+       "controller_s": 7.65
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "left_cushion",
+     "index": 2,
+     "seed": 5626086040544072715,
+     "wire": [
+      {
+       "score": 0.2,
+       "ended": "time",
+       "steps": 4800,
+       "probes": 45,
+       "probes_passed": 0,
+       "wall_s": 37.1,
+       "controller_s": 12.69
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "rejected"
+    },
+    {
+     "place": "left_cushion",
+     "index": 3,
+     "seed": 7089982171006343388,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2022,
+       "probes": 16,
+       "probes_passed": 0,
+       "wall_s": 18.8,
+       "controller_s": 7.91
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2022,
+       "probes": 20,
+       "probes_passed": 0,
+       "wall_s": 18.3,
+       "controller_s": 7.45
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2022,
+       "probes": 17,
+       "probes_passed": 0,
+       "wall_s": 18.1,
+       "controller_s": 7.24
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "right_cushion",
+     "index": 0,
+     "seed": 16445223238798372031,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1975,
+       "probes": 31,
+       "probes_passed": 0,
+       "wall_s": 18.1,
+       "controller_s": 8.12
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1975,
+       "probes": 9,
+       "probes_passed": 0,
+       "wall_s": 17.9,
+       "controller_s": 7.21
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1975,
+       "probes": 16,
+       "probes_passed": 0,
+       "wall_s": 18.1,
+       "controller_s": 7.33
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "right_cushion",
+     "index": 1,
+     "seed": 2358808735639200518,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1988,
+       "probes": 15,
+       "probes_passed": 0,
+       "wall_s": 19.5,
+       "controller_s": 7.42
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1988,
+       "probes": 13,
+       "probes_passed": 0,
+       "wall_s": 18.9,
+       "controller_s": 7.56
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1988,
+       "probes": 20,
+       "probes_passed": 0,
+       "wall_s": 19.0,
+       "controller_s": 7.4
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "right_cushion",
+     "index": 2,
+     "seed": 6392620196229344158,
+     "wire": [
+      {
+       "score": 0.2,
+       "ended": "time",
+       "steps": 4800,
+       "probes": 47,
+       "probes_passed": 0,
+       "wall_s": 33.8,
+       "controller_s": 12.91
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "rejected"
+    },
+    {
+     "place": "right_cushion",
+     "index": 3,
+     "seed": 5651893918755589318,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1985,
+       "probes": 22,
+       "probes_passed": 0,
+       "wall_s": 18.9,
+       "controller_s": 7.41
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1985,
+       "probes": 15,
+       "probes_passed": 0,
+       "wall_s": 18.2,
+       "controller_s": 7.12
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1985,
+       "probes": 18,
+       "probes_passed": 0,
+       "wall_s": 18.5,
+       "controller_s": 7.33
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_sofa",
+     "index": 0,
+     "seed": 1770916928852836540,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1489,
+       "probes": 18,
+       "probes_passed": 0,
+       "wall_s": 14.0,
+       "controller_s": 2.68
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1489,
+       "probes": 12,
+       "probes_passed": 0,
+       "wall_s": 14.1,
+       "controller_s": 2.75
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1489,
+       "probes": 18,
+       "probes_passed": 0,
+       "wall_s": 13.5,
+       "controller_s": 2.63
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_sofa",
+     "index": 1,
+     "seed": 277348843780061173,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1493,
+       "probes": 15,
+       "probes_passed": 0,
+       "wall_s": 14.5,
+       "controller_s": 2.6
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1493,
+       "probes": 16,
+       "probes_passed": 0,
+       "wall_s": 14.3,
+       "controller_s": 2.62
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1493,
+       "probes": 21,
+       "probes_passed": 0,
+       "wall_s": 13.9,
+       "controller_s": 2.44
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_sofa",
+     "index": 2,
+     "seed": 2671777288716401849,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1480,
+       "probes": 14,
+       "probes_passed": 0,
+       "wall_s": 15.1,
+       "controller_s": 2.39
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1480,
+       "probes": 22,
+       "probes_passed": 0,
+       "wall_s": 14.8,
+       "controller_s": 2.53
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1480,
+       "probes": 17,
+       "probes_passed": 0,
+       "wall_s": 14.7,
+       "controller_s": 2.71
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_sofa",
+     "index": 3,
+     "seed": 4715633023349283359,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1479,
+       "probes": 12,
+       "probes_passed": 0,
+       "wall_s": 13.9,
+       "controller_s": 2.38
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1479,
+       "probes": 11,
+       "probes_passed": 0,
+       "wall_s": 13.7,
+       "controller_s": 2.39
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1479,
+       "probes": 16,
+       "probes_passed": 0,
+       "wall_s": 13.7,
+       "controller_s": 2.44
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_chest",
+     "index": 0,
+     "seed": 8915572437155709538,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1000,
+       "probes": 15,
+       "probes_passed": 0,
+       "wall_s": 11.7,
+       "controller_s": 3.92
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1000,
+       "probes": 7,
+       "probes_passed": 0,
+       "wall_s": 11.7,
+       "controller_s": 3.62
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1000,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 12.2,
+       "controller_s": 4.07
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_chest",
+     "index": 1,
+     "seed": 6570648154284042237,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 916,
+       "probes": 13,
+       "probes_passed": 0,
+       "wall_s": 9.6,
+       "controller_s": 2.16
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 916,
+       "probes": 6,
+       "probes_passed": 0,
+       "wall_s": 9.5,
+       "controller_s": 2.15
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 916,
+       "probes": 13,
+       "probes_passed": 0,
+       "wall_s": 9.8,
+       "controller_s": 2.08
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_chest",
+     "index": 2,
+     "seed": 10526939482562498807,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 919,
+       "probes": 16,
+       "probes_passed": 0,
+       "wall_s": 9.5,
+       "controller_s": 1.92
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 919,
+       "probes": 6,
+       "probes_passed": 0,
+       "wall_s": 9.6,
+       "controller_s": 1.84
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 919,
+       "probes": 3,
+       "probes_passed": 0,
+       "wall_s": 9.7,
+       "controller_s": 1.91
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_chest",
+     "index": 3,
+     "seed": 5726424172371830269,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 977,
+       "probes": 14,
+       "probes_passed": 0,
+       "wall_s": 11.3,
+       "controller_s": 3.72
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 977,
+       "probes": 12,
+       "probes_passed": 0,
+       "wall_s": 11.1,
+       "controller_s": 3.42
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 977,
+       "probes": 10,
+       "probes_passed": 0,
+       "wall_s": 11.8,
+       "controller_s": 3.82
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_hat",
+     "index": 0,
+     "seed": 13405134552212255487,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 824,
+       "probes": 6,
+       "probes_passed": 0,
+       "wall_s": 10.2,
+       "controller_s": 2.8
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 824,
+       "probes": 5,
+       "probes_passed": 0,
+       "wall_s": 10.2,
+       "controller_s": 2.84
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 824,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 10.3,
+       "controller_s": 2.64
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_hat",
+     "index": 1,
+     "seed": 3115708988880741486,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 799,
+       "probes": 6,
+       "probes_passed": 0,
+       "wall_s": 9.3,
+       "controller_s": 2.42
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 799,
+       "probes": 6,
+       "probes_passed": 0,
+       "wall_s": 9.5,
+       "controller_s": 2.44
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 799,
+       "probes": 14,
+       "probes_passed": 0,
+       "wall_s": 9.2,
+       "controller_s": 2.35
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_hat",
+     "index": 2,
+     "seed": 7564000326025455852,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 789,
+       "probes": 10,
+       "probes_passed": 0,
+       "wall_s": 9.3,
+       "controller_s": 2.48
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 789,
+       "probes": 1,
+       "probes_passed": 0,
+       "wall_s": 9.8,
+       "controller_s": 2.4
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 789,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 9.7,
+       "controller_s": 2.45
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_hat",
+     "index": 3,
+     "seed": 13720766745534526319,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 778,
+       "probes": 4,
+       "probes_passed": 0,
+       "wall_s": 9.2,
+       "controller_s": 2.45
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 778,
+       "probes": 7,
+       "probes_passed": 0,
+       "wall_s": 9.4,
+       "controller_s": 2.31
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 778,
+       "probes": 13,
+       "probes_passed": 0,
+       "wall_s": 9.5,
+       "controller_s": 2.47
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "in_box",
+     "index": 0,
+     "seed": 14527849086316978691,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1112,
+       "probes": 13,
+       "probes_passed": 0,
+       "wall_s": 11.9,
+       "controller_s": 2.68
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1112,
+       "probes": 10,
+       "probes_passed": 0,
+       "wall_s": 11.9,
+       "controller_s": 2.43
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1112,
+       "probes": 13,
+       "probes_passed": 0,
+       "wall_s": 12.2,
+       "controller_s": 2.53
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "in_box",
+     "index": 1,
+     "seed": 17561203534610243635,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1132,
+       "probes": 9,
+       "probes_passed": 0,
+       "wall_s": 12.3,
+       "controller_s": 2.51
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1132,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 12.5,
+       "controller_s": 2.66
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1132,
+       "probes": 11,
+       "probes_passed": 0,
+       "wall_s": 11.7,
+       "controller_s": 2.5
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "in_box",
+     "index": 2,
+     "seed": 8760505609217878257,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1096,
+       "probes": 21,
+       "probes_passed": 0,
+       "wall_s": 12.2,
+       "controller_s": 2.61
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1096,
+       "probes": 11,
+       "probes_passed": 0,
+       "wall_s": 12.3,
+       "controller_s": 2.75
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1096,
+       "probes": 7,
+       "probes_passed": 0,
+       "wall_s": 11.3,
+       "controller_s": 2.32
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "in_box",
+     "index": 3,
+     "seed": 13437350759507175518,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1104,
+       "probes": 18,
+       "probes_passed": 0,
+       "wall_s": 12.1,
+       "controller_s": 2.76
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1104,
+       "probes": 7,
+       "probes_passed": 0,
+       "wall_s": 12.2,
+       "controller_s": 2.58
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1104,
+       "probes": 15,
+       "probes_passed": 0,
+       "wall_s": 10.5,
+       "controller_s": 2.33
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "in_drawer",
+     "index": 0,
+     "seed": 15533097679254193372,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 416,
+       "probes": 1,
+       "probes_passed": 0,
+       "wall_s": 6.5,
+       "controller_s": 1.67
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 416,
+       "probes": 4,
+       "probes_passed": 0,
+       "wall_s": 6.8,
+       "controller_s": 1.88
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 416,
+       "probes": 5,
+       "probes_passed": 0,
+       "wall_s": 6.1,
+       "controller_s": 1.6
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "in_drawer",
+     "index": 1,
+     "seed": 1112073590753000504,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 425,
+       "probes": 7,
+       "probes_passed": 0,
+       "wall_s": 6.4,
+       "controller_s": 1.62
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 425,
+       "probes": 4,
+       "probes_passed": 0,
+       "wall_s": 6.7,
+       "controller_s": 1.66
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 425,
+       "probes": 4,
+       "probes_passed": 0,
+       "wall_s": 6.0,
+       "controller_s": 1.53
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "in_drawer",
+     "index": 2,
+     "seed": 17258846412373243453,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 415,
+       "probes": 2,
+       "probes_passed": 0,
+       "wall_s": 6.8,
+       "controller_s": 2.0
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 415,
+       "probes": 5,
+       "probes_passed": 0,
+       "wall_s": 6.1,
+       "controller_s": 1.78
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 415,
+       "probes": 3,
+       "probes_passed": 0,
+       "wall_s": 5.3,
+       "controller_s": 1.48
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "in_drawer",
+     "index": 3,
+     "seed": 13845983848984284466,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 421,
+       "probes": 3,
+       "probes_passed": 0,
+       "wall_s": 6.7,
+       "controller_s": 1.63
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 421,
+       "probes": 7,
+       "probes_passed": 0,
+       "wall_s": 6.0,
+       "controller_s": 1.43
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 421,
+       "probes": 4,
+       "probes_passed": 0,
+       "wall_s": 5.3,
+       "controller_s": 1.34
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    }
+   ],
+   "void_reason": "the reference changed after the draw: its brightness threshold for the second remote (110) was above what the grey remote shows in shadow under the furniture (83 at least); set to 62 from the measurement of both remotes in every place. No candidate of this draw is graded.",
+   "voided": "2026-11-27T01:25:48Z"
+  },
+  {
+   "key": "4bce65381280066fec9625c57755985240ec09b9ffe7b0cf1322c7efa32a95c3",
+   "drawn": "2026-11-27T01:25:48Z",
+   "status": "made",
+   "candidates": [
+    {
+     "place": "left_cushion",
+     "index": 0,
+     "seed": 6816265354811356079,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2099,
+       "probes": 14,
+       "probes_passed": 0,
+       "wall_s": 19.8,
+       "controller_s": 8.08
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2099,
+       "probes": 22,
+       "probes_passed": 0,
+       "wall_s": 19.5,
+       "controller_s": 7.61
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2099,
+       "probes": 18,
+       "probes_passed": 0,
+       "wall_s": 19.6,
+       "controller_s": 7.52
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept",
+     "selected": true
+    },
+    {
+     "place": "left_cushion",
+     "index": 1,
+     "seed": 12396970849984934249,
+     "wire": [
+      {
+       "score": 0.2,
+       "ended": "time",
+       "steps": 4800,
+       "probes": 57,
+       "probes_passed": 0,
+       "wall_s": 40.6,
+       "controller_s": 13.39
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "rejected"
+    },
+    {
+     "place": "left_cushion",
+     "index": 2,
+     "seed": 11041008754158908299,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2014,
+       "probes": 14,
+       "probes_passed": 0,
+       "wall_s": 19.8,
+       "controller_s": 8.3
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2014,
+       "probes": 21,
+       "probes_passed": 0,
+       "wall_s": 19.3,
+       "controller_s": 7.67
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2014,
+       "probes": 20,
+       "probes_passed": 0,
+       "wall_s": 19.5,
+       "controller_s": 7.49
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "left_cushion",
+     "index": 3,
+     "seed": 4442114090991531421,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1990,
+       "probes": 22,
+       "probes_passed": 0,
+       "wall_s": 19.6,
+       "controller_s": 7.49
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1990,
+       "probes": 31,
+       "probes_passed": 0,
+       "wall_s": 19.1,
+       "controller_s": 7.87
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1990,
+       "probes": 21,
+       "probes_passed": 0,
+       "wall_s": 19.0,
+       "controller_s": 7.75
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "right_cushion",
+     "index": 0,
+     "seed": 2182066316399491712,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1970,
+       "probes": 13,
+       "probes_passed": 0,
+       "wall_s": 19.7,
+       "controller_s": 8.13
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1970,
+       "probes": 28,
+       "probes_passed": 0,
+       "wall_s": 19.3,
+       "controller_s": 7.69
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1970,
+       "probes": 21,
+       "probes_passed": 0,
+       "wall_s": 19.2,
+       "controller_s": 7.48
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept",
+     "selected": true
+    },
+    {
+     "place": "right_cushion",
+     "index": 1,
+     "seed": 11770174330157496509,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2014,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 20.1,
+       "controller_s": 8.27
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2014,
+       "probes": 22,
+       "probes_passed": 0,
+       "wall_s": 19.7,
+       "controller_s": 7.67
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 2014,
+       "probes": 17,
+       "probes_passed": 0,
+       "wall_s": 19.6,
+       "controller_s": 7.8
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "right_cushion",
+     "index": 2,
+     "seed": 9254150631287078919,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1977,
+       "probes": 21,
+       "probes_passed": 0,
+       "wall_s": 20.2,
+       "controller_s": 8.19
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1977,
+       "probes": 19,
+       "probes_passed": 0,
+       "wall_s": 19.7,
+       "controller_s": 7.28
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1977,
+       "probes": 18,
+       "probes_passed": 0,
+       "wall_s": 19.6,
+       "controller_s": 7.29
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "right_cushion",
+     "index": 3,
+     "seed": 3335504892918719318,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1970,
+       "probes": 17,
+       "probes_passed": 0,
+       "wall_s": 19.9,
+       "controller_s": 8.09
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1970,
+       "probes": 21,
+       "probes_passed": 0,
+       "wall_s": 19.6,
+       "controller_s": 7.43
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1970,
+       "probes": 25,
+       "probes_passed": 0,
+       "wall_s": 19.8,
+       "controller_s": 7.5
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_sofa",
+     "index": 0,
+     "seed": 15494530883309266827,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1497,
+       "probes": 10,
+       "probes_passed": 0,
+       "wall_s": 14.7,
+       "controller_s": 2.52
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1497,
+       "probes": 13,
+       "probes_passed": 0,
+       "wall_s": 14.6,
+       "controller_s": 2.65
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1497,
+       "probes": 15,
+       "probes_passed": 0,
+       "wall_s": 14.3,
+       "controller_s": 2.56
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept",
+     "selected": true
+    },
+    {
+     "place": "under_sofa",
+     "index": 1,
+     "seed": 15182196026611860658,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1486,
+       "probes": 19,
+       "probes_passed": 0,
+       "wall_s": 14.4,
+       "controller_s": 2.74
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1486,
+       "probes": 12,
+       "probes_passed": 0,
+       "wall_s": 13.7,
+       "controller_s": 2.5
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1486,
+       "probes": 16,
+       "probes_passed": 0,
+       "wall_s": 14.0,
+       "controller_s": 2.61
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept",
+     "selected": true
+    },
+    {
+     "place": "under_sofa",
+     "index": 2,
+     "seed": 994833496942258904,
+     "wire": [
+      {
+       "score": 0.2,
+       "ended": "time",
+       "steps": 4800,
+       "probes": 38,
+       "probes_passed": 0,
+       "wall_s": 32.5,
+       "controller_s": 3.47
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "rejected"
+    },
+    {
+     "place": "under_sofa",
+     "index": 3,
+     "seed": 11163063151402259029,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1494,
+       "probes": 17,
+       "probes_passed": 0,
+       "wall_s": 14.8,
+       "controller_s": 2.83
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1494,
+       "probes": 16,
+       "probes_passed": 0,
+       "wall_s": 13.9,
+       "controller_s": 2.48
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1494,
+       "probes": 14,
+       "probes_passed": 0,
+       "wall_s": 14.8,
+       "controller_s": 2.69
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_chest",
+     "index": 0,
+     "seed": 8778413122303589535,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 920,
+       "probes": 13,
+       "probes_passed": 0,
+       "wall_s": 9.8,
+       "controller_s": 2.22
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 920,
+       "probes": 6,
+       "probes_passed": 0,
+       "wall_s": 9.6,
+       "controller_s": 2.21
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 920,
+       "probes": 14,
+       "probes_passed": 0,
+       "wall_s": 9.1,
+       "controller_s": 1.97
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept",
+     "selected": true
+    },
+    {
+     "place": "under_chest",
+     "index": 1,
+     "seed": 160264546655501824,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 918,
+       "probes": 12,
+       "probes_passed": 0,
+       "wall_s": 9.7,
+       "controller_s": 2.05
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 918,
+       "probes": 9,
+       "probes_passed": 0,
+       "wall_s": 9.8,
+       "controller_s": 2.1
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 918,
+       "probes": 10,
+       "probes_passed": 0,
+       "wall_s": 9.3,
+       "controller_s": 1.88
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept",
+     "selected": true
+    },
+    {
+     "place": "under_chest",
+     "index": 2,
+     "seed": 9289499301563460500,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 921,
+       "probes": 6,
+       "probes_passed": 0,
+       "wall_s": 10.4,
+       "controller_s": 2.13
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 921,
+       "probes": 6,
+       "probes_passed": 0,
+       "wall_s": 10.4,
+       "controller_s": 2.26
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 921,
+       "probes": 6,
+       "probes_passed": 0,
+       "wall_s": 10.3,
+       "controller_s": 2.32
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_chest",
+     "index": 3,
+     "seed": 7779082783065224096,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 916,
+       "probes": 9,
+       "probes_passed": 0,
+       "wall_s": 9.9,
+       "controller_s": 1.94
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 916,
+       "probes": 6,
+       "probes_passed": 0,
+       "wall_s": 9.9,
+       "controller_s": 1.98
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 916,
+       "probes": 7,
+       "probes_passed": 0,
+       "wall_s": 9.6,
+       "controller_s": 1.91
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_hat",
+     "index": 0,
+     "seed": 7462925980000886179,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 801,
+       "probes": 5,
+       "probes_passed": 0,
+       "wall_s": 9.8,
+       "controller_s": 2.55
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 801,
+       "probes": 5,
+       "probes_passed": 0,
+       "wall_s": 9.4,
+       "controller_s": 2.44
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 801,
+       "probes": 5,
+       "probes_passed": 0,
+       "wall_s": 9.5,
+       "controller_s": 2.31
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept",
+     "selected": true
+    },
+    {
+     "place": "under_hat",
+     "index": 1,
+     "seed": 9692394896210285245,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 806,
+       "probes": 13,
+       "probes_passed": 0,
+       "wall_s": 9.4,
+       "controller_s": 2.2
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 806,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 9.9,
+       "controller_s": 2.42
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 806,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 9.1,
+       "controller_s": 2.06
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept",
+     "selected": true
+    },
+    {
+     "place": "under_hat",
+     "index": 2,
+     "seed": 13898189016579355202,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 793,
+       "probes": 7,
+       "probes_passed": 0,
+       "wall_s": 9.1,
+       "controller_s": 2.25
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 793,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 9.0,
+       "controller_s": 2.33
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 793,
+       "probes": 10,
+       "probes_passed": 0,
+       "wall_s": 8.5,
+       "controller_s": 2.14
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "under_hat",
+     "index": 3,
+     "seed": 12057872752788195286,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 794,
+       "probes": 2,
+       "probes_passed": 0,
+       "wall_s": 9.1,
+       "controller_s": 2.56
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 794,
+       "probes": 7,
+       "probes_passed": 0,
+       "wall_s": 9.8,
+       "controller_s": 2.71
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 794,
+       "probes": 5,
+       "probes_passed": 0,
+       "wall_s": 9.3,
+       "controller_s": 2.56
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "in_box",
+     "index": 0,
+     "seed": 5401982606408501574,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1161,
+       "probes": 7,
+       "probes_passed": 0,
+       "wall_s": 12.1,
+       "controller_s": 2.66
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1161,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 11.8,
+       "controller_s": 2.64
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1161,
+       "probes": 12,
+       "probes_passed": 0,
+       "wall_s": 12.3,
+       "controller_s": 2.85
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept",
+     "selected": true
+    },
+    {
+     "place": "in_box",
+     "index": 1,
+     "seed": 12142967970931374993,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1114,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 12.4,
+       "controller_s": 2.55
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1114,
+       "probes": 14,
+       "probes_passed": 0,
+       "wall_s": 12.6,
+       "controller_s": 2.44
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1114,
+       "probes": 10,
+       "probes_passed": 0,
+       "wall_s": 12.7,
+       "controller_s": 2.4
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept",
+     "selected": true
+    },
+    {
+     "place": "in_box",
+     "index": 2,
+     "seed": 6065654681777559818,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1126,
+       "probes": 9,
+       "probes_passed": 0,
+       "wall_s": 12.7,
+       "controller_s": 2.8
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1126,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 12.9,
+       "controller_s": 2.76
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1126,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 11.0,
+       "controller_s": 2.57
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "in_box",
+     "index": 3,
+     "seed": 1375523023363161703,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1106,
+       "probes": 14,
+       "probes_passed": 0,
+       "wall_s": 11.6,
+       "controller_s": 2.41
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1106,
+       "probes": 19,
+       "probes_passed": 0,
+       "wall_s": 12.3,
+       "controller_s": 2.68
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 1106,
+       "probes": 6,
+       "probes_passed": 0,
+       "wall_s": 10.3,
+       "controller_s": 2.18
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept"
+    },
+    {
+     "place": "in_drawer",
+     "index": 0,
+     "seed": 8883758670914087344,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 405,
+       "probes": 5,
+       "probes_passed": 0,
+       "wall_s": 6.7,
+       "controller_s": 1.69
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 405,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 5.8,
+       "controller_s": 1.58
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 405,
+       "probes": 5,
+       "probes_passed": 0,
+       "wall_s": 5.4,
+       "controller_s": 1.39
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept",
+     "selected": true
+    },
+    {
+     "place": "in_drawer",
+     "index": 1,
+     "seed": 9517138928159210375,
+     "wire": [
+      {
+       "score": 0.4,
+       "ended": "time",
+       "steps": 4800,
+       "probes": 46,
+       "probes_passed": 0,
+       "wall_s": 28.5,
+       "controller_s": 2.58
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "rejected"
+    },
+    {
+     "place": "in_drawer",
+     "index": 2,
+     "seed": 4873969431404355071,
+     "wire": [
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 413,
+       "probes": 8,
+       "probes_passed": 0,
+       "wall_s": 6.5,
+       "controller_s": 1.62
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 413,
+       "probes": 3,
+       "probes_passed": 0,
+       "wall_s": 6.0,
+       "controller_s": 1.67
+      },
+      {
+       "score": 1.0,
+       "ended": "retrieved",
+       "steps": 413,
+       "probes": 6,
+       "probes_passed": 0,
+       "wall_s": 5.4,
+       "controller_s": 1.48
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "kept",
+     "selected": true
+    },
+    {
+     "place": "in_drawer",
+     "index": 3,
+     "seed": 17508008352817284652,
+     "wire": [
+      {
+       "score": 0.4,
+       "ended": "time",
+       "steps": 4800,
+       "probes": 41,
+       "probes_passed": 0,
+       "wall_s": 32.1,
+       "controller_s": 2.54
+      }
+     ],
+     "shows_at_start": 0,
+     "status": "rejected"
+    }
+   ],
+   "made": "2026-11-27T01:29:28Z"
+  }
+ ],
+ "refrozen": [
+  {
+   "frozen": {
+    "tests/remote_grade.py": "37b6eea426fecc9ad00545fc467a26fad8f6f1167312207ccad7ad7982e56a7f",
+    "tests/episodes.py": "05c718aadd5fb434fbda8662120cbef4a5b3123c883be101e7385583d4f47c72",
+    "tests/remote_env.py": "0e8054b8d9c0659791ebe4eea759e87d248acbef329af6481ab9546a0c3051ad",
+    "tests/grader_config.json": "94807255728d655bc41e8828018427f480544412d6b94dfe0f7a69210ba0fae4",
+    "tests/nonet_exec.py": "21681d1866479ce3f1943a9d366c3b134097c39c6e3c5dd8bc02f309679bdefb",
+    "tests/numerics_check.py": "1e43ec12fc27f7ced4d8c6080cdeda1b59b55ff943f1345e02f2bd348dc8a70e",
+    "tests/numerics.json": "565cc617cead0b61c3b73835c7d86ba3a080c5d6912cf53de03c6c43ca6d9557",
+    "environment/assets.sha256": "d165989e83b6f0e5346c490c80d172c30b1182c3fc53c5ff6d37a25daba4ccac",
+    "solution/solver/main.py": "5f4328cb0be6cd3413adf7ad77951dcdf25320f831c48332c4d0437f0e836e06",
+    "solution/solver/oracle.py": "44dfeeb9a6249cb648a82894c3c6c0be8597e0bf8963fe9cd527632fe42e3707",
+    "solution/solver/search_skills.py": "7331c0e0d38d4674c0251dd3882238e4e1fba8b1d495dec04ec403e954f16f6c",
+    "solution/solver/skills.py": "b6b1e8d61591d4ca8caf1d59576e50e07dcd74c49afb24b5cf376231c989b4d3",
+    "solution/solver/kin.py": "1aeabc2ca9e141aee315d577f5e2865d50ba43e594a4654043a43ba0596fd8f7",
+    "solution/solve.sh": "10dfe9af0c72e2aa9fba0abe0170d75f28d7d6cfa92a8ce4437d8f1044c6f37b"
+   },
+   "frozen_commit": "1852ba99f96354763c4785ad786cda6acf472ade",
+   "until_draw": 1
+  }
+ ]
+}

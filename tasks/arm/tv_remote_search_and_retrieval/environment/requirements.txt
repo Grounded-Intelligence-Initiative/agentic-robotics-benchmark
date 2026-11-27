@@ -1,0 +1,8 @@
+# The task image's Python dependencies: the one list. environment/Dockerfile installs it into
+# the py3.12 /opt/venv (robosuite, whose asset files hold the Panda model, is installed there
+# without its dependencies).
+mujoco==3.16.0
+numpy==2.5.4
+scipy==1.18.1
+opencv-python-headless==5.0.0.93
+pillow==13.0.0
