@@ -395,8 +395,8 @@ swollen modules (section 6, the entry "2026-11-26, from 07:52"), scored `mean_pa
 run, frozen before it).
 
 The anchor and its spread: see the status log (section 6) for the measured runs. `tests/anchor.json` holds the
-value measured natively on the third round's version (section 6, the entry "2026-11-26, from 19:00": run ref3 on
-`383db135`); `ale validate` of that version is owed. The second round's value through `ale validate` on an RTX 3090
+value measured natively on the third round's final version (section 6, the entry "2026-11-26, from 19:00": run ref5
+on `b132827b`); `ale validate` of that version is owed. The second round's value through `ale validate` on an RTX 3090
 host was the same, in the same steps as the native runs (the entry "2026-11-26, from 16:31").
 
 ## 5. Known limitations and open decisions (version 0.1.0)
@@ -1445,7 +1445,44 @@ those deep S13 heads.
 rule applies (a lever that went too far is corrected): the 13 mm socket now drives within 1.2 mm (its larger lead-in
 chamfer), the 10 mm socket still within 0.8 mm and a Torx bit within 0.5 mm. Rule 8 draws no values; nothing was
 drawn again. The small checks ran on `e430a7ca` (none of them comes near the S13 edge; the reference engages within
-0.023 mm). FINAL_RERUNS
+0.023 mm).
+
+*The relaxation* (`fbe32a85`, 2026-11-27, 00:25; the user: "电池第三轮要注意：现在可能太难了，可以减低一点难度", the
+third round may be too hard, lower it a bit; decided from the proxies' hidden runs above, so tuning on hidden
+evidence, said here plainly). Of the user's order of relaxations only the first was taken: the torque window. The
+yield point lies at 82 to 88 % of a shank's own shear torque (was 86 to 92 %), working needs 75 % of it (was 80 %),
+and the transducer reads to 0.08 N m + 0.5 % and 0.1 degrees (was 0.15 N m + 1 % and 0.2 degrees). The uniform numbers
+drawn under rule 9 are the same, read into the new range; nothing was drawn again. The user then asked that this
+version land under 0.5 on its one frontier episode (01:05), with a band for the frozen proxy of 0.05 to 0.20 of the
+reference, a step back (the noise first) above it, and no further relaxation in any case: not the latch at the fifth
+stop, not a wider Torx tolerance, not a drill-out for a damaged head.
+
+*On the final tree* (`b132827b`: `fbe32a85`'s task, upstream `main` merged; the user's own training job `train_d3.py`
+held GPUs 3 and 4 from 00:26, and these runs shared them with it, one at a time, by the user's own word):
+- the reference (`ref5`, GPU 4): 1.00000, every pack 1.0 in 1094 to 1499 steps, 822 to 1151 s simulated (the
+  allowance 1.30 times its slowest pack), lock 99/99, no stop, strip, shear, drop or yield, no pack condemned or
+  incomplete; its margins as `ref3`'s (the tip within 0.025 mm, 0.97 of a yield point, carried at 1.45 m/s^2);
+- the frozen fresh-agent proxy v1 (`proxy_hidden`, GPU 3): 0.00000, lock 88/88. The lid now came off in two packs
+  (none before); four packs kept one seized or corroded lid bolt (working at the yield point it found did not free it
+  within its 25 cycles, or the yield point lay near its 17.8 N m cap), one kept a busbar bolt (two modules held), one
+  stripped a bracket bolt (two modules held). Events: 1 stripped, none sheared, none dropped, 18 shanks past their
+  yield point, 5 protective stops, no latch, nothing condemned; all six packs incomplete. It is under the band; no
+  relaxation followed;
+- proxy v2 (`proxy2_hidden`, GPU 3; the expert-with-more-time bound, informed by v1's hidden records): `mean_pack_credit`
+  0.47677 (ratio 0.477, reward 0.502), lock 157/157; three packs taken apart (0.973, 0.932, 0.955: P4, P4, P5),
+  three not: one kept a healthy module in its tray, one stripped a Torx lid bolt (the lid stayed), one ran out of its
+  1500 s with two modules not racked (1498 s). Events: 1 stripped, none sheared, none dropped, 27 shanks past their
+  yield point, 1 protective stop, no latch, nothing condemned.
+
+*What this shows and what it does not.* Every cliff has a precursor the agent can observe, and the reference keeps
+clear of each by a wide margin. The information is in the frames and the traces: the camera-only check below, and
+the documented yield model simulated. An expert's program that has fixed its own mistakes completes half the hidden
+packs at the allowance. The proxy that a careful agent would write in two hours and three sessions completes none:
+each of its packs fails on one irreversible mistake or the allowance. That is the round's intent. Proxies are
+Claude-written adaptations; on the endoscope task a fresh Opus 5.5 episode scored about 0.27 of the reference above
+such a proxy, twice. The real difficulty number is a new frontier episode on the pushed tip; only it settles whether
+a fresh agent lands near the proxy (0), near the revision (0.48) or in between, and whether 2 h and three sessions
+are enough for it to find its own mistakes.
 
 *The camera-only check* (fairness: is the information there?): the proxy's wrist locator against the sealed truth of
 its three sessions: Torx heads 50 of 51 within 0.5 mm (T30 median 0.07 mm), S10 heads 8 of 8 within 0.8 mm (median
@@ -1492,6 +1529,15 @@ validate and frontier numbers above and below are `33ce4599`'s: a new `ale valid
 Then (the entry "2026-11-26, from 16:31") the second round's version through `ale validate` on the RTX 3090 host:
 untouched 0.0, oracle 1.0, the reference's packs in the second round's native steps; the anchor's source is that
 run.
+Then (the entry "2026-11-26, from 19:00") a third hardening round after a fresh frontier episode scored 0.97 on the
+second round's tree: precision engagement with damage at once, every shank its own with its yield point in a noisy
+torque-angle trace, a cell's own transducer, safety events that condemn a pack and a latch at the third stop,
+swollen modules at the criterion, a completion gate per pack, 1500 s a pack, the documents' procedures removed, three
+commissioning sessions and a two-hour session; then one amendment (the 13 mm socket at 1.2 mm) and one relaxation
+(the torque window and the transducer's noise), both decided from the proxies' hidden runs. The reference scores
+1.00000 on the final tree; the frozen episode's program 0.00000 (on the tree before the amendment); the fresh-agent
+proxy 0.00000; its disclosed revision as in that entry. The anchor's source is the final tree's native run;
+`ale validate` and a frontier episode on it are owed.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
