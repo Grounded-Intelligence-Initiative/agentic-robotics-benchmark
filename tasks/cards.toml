@@ -365,6 +365,12 @@ summary = "Write the autonomous program of a cabin free-flyer that finds a block
 platforms = ["space"]
 stages = ["behavior"]
 
+[cable_driven_wrist_compensation]
+title = "Compensate a surgical robot's cable-driven wrist"
+summary = "Write a program that calibrates each newly mounted dVRK needle driver from its endoscope video and motor log, then sends the motor commands that put its jaw tips where asked."
+platforms = ["surgical"]
+stages = ["control"]
+
 [hazard_bay_build]
 title = "Rebuild a hazard bay, design and run its fleet"
 summary = "Rebuild a plant's hazard bay in Isaac Sim from photos, design a fleet of flying and ground robots from a catalog, and program it through the job."

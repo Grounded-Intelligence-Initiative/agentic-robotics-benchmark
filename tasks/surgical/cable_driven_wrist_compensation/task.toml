@@ -1,0 +1,38 @@
+schema_version = "1.4+ale.1"
+
+# The agent leaves its compensator (run.sh, code, fitted parameters) here.
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/cable_driven_wrist_compensation"
+
+[metadata]
+platform = "surgical"
+
+# Per instrument: silhouette fits of about 1750 stereo frames (MuJoCo renders the instrument's
+# meshes with software OpenGL), an identification and a feed-forward inverse, on the CPU. The
+# reference method takes about 3 to 6 minutes per instrument on 2 CPUs.
+[environment]
+cpus = 2
+memory_mb = 4096
+
+[agent]
+timeout_sec = 10800
+network_mode = "no-network"
+
+# Separate verification: a fresh verifier sandbox with only /home/user/submission restored.
+# setup.sh does not run there, so the example instruments are absent. The grader renders the
+# eight hidden instruments' calibration videos (about 5 minutes on 2 CPUs), runs the
+# submission once per instrument (program_timeout_s = 600 each, tests/grader_config.json) at
+# the agent's UID and simulates 6 x 4000 command periods per instrument (seconds). Eight
+# instruments rather than four: the instruments differ, and a set of eight scores the
+# reference (and any submission) more steadily. 6600 s covers the worst case of 8 x 600 s
+# with margin.
+[verifier]
+timeout_sec = 6600
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 2
+memory_mb = 4096
+gpus = 0
