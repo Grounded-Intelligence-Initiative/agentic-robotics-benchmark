@@ -10,7 +10,9 @@ A member's body frame has its origin at the member's proximal end and z along it
 
 The cutter-gripper (farm.TOOL; tool frame: origin at the tool centre point in the mouth's centre, z out of the mouth,
 the jaws closing along y). A member is in the mouth at a plane x = X when its axis crosses that plane between the
-jaws and between the throat and the tips. As the jaws close they meet the thickest member at the blade's plane when
+jaws and between the throat and the tips; closing jaws push what is between them to the middle, so a member that
+was in the mouth when they began to close stays caught while it is there. As the jaws close they meet the thickest
+member at the blade's plane when
 the opening equals its diameter: with a closing force of the row's toughness times the member's cross-section or more
 the blade cuts it through and the jaws go on; with less they stall there, and the opening reads the diameter. The pad
 holds every member at its own plane that the jaws have closed down to, for as long as they stay closed on it with
@@ -143,6 +145,7 @@ class Rules(object):
         self.limit = 0.0
         self.force = 0.0             # what the jaws press with now (the reading, without its noise)
         self.held = []               # ids of the members the pad holds
+        self.caught = {"blade": {}, "pad": {}}       # what the closing jaws have between them, at each plane
         self.stalled = False
         self.margins = {"cut_y_mm": 0.0, "cut_z_mm": 0.0, "cut_force_ratio": 0.0}
 
@@ -183,7 +186,17 @@ class Rules(object):
         w0 = self.opening
         if target < w0 - 1e-9:
             w1 = max(target, w0 - tool["jaw_speed"] * dt)
-            blade = self.in_mouth(T_tool, poses, tool["blade_x"], w0, uncut=True)
+            # the closing jaws take in what is between them and push it to the middle: a member that was between
+            # the jaws at any moment of this closing stays caught for as long as it is in the mouth
+            for X, store in ((tool["blade_x"], self.caught["blade"]), (tool["clamp_x"], self.caught["pad"])):
+                now = {mid: (t, y, z) for mid, t, y, z in self.in_mouth(T_tool, poses, X, tool["open_max"])}
+                for mid in list(store):
+                    if mid not in now:
+                        del store[mid]
+                for mid, (t, y, z) in now.items():
+                    if mid in store or abs(y) <= w0 / 2.0 + 1e-9:
+                        store[mid] = (t, y, z)
+            blade = [(mid,) + c for mid, c in self.caught["blade"].items() if not self.member[mid]["cut"]]
             while True:
                 meet = [(2.0 * self.member[mid]["r"], mid, t, y, z) for mid, t, y, z in blade
                         if not self.member[mid]["cut"] and 2.0 * self.member[mid]["r"] >= w1 - 1e-9]
@@ -203,12 +216,13 @@ class Rules(object):
                     w1, stalled = min(w0, d), True      # the jaws stall on it: the opening reads its diameter
                     break
             # the pad meets every member at its plane that the jaws have now closed down to
-            for mid, t, y, z in self.in_mouth(T_tool, poses, tool["clamp_x"], w0):
+            for mid in self.caught["pad"]:
                 if mid not in self.held and self.member[mid]["kind"] != "stem" and 2.0 * self.member[mid]["r"] >= w1 - 5e-4:
                     captured.append(mid)
             self.opening = w1
         elif target > w0 + 1e-9:
             self.opening = min(target, w0 + tool["jaw_speed"] * dt)
+            self.caught = {"blade": {}, "pad": {}}
         self.stalled = stalled
         self.force = limit if (stalled or (self.opening <= 1e-6 and target <= 1e-6)) else 0.0
         now = []
@@ -240,7 +254,7 @@ class Rules(object):
             tr = self.truss[m["truss"]]
             tr["status"], tr["cut_t"] = "free", self.t
             c = crossing(T_tool, poses[mid], m["len"], F.TOOL["clamp_x"])
-            tr["stub_side"] = bool(c is None or c[0] < t)           # the pad sits on the plant's side of the cut
+            tr["stub_side"] = bool(c is None or c[0] < t or mid not in self.caught["pad"])   # the pad sits on the plant's side of the cut, or misses
             self.log("cut", member=mid, truss=m["truss"], at=round(t, 3), force=round(self.limit, 1), need=round(m["need"], 1),
                      pad_on_truss=not tr["stub_side"])
         elif m["kind"] == "rachis":

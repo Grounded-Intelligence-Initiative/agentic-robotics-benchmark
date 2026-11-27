@@ -107,7 +107,7 @@ def main():
                     for f in t["fruits"]:
                         assert abs(f["ripeness"] - f["stage"]) <= 0.35 + 1e-9 and 1 <= f["stage"] <= 6
                         want = np.array(F.chart_color(cultivar, f["ripeness"]))
-                        assert np.all(np.abs(np.array(f["albedo"]) / want - 1.0) <= 0.051), "a fruit's colour is its chart colour within 5 %"
+                        assert np.all(np.abs(np.array(f["albedo"]) / want - 1.0) <= 0.055), "a fruit's colour is its chart colour within 5 % (rounded on file)"
                     if t["ready"]:
                         assert F.clear_alphas(t, row["plants"]), "every ready truss has a clear straight approach"
             m = row["mechanics"]
@@ -170,6 +170,11 @@ def main():
         T = tool_at(row, tid, shift=shift)
         got = [m for m, _t, _y, _z in r.in_mouth(T, poses, F.TOOL["blade_x"], OPEN)]
         assert (tid + ".p" in got) == inside, (shift, inside, got)
+        # and the closing jaws push a peduncle that is between them to the middle: cut and held wherever it was
+        row2, r2, poses2 = fresh()
+        need = r2.member[tid + ".p"]["need"]
+        ev = close(r2, T, poses2, need * 1.2)
+        assert ((("cut", tid + ".p") in ev) and r2.truss[tid]["status"] == "held") == inside, (shift, inside, ev)
     # a member that comes into a closed mouth is neither cut nor held
     row, r, poses = fresh()
     far = tool_at(row, tid, shift=(0, 0, -0.10))

@@ -32,13 +32,15 @@ CART = {
     # two harvest crates on the deck, one behind and one ahead of the robot along the rail. Inner footprint centre
     # and size; the floor's top is `floor_z`; walls `wall_h` high and `wall_t` thick. A crate takes one layer.
     "crates": {
-        "rear": {"center": [0.06, -0.80], "size": [0.60, 0.36]},
-        "front": {"center": [0.06, 0.80], "size": [0.60, 0.36]},
+        "rear": {"center": [0.06, -0.80], "size": [0.60, 0.40]},
+        "front": {"center": [0.06, 0.80], "size": [0.60, 0.40]},
     },
     "crate_floor_z": DECK_Z + 0.012, "crate_wall_h": 0.14, "crate_wall_t": 0.008,
+    # a crate has three bays side by side (along x), parted by dividers `divider_h` high: a bay takes one truss
+    "crate_bays": 3, "crate_divider_h": 0.08, "crate_divider_t": 0.006,
     "travel": [-0.20, 2.60],             # the cart's base along the rail (W y), limits of the section
     "speed_max": 0.25,                   # m/s
-    "home_q": [-0.418, -1.73, 2.358, -0.628, 1.153, 1.571],   # the tool level, pointing at the row, 0.85 m out
+    "home_q": [-0.7804, -2.1304, 2.5661, -0.4356, 0.7904, 1.5708],   # the tool level, pointing at the row, its tip 0.80 m out
 }
 
 # cameras: OpenCV convention (x right, y down, z forward); R's columns are the camera axes in the parent frame.
@@ -48,7 +50,7 @@ CART = {
 CAMERAS = {
     "overview": {"parent": "cart", "pos": [0.47, -1.05, 1.45], "look_at": [1.15, 0.15, 0.35],
                  "width": 1280, "height": 960, "hfov_deg": 82.0, "clip": [0.2, 12.0], "depth": False},
-    "wrist": {"parent": "flange", "pos": [-0.075, 0.0, 0.050], "tilt_deg": 20.0,
+    "wrist": {"parent": "flange", "pos": [-0.075, 0.0, 0.210], "tilt_deg": 20.0,
               "width": 1280, "height": 720, "hfov_deg": 70.0, "clip": [0.02, 12.0], "depth": True},
 }
 
@@ -148,12 +150,12 @@ def camera_mount(name, offset=None):
 # of the blade, so what the tool keeps is what was on the -x side of the cut. The tool centre point is the mouth's
 # centre; `mouth_z` is the mouth's extent along the tool axis (throat to tips), `open_max` the gap between the jaws.
 TOOL = {
-    "mass": 1.7, "com": [0.004, 0.0, 0.075], "inertia": [0.007, 0.007, 0.0015],
-    "tcp_z": 0.200,
+    "mass": 1.9, "com": [0.003, 0.0, 0.120], "inertia": [0.020, 0.020, 0.002],
+    "tcp_z": 0.360,
     "body": {"size": [0.060, 0.060], "z": [0.012, 0.100]},
-    "neck": {"size": [0.026, 0.044], "z": [0.100, 0.180]},
-    "jaw": {"x": [-0.013, 0.009], "t": 0.008, "z": [0.180, 0.215]},
-    "open_max": 0.028, "mouth_z": [0.181, 0.213],
+    "neck": {"size": [0.026, 0.044], "z": [0.100, 0.340]},       # long and slender: the robot's wrist stays out of the canopy
+    "jaw": {"x": [-0.013, 0.009], "t": 0.008, "z": [0.340, 0.370]},
+    "open_max": 0.016, "mouth_z": [0.348, 0.368],
     "blade_x": 0.005, "clamp_x": -0.008,
     "jaw_speed": 0.040,                  # m/s of opening
     "force_max": 600.0,                  # N
@@ -169,8 +171,9 @@ CUT = {"toughness": (2.4, 5.2), "crush": 1.6, "stem_factor": 1.0}
 
 # What ends a truss's worth (rules, `rules.py`); stated in the growing protocol as the greenhouse's rules.
 DAMAGE = {
-    "impact_dv": 0.6,        # m/s: a fruit whose speed changes by more than this within one control tick is bruised
-    "squeeze_force": 15.0,   # N: a fruit the robot presses with more than this is bruised
+    "impact_dv": 1.5,        # m/s: a fruit whose speed changes by more than this within one control tick is bruised
+                             # (a free fall of 11 cm ends at 1.5 m/s)
+    "squeeze_force": 25.0,   # N: a fruit the robot or a crate presses with more than this is bruised
     "stack_dz": 0.5, "stack_touch": 1.1,     # a truss lies on another: rules.Rules.lies_on
 }
 CONSEQUENCE = {"latch": 3}   # the protective stop that latches the robot for the rest of the row
@@ -195,9 +198,10 @@ CULTIVARS = {
     },
 }
 FRUIT_DENSITY = 950.0
-# A truss's own joints (peduncle to rachis, rachis segment to segment): bending stiffness (N m/rad) and damping
-# (N m s/rad). Held level by its peduncle, a truss droops by about a third of a right angle.
-TRUSS = {"rachis_k": 0.9, "rachis_d": 0.06}
+# A truss's own joints: bending stiffness (N m/rad) of the knuckle (peduncle to rachis) and of the rachis (segment
+# to segment), their damping (N m s/rad); about its own axis a segment turns against `twist_k` only (the fruits'
+# pedicels give: a truss laid down settles flat). A truss hangs from its knuckle like a short, heavy chain.
+TRUSS = {"knuckle_k": 0.15, "rachis_k": 0.15, "rachis_d": 0.02, "twist_k": 0.02, "twist_d": 0.004}
 LOOK = {"calyx": [0.10, 0.26, 0.05], "stem": [0.20, 0.36, 0.10], "peduncle": [0.22, 0.40, 0.11],
         "leaf": [0.07, 0.24, 0.05], "leaf_back": [0.12, 0.30, 0.09]}
 
@@ -400,14 +404,14 @@ def tool_points():
     pts += _box((-bd["size"][0] / 2, bd["size"][0] / 2), (-bd["size"][1] / 2, bd["size"][1] / 2), (bd["z"][0] - tz, bd["z"][1] - tz), (3, 3, 5))
     cx, _cy, cz = CAMERAS["wrist"]["pos"]
     pts += _box((cx - 0.020, cx + 0.020), (-0.022, 0.022), (cz - 0.025 - tz, cz + 0.025 - tz), (2, 2, 3))
-    for zl in np.linspace(-tz - 0.17, -tz, 5):                # the robot's wrist: a cylinder about the tool axis
-        pts += [(0.06 * math.cos(a), 0.06 * math.sin(a), zl) for a in np.linspace(0.0, 2 * math.pi, 8, endpoint=False)]
+    for zl in np.linspace(-tz - 0.32, -tz, 7):                # the robot's wrist: a generous cylinder about the tool axis
+        pts += [(0.12 * math.cos(a), 0.12 * math.sin(a), zl) for a in np.linspace(0.0, 2 * math.pi, 10, endpoint=False)]
     return np.array(pts)
 
 
 _TOOL_PTS = tool_points()
-APPROACH_ALPHAS = (0.0, -55.0, 55.0)
-APPROACH_BACK = 0.16
+APPROACH_ALPHAS = (0.0,)          # the one stated approach: in the peduncle's vertical plane, from above and in front
+APPROACH_BACK = 0.30
 
 
 def cut_fraction(truss):
@@ -422,7 +426,7 @@ def _swept(truss, alpha_deg):
     R = approach_axes(truss, alpha_deg)
     a, b = np.array(truss["peduncle"]["a"]), np.array(truss["peduncle"]["b"])
     p = a + cut_fraction(truss) * (b - a)
-    return np.concatenate([(p - back * R[:, 2]) + _TOOL_PTS @ R.T for back in np.linspace(0.0, APPROACH_BACK, 5)])
+    return np.concatenate([(p - back * R[:, 2]) + _TOOL_PTS @ R.T for back in np.linspace(0.0, APPROACH_BACK, 7)])
 
 
 def _dist_points_segment(pts, a, b):
@@ -454,9 +458,9 @@ def _hits(pts, kind, item):
 
 
 def clear_alphas(truss, plants, leaves=True):
-    """The stated approach directions (APPROACH_ALPHAS) along which the tool reaches the truss's cut point in a
-    straight line of APPROACH_BACK without touching a stem, a fruit, another truss's peduncle or (with `leaves`) a
-    leaf, everything at rest."""
+    """The stated approach (APPROACH_ALPHAS: its angle about the peduncle, a list of one) when the tool reaches the
+    truss's cut point along it in a straight line of APPROACH_BACK without touching a stem, a fruit, another truss's
+    peduncle or (with `leaves`) a leaf, everything at rest; else an empty list."""
     out = []
     for al in APPROACH_ALPHAS:
         pts = _swept(truss, al)
@@ -476,9 +480,9 @@ def clear_alphas(truss, plants, leaves=True):
 
 def _plants(seed, cultivar):
     """The plants of a row section. By construction: 4 to 6 trusses are ready, on each plant the lowest ones; every
-    ready truss can be cut by a straight approach from at least one of the three stated directions without pushing
-    anything aside (a truss that cannot is drawn again, up to 40 times; a leaf that would close a ready truss's last
-    approach is one the grower has taken off)."""
+    ready truss can be cut by the stated straight approach (in its peduncle's vertical plane, from above and in
+    front) without pushing anything aside (a truss that cannot is drawn again, up to 40 times; a leaf that would
+    close a ready truss's approach is one the grower has taken off)."""
     for attempt in range(50):
         st = Stream(seed, "plants|%d" % attempt)
         leaf_p = st.uniform(*ROW["leaf_p"])
@@ -507,6 +511,8 @@ def _plants(seed, cultivar):
                 for _try in range(40):
                     az = sign * math.radians(st.uniform(8.0, 50.0)) if _try < 30 else math.radians(st.uniform(-50.0, 50.0))
                     tr = _truss(st, cultivar, pid, k, pts, plant["stem_r"], zs[k], az)
+                    if _hits(np.array([f["center"] for f in tr["fruits"]]), "stem", dict(plant, stem_r=plant["stem_r"] + max(f["r"] for f in tr["fruits"]) - 0.003)):
+                        continue                         # a fruit would grow into the stem
                     plant["trusses"].append(tr)
                     # the new truss must leave an approach to every ready truss below it, and have one itself if ready
                     good = all(clear_alphas(t, plants, leaves=False) for t in plant["trusses"][:quota[i]] if t is not tr or k < quota[i])
@@ -599,12 +605,13 @@ def summary(row):
 
 
 def crate_slots():
-    """Where the reference lays trusses: three lanes a crate, along the rail."""
+    """A crate's bays: each bay's centre line (x) and its extent along the rail."""
     out = []
+    n = CART["crate_bays"]
     for name, cr in CART["crates"].items():
         (cx, cy), (sx, sy) = cr["center"], cr["size"]
-        for k in range(3):
-            out.append({"crate": name, "x": round(cx - sx / 2 + sx * (k + 0.5) / 3.0, 4), "y0": round(cy - sy / 2, 4), "y1": round(cy + sy / 2, 4)})
+        for k in range(n):
+            out.append({"crate": name, "x": round(cx - sx / 2 + sx * (k + 0.5) / n, 4), "y0": round(cy - sy / 2, 4), "y1": round(cy + sy / 2, 4)})
     return out
 
 
@@ -627,8 +634,9 @@ def public_site():
         "version": VERSION, "tick_s": TICK, "max_ticks_per_action": d["max_ticks"],
         "floor_z": FLOOR_Z, "deck_z": DECK_Z,
         "cart": {"deck": CART["deck"], "crates": CART["crates"], "crate_floor_z": CART["crate_floor_z"],
-                 "crate_wall_h": CART["crate_wall_h"], "travel": CART["travel"], "speed_max": CART["speed_max"],
-                 "home_q": CART["home_q"]},
+                 "crate_wall_h": CART["crate_wall_h"], "crate_wall_t": CART["crate_wall_t"], "crate_bays": CART["crate_bays"],
+                 "crate_divider_h": CART["crate_divider_h"], "crate_divider_t": CART["crate_divider_t"], "bays": crate_slots(),
+                 "travel": CART["travel"], "speed_max": CART["speed_max"], "home_q": CART["home_q"]},
         "tool": {k: TOOL[k] for k in ("mass", "tcp_z", "body", "neck", "jaw", "open_max", "mouth_z", "blade_x", "clamp_x",
                                       "jaw_speed", "force_max")},
         "cameras": cams,

@@ -1,0 +1,8 @@
+{
+ "metric": "mean_row_yield",
+ "direction": "higher",
+ "value": null,
+ "full_at": 0.9,
+ "source": "not measured yet",
+ "note": "mean_row_yield is the mean over the hidden row sections of (ready trusses that count) / (ready trusses of the row) (rowcell/rules.py `credit`), already on [0, 1]; ratio = measured / value, reward = clamp(ratio / full_at, 0, 1)."
+}

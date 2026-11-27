@@ -1,0 +1,16 @@
+{
+  "probe_rate": 0.03,
+  "probe_pass_fraction": 0.1,
+  "step_timeout_s": 30,
+  "controller_budget_s": 1200,
+  "max_steps": 20000,
+  "cell": {"sim_cap_s": 900.0, "frame_budget": 600},
+  "cell_start_timeout_s": 900,
+  "cell_reply_timeout_s": 600,
+  "cell_account": "rowcell",
+  "max_submission_mb": 200,
+  "max_processes": 64,
+  "verifier_deadline_s": 13200,
+  "scoring_cap": 1.5,
+  "note": "the grader's knobs. cell: what the grader's cell runs with (tests/rowcell/wire.py DEFAULTS for the rest); the agent's copy of these numbers is given/site/site.json (limits). controller_budget_s and max_steps are per row section; step_timeout_s is the kit's per-request deadline (READY within 4 of them). max_processes: the cap on the agent account's processes (verify.GuardedSolver counts them before every request). verifier_deadline_s: the kit's VerifierDeadline, 1200 s inside [verifier] timeout_sec (14400): a verdict from the rows graded by then."
+}

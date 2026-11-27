@@ -192,8 +192,8 @@ class Builder(object):
 
     def d6(self, path, body0, T0, body1, T1_world, T_joint, k_rot=None, d_rot=0.0, k_lin=None, d_lin=0.0, local1=None):
         """A D6 joint at the world pose `T_joint` between body0 (world pose T0; None: the world) and body1 (world pose
-        `T1_world`). Rotations: spring drives of `k_rot` (N m/rad) and `d_rot` (N m s/rad) about every axis, or free
-        when k_rot is None. Translations: locked, or spring drives of `k_lin` (N/m per axis: a 3-list) and `d_lin`."""
+        `T1_world`). Rotations: spring drives of `k_rot` (N m/rad) and `d_rot` (N m s/rad) about every axis (one
+        number, or one per axis of the joint's frame: x, y, z), or free when k_rot is None. Translations: locked, or spring drives of `k_lin` (N/m per axis: a 3-list) and `d_lin`."""
         j = UsdPhysics.Joint.Define(self.st, path)
         if body0 is not None:
             j.CreateBody0Rel().SetTargets([body0])
@@ -218,11 +218,13 @@ class Builder(object):
                 d.CreateDampingAttr(float(d_lin))
                 d.CreateTargetPositionAttr(0.0)
         if k_rot is not None:
-            for ax in ("rotX", "rotY", "rotZ"):
+            ks = k_rot if isinstance(k_rot, (list, tuple)) else [k_rot] * 3
+            ds = d_rot if isinstance(d_rot, (list, tuple)) else [d_rot] * 3
+            for i, ax in enumerate(("rotX", "rotY", "rotZ")):
                 d = UsdPhysics.DriveAPI.Apply(j.GetPrim(), ax)
                 d.CreateTypeAttr("force")
-                d.CreateStiffnessAttr(float(k_rot) * math.pi / 180.0)          # USD: per degree
-                d.CreateDampingAttr(float(d_rot) * math.pi / 180.0)
+                d.CreateStiffnessAttr(float(ks[i]) * math.pi / 180.0)          # USD: per degree
+                d.CreateDampingAttr(float(ds[i]) * math.pi / 180.0)
                 d.CreateTargetPositionAttr(0.0)
         return j
 
@@ -426,6 +428,9 @@ def build(stage, row, robot_usd, render=True):
                  b.box(root + "/wx1", (wt, sy + 2 * wt, wh), (cx + sx / 2 + wt / 2, cy, fz + wh / 2), "crate", collide=True),
                  b.box(root + "/wy0", (sx, wt, wh), (cx, cy - sy / 2 - wt / 2, fz + wh / 2), "crate", collide=True),
                  b.box(root + "/wy1", (sx, wt, wh), (cx, cy + sy / 2 + wt / 2, fz + wh / 2), "crate", collide=True)]
+        nb, dh, dt = F.CART["crate_bays"], F.CART["crate_divider_h"], F.CART["crate_divider_t"]
+        for k in range(1, nb):
+            prims.append(b.box("%s/div%d" % (root, k), (dt, sy, dh), (cx - sx / 2 + sx * k / nb, cy, fz + dh / 2), "crate", collide=True))
         for p in prims:
             b.friction(p, "crate", 0.9)
     cj = UsdPhysics.FixedJoint.Define(stage, "/World/CartJoint")
@@ -465,7 +470,7 @@ def build(stage, row, robot_usd, render=True):
         index["jaw_" + side] = str(f.GetPath())
     wc = F.CAMERAS["wrist"]
     b.box(E + "/cam_housing", (0.036, 0.044, 0.040), (wc["pos"][0] - 0.004, wc["pos"][1], wc["pos"][2] - 0.024), "tool_dark", collide=True)
-    b.box(E + "/cam_arm", (0.05, 0.02, 0.02), (wc["pos"][0] / 2 - 0.012, 0, wc["pos"][2] - 0.02), "tool_dark")
+    b.box(E + "/cam_arm", (abs(wc["pos"][0]) - 0.02, 0.02, 0.02), (wc["pos"][0] / 2 - 0.004, 0, wc["pos"][2] - 0.02), "tool_dark")
     index.update(robot=R, rail=R + "/rail_link", base=R + "/base_link", ee=E, cart="/World/Cart")
 
     # ------------------------------------------------------------------ cameras
@@ -577,7 +582,11 @@ def build(stage, row, robot_usd, render=True):
                         b.mesh("%s/calyx%d" % (path, j), cp, cc, ci, c, kin.R_quat(frame_z(at - c)), "calyx")
                 mid = "%s.r%d" % (tid, k)
                 jp = "/World/Row/Joints/%s_r%d" % (tid, k)
-                b.d6(jp, prev_path, prev_T, path, Ts, Ts, k_rot=F.TRUSS["rachis_k"], d_rot=F.TRUSS["rachis_d"])
+                # (the joint's frame is the segment's: z along it. It bends against `rachis_k` and turns about its own
+                # axis against almost nothing, as fruits on their pedicels let a truss settle flat)
+                kb = F.TRUSS["knuckle_k"] if k == 0 else F.TRUSS["rachis_k"]
+                b.d6(jp, prev_path, prev_T, path, Ts, Ts, k_rot=[kb, kb, F.TRUSS["twist_k"]],
+                     d_rot=[F.TRUSS["rachis_d"]] * 2 + [F.TRUSS["twist_d"]])
                 index["bodies"][mid], index["joints"][mid] = path, jp
                 index["rachis"].append(mid)
                 prev_path, prev_T = path, Ts

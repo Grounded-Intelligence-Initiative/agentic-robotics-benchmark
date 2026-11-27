@@ -1,0 +1,76 @@
+# greenhouse_truss_tomato_harvesting (Physical Execution, robotic arm; NVIDIA Isaac Sim).
+#
+# A UR20 on a rail cart harvests truss tomatoes along a row section of a high-wire greenhouse with a cutter-gripper
+# (jaws that close a narrow mouth: a blade cuts what lies across it, a pad beside the blade holds what is on its side
+# of the cut). The agent is the robot's automation engineer and gets what one would have: the growing protocol (how a
+# plant is built, the cultivars' colour charts and readiness rules, the greenhouse's rules), the tool's data sheet, the
+# cart's interface document (cameras with exact intrinsics and nominal mounting, the depth sensor's data sheet, a
+# calibration plate, a colour reference card, row markers), the robot's model, and a commissioning service that runs
+# the cart on practice row sections of another cultivar worked by other robots for three sessions (never refunded),
+# with nothing of where anything is and no yield, in a two-hour session. It delivers a program (run.sh) that the
+# grader drives step by step over a stdio wire on a fixed hidden set of six row sections. On the wire are the robot's
+# joint readings, the wrench at the flange, the cart's odometer, the jaws' opening and force, and frames of an overview
+# colour camera and a wrist RGB-D camera on request; never where a stem, a leaf, a peduncle or a fruit is, or which
+# truss is ready. Each row section differs in its plants (where every truss hangs, how its peduncle points, which
+# leaves hang in front), the ripeness of every fruit (a truss is ready by its cultivar's rule, read off the colour
+# chart under a grow light whose brightness and colour are the row's own), the robot's camera mounting, each
+# peduncle's thickness and the row's toughness (a cut takes toughness times cross-section; the pad crushes a peduncle
+# pressed with more than 1.6 times its own cutting force), how stiffly the plants stand, and how much the cart's
+# wheels slip. A peduncle is a few millimetres thick and gives the depth sensor no reading; the mouth is 16 mm wide.
+# The cut and the hold are rules on what lies across the mouth (rowcell/rules.py); the plants (stems on support
+# strings, trusses and leaves on compliant joints), the trusses carried and laid in the crates, and every contact are
+# rigid-body physics (PhysX on the CPU), and the GPU renders the cameras. The metric, mean_row_yield
+# (tests/anchor.json), is the mean over the rows of the ready trusses that lie in a crate cut free, whole, unbruised,
+# uncrushed and in one layer, over the row's ready trusses, read from the physics engine's state. A cut main stem
+# loses its plant (none of its trusses counts); the third protective stop ends a row with what was delivered by
+# then; there is no other term. Design notes: tests/README.md.
+#
+# Needs one NVIDIA RTX GPU in the agent's sandbox (the commissioning service) and in the verifier (the graded cell).
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/greenhouse_truss_tomato_harvesting"
+
+[metadata]
+platform = "arm"
+
+# gpu_types: the cloud models on which the benchmark has validated this same Isaac Sim 6.2 RTX stack
+# (tasks/swarm/hazard_bay_build), cheapest first, then RTX-3090, the model this task was developed, measured and
+# validated on (driver 535, below Omniverse's R550 floor: the cell's driver check is off, tests/rowcell/server.py).
+# The three cloud models follow hazard_bay_build's validation of the stack, not a run of this task; they keep it off
+# the H100 and H200, where RTX rendering of this stack is unproven. The canary (tests/verify.py) fails a model that
+# does not render as a task error, never as a 0; a maintainer confirms or corrects the list with a validate per model
+# (tests/README.md, section 5).
+[environment]
+cpus = 8
+memory_mb = 32768
+gpus = 1
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-3090"]
+
+# Setup (environment/setup/setup.sh: the givens into the agent home, the commissioning service started; under a
+# minute) has no field: the engine bounds it at 1800 s. [agent] timeout_sec: 2 h, a condition of the job (with three
+# commissioning sessions, never refunded; tests/README.md, section 2). [verifier] timeout_sec: a canary cell (start
+# and first render on a cold cache: a few minutes), then six row sections, each a fresh cell process (start and build:
+# 1 to 3 min) with at most the simulated-time allowance (tests/grader_config.json cell.sim_cap_s; about a quarter of
+# real time), 600 frames (about 0.3 s each) and 1200 s of the controller's own time: about 1,700 s a row at the
+# bounds, 10,200 s for the six, 10,700 s with the canary; 4 h leaves 3,700 s of margin. The grader's own deadline
+# (tests/grader_config.json verifier_deadline_s, 13,200 s) ends grading with a verdict 1,200 s before the engine's
+# limit, whatever runs then.
+[agent]
+timeout_sec = 7200
+network_mode = "no-network"
+
+[verifier]
+timeout_sec = 14400
+# Separate verification: a fresh verifier sandbox from the same image, which the agent never touched; only the
+# declared artifact (/home/user/submission) is restored into it. environment/setup/setup.sh does not run there (the
+# grader starts its own cell processes and needs none of the givens).
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 8
+memory_mb = 32768
+gpus = 1
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-3090"]
