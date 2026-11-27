@@ -1,0 +1,33 @@
+{
+ "files_sha256": {
+  "given_hashes.json": "a030a6dd1a1f16327e174c7fa5cb21956ea7112e31574b635eea77bcd18fa4e9",
+  "grader_config.json": "bd1ac4adc483dd3cb05b32de5a56f41d1ec40b59320fdb969c074992e695ff8f",
+  "gt/calibration.yaml": "1db431a8433db7675636908a92202c6572762786f147703eaae01ee6bcd1d58f",
+  "gt/true_unit.json": "d70ec771e822e44c973d27f2b27e420687d732298ce26f99716b6c6711d63b7f",
+  "gt/unit.xml": "7d8ee404dc5ef5672975d3707ad0f2435d8de7ae9537a8b21e5480efcc64e1cd",
+  "hidden/hidden_set.npz": "c36d421a8c40370b5fde948436303bfc08b73be79fdefb354a1c9d6eb9a3bde1",
+  "hidden/postures.json": "f49721f0b23f3cc2ebb971fd63a86b34e2d256b0ed684b59dfc581124cd17da5",
+  "rd04/__init__.py": "7c5014694e6e89bcec845c0c69b2293df71eadf21da2118a8800627bdf25693f",
+  "rd04/data/ankle_vendor.json": "9b77625609459fff22066599d4ce90265991fdbdd0fd6aca5ab78ef9708894cc",
+  "rd04/data/grader_config.json": "bd1ac4adc483dd3cb05b32de5a56f41d1ec40b59320fdb969c074992e695ff8f",
+  "rd04/data/postures.json": "f49721f0b23f3cc2ebb971fd63a86b34e2d256b0ed684b59dfc581124cd17da5",
+  "rd04/files.py": "150aa09e9fbcec41c80052735704b04091a388fdeb7dda37704ad7a09292cfe3",
+  "rd04/gate.py": "7d8c56e95ecd7f7a36bbae4a2388e5e98ce4bb24688f6ae529a7fe2b9b8318ef",
+  "rd04/given.py": "ccbe6e533bc4d4dbd6b144686a628123104ed6fc653edad7244a71c4b7549dad",
+  "rd04/grade.py": "f49d7e7b92ea508c110285b1d69d76f2c20ee3116169fe3ad510b47b9a3bc3bb",
+  "rd04/grid.py": "88ec8799e75d6f5c837eb84411ab605d32c3065fe960bd9d2f472c7b875b9fef",
+  "rd04/metrics.py": "c8b6cf3f3c089af0b1455596c29b08531c51e66ca9d4395d226392c8f09bbf57",
+  "rd04/model.py": "2c477845a98e78866938de164cbaa3284196614ba9abeb88db709e3ec86b4672",
+  "rd04/planner.py": "607d966697e4680307b59b93b48a72c7b2e4a75f7eae75a5152132cc5c77aa67",
+  "rd04/topple.py": "b4bd0f779a75f81ca96c234c22511850f190d53fa4c8dff2722221a1290e17d3",
+  "rd04/truth.py": "3f5ea735eb4817e1298dfb9a15709103edb86e18b245a3e93facba872122684a",
+  "rd04/util.py": "54bb3f6c929776553111ed010e032223fdc132d80cd640b01a2b9a10d198da00",
+  "rd04/vendor_chain.py": "7ddafecf2dd777b795568fb0aefc1cd470eef73dfb376e2fbca9262c711f63c9"
+ },
+ "not_shipped_sha256": {
+  "gt/record.json": "23458c57affc8f79ea965bc54c5f2b0faa340b7337d604befa870bebb1cc3c19"
+ },
+ "schema": "graded-inputs-freeze/1",
+ "status": "OF RECORD",
+ "what": "sha256 of every graded input (paths relative to tests/); verify.py refuses to score on a mismatch. not_shipped_sha256: the unit's record of the draw, which the grader does not read and the task does not ship."
+}

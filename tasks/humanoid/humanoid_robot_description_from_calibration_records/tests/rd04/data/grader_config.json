@@ -1,0 +1,188 @@
+{
+ "schema": "rd04-grader-config/1",
+ "status": "OF RECORD. Bands and weights: the values of record, re-measured on the built task at the freeze checks of 2026-11-26 by the named rule (bands_source) and kept as they were: the truth files score 1.0 on 21 of 21 units (20 drawn test units and the unit of record), the careful class's rows at least 0.9915, and 400 twins (the truth with every tolerance drawn again at once: 200 on the unit of record, 10 on each test unit) at least 0.80 at their fifth percentile; a zero end never moves down. Lock words: metrics only, never scored; the masses band's full end is the smallest, to 0.1 %, under which the careful mass model of the unit of record (the CAD masses scaled to the weighing, or topped up to it with the excess at the torso) reads ok, and a model with one link's mass 10 % off reads missed.",
+ "budget": {
+  "cpu_s_per_submission_max": 60.0,
+  "memory_per_submission_max_bytes": 1500000000,
+  "note": "under 60 CPU-s and under 1.5 GB per submission: the peak resident memory (VmHWM) and the CPU time of one fresh process that reads the truth files, loads one submission through the gate and scores it; 1.5 GB is read as 1.5e9 bytes (the stricter of GB and GiB). The gate's compile of the 26 given link meshes is most of it (about 1.17 GB measured)"
+ },
+ "score": "score = gate x M x D; L(e) = clip(ln(zero / e) / ln(zero / full), 0, 1); a term = the mean of L over its samples (a non-finite error scores 0); a family = the mean of its terms; M = the weighted sum of the families; per posture D_k = L(flat) x L(weight) x L(upright) (0 when the posture fails: planner residual, inverse of the ankle map, true ankle out of reach, or a fall); D = the mean over the postures",
+ "weights_M": {
+  "feet": 0.4,
+  "trunk": 0.2,
+  "weight": 0.2,
+  "sole": 0.1,
+  "arms": 0.1
+ },
+ "families": {
+  "feet": [
+   "feet_pos_mm",
+   "feet_normal_deg",
+   "feet_heading_deg"
+  ],
+  "trunk": [
+   "trunk_deg"
+  ],
+  "weight": [
+   "com_mm"
+  ],
+  "sole": [
+   "sole_plane_mm",
+   "sole_fp_mm"
+  ],
+  "arms": [
+   "arms_deg"
+  ]
+ },
+ "D_terms": [
+  "flat_deg",
+  "weight_mm",
+  "upright_deg"
+ ],
+ "bands": {
+  "feet_pos_mm": [
+   5.9,
+   34.1
+  ],
+  "feet_normal_deg": [
+   1.03,
+   4.07
+  ],
+  "feet_heading_deg": [
+   0.65,
+   2.57
+  ],
+  "trunk_deg": [
+   0.115,
+   3.0
+  ],
+  "com_mm": [
+   3.9,
+   34.9
+  ],
+  "sole_plane_mm": [
+   0.28,
+   5.0
+  ],
+  "sole_fp_mm": [
+   0.49,
+   19.0
+  ],
+  "arms_deg": [
+   0.195,
+   2.72
+  ],
+  "flat_deg": [
+   0.94,
+   4.29
+  ],
+  "weight_mm": [
+   6.5,
+   24.3
+  ],
+  "upright_deg": [
+   0.525,
+   4.0
+  ]
+ },
+ "bands_source": "the named rule, applied once to 20 drawn units: full = the 95th percentile of the careful class's pooled per-sample error; zero = the median pooled per-sample error of the template with the maker's model, never below an earlier zero; a term counts when its zero is at least three times its full end; rounded. M's weights: feet 0.40, trunk 0.20, weight 0.20, sole 0.10, arms 0.10",
+ "terms": {
+  "feet_pos_mm": "per bus sample and foot: the distance, in the pelvis link's frame, between the files' and the true position of the true tread centre (a fixed point of the ankle-roll link)",
+  "feet_normal_deg": "per bus sample and foot: the angle between the files' and the true ankle-roll z axes in the pelvis frame",
+  "feet_heading_deg": "per bus sample and foot: the rotation about the true sole normal between the files' and the true ankle-roll x axes (both projected on the plane normal to it)",
+  "trunk_deg": "per bus sample: the angle between the gravity in the torso link's frame predicted from the sample's inertial-unit gravity through the files' imu site and kinematics, and the true one",
+  "com_mm": "per truth-planned reading vector: the files' centre of mass in the files' feet frame against the true centre of mass in the true feet frame (horizontal)",
+  "sole_plane_mm": "per foot: the distance along the true sole normal, at the true tread centre, from the true tread plane to the files' contact plane",
+  "sole_fp_mm": "per foot: the largest distance from a corner of either tread rectangle to the nearest corner of the other (both in the foot link's frame)",
+  "arms_deg": "per bus sample and side: the elbow (the forearm link's attitude against the upper-arm link's), files against truth",
+  "flat_deg": "per posture: the worse true sole's tilt to the plate at first contact (the body held at the plan's pelvis attitude)",
+  "weight_mm": "per posture: the true centre of mass at rest in the true feet frame at rest against the files' predicted one in the planned feet frame",
+  "upright_deg": "per posture: the torso link's z axis at rest against the planned one"
+ },
+ "feet_frame": "origin at the midpoint of the two tread centres, x = the mean of the two ankle-roll x axes projected on the plate, normalised, z up",
+ "static_consumer": {
+  "planner": {
+   "iterations": 60,
+   "tolerance": 1e-12,
+   "fd_step": 1e-07,
+   "residual_max": 1e-09,
+   "start": [
+    -0.2,
+    0.0,
+    0.0,
+    0.4,
+    -0.2,
+    0.0
+   ]
+  },
+  "ankle_map_inverse": {
+   "iterations": 40,
+   "tolerance": 1e-12,
+   "fd_step": 1e-06,
+   "det_min": 1e-12,
+   "residual_max": 1e-09
+  },
+  "firmware_box_rad": {
+   "pitch": 0.35,
+   "roll": 0.1
+  },
+  "true_side": "the true table; cranks through the true senses and crank zeros; the foot by the exact two-rod chain on the bars as crated; a foot attitude outside the ankle's stop region moved to the region's nearest point (Euclidean in rad); the 21 joints clamped at the true stops; one rigid body",
+  "rest": {
+   "contact_tol_m": 1e-07,
+   "max_steps": 200,
+   "fall_rotation_deg": 25.0
+  }
+ },
+ "lock_words": {
+  "status": "metrics only (never scored); words ok (error within full), partial, missed (at or beyond zero, or not finite). Joint locks: the mean over the bus samples of |files' angle - true angle| of the joint, the worse side. ankle / bars: from the foot attitude the files give at the ankle motors' zero readings against the unit as crated, o (deg, (pitch, roll)), and the bar change's own effect at those readings, b = the true attitude as crated minus the true attitude on the dry-fit bars: c = max(0, -o . b/|b|) bounded by 2 |b| (the part of the bar change the files lack along its direction, at most twice the whole bar effect: a bar change applied with the reversed sign is the largest bar fault); when the rest |o + c b/|b|| lies within the ankle band's full end, bars = c and ankle = that rest, otherwise the whole offset is booked under the ankle word: ankle = |o| and that foot's bars = 0; each word over the worse foot. masses: the largest relative difference, over the 26 links, of a link's mass with its jointless child bodies, files against truth, %. imu: the trunk term's mean error. soles: the worse foot's plane and footprint errors, each in its band (both ok -> ok; either missed -> missed).",
+  "bands": {
+   "knee": [
+    0.5,
+    4.0
+   ],
+   "ankle": [
+    0.5,
+    3.0
+   ],
+   "bars": [
+    0.5,
+    3.0
+   ],
+   "hip_yaw": [
+    0.5,
+    3.0
+   ],
+   "hip_roll": [
+    0.5,
+    2.0
+   ],
+   "hip_pitch": [
+    0.1,
+    1.0
+   ],
+   "elbows": [
+    0.195,
+    2.72
+   ],
+   "masses": [
+    2.7,
+    5.0
+   ],
+   "imu": [
+    0.115,
+    3.0
+   ],
+   "soles_plane": [
+    0.28,
+    5.0
+   ],
+   "soles_footprint": [
+    0.49,
+    19.0
+   ]
+  }
+ },
+ "metrics": {
+  "decimals": 3
+ }
+}

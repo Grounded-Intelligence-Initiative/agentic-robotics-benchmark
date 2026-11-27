@@ -1,0 +1,145 @@
+The maker's documentation of the humanoid robot (folder robot/, 127 pages) and of its Python SDK (folder sdk/, 15 pages), one file per page in the documentation's order. Links to web pages are removed.
+
+file	title	section
+robot/001_overview.md	Overview	Humanoid
+robot/002_overview.md	Overview	Humanoid › Overview › System Tour
+robot/003_mechanical.md	Mechanical	Humanoid › Overview › System Tour
+robot/004_electrical.md	Electrical	Humanoid › Overview › System Tour
+robot/005_software.md	Software	Humanoid › Overview › System Tour
+robot/006_tools-supplies.md	Tools & Supplies	Humanoid › Overview
+robot/007_part-organisation.md	Part Organisation	Humanoid › Assemble the humanoid robot › Preparation
+robot/008_left-leg-parts.md	Left Leg Parts	Humanoid › Assemble the humanoid robot › Preparation › Module Checklists
+robot/009_right-leg-parts.md	Right Leg Parts	Humanoid › Assemble the humanoid robot › Preparation › Module Checklists
+robot/010_pelvis-parts.md	Pelvis Parts	Humanoid › Assemble the humanoid robot › Preparation › Module Checklists
+robot/011_left-arm-parts.md	Left Arm Parts	Humanoid › Assemble the humanoid robot › Preparation › Module Checklists
+robot/012_right-arm-parts.md	Right Arm Parts	Humanoid › Assemble the humanoid robot › Preparation › Module Checklists
+robot/013_torso-parts.md	Torso Parts	Humanoid › Assemble the humanoid robot › Preparation › Module Checklists
+robot/014_head-parts.md	Head Parts	Humanoid › Assemble the humanoid robot › Preparation › Module Checklists
+robot/015_cables.md	Cables	Humanoid › Assemble the humanoid robot › Preparation › Module Checklists
+robot/016_battery-setup.md	Battery Setup	Humanoid › Assemble the humanoid robot › Preparation
+robot/017_head-compute-unit-setup.md	Head Compute Unit Setup	Humanoid › Assemble the humanoid robot › Preparation › Compute Module Setup
+robot/018_rpu-setup.md	RPU Setup	Humanoid › Assemble the humanoid robot › Preparation › Compute Module Setup
+robot/019_integration-setup.md	Integration Setup	Humanoid › Assemble the humanoid robot › Preparation › Compute Module Setup
+robot/020_firmware-software-flashing.md	Firmware & Software Flashing	Humanoid › Assemble the humanoid robot › Preparation
+robot/021_flash-the-radxa-cm5.md	Flash the Radxa CM5	Humanoid › Assemble the humanoid robot › Preparation › Firmware & Software Flashing
+robot/022_flash-the-raspberry-pi-5.md	Flash the Raspberry Pi 5	Humanoid › Assemble the humanoid robot › Preparation › Firmware & Software Flashing
+robot/023_connect-and-sign-in.md	Connect and Sign In	Humanoid › Assemble the humanoid robot › Preparation › Firmware & Software Flashing
+robot/024_enable-the-battery-bms-switch.md	Enable the Battery BMS Switch	Humanoid › Assemble the humanoid robot › Preparation › Firmware & Software Flashing
+robot/025_assign-actuator-ids.md	Assign Actuator IDs	Humanoid › Assemble the humanoid robot › Preparation
+robot/026_electronics-disassembly.md	Electronics Disassembly	Humanoid › Assemble the humanoid robot › Preparation
+robot/027_assembly-conventions.md	Assembly Conventions	Humanoid › Assemble the humanoid robot › Assemble
+robot/028_step-1-set-up-actuator-id-3.md	Step 1: Set Up Actuator ID 3	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Thigh Assembly
+robot/029_step-2-install-actuator-id-3.md	Step 2: Install Actuator ID 3	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Thigh Assembly
+robot/030_step-3-install-actuator-id-4.md	Step 3: Install Actuator ID 4	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Thigh Assembly
+robot/031_step-4-attach-part-600-06a.md	Step 4: Attach Part 600_06A	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Thigh Assembly
+robot/032_step-5-attach-part-600-12a.md	Step 5: Attach Part 600_12A	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Thigh Assembly
+robot/033_step-6-install-the-outer-housing.md	Step 6: Install the Outer Housing	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Thigh Assembly
+robot/034_step-7-attach-the-actuator-hub.md	Step 7: Attach the Actuator Hub	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Thigh Assembly
+robot/035_step-8-assemble-the-knee-housing.md	Step 8: Assemble the Knee Housing	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Knee + Calf Assembly
+robot/036_step-9-install-left-ankle-a-and-b-actuators.md	Step 9: Install Left Ankle A and B Actuators	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Knee + Calf Assembly
+robot/037_step-10-install-the-linkage-cranks-and-cover.md	Step 10: Install the Linkage Cranks and Cover	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Knee + Calf Assembly
+robot/038_step-11-install-the-linkage-shaft.md	Step 11: Install the Linkage Shaft	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Foot Assembly
+robot/039_step-12-assemble-the-foot-pivot.md	Step 12: Assemble the Foot Pivot	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Foot Assembly
+robot/040_step-13-join-the-ankle-assemblies.md	Step 13: Join the Ankle Assemblies	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Ankle Assembly
+robot/041_step-14-left-leg-verification.md	Step 14: Left Leg Verification	Humanoid › Assemble the humanoid robot › Assemble › Left Leg Module › Left Leg Verification
+robot/042_step-1-set-up-actuator-id-9.md	Step 1: Set Up Actuator ID 9	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Thigh Assembly
+robot/043_step-2-install-actuator-id-9.md	Step 2: Install Actuator ID 9	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Thigh Assembly
+robot/044_step-3-install-actuator-id-10.md	Step 3: Install Actuator ID 10	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Thigh Assembly
+robot/045_step-4-attach-part-500-06a.md	Step 4: Attach Part 500_06A	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Thigh Assembly
+robot/046_step-5-attach-part-500-12a.md	Step 5: Attach Part 500_12A	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Thigh Assembly
+robot/047_step-6-install-the-outer-housing.md	Step 6: Install the Outer Housing	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Thigh Assembly
+robot/048_step-7-attach-the-actuator-hub.md	Step 7: Attach the Actuator Hub	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Thigh Assembly
+robot/049_step-8-assemble-the-knee-housing.md	Step 8: Assemble the Knee Housing	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Knee + Calf Assembly
+robot/050_step-9-install-right-ankle-a-and-b-actuators.md	Step 9: Install Right Ankle A and B Actuators	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Knee + Calf Assembly
+robot/051_step-10-install-the-linkage-cranks-and-cover.md	Step 10: Install the Linkage Cranks and Cover	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Knee + Calf Assembly
+robot/052_step-11-install-the-linkage-shaft.md	Step 11: Install the Linkage Shaft	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Foot Assembly
+robot/053_step-12-assemble-the-foot-pivot.md	Step 12: Assemble the Foot Pivot	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Foot Assembly
+robot/054_step-13-join-the-ankle-assemblies.md	Step 13: Join the Ankle Assemblies	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Ankle Assembly
+robot/055_step-14-right-leg-verification.md	Step 14: Right Leg Verification	Humanoid › Assemble the humanoid robot › Assemble › Right Leg Module › Right Leg Verification
+robot/056_step-1-install-the-waist-yaw-actuator.md	Step 1: Install the Waist Yaw Actuator	Humanoid › Assemble the humanoid robot › Assemble › Pelvis Module › Pelvis
+robot/057_step-2-install-the-left-hip-pitch-actuator.md	Step 2: Install the Left Hip Pitch Actuator	Humanoid › Assemble the humanoid robot › Assemble › Pelvis Module › Pelvis
+robot/058_step-3-install-the-right-hip-pitch-actuator.md	Step 3: Install the Right Hip Pitch Actuator	Humanoid › Assemble the humanoid robot › Assemble › Pelvis Module › Pelvis
+robot/059_step-4-route-the-hip-cables-and-install-the-cover.md	Step 4: Route the Hip Cables and Install the Cover	Humanoid › Assemble the humanoid robot › Assemble › Pelvis Module › Pelvis
+robot/060_step-5-install-the-right-hip-roll-actuator.md	Step 5: Install the Right Hip Roll Actuator	Humanoid › Assemble the humanoid robot › Assemble › Pelvis Module › Right + Left Hip Roll
+robot/061_step-6-install-the-left-hip-roll-actuator.md	Step 6: Install the Left Hip Roll Actuator	Humanoid › Assemble the humanoid robot › Assemble › Pelvis Module › Right + Left Hip Roll
+robot/062_step-7-attach-the-right-leg-module-to-the-pelvis.md	Step 7: Attach the Right Leg Module to the Pelvis	Humanoid › Assemble the humanoid robot › Assemble › Pelvis Module › Attach Left & Right Legs
+robot/063_step-8-attach-the-left-leg-module-to-the-pelvis.md	Step 8: Attach the Left Leg Module to the Pelvis	Humanoid › Assemble the humanoid robot › Assemble › Pelvis Module › Attach Left & Right Legs
+robot/064_step-9-pelvis-verification.md	Step 9: Pelvis Verification	Humanoid › Assemble the humanoid robot › Assemble › Pelvis Module › Pelvis Verification
+robot/065_step-1-mount-the-shoulder-actuator.md	Step 1: Mount the Shoulder Actuator	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Shoulder Joint Assembly
+robot/066_step-2-attach-the-shoulder-base-and-route-the-cable.md	Step 2: Attach the Shoulder Base and Route the Cable	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Shoulder Joint Assembly
+robot/067_step-3-prepare-the-bearing-housing.md	Step 3: Prepare the Bearing Housing	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Upper Arm Assembly
+robot/068_step-4-prepare-the-actuator-housing.md	Step 4: Prepare the Actuator Housing	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Upper Arm Assembly
+robot/069_step-5-connect-the-shoulder-cable-connectors-and-position-th.md	Step 5: Connect the Shoulder Cable Connectors and Position the Actuators	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Upper Arm Assembly
+robot/070_step-6-close-the-shoulder-actuator-housing.md	Step 6: Close the Shoulder Actuator Housing	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Upper Arm Assembly
+robot/071_step-7-connect-and-join-the-shoulder-assemblies.md	Step 7: Connect and Join the Shoulder Assemblies	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Shoulder + Upper Arm Connection
+robot/072_step-8-attach-the-shoulder-yaw-joint-plate-and-shaft-mount.md	Step 8: Attach the Shoulder Yaw Joint Plate and Shaft Mount	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Shoulder + Upper Arm Connection
+robot/073_step-9-install-the-elbow-actuator-and-route-its-cables.md	Step 9: Install the Elbow Actuator and Route Its Cables	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Forearm Assembly
+robot/074_step-10-attach-the-elbow-housing-plates.md	Step 10: Attach the Elbow Housing Plates	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Forearm Assembly
+robot/075_step-11-attach-the-elbow-shaft-plate-and-actuator-housing.md	Step 11: Attach the Elbow Shaft Plate and Actuator Housing	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Forearm Assembly
+robot/076_step-12-install-and-connect-the-wrist-actuator.md	Step 12: Install and Connect the Wrist Actuator	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Forearm Assembly
+robot/077_step-13-connect-the-shoulder-and-elbow-assemblies.md	Step 13: Connect the Shoulder and Elbow Assemblies	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Upper Arm + Forearm Connection
+robot/078_step-14-left-arm-verification.md	Step 14: Left Arm Verification	Humanoid › Assemble the humanoid robot › Assemble › Left Arm Module › Left Arm Verification
+robot/079_step-1-mount-the-shoulder-actuator.md	Step 1: Mount the Shoulder Actuator	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Shoulder Joint Assembly
+robot/080_step-2-attach-the-shoulder-base-and-route-the-cable.md	Step 2: Attach the Shoulder Base and Route the Cable	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Shoulder Joint Assembly
+robot/081_step-3-prepare-the-bearing-housing.md	Step 3: Prepare the Bearing Housing	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Upper Arm Assembly
+robot/082_step-4-prepare-the-actuator-housing.md	Step 4: Prepare the Actuator Housing	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Upper Arm Assembly
+robot/083_step-5-connect-the-shoulder-cable-connectors-and-position-th.md	Step 5: Connect the Shoulder Cable Connectors and Position the Actuators	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Upper Arm Assembly
+robot/084_step-6-close-the-shoulder-actuator-housing.md	Step 6: Close the Shoulder Actuator Housing	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Upper Arm Assembly
+robot/085_step-7-connect-and-join-the-shoulder-assemblies.md	Step 7: Connect and Join the Shoulder Assemblies	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Shoulder + Upper Arm Connection
+robot/086_step-8-attach-the-shoulder-yaw-joint-plate-and-shaft-mount.md	Step 8: Attach the Shoulder Yaw Joint Plate and Shaft Mount	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Shoulder + Upper Arm Connection
+robot/087_step-9-install-the-elbow-actuator-and-route-its-cables.md	Step 9: Install the Elbow Actuator and Route Its Cables	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Forearm Assembly
+robot/088_step-10-attach-the-elbow-housing-plates.md	Step 10: Attach the Elbow Housing Plates	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Forearm Assembly
+robot/089_step-11-attach-the-elbow-shaft-plate-and-actuator-housing.md	Step 11: Attach the Elbow Shaft Plate and Actuator Housing	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Forearm Assembly
+robot/090_step-12-install-and-connect-the-wrist-actuator.md	Step 12: Install and Connect the Wrist Actuator	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Forearm Assembly
+robot/091_step-13-connect-the-shoulder-and-elbow-assemblies.md	Step 13: Connect the Shoulder and Elbow Assemblies	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Upper Arm + Forearm Connection
+robot/092_step-14-right-arm-verification.md	Step 14: Right Arm Verification	Humanoid › Assemble the humanoid robot › Assemble › Right Arm Module › Right Arm Verification
+robot/093_step-1-install-the-shoulder-hardware.md	Step 1: Install the Shoulder Hardware	Humanoid › Assemble the humanoid robot › Assemble › Torso Module › Torso Assembly
+robot/094_step-2-install-the-waist-plate.md	Step 2: Install the Waist Plate	Humanoid › Assemble the humanoid robot › Assemble › Torso Module › Torso Assembly
+robot/095_step-3-install-the-neck-yaw-actuator.md	Step 3: Install the Neck Yaw Actuator	Humanoid › Assemble the humanoid robot › Assemble › Torso Module › Torso Assembly
+robot/096_step-4-install-the-speaker.md	Step 4: Install the Speaker	Humanoid › Assemble the humanoid robot › Assemble › Torso Module › Torso Assembly
+robot/097_step-5-attach-the-arm-modules.md	Step 5: Attach the Arm Modules	Humanoid › Assemble the humanoid robot › Assemble › Torso Module › Attach Left + Right Arms
+robot/098_step-6-attach-the-torso-to-the-pelvis.md	Step 6: Attach the Torso to the Pelvis	Humanoid › Assemble the humanoid robot › Assemble › Torso Module › Attach Lower Half + Wiring
+robot/099_step-7-install-the-rpu-and-connect-its-cable-connectors.md	Step 7: Install the RPU and Connect Its Cable Connectors	Humanoid › Assemble the humanoid robot › Assemble › Torso Module › Attach Lower Half + Wiring
+robot/100_step-8-install-the-neck-pitch-actuator-and-head-base.md	Step 8: Install the Neck Pitch Actuator and Head Base	Humanoid › Assemble the humanoid robot › Assemble › Torso Module › Head Assembly
+robot/101_step-9-complete-the-head-enclosure.md	Step 9: Complete the Head Enclosure	Humanoid › Assemble the humanoid robot › Assemble › Torso Module › Head Assembly
+robot/102_step-10-install-the-battery-assembly-and-torso-covers.md	Step 10: Install the Battery Assembly and Torso Covers	Humanoid › Assemble the humanoid robot › Assemble › Torso Module › Battery + Cover Installation
+robot/103_step-11-torso-verification.md	Step 11: Torso Verification	Humanoid › Assemble the humanoid robot › Assemble › Torso Module › Torso Verification
+robot/104_finish-assembly.md	Finish Assembly	Humanoid › Assemble the humanoid robot › Assemble
+robot/105_safety-handling.md	Safety & Handling	Humanoid › Operate the humanoid robot
+robot/106_stopping-the-robot.md	Stopping the Robot	Humanoid › Operate the humanoid robot
+robot/107_set-up-overview.md	Set Up Overview	Humanoid › Operate the humanoid robot
+robot/108_connect-sign-in.md	Connect & Sign In	Humanoid › Operate the humanoid robot
+robot/109_calibrate-actuators.md	Calibrate Actuators	Humanoid › Operate the humanoid robot
+robot/110_first-start.md	First Start	Humanoid › Operate the humanoid robot
+robot/111_power-on-and-off.md	Power On and Off	Humanoid › Operate the humanoid robot
+robot/112_stand-up-and-walk.md	Stand Up and Walk	Humanoid › Operate the humanoid robot
+robot/113_drive-robot-controls.md	Drive Robot Controls	Humanoid › Operate the humanoid robot
+robot/114_gamepad.md	Gamepad	Humanoid › Operate the humanoid robot
+robot/115_drive-from-python.md	Drive from Python	Humanoid › Operate the humanoid robot
+robot/116_software-updates.md	Software Updates	Humanoid › Operate the humanoid robot
+robot/117_humanoid-manager.md	Humanoid Manager	Humanoid › Operate the humanoid robot
+robot/118_troubleshooting.md	Troubleshooting	Humanoid › Operate the humanoid robot
+robot/119_python-sdk.md	Python SDK	Humanoid › Program the humanoid robot
+robot/120_overview.md	Overview	Humanoid › Program the humanoid robot › Humanoid API
+robot/121_robot-control.md	Robot Control	Humanoid › Program the humanoid robot › Humanoid API
+robot/122_media.md	Media	Humanoid › Program the humanoid robot › Humanoid API
+robot/123_protocols.md	Protocols	Humanoid › Program the humanoid robot › Humanoid API
+robot/124_wire-format.md	Wire format	Humanoid › Program the humanoid robot › Humanoid API
+robot/125_train-the-humanoid-robot.md	Train the humanoid robot	Humanoid
+robot/126_extend-the-humanoid-robot.md	Extend the humanoid robot	Humanoid
+robot/127_resources.md	Resources	Humanoid
+sdk/001_overview.md	Overview	Python SDK
+sdk/002_safety.md	Safety	Python SDK
+sdk/003_quickstart.md	Quickstart	Python SDK
+sdk/004_connection-modes.md	Connection Modes	Python SDK
+sdk/005_move-the-robot.md	Move the Robot	Python SDK
+sdk/006_control-joints.md	Control Joints	Python SDK
+sdk/007_read-state.md	Read State	Python SDK
+sdk/008_camera-and-audio.md	Camera and Audio	Python SDK
+sdk/009_record-a-session.md	Record a Session	Python SDK
+sdk/010_command-line.md	Command Line	Python SDK
+sdk/011_without-the-sdk.md	Without the SDK	Python SDK
+sdk/012_coding-agents.md	Coding Agents	Python SDK
+sdk/013_examples.md	Examples	Python SDK
+sdk/014_sdk-reference.md	SDK Reference	Python SDK
+sdk/015_troubleshooting.md	Troubleshooting	Python SDK

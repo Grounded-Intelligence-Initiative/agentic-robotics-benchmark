@@ -1,0 +1,49 @@
+BUILD TRAVELLER: unit 01
+
+Day 1, 2026-10-12, before the calibration
+- Kit received; modules assembled to the maker's guide; battery (part HM1_100_11X) fitted.
+- Ankle bars, dry fit (not yet threaded home): thread showing per rod end, mm.
+
+    foot    bar               upper rod end    lower rod end
+    left    A (194 mm bar)    0.0              0.5
+    left    B (124 mm bar)    1.0              1.0
+    right   A (194 mm bar)    1.0              1.0
+    right   B (124 mm bar)    0.5              0.0
+
+- End stops used as calibration references, against the drawing (the maker's CAD), by digital protractor at
+  assembly: measured minus drawing, deg, in the sense of the model file's joint axis.
+
+    joint             stop        measured minus drawing, deg
+    L_hip_pitch       flexion     +0.10
+    L_hip_yaw         toe-in      +0.15
+    L_knee            lock-out    -0.05
+    R_hip_pitch       flexion     +0.15
+    R_hip_yaw         toe-in      -0.15
+    R_knee            lock-out    +0.25
+    L_shoulder_roll   inner       -0.15
+    L_shoulder_yaw    outward     +0.35
+    L_elbow           flexion     -0.15
+    R_shoulder_roll   inner       -0.15
+    R_shoulder_yaw    outward     +0.15
+    R_elbow           flexion     +0.15
+    neck_pitch        forward     +0.20
+
+- The flat of the pelvis's front cover (part HM1_200_15C), against the drawing, by digital protractor at assembly:
+  measured minus drawing, deg, about the model file's pelvis axes (x forward, y left, z up).
+
+    about    positive when                measured minus drawing, deg
+    x        its left end is higher       -0.30
+    y        its top leans forward        +0.10
+    z        it is turned to the left     +0.15
+
+Day 3, 2026-10-14
+- Every rod end threaded home after the last calibration; half-turns per rod end:
+
+    foot    bar               upper rod end    lower rod end
+    left    A (194 mm bar)    0                1
+    left    B (124 mm bar)    2                2
+    right   A (194 mm bar)    2                2
+    right   B (124 mm bar)    1                0
+
+- Shoes fitted (toe and heel screws); display hands fitted on both wrist plates (the wrist actuators' output plates,
+  parts HM1_400_12B left and HM1_300_12B right); crated.

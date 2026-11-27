@@ -1,0 +1,165 @@
+{
+ "constants": {
+  "bar_home_cc_mm": [
+   222.0,
+   152.0
+  ],
+  "k_pitch": 2.02,
+  "k_roll": 0.8,
+  "pitch_limit_rad": 0.35,
+  "roll_limit_rad": 0.1
+ },
+ "geom_cad_mm": {
+  "left": {
+   "act_A": {
+    "axis_dir": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "axis_point": [
+     0.0,
+     108.5,
+     -822.269
+    ]
+   },
+   "act_B": {
+    "axis_dir": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "axis_point": [
+     0.0,
+     108.5,
+     -892.269
+    ]
+   },
+   "ball_lo_A": [
+    -4.848,
+    92.5,
+    -1044.269
+   ],
+   "ball_lo_B": [
+    -4.848,
+    124.5,
+    -1044.269
+   ],
+   "ball_up_A": [
+    -7.568,
+    88.5,
+    -822.269
+   ],
+   "ball_up_B": [
+    -6.848,
+    128.5,
+    -892.153
+   ],
+   "pitch_dir": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "pitch_point": [
+    -45.348,
+    108.5,
+    -1034.269
+   ],
+   "roll_dir": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "roll_point": [
+    -45.348,
+    108.5,
+    -1044.269
+   ]
+  },
+  "right": {
+   "act_A": {
+    "axis_dir": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "axis_point": [
+     0.0,
+     -108.5,
+     -822.269
+    ]
+   },
+   "act_B": {
+    "axis_dir": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "axis_point": [
+     0.0,
+     -108.5,
+     -892.269
+    ]
+   },
+   "ball_lo_A": [
+    -4.848,
+    -92.5,
+    -1044.269
+   ],
+   "ball_lo_B": [
+    -4.848,
+    -124.5,
+    -1044.269
+   ],
+   "ball_up_A": [
+    -7.568,
+    -88.5,
+    -822.269
+   ],
+   "ball_up_B": [
+    -6.848,
+    -128.5,
+    -892.153
+   ],
+   "pitch_dir": [
+    0.0,
+    -1.0,
+    0.0
+   ],
+   "pitch_point": [
+    -45.348,
+    -108.5,
+    -1034.269
+   ],
+   "roll_dir": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "roll_point": [
+    -45.348,
+    -108.5,
+    -1044.269
+   ]
+  }
+ },
+ "schema": "rd04-ankle/1",
+ "status": "values copied unchanged from the source ankle model's data (geometry MEAS from the authors' CAD; stop region MEAS, OURS as a mechanism; map constants SRC from the maker's SDK; bar lengths MEAS)",
+ "stop_region_deg": {
+  "left": {
+   "cut_p": 14.0,
+   "cut_r": 7.5,
+   "pmax": 23.0,
+   "pmin": -21.0,
+   "rmax": 9.9
+  },
+  "right": {
+   "cut_p": 14.0,
+   "cut_r": 7.5,
+   "pmax": 21.0,
+   "pmin": -23.0,
+   "rmax": 9.9
+  }
+ },
+ "what": "The exact two-rod ankle of each leg as the grader's true side uses it: the chain's fixed geometry (CAD world mm at the stored pose: the foot's pitch and roll axes, each actuator's output axis, the upper and lower ball centres of bars A and B), the ankle's true stop region S per leg in the model's foot hinge angles (deg: pmin <= pitch <= pmax, |roll| <= rmax, the corners cut from (|pitch| = cut_p, |roll| = rmax) to (the pitch edge, |roll| = cut_r)), and the firmware's ankle map constants (A = k_pitch pitch - k_roll roll, B = -k_pitch pitch - k_roll roll; the box |pitch| <= pitch_limit_rad, |roll| <= roll_limit_rad; bars threaded home, centre to centre, mm)."
+}
