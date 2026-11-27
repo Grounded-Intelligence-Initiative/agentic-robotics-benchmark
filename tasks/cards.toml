@@ -329,6 +329,12 @@ summary = "Rebuild a plant's hazard bay in Isaac Sim from photos, design a fleet
 platforms = ["swarm"]
 stages = ["behavior"]
 
+[swarm_uwb_cooperative_localization]
+title = "Localize eight warehouse drones from UWB ranges"
+summary = "Localize eight inventory drones in a warehouse from UWB ranges, optical flow, rangefinders and gyros, calibrating the radios' hidden errors from three flights without ground truth."
+platforms = ["swarm"]
+stages = ["control"]
+
 [aerial_search_geolocation]
 title = "Find and geolocate targets from a drone"
 summary = "Fly a quadrotor to the things a ground team describes, confirm each from above and report where it is, or say with confidence that it is not there."
