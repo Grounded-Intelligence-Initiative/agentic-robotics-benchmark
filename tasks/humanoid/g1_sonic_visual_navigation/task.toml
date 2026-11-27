@@ -6,7 +6,7 @@ name = "grounded-intelligence-initiative/g1_sonic_visual_navigation"
 
 [metadata]
 platform = "humanoid"
-tags = ["unitree-g1", "visual-navigation", "obstacle-avoidance", "rgbd", "locomotion", "token-control", "closed-loop", "mujoco"]
+tags = ["unitree-g1", "visual-navigation", "obstacle-avoidance", "moving-obstacles", "rgbd", "locomotion", "token-control", "closed-loop", "mujoco"]
 
 [environment]
 cpus = 4
