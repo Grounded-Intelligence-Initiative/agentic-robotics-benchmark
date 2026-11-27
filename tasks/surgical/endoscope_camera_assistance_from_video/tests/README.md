@@ -79,16 +79,17 @@ holds beside the work, follows a move late or not at all, dabs into the middle n
 dissection. Drawn per procedure: the kind, the scope, the events, the port placement (within 12 mm of nominal), the
 cavity, every instrument's look (jaw type, shaft colour and finish, marker bands, how much blood covers the working
 end), the tissue's look (palette, fat, vessels, wetness, relief), what lies in the field (gauze swabs, clips), the
-light, the camera's white balance and noise. The tips work at the tissue (1 to 9 mm above its resting surface), so
-the breathing tissue buries a low tip from time to time. Everything comes from a keyed BLAKE2b stream per seed, in
+light, the camera's white balance and noise. The tips work at the tissue (1 to 9 mm above its resting surface, or since version 0.3 2 to 6 mm in it) and ride on its
+breathing. Everything comes from a keyed BLAKE2b stream per seed, in
 plain float64 arithmetic, so a seed gives the same procedure on every machine and numpy version. The fixed sets pin
 kind, scope and events per procedure in a balanced table and draw the rest (`tests/review/make_sets.py`: the rule,
 written before the draw; no draw rejected).
 
 **Two pools of looks.** `generate(..., pool="dev")` draws a development procedure's looks from a narrower pool than
-a graded procedure's (`pool="all"`): 5 of the 11 shaft finishes, 3 of the 6 tissue palettes, staining of the working
-end up to half-way to the tissue's colour (up to 0.9 when graded), less clutter. The geometry, the ports, the kinds of
-procedure and the gestures are the same. The manual says so (section 7), without the lists. This is where the
+a graded procedure's (`pool="all"`): since version 0.3, 3 of the 11 shaft finishes (5 before), 2 of the 6 tissue
+palettes (3 before), staining of the working end up to 0.3 of the way to the tissue's colour (0.5 before; up to 0.9
+when graded), less clutter. The geometry, the ports, the kinds of procedure and the gestures are the same. The manual
+says so (section 7) and names the three finishes; the commissioning procedures use the graded pool. This is where the
 perception difficulty is meant to come from: a detector fitted to the ten development recordings meets instruments
 and tissue it has not seen, as a holder sold to another hospital would. It was added after the first pixel baseline
 (status log): a small net trained for two minutes on eight development recordings found 99 % of the tips in the two
