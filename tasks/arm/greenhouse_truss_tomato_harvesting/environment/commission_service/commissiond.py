@@ -16,6 +16,13 @@ The wire (one JSON object per line, per connection):
 A session is counted when it opens. It ends when the row section ends (the observation's `ended`), when the client
 closes or disconnects, or after `idle_s` without a request. The number of sessions is fixed for the agent's whole
 session and kept in this account's state folder, so a restart of the service does not reset it.
+
+Before the first session the service warms up, once per sandbox (`warm_up`): a throwaway cell renders both cameras,
+so that the renderer compiles its shaders in a process that then exits. A cell that compiles them holds the
+compile's memory for as long as it lives (measured: 14.4 GB resident against 6.0 GB for a cell on a warm cache), and
+a session can live for the whole of the agent's time. The grader's canary does the same for the graded rows. The
+warm-up is no session: nothing is counted and nothing of it is sent to anyone; an `open` that arrives meanwhile
+waits for it.
 """
 
 import json
@@ -38,6 +45,7 @@ with open(os.path.join(HERE, "dev_rows.json")) as _f:
     CONF = json.load(_f)
 LOCK = threading.Lock()
 BUSY = threading.Lock()
+WARM = threading.Event()                # set once the warm-up is over: done, failed, or done by an earlier start
 
 
 def log(*a):
@@ -80,6 +88,38 @@ def cell_env():
     return env, work
 
 
+def cell_python():
+    return "/opt/venv/bin/python3" if os.path.exists("/opt/venv/bin/python3") else sys.executable
+
+
+def warm_up():
+    """Once per sandbox: a throwaway cell on practice row 1 that renders both cameras (see the module's text)."""
+    mark = os.path.join(STATE_DIR, "warmed")
+    cell = None
+    try:
+        if os.path.exists(mark):
+            return
+        t0 = time.monotonic()
+        env, work = cell_env()
+        with BUSY:
+            with open(os.path.join(work, "warm.log"), "wb") as err:
+                cell = cellproc.CellProcess(grader=False, env=env, python=cell_python(), cwd=work, stderr=err,
+                                            start_timeout=float(CONF["start_timeout_s"]))
+            cell.request({"cmd": "reset", "row": F.draw_entry(CONF["rows"][0]), "config": CONF.get("cell") or {},
+                          "cams": ["overview", "wrist"]}, timeout=float(CONF["start_timeout_s"]))
+            cell.close()
+            cell = None
+        with open(mark, "w") as f:
+            f.write(time.strftime("%H:%M:%S\n"))
+        log("warm-up done in %.0f s" % (time.monotonic() - t0))
+    except (cellproc.CellError, OSError) as exc:
+        log("warm-up failed (the first session's cell compiles the shaders instead):", str(exc)[:300])
+    finally:
+        if cell is not None:
+            cell.kill()
+        WARM.set()
+
+
 def serve(conn):
     f = conn.makefile("rwb")
     cell, held = None, False
@@ -110,7 +150,7 @@ def serve(conn):
                     send({"error": "this connection already has a session"})
                 elif isinstance(k, bool) or not isinstance(k, int) or not 1 <= k <= len(CONF["rows"]):
                     send({"error": "row must be an integer from 1 to %d" % len(CONF["rows"])})
-                elif not BUSY.acquire(timeout=float(CONF.get("busy_wait_s", 120))):
+                elif not WARM.wait(timeout=float(CONF["start_timeout_s"])) or not BUSY.acquire(timeout=float(CONF.get("busy_wait_s", 120))):
                     # (a session that has just closed needs some seconds to stop its cell: wait for it)
                     send({"error": "busy: one session at a time"})
                 else:
@@ -130,8 +170,8 @@ def serve(conn):
                     env, work = cell_env()
                     try:
                         with open(os.path.join(work, "cell.log"), "wb") as err:
-                            cell = cellproc.CellProcess(grader=False, env=env, python="/opt/venv/bin/python3" if os.path.exists("/opt/venv/bin/python3") else sys.executable,
-                                                        cwd=work, stderr=err, start_timeout=float(CONF["start_timeout_s"]))
+                            cell = cellproc.CellProcess(grader=False, env=env, python=cell_python(), cwd=work, stderr=err,
+                                                        start_timeout=float(CONF["start_timeout_s"]))
                         reply = cell.request({"cmd": "reset", "row": row, "config": CONF.get("cell") or {}, "cams": msg.get("cams") or []},
                                              timeout=float(CONF["start_timeout_s"]))
                         send({"obs": reply["obs"], "session": public["sessions_used"], "sessions_left": public["sessions_left"]})
@@ -191,6 +231,7 @@ def main():
     os.chmod(SOCK, 0o666)
     srv.listen(8)
     log("listening on", SOCK, "-", CONF["sessions"], "sessions on", len(CONF["rows"]), "practice rows")
+    threading.Thread(target=warm_up, daemon=True).start()
     while True:
         conn, _ = srv.accept()
         threading.Thread(target=serve, args=(conn,), daemon=True).start()

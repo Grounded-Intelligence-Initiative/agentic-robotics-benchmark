@@ -122,8 +122,9 @@ sections (`site_interface.md`, section 9).
 - **Three sessions in all, one at a time, never refunded** (fewer than there are practice rows: the robot's time is
   booked for production). A session is one row section from its start to its end, counted when it opens and spent
   however it ends: `rowcell_client.Session(row)` for interactive work, `/opt/venv/bin/python3
-  ~/commission/run_session.py --row N` for a whole run of your program. Opening one takes one to two minutes (the
-  first one several more). `/run/rowcell/status.json` shows how many are left. Plan them.
+  ~/commission/run_session.py --row N` for a whole run of your program. Opening one takes up to a minute; the
+  service warms up for the first few minutes after the sandbox starts, and a session asked for in that time waits
+  for it. `/run/rowcell/status.json` shows how many are left. Plan them.
 
 No simulator model of a row is given: the cell's own code is not readable from your account, and the documents under
 `~/given` are what there is. Isaac Sim and the robot's kinematic model are yours to build simulations of your own

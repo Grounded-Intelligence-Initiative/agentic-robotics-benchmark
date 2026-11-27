@@ -122,6 +122,11 @@ and `score`), three sessions in all, counted in the account's own state folder. 
 `review/select_set.py` under another tag and another cultivar; none is a graded row. The agent gets
 `given/lib/rowcell_client.py` (the connection) and `~/commission/run_session.py` (runs `run.sh` in a session with the
 grader's deadlines and repeated steps, and prints what the program saw).
+Before the first session the service warms up, once per sandbox: a throwaway cell renders both cameras, so that the
+renderer compiles its shaders in a process that then exits (as the grader's canary does for the graded rows). A cell
+that compiles them keeps the compile's memory for as long as it lives: 14.4 GB resident against 6.0 GB on a warm
+cache (measured in the image), and an interactive session can live for most of the agent's time. The warm-up is no
+session; an `open` that arrives meanwhile waits for it.
 
 ## 3. What the grader checks (`verify.py`, `row_grade.py`)
 
@@ -235,6 +240,9 @@ one session, with the generic modules of `arm/battery_pack_disassembly_to_module
   information is in the frames at the needed accuracy, a careless view set loses trusses to occlusion, and nothing
   here grasps, cuts or lays down anything: a full program without the privileged view is open work. (The views
   were aimed with the truth: the check is about what frames hold once a truss is in view, not about finding it.)
+  The frames come from `capture.py` (it needs the simulator) and are not in the repository; the renderer does not
+  repeat a frame, and a second capture of the first row gave 0.49 mm for the mounting and three of its four peduncles
+  (0.0 to 0.2 mm across, 0.2 to 0.4 mm along; the fourth not found, which the first capture had found).
 
 **2026-11-27, 16:11 to 16:20: `ale validate` on the author's validate host.** Run `validate-bc3c4ffd` on the tree of
 `c32222a7`, the pinned engine `bfb7505` (0.1.1), at the first attempt:
@@ -259,3 +267,27 @@ container of the image that validate built, with the GPU; `setup.sh` as root; th
 `commission/run_session.py --row 1` with the example program: the session opened (139 s, the first one of a
 sandbox), the overview frame arrived, the count went 3 to 2; the agent account cannot list
 `/opt/rowcell-commission`. The whole repository's `pytest` passed on the branch.
+
+**2026-11-27, 16:25 to 16:36: a first frontier episode that did not finish (no score).** Run `1ea8c16e` on the tree
+of `64e415cf` (Claude Opus 5.5, claude-code 2.1.309, effort high, no web tools): `env_error`, "guest session closed",
+634 s into the agent phase; the agent had read the documents, opened its first session interactively and was
+identifying the wrist camera's mounting from the plate. The cause is memory on the validate host, not the agent and
+not the engine: the host has 30.9 GiB (the task declares 32 GB, so the engine's limit does not bind there) of which
+about 10 GB were in use outside the sandbox, and the first session's cell stood at 14.4 GB resident after the
+renderer's cold shader compile; the host's memory pressure rose (60-second average 19 % just after the end) and
+its out-of-memory daemon, which acts on pressure, ends a sandbox in that state. The kill itself is inferred: the
+system's journal is not readable from the author's account; the same fault ended episodes of other tasks on this
+host. Measured afterwards in the image, a session that takes 90 frames: first session of a sandbox, 158 s to open,
+the cell 14.4 GB, the sandbox 13.4 GiB; second session, 17 s to open, the cell 6.0 GB, the sandbox 4.5 GiB. Natively
+the cell stays at 6.1 GB over 300 steps with frames (no growth).
+
+**2026-11-27, 16:46 to 16:53: the service warms up before the first session** (`commissiond.py` `warm_up`, above).
+The first cell's 14.4 GB belong to the shader compile, so the compile now runs in a throwaway cell when the service
+starts. In the image (the new daemon over the validated image's): the warm-up 138 s (its cell 14.4 GB, then gone);
+a session asked for at once waited and opened 15 s after it, its cell at 5.8 GB, the sandbox at 4.4 to 5.1 GiB; the
+next session opened in 13 s; the count went 3, 2, 1 (the warm-up counts nothing). Natively the same path: warm-up
+65 s, the session counted once. The instruction and the interface document now say what an agent sees: opening a
+session takes up to a minute, and one asked for in the sandbox's first minutes waits for the warm-up. Nothing of the
+cell, the rules, the rows, the reference or the grader changed; `environment/` did, so `ale validate` ran again
+(below). Also corrected: two stale comments (`task.toml`'s verifier estimate counted 600 frames; the Dockerfile's
+header named another task's cell).

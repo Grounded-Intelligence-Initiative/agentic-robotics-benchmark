@@ -54,8 +54,8 @@ gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-3090"]
 # commissioning sessions, never refunded; tests/README.md, section 2). [verifier] timeout_sec: a canary cell (start
 # and first render on a cold cache: a few minutes), then six row sections, each a fresh cell process (start and build:
 # 1 to 3 min) with at most the simulated-time allowance (tests/grader_config.json cell.sim_cap_s; about a quarter of
-# real time), 600 frames (about 0.3 s each) and 1200 s of the controller's own time: about 1,700 s a row at the
-# bounds, 10,200 s for the six, 10,700 s with the canary; 4 h leaves 3,700 s of margin. The grader's own deadline
+# real time), 400 frames (about 0.3 s each) and 1200 s of the controller's own time: about 1,600 s a row at the
+# bounds, 9,700 s for the six, 10,200 s with the canary; 4 h leaves 4,200 s of margin. The grader's own deadline
 # (tests/grader_config.json verifier_deadline_s, 13,200 s) ends grading with a verdict 1,200 s before the engine's
 # limit, whatever runs then.
 [agent]

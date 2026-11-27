@@ -1,5 +1,5 @@
 # The task's environment: NVIDIA Isaac Sim (with Isaac Lab) on the official ALE container base, for one NVIDIA RTX GPU,
-# with the robot's model from NVIDIA's asset library and the commissioning service of the disassembly cell.
+# with the robot's model from NVIDIA's asset library and the commissioning service of the harvesting cell.
 # `environment/` (less its `setup/`) is the sole build context. Nothing of the grader or of the reference is in here.
 # The image is modelled on tasks/swarm/hazard_bay_build's (the same Isaac Sim 6.2 / Isaac Lab 3.0 stack and pins).
 FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1

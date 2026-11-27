@@ -354,8 +354,9 @@ debrief.
 - **3 sessions in all, never refunded**, one at a time: a session is counted when it opens and ends when the row
   section ends, when you close it or after 900 s without a request; a session that ends early, for whatever reason, is
   spent. `/run/rowcell/status.json` shows how many are left.
-- A session starts Isaac Sim on the sandbox's GPU: opening one takes one to two minutes, the very first one several
-  minutes more (the renderer compiles its shaders once).
+- A session starts Isaac Sim on the sandbox's GPU: opening one takes up to a minute. The service warms up for the
+  first few minutes after the sandbox starts (the renderer compiles its shaders once, in a process of the service's
+  own); a session asked for in that time waits for it, and is counted as any other.
 
 No simulator model of a row is given. The cell's own code is not readable from your account (the cell runs as the
 account `rowcell`): this document, the tool's data sheet and the growing protocol are what there is. Isaac Sim itself

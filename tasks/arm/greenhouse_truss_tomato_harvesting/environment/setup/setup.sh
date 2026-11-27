@@ -23,7 +23,8 @@ echo "[setup] givens staged in $HOME_DIR (owner $AGENT_USER)" >&2
 # under a loop that restarts it should it ever exit. The agent reaches it through the socket
 # /run/rowcell/commission.sock (given/lib/rowcell_client.py, ~/commission/run_session.py): the cell's public actions
 # on a fixed number of sessions, one at a time; nothing of where anything is, no yield. A session starts Isaac Sim on
-# the sandbox's GPU; the first one also compiles the renderer's shaders (a few minutes).
+# the sandbox's GPU. Once started, the service warms up by itself for a few minutes (a throwaway cell in which the
+# renderer compiles its shaders, commissiond.py `warm_up`); setup does not wait for that, a session asked for does.
 SERVICE=/opt/rowcell-commission
 [ -f "$SERVICE/commissiond.py" ] || { echo "[setup] the image lacks the commissioning service ($SERVICE)" >&2; exit 1; }
 install -d -o rowcell -g rowcell -m 755 /run/rowcell
