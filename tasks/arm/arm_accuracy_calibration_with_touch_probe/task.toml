@@ -1,0 +1,64 @@
+# arm_accuracy_calibration_with_touch_probe: six units of one 6-axis arm stand in six cells. A unit follows the
+# manufacturer's first-order accuracy model (arm_model.py) with its own parameter values and has, in addition, some
+# of six defect classes (defects.md; which ones, on which joints and how large is hidden). The agent is the
+# commissioning engineer: in one measuring session per unit it drives the arm with a touch probe against the cell's
+# surveyed datum spheres and takes images with an uncalibrated wrist camera; then, for the unit's published
+# acceptance conditions (conditions/<unit>.json), it predicts the tip of a tool that was never mounted and the
+# datum-frame positions of five points given in the camera's frame.
+#
+# The agent gets the first-order model, the cell's documents (cell.md, defects.md, camera.md, cell_data.py: facts,
+# ranges, rules and interfaces, no formula of the hidden behaviour) and a lab, the units behind a socket, which
+# answers commands with encoder and temperature readings, probe triggers and wrist-camera images only. It has no
+# simulator, and nothing can be repeated: thirteen trials in all (a measuring and a re-qualification session per
+# graded unit; one measuring session on the practice unit p1, which is never serviced), no acceptance check of any
+# kind before grading, a fixed budget of virtual time, probes and images per session, a probe that
+# breaks when a move touches anything, knocked datum spheres, false triggers and an arm that warms as it moves,
+# with the cell's rates stated only as ranges.
+#
+# Each cell also holds a gauge plate (a finished part at a hidden pose, never to be touched, seen only by the
+# camera) with eight blind bores; each unit's submission also carries job programs, joint targets that put
+# process_c's pin into every bore: one for the arm cold, one for the arm warm (from start temperatures published per
+# unit; the cell's heating and cooling figures stay hidden). After its measuring session each graded unit is serviced (one
+# joint's drive replaced: that joint's zero offset and backlash change; which joint and how much is hidden); in one
+# short re-qualification session on the serviced unit, with probes only (the wrist camera is off until the unit is
+# released), the agent must find the change and write a third program, for the serviced unit.
+#
+# Graded (tests/verify.py, separate verifier sandbox): nothing of the submission is executed. Each unit's
+# predictions are read strictly (submission_format.py) and compared with the true unit: the tool tip (95th
+# percentile 0.20 mm, largest 0.40 mm over 400 conditions) and the camera points (0.40 mm, 0.60 mm over 2000
+# errors); each of its three job programs is simulated once (calib_cell.run_job: cold and from the unit's warm start
+# on the unit as measured, cold on the serviced unit) and must do every bore without a contact. The metric is the fraction of units accepted; reward = clamp(metric / anchor / full_at, 0, 1)
+# (tests/anchor.json). The reference is not privileged: it measures the units through the same lab, with the same
+# budget and the same documents.
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/arm_accuracy_calibration_with_touch_probe"
+
+[metadata]
+platform = "arm"
+
+[environment]
+cpus = 4
+memory_mb = 8192
+
+# setup: stage the documents and the lab client, write the units' conditions files, start the lab service
+# (seconds).
+# agent: 6 h for the whole job. A session's time is virtual (the lab does not wait it out); each session also has
+# a wall-clock limit of 7200 s from its reset (environment/setup/lab/lab.json).
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+# verify: six submissions of predictions (400 acceptance conditions each) and three job programs each (at most 200
+# rows each, each simulated once with a continuous contact check); seconds (tests/review/job_selftest.py).
+[verifier]
+timeout_sec = 600
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 2
+memory_mb = 4096
+gpus = 0

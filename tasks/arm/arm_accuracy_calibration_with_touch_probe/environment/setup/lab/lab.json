@@ -1,0 +1,18 @@
+{
+ "plugin": "calib_plugin.py",
+ "instances": "units.json",
+ "budget": 13,
+ "trial_step_cap": 4000,
+ "trial_wall_s": 7200.0,
+ "idle_timeout_s": 21600,
+ "max_connections": 2,
+ "call_timeout_s": 120.0,
+ "plugin_options": {
+  "ledger": "/var/lib/ale-lab/sessions.json"
+ },
+ "env": {
+  "OMP_NUM_THREADS": "1",
+  "OPENBLAS_NUM_THREADS": "1"
+ },
+ "require_seccomp": true
+}
