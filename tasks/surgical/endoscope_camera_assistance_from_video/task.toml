@@ -48,7 +48,9 @@ gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-3090"]
 # 401 frames each: 7 min 15 s here); a commissioning session takes 1 to 3 minutes of wall clock.
 # [verifier] timeout_sec: the renderer's start (cold, up to renderer_start_timeout_s = 2400 s), the canary (seconds),
 # then 12 procedures x 800 steps: each step one frame, plus a probe copy on about one step in sixteen (about 10,200
-# frames; 0.07 s a frame on a quiet GPU, 0.12 s in the RTX 3090 validate, 0.17 to 0.26 s beside other jobs here) plus
+# frames; 0.07 s a frame on a quiet GPU, 0.12 s in the RTX 3090 validate, 0.17 to 0.26 s beside other jobs here; in
+# version 0.3, whose floor mesh moves every frame, 0.10 to 0.13 s here beside other jobs, and a takeover ends the
+# rendering of its procedure) plus
 # the controller's reply, whose total is capped at 2400 s (0.25 s a step), plus the scenes' loading (about 7 s each):
 # 2400 + 10200 x 0.26 + 2400 + 12 x 7 = about 7550 s at the bounds on a busy GPU. The grader's VerifierDeadline
 # (tests/grader_config.json, 8400 s) writes a verdict from the steps judged so far before this limit is reached.

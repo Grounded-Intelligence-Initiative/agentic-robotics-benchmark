@@ -277,15 +277,20 @@ distance set by the tips' spread, feeds the tips' velocity forward, levels the h
 while the tips do (its own estimate of the fine-work rule), creeps under the image-speed limit when it has to move
 during fine work, and withdraws to clean a smeared lens. The anchor is what perfect perception achieves under the
 task's information rule; what it loses, it loses to the holder's speed on long moves, to the first seconds of each
-procedure and, since version 0.2, to a video latency of up to three steps (its privileged observation includes the
-rig: the camera head's angle and the latency, which it would otherwise have to identify).
+procedure, since version 0.2 to a video latency of up to three steps (its privileged observation includes the
+rig: the camera head's angle and the latency, which it would otherwise have to identify), and since version 0.3 to
+the tighter horizon and steadiness rules and to re-levelling after a knock of the camera head (its privileged
+observation gives the head's angle of the frame it shows, so it learns of a knock with the frame's latency). The
+moving tissue and the hidden tips cost it nothing; it never comes near a takeover (status log: no takeover in any
+probe draw, every critical action seen on at least 0.73 of its steps against a rule of 0.25, the lens never within
+37 mm of the tissue).
 
 The anchor's value, its spread and their source are in `anchor.json` and in the status log. Because the reference
 reads the state and never the picture, its score does not depend on the rendering (`tests/review/fast_eval.py`
 plays the same sessions with a null renderer in about a minute; that is how it was tuned). It depends a little on
 which steps are probed: when the memory it keeps after a repeated step is the copy's (about one time in ten), its
-next commands differ. Over ten draws of the probes, render-free, its mean was 0.8752 to 0.8759 (version 0.1: 0.9029 to
-0.9037). A submission that
+next commands differ. Over ten draws of the probes, render-free, its mean was 0.81104 to 0.81167 (version 0.2: 0.8752
+to 0.8759; version 0.1: 0.9029 to 0.9037). A submission that
 reads the picture has more spread: its frames differ from run to run in their last bits.
 
 **A pixel baseline** (`tests/review/pixel_baseline/`, maintainers' evidence, not part of grading): what the task
@@ -303,7 +308,8 @@ second run, on `763919b` (2026-11-25), scored 0.379 (reward 0.43) with the same 
 moved both ways, which is the run-to-run spread of a controller that reads the picture. On version 0.2, unchanged (its
 weights, control law and holder model of `a5acf5e`), it scores 0.074 (reward 0.09): like the frontier episode's program
 it reads depth from size and takes the camera chain as published. An adapted baseline, which identifies the rig, is
-in the status log (2026-11-26).
+in the status log (2026-11-26). It was not run on version 0.3: its depth and its labels (`apparent_px`) are gone from
+the development set, and the status log's evidence for 0.3 is the frozen episode program and a fresh-agent proxy.
 
 ## 5. The agent's side
 
@@ -403,6 +409,139 @@ seeds); the graded ones are in neither the image nor the sandbox.
 Newest first. Each entry says where the numbers come from; "here" is the development server (Ubuntu 22.04,
 RTX 6000 Ada, NVIDIA driver 570.195.03, Isaac Sim 6.2.0.0 + Isaac Lab 3.0.0 in a native Python 3.12 venv, no root,
 no Docker).
+
+### 2026-11-26, evening: version 0.3, made harder after the second frontier episode (trees `1dcff25` to `a647378`; measured on `d31ae95` and `a647378`)
+
+**What the episode showed.** One Claude Opus 5.5 episode on version 0.2 (`ale run` `da1ac3b2` on `0845db99`, the RTX
+3090 host, claude-code 2.1.309, effort high, no web tools, the 4 h budget) scored `useful_view_fraction` 0.7897
+against the anchor 0.876: ratio 0.901, reward 0.92. It ended by itself after 1 h 56 min and used all 12 commissioning
+sessions; no transport fault. The engine kept its submission (`artifacts/0000/submission`, the hashes match the
+snapshot), so nothing had to be reconstructed. Its failures, against the reference's (ref1 of version 0.2): zone 13.1 %
+(8.2), motion 7.7 % (2.6), zoom 6.1 % (4.0), horizon 1.3 % (0.4), lens 0. What it relied on:
+
+* **The labels' 3D truth, three ways.** The development labels gave every tip's pixel *and depth*, so it rebuilt every
+  development instrument's 3D path. The commissioning service replayed exactly those procedures, so with that path it
+  scored each of its sessions exactly ("Commissioning replays recorded procedures, so a session's log + dev labels
+  gives a true offline score"), built an offline simulator with an exact judge to tune its control law, and labelled
+  the frames of its own sessions from the truth for training (`sessdata.py`). A real team has none of that.
+* **Learned depth.** Its net regressed log-depth from the labels' depth and the shaft's width; the 5 / 10 mm question
+  was a likelihood over that, a prior on the tips' height (the floor's depth from the manual) and a rigid tissue map.
+* **A rigid, static scene.** The rig was identified once, from optical flow against the model over the whole
+  procedure (evidence never forgotten), and a tissue map was triangulated from the camera's motion: both assume a
+  scene that only breathes a few millimetres.
+* **Nothing final.** Every error cost only the steps it lasted.
+
+The lesson of round 2 holds: version 0.2's levers were constants a careful reader identifies once. Version 0.3's are
+meant to stay hard when the agent knows exactly what to do (section 2, "Version 0.3", has the table): tissue that moves
+non-rigidly and is dragged by the instruments, tips hidden in the tissue and in smoke, the camera head knocked during
+the procedure, irreversible takeovers (the owner's request), tighter horizon and steadiness rules, and development
+material without 3D truth (2D labels of visible tips only, sparser, noisier, narrower looks; a commissioning bench of
+its own with nothing on file).
+
+**Rules and draws.** The rules were committed first (`1dcff25`, 16:33), the values drawn once from fresh keys after
+it (`d31ae95`, 16:35; keys in section 2). Two corrections followed before any submission was measured, each found by
+looking, not by a score: the plume's dense core (`9b5460b`: version `1dcff25`'s plume, 70 px wide, blanketed the
+middle of the picture for much of a dissection, and the annotator marked an assistant's tip inside it as visible) and
+the second-contact rule (`a647378`: it counted touches only after a cleaning; recordings are never taken over). Neither
+moved a drawn value. Sizing before the rule commit, render-free on throwaway keys (`degraded`/`tol` tools, outside the
+repository): a narrower zoom band (26 to 38 px) and safe zone (0.25) cost the reference 16 and 5 points and were
+left out; a takeover for a scope-shaft clash was left out because the reference's own scope overlapped a shaft;
+critical actions right after a travel and during a knock of the camera head were excluded because the reference
+lost them (it needs a second or two to arrive, and re-levelling after a knock moves the picture).
+
+**The reference** (privileged; the anchor). Native on the hidden set (`run_native.py`, tree `d31ae95`, whose state and
+judging are the final tree's): **0.8110417** (7786 of 9600 steps; per procedure 0.8438 0.8037 0.8888 0.6913 0.7675
+0.8287 0.7262 0.8512 0.8612 0.9113 0.8213 0.7375), probe pairs 213 of 557 differing, no takeover, 45 critical
+actions all seen, no lens contact, no restart, 128.7 ms a frame, 0.32 extra renders a frame, 25 min. Render-free over
+ten probe draws 0.81104 to 0.81167; in every draw no takeover, the least-seen critical action usable on 0.727 of its
+steps (the rule: under 0.25 ends the procedure), the lens never closer than 37.1 mm to the tissue (contact: 4 mm).
+Version 0.2's reference: 0.8760. What it loses beyond 0.2: the horizon after knocks (10 degrees now) and the tighter
+steadiness rule; the moving tissue and the occlusion cost it nothing (it reads the state).
+
+**A perfect-when-visible tracker** (render-free, `degraded_hidden.py` outside the repository: the reference fed each
+tip where an annotator last saw it, held in the patient frame, its first sight free): 0.689 (0.85 of the reference)
+with 3 takeovers for unseen critical actions; with the camera head's change known 20 steps late 0.695. Occlusion and
+the cliffs alone cost a tracker with perfect detection about 15 %; detection, depth and the knocks come on top.
+
+**The frozen program of the version 0.2 episode** (`da1ac3b2`'s submission, unchanged; its own `holder_model.py` of
+0.2), native on the hidden set (tree `a647378`): **0.3586** (ratio 0.442 and reward 0.451 against the new anchor;
+version 0.2: 0.790). Per procedure 0.359 0.423 0.118 0.394 0.560 0.336 0.426 0.091 0.434 0.365 0.263 0.536. The surgeon
+took the camera back in 6 of 12 procedures, every procedure with a critical action (all `critical_unseen`; 20 critical
+actions judged); no lens contact; lock 381 of 434. Failed: zone 38 %, zoom 19 %, horizon 45 %, motion 14 %, takeover
+22 %. What breaks it: it fits the rig once and never forgets the evidence, so every knock of the camera head leaves the
+horizon wrong for the rest of the procedure; its tracks drop a tip hidden in the tissue or the plume within a second,
+and the view that loses it during a clip or an energy activation ends the procedure. As in round 2, this is a lower
+bound on a fresh agent, not an estimate: a fresh agent reads that the head is knocked and that tips hide.
+
+**A fresh-agent proxy.** Written down before the work began: a careful agent that reads the version 0.3 manual
+trains a tip detector on the sparse 2D labels with colour augmentation and self-trains on its own commissioning frames;
+takes depth from geometry (the tip's ray meets the working floor), not from size; keeps a hidden tip's track in the
+patient frame; identifies the rig at the start and then watches for knocks (a picture that turns about its centre);
+keeps the lens away from the tissue and slow near it; holds still during fine work. I adapted the version 0.2
+episode's program that way (outside the repository, as a model's work), on development material only (the
+development recordings and labels, and the 12 commissioning sessions run blind: `run_native.py --commission --blind`
+shows no judgement, only whether a session ended early), with no truth, no `tests/` and no token:
+
+* detector: the episode's U-net retrained on the 2010 labelled frames (heat maps of counting and other tips and the
+  smear, no depth), 60 epochs with its own colour, hue, clutter and blood augmentations; then three rounds of
+  self-training on 1379 of its own commissioning frames, pseudo-labelled by its confident peaks (held-out
+  development recordings: 20 % of tips missed and 27 % false detections before self-training);
+* depth from the ray meeting the floor at z = -0.150 m; no 5 / 10 mm question;
+* the rig: the episode's flow fit, latency and scope locked after 6 s, the head angle's evidence fading (0.93 per
+  informative pair); a knock detector (a rotation search on the picture against the rotation the joints predict;
+  a state machine from the manual: at most two knocks, 12 s apart, a turn under 10 degrees undone). Checked on the
+  development recordings, whose head angles are on file: scope right on all ten, head within 0.1 to 3.6 degrees;
+* tracking: a hidden tip's track kept 6 s; all tracks unseen for 2 s -> search; a tip lost near the border -> zoom
+  out; stillness ignores a hidden tip; safe-zone margin 0.75;
+* the lens: back off under 45 mm from the mapped tissue, advance at most 10 mm/s under 70 mm;
+* the tighter rules: hold at 20 px/s, level within 6 degrees.
+
+Twelve blind sessions (`c01` to `c10`, some twice): five played to the end and seven ended early. Its own logs and
+frames named the causes it could see (instruments lost for seconds behind stale tracks, a camera that kept moving
+during a clip, false knocks), but the clip-and-cut procedure `c08` ended at the same step in all four tries and
+nothing on its side said why. That is the information rule working: no judge. It was frozen after about 1 h 20 min of
+work from the moment the development set was ready (its sha256 are kept with it), then run once on the hidden set:
+**0.2871** (ratio 0.354 and reward 0.361 against the new anchor). Per procedure 0.259 0.451 0.073 0.346 0.558 0.063
+0.539 0.141 0.455 0.106 0.070 0.385. The surgeon took the camera back in 6 of 12 procedures, again every procedure with
+a critical action (all `critical_unseen`); no lens contact; lock 282 of 384. Failed: zone 50 %, zoom 38 %, horizon
+33 %, motion 12 %, takeover 33 % (the steps after a takeover count under every rule they fail as well). It lost most
+to depth: the floor prior misses the zoom band on 38 % of the steps, which the episode's program, whose net still
+carries the depth head it learned from version 0.2's labels, does not (19 %).
+
+**The small checks** (native, tree `a647378`): no submission, reward 0.0 without starting the renderer; a camera that
+never moves (the example) 0.0000 on procedure 0, the lock failing (0 of 11 pairs), and the surgeon took the camera back
+at its first critical action; random rates (`bad:jitter`) 0.0000 on procedure 0, lock 12 of 12; render-free, a camera
+that never moves scores 0 on all twelve hidden procedures. The commissioning service on `a647378`: the development
+set recorded in 8.5 min (renderer start included; 10.5 to 16 min in the earlier runs beside other jobs), then a
+session on `c05` with the example through the launcher, 200 steps, "14 asked, 0 changed the action", exit 0. The
+canary found 10 of 10 markers in every native run of this entry, the worst at 0.70 to 1.13 px from the model.
+
+**What this says about difficulty.** Everything measured points well under version 0.2's 0.90 of the reference: the
+unchanged episode program 0.44, the fresh-agent proxy 0.35, both taken over in every procedure with a critical action.
+The proxy is not an estimate of a frontier agent (round 2: the adapted baseline reached 0.70 of the reference and the
+fresh episode 0.90), and a fresh agent reads from the first minute that the head is knocked, that tips hide, and what
+ends a procedure. What it then has to do is execution, not a constant to read off: depth without depth labels (the
+shaft's width with the catalogue size, parallax, still tips triangulated in the recordings), tracking an instrument
+through the tissue, the plume and the edge of the picture, noticing a knock while the holder moves, and holding a
+usable view through every clip and every energy activation, because one lapse there ends the procedure. The upper
+bound with perfect detection of every visible tip and a naive hold-last tracker is 0.85 of the reference; what keeps
+a non-privileged controller below that is the quality of its perception and tracking. Whether a frontier agent lands
+near 0.35 or near 0.6 of the reference only a frontier episode can say.
+
+**Considered and left out, for the owner.** A shorter agent session and fewer commissioning sessions (as merged
+low-scoring tasks have: `arm/kitchen_appliance_tending`, `arm/lab_sample_handling`) were proposed during this work;
+the brief of this round excluded the time budget and the session count as levers, so version 0.3 keeps 4 h and 12
+sessions. Both would be constants and text only (`task.toml` `[agent] timeout_sec`, `commission_procedures.json`
+`sessions`, the instruction and the manual's section 9), with no effect on the draws, the reference or `ale validate`.
+
+**Not measured here:** anything in the engine (no Docker here: the image must be rebuilt, `environment/` changed);
+the proxy's and the episode program's run-to-run spread (each was run once on the hidden set); the moving mesh's
+stale captures beyond the frame clock's check (section 6). Next on the validate host: rebuild, `ale validate` (the
+anchor from its oracle), one frontier episode.
+
+**Review items.** Version 0.2's review items stay as fixed. New in this version: the canary's renderer restart (the
+`validate-a8caaec5` failure), the takeover's reporting in `verification.json` (`takeovers`, `takeover_<why>`,
+`critical_actions`), and the service's early end of a session at a takeover.
 
 ### 2026-11-26, morning: version 0.2 through `ale validate`, on the RTX 3090 host (tree `88705800`)
 
