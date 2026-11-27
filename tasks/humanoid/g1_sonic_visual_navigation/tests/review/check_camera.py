@@ -29,19 +29,31 @@ def check(assets):
         "left_foot_contact",
         "right_foot_contact",
     }
-    live_course = Course(6.25, 90.0, 1.5)
-    hidden_pivot = Course(6.25, -84.0, 1.9)
+    live_course = Course(6.25, 90.0, 4.0)
+    hidden_pivot = Course(6.25, -84.0, 4.0)
     action = {"rows": [{"codes": [16] * 64}]}
     with ExitStack() as stack:
 
         def start(course, phases):
             env = stack.enter_context(LocomotionSession(assets, 7, horizon=HORIZON))
-            layout = make_layout(7, course.first_m, service="both", tail="right", phases=phases)
+            layout = make_layout(
+                7,
+                course.first_m,
+                service="both",
+                tail="right",
+                phases=phases,
+                rack_seed=7,
+                left_rack="high-right",
+                right_rack="low-left",
+            )
             return NavigationEpisode(env, course, obstacle_seed=7, layout=layout)
 
         live = start(live_course, (2.0, 9.0))
         twin = start(hidden_pivot, (2.0, 9.0))
         swapped = start(live_course, (9.0, 2.0))
+        assert live.layout.racks == twin.layout.racks
+        for key in ("mocap_pos", "mocap_quat", "geom_xpos", "geom_xmat"):
+            assert np.array_equal(getattr(live.session.data, key), getattr(twin.session.data, key)), key
         changed = {}
         for tick in range(11):
             current, future, alt = live.observe(), twin.observe(), swapped.observe()

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import threading
 
 STAGE = Path(__file__).resolve().parent
 sys.path.insert(0, str(STAGE))
@@ -26,7 +27,7 @@ from robotics_grader import (
     zero_verdict,
 )
 from navigation_io import Course, NavigationEpisode
-from solver_host import OfflineSolver, check_numerics, offline_command, solver_environment
+from solver_host import check_numerics, offline_command, participant_episodes, solver_environment
 from sonic_loco import LocomotionSession
 from sonic_loco.obstacles import make_layout
 
@@ -50,7 +51,7 @@ def stratified(rng, bounds, count):
 
 
 def schedule(rng, cfg):
-    require(cfg["episodes"] == 16, "timed-door roster expects sixteen courses")
+    require(cfg["episodes"] == 16, "rack course roster expects sixteen courses")
     jobs = []
     diagonal = rng.seed(bits=1)
     for idx, sign in enumerate((-1, 1)):
@@ -61,9 +62,25 @@ def schedule(rng, cfg):
         first = stratified(rng, cfg["first_distance_m"], len(variants))
         angle = stratified(rng, cfg["turn_magnitude_deg"], len(variants))
         last = stratified(rng, cfg["last_distance_m"], len(variants))
+        # Both outgoing branches have the same distribution under either unrevealed turn.
+        rack_families = ["low-left"] * 3 + ["low-right"] * 3 + ["high-left", "high-right"]
+        left_arm = shuffled(rng, rack_families)
+        right_arm = shuffled(rng, rack_families)
         for i, (service, tail) in enumerate(shuffled(rng, variants)):
             course = Course(first[i], sign * angle[i], last[i])
-            jobs.append((course, rng.seed(bits=64), rng.seed(bits=64), rng.seed(bits=64), service, tail))
+            jobs.append(
+                (
+                    course,
+                    rng.seed(bits=64),
+                    rng.seed(bits=64),
+                    rng.seed(bits=64),
+                    service,
+                    tail,
+                    rng.seed(bits=64),
+                    left_arm[i],
+                    right_arm[i],
+                )
+            )
     return shuffled(rng, jobs)
 
 
@@ -83,6 +100,87 @@ def crossing(event, plane_x, lo, hi, previous_time, previous_tick, stop_tick):
     )
 
 
+def strict_rack_passage(result, pivot, departure):
+    """Rebuild the front and back plane crossings, full-body exit and final head-height test."""
+    rack = result.get("rack_passage")
+    if not rack or rack["missed"] or rack["boundary_violation"]:
+        return False
+    branch = "left" if pivot["command_turn_deg"] > 0 else "right"
+    if rack["branch"] != branch:
+        return False
+    layout = result["rack_layouts"][branch]
+    start_x, end_x = layout["front_m"], layout["back_m"]
+    begin, end = rack["entry"], rack["exit"]
+    clear = rack["whole_body_clear"]
+    if not (begin and end and clear and end_x > start_x):
+        return False
+    if not math.isclose(end_x - start_x, layout["length_m"], abs_tol=1e-8):
+        return False
+    lo, hi = layout["gap_min_m"], layout["gap_max_m"]
+    if not math.isclose(hi - lo, layout["width_m"], abs_tol=1e-8):
+        return False
+    start_tick = pivot["exit_tick"]
+    stop_tick = departure["scorer_terminal_tick"]
+    if stop_tick is None:
+        return False
+    if not crossing(begin, start_x, lo, hi, start_tick * 0.02, start_tick, stop_tick):
+        return False
+    if not crossing(end, end_x, lo, hi, begin["native_time_s"], begin["tick"], stop_tick):
+        return False
+    elapsed, tick = clear["native_time_s"], clear["tick"]
+    rear = clear["trailing_body_forward_m"]
+    if not (
+        math.isfinite(rear)
+        and rear > end_x
+        and math.isclose(clear["back_m"], end_x, abs_tol=1e-8)
+        and end["native_time_s"] <= elapsed <= stop_tick * 0.02 + 1e-9
+        and end["tick"] <= tick <= stop_tick
+        and (tick - 1) * 0.02 - 1e-9 <= elapsed <= tick * 0.02 + 1e-9
+    ):
+        return False
+    under = rack.get("head_under_shelf")
+    if not under or not all(
+        math.isfinite(under[k])
+        for k in (
+            "head_top_m",
+            "underside_m",
+            "head_clearance_m",
+            "head_forward_min_m",
+            "head_forward_max_m",
+            "head_left_min_m",
+            "head_left_max_m",
+            "native_time_s",
+            "tick",
+        )
+    ):
+        return False
+    roof_lo = layout["left_m"] - 0.69
+    roof_hi = layout["left_m"] + 0.69
+    under_t, under_tick = under["native_time_s"], under["tick"]
+    head_gap = layout["underside_m"] - under["head_top_m"]
+    if not (
+        start_x <= under["head_forward_min_m"] < under["head_forward_max_m"] <= end_x
+        and roof_lo <= under["head_left_min_m"] < under["head_left_max_m"] <= roof_hi
+        and start_tick <= under_tick <= tick
+        and start_tick * 0.02 <= under_t <= elapsed
+        and (under_tick - 1) * 0.02 - 1e-9 <= under_t <= under_tick * 0.02 + 1e-9
+        and math.isclose(under["underside_m"], layout["underside_m"], abs_tol=1e-8)
+        and head_gap >= 0
+        and math.isclose(under["head_clearance_m"], head_gap, abs_tol=1e-8)
+    ):
+        return False
+    roof_distance = rack["min_roof_distance_below_0p30_m"]
+    if roof_distance is not None and (not math.isfinite(roof_distance) or roof_distance <= 0):
+        return False
+    head = departure["grade"].get("min_head_height_during_final_dwell_m")
+    return (
+        result.get("required_final_head_m") == 1.25
+        and head is not None
+        and math.isfinite(head)
+        and head >= result["required_final_head_m"]
+    )
+
+
 def strict_course(result):
     """Demand the actual moving and fixed plane crossings plus all three accepted native stops."""
     if not (result["success"] and result["reason"] == "success" and result["stages_completed"] == 3):
@@ -97,7 +195,18 @@ def strict_course(result):
         return False
     stages = result["stages"]
     if tuple(s["stage"] for s in stages) != PHASES or not all(
-        s["reason"] == "success" and s["grade"]["success"] for s in stages
+        s["reason"] == "success"
+        and s["grade"]["success"]
+        and s["grade"]["max_stop_dwell_s"] >= 0.75 - 1e-8
+        and s["scorer_terminal_tick"] is not None
+        and s["revealed_at_tick"] < s["scorer_terminal_tick"] <= s["exit_tick"]
+        for s in stages
+    ):
+        return False
+    if (
+        stages[1]["revealed_at_tick"] != stages[0]["exit_tick"]
+        or stages[2]["revealed_at_tick"] != stages[1]["exit_tick"]
+        or stages[0]["exit_tick"] - stages[0]["scorer_terminal_tick"] < 75
     ):
         return False
     stop_tick = stages[0]["exit_tick"]
@@ -149,11 +258,33 @@ def strict_course(result):
             stop_tick,
         ):
             return False
-    return True
+    return strict_rack_passage(result, stages[1], stages[2])
 
 
-def run_episode(solver_factory, course, robot_seed, obstacle_seed, phase_seed, service, tail, cfg, assets):
-    layout = make_layout(obstacle_seed, course.first_m, service=service, tail=tail, phase_seed=phase_seed)
+def run_episode(
+    solver_factory,
+    course,
+    robot_seed,
+    obstacle_seed,
+    phase_seed,
+    service,
+    tail,
+    rack_seed,
+    left_rack,
+    right_rack,
+    cfg,
+    assets,
+):
+    layout = make_layout(
+        obstacle_seed,
+        course.first_m,
+        service=service,
+        tail=tail,
+        phase_seed=phase_seed,
+        rack_seed=rack_seed,
+        left_rack=left_rack,
+        right_rack=right_rack,
+    )
     expected_tail = None if tail == "none" else (1 if tail == "left" else -1)
     measured_tail = None if layout.tail is None else layout.tail.side
     require(
@@ -178,6 +309,10 @@ def run_episode(solver_factory, course, robot_seed, obstacle_seed, phase_seed, s
         robot_seed=robot_seed,
         obstacle_seed=obstacle_seed,
         phase_seed=phase_seed,
+        rack_seed=rack_seed,
+        left_rack_family=left_rack,
+        right_rack_family=right_rack,
+        selected_rack_family=left_rack if course.turn_deg > 0 else right_rack,
         initial_phases_s=list(layout.phases),
         service_family=service,
         tail_family=tail,
@@ -210,12 +345,14 @@ def summarize(rows, cfg):
             joint_accel_samples=samples,
             joint_accel_rms_rad_s2=math.sqrt(total("joint_accel_square_sum") / samples) if samples else 0.0,
             actual_elapsed_sim_s=total("simulated_s"),
-            mean_actual_elapsed_sim_s=total("simulated_s") / n,
+            mean_actual_elapsed_sim_s=total("simulated_s") / n if n else 0.0,
             mean_completed_sim_s=sum(r["simulated_s"] for r in wins) / len(wins) if wins else 0.0,
             mean_completion_sim_s_failure_at_horizon=(
                 sum(r["simulated_s"] for r in wins) + (n - len(wins)) * cfg["horizon"] * 0.02
             )
-            / n,
+            / n
+            if n
+            else 0.0,
         )
         out.update(
             required_gates=total("required_gates"),
@@ -295,6 +432,39 @@ def summarize(rows, cfg):
     metrics["first_contact_fixed_obstacle_courses"] = (
         len(contacts) - metrics["first_contact_moving_shutter_courses"]
     )
+    for height in ("low", "high"):
+        members = [r for r in rows if r["selected_rack_family"].startswith(height + "-")]
+        metrics[height + "_rack_courses"] = len(members)
+        metrics[height + "_rack_successes"] = sum(r["strict_success"] for r in members)
+        metrics[height + "_whole_body_exits"] = sum(
+            bool(r.get("rack_passage") and r["rack_passage"]["whole_body_clear"]) for r in members
+        )
+    for side in ("left", "right"):
+        members = [r for r in rows if r["selected_rack_family"].endswith("-" + side)]
+        metrics[side + "_rack_offset_courses"] = len(members)
+        metrics[side + "_rack_offset_successes"] = sum(r["strict_success"] for r in members)
+    racks = [r["rack_passage"] for r in rows if r.get("rack_passage")]
+    metrics["rack_reached_departure"] = len(racks)
+    metrics["rack_front_crossings"] = sum(bool(r["entry"]) for r in racks)
+    metrics["rack_head_under_shelf"] = sum(bool(r.get("head_under_shelf")) for r in racks)
+    metrics["rack_back_crossings"] = sum(bool(r["exit"]) for r in racks)
+    metrics["rack_whole_body_exits"] = sum(bool(r["whole_body_clear"]) for r in racks)
+    metrics["first_contact_departure_rack_courses"] = sum(
+        c["obstacle_geom"].startswith("rack_") for c in contacts
+    )
+    heads = [
+        s["grade"]["min_head_height_during_final_dwell_m"]
+        for r in rows
+        for s in r["stages"]
+        if s["stage"] == "departure" and s["grade"].get("min_head_height_during_final_dwell_m") is not None
+    ]
+    if heads:
+        metrics["minimum_accepted_green_head_apex_m"] = min(heads)
+    roof_margins = [
+        r["min_roof_distance_below_0p30_m"] for r in racks if r["min_roof_distance_below_0p30_m"] is not None
+    ]
+    if roof_margins:
+        metrics["minimum_measured_roof_separation_m"] = min(roof_margins)
     for index, r in enumerate(rows, 1):
         prefix = f"trial_{index:02d}_"
         fields = dict(
@@ -323,6 +493,57 @@ def summarize(rows, cfg):
             requested_last_m=r["requested_last_m"],
             fork_staging_slow_s=r["fork_staging_slow_s"],
         )
+        arm = "left" if r["direction"] == "left" else "right"
+        layout = r["rack_layouts"][arm]
+        fields.update(
+            rack_low=int(layout["height_family"] == "low"),
+            rack_offset_left=int(layout["left_m"] > 0),
+            rack_front_m=layout["front_m"],
+            rack_back_m=layout["back_m"],
+            rack_length_m=layout["length_m"],
+            rack_width_m=layout["width_m"],
+            rack_gap_min_m=layout["gap_min_m"],
+            rack_gap_max_m=layout["gap_max_m"],
+            rack_underside_m=layout["underside_m"],
+            rack_center_left_m=layout["left_m"],
+            final_station_distance_m=r["final_station_distance_m"],
+            required_final_head_m=r["required_final_head_m"],
+        )
+        rack = r.get("rack_passage")
+        if rack:
+            fields.update(
+                rack_missed=int(rack["missed"]),
+                rack_boundary_violation=int(rack["boundary_violation"]),
+                selected_outgoing_branch_left=int(rack["branch"] == "left"),
+            )
+            for key in ("min_roof_distance_below_0p30_m", "max_head_height_between_planes_m"):
+                if rack[key] is not None:
+                    fields["rack_" + key] = rack[key]
+            under = rack.get("head_under_shelf")
+            if under:
+                for key in (
+                    "tick",
+                    "native_time_s",
+                    "head_top_m",
+                    "underside_m",
+                    "head_clearance_m",
+                    "head_forward_min_m",
+                    "head_forward_max_m",
+                    "head_left_min_m",
+                    "head_left_max_m",
+                ):
+                    fields["rack_head_under_shelf_" + key] = under[key]
+            for name in ("entry", "exit", "whole_body_clear"):
+                event = rack[name]
+                if event:
+                    for key in ("tick", "native_time_s"):
+                        fields["rack_" + name + "_" + key] = event[key]
+                    for key in (
+                        ("trailing_body_forward_m", "back_m")
+                        if name == "whole_body_clear"
+                        else ("forward_m", "left_m", "gap_edge_clearance_m")
+                    ):
+                        fields["rack_" + name + "_" + key] = event[key]
         if r["fork_staging_entry_s"] is not None:
             fields["fork_staging_entry_s"] = r["fork_staging_entry_s"]
         if r["first_obstacle_contact_tick"] is not None:
@@ -359,32 +580,89 @@ def summarize(rows, cfg):
                 ):
                     fields["shutter_" + key] = leaf[key]
         for stage in r["stages"]:
+            name = stage["stage"]
+            if stage["reason"] is not None:
+                fields[name + "_exit_tick"] = stage["exit_tick"]
+            if name == "departure":
+                head = stage["grade"].get("min_head_height_during_final_dwell_m")
+                if head is not None:
+                    fields["min_head_height_during_final_dwell_m"] = head
+            terminal_tick = stage["scorer_terminal_tick"]
+            if terminal_tick is not None:
+                fields[name + "_scorer_terminal_tick"] = terminal_tick
+                if stage["grade"]["success"]:
+                    fields[name + "_settled_tick"] = terminal_tick
             if stage["reason"] == "success":
-                fields[stage["stage"] + "_stop_tick"] = stage["exit_tick"]
+                fields[name + "_stop_tick"] = stage["exit_tick"]
         metrics.update({prefix + k: v for k, v in fields.items()})
     return metrics
 
 
-def run_panel(solver_factory, cfg, rng, assets=ASSETS):
+def run_panel(solver_factory, cfg, rng, assets=ASSETS, on_complete=None):
     rows = []
     for job in schedule(rng, cfg):
         rows.append(run_episode(solver_factory, *job, cfg, assets))
+        if on_complete is not None:
+            on_complete(tuple(rows))
         print(f"[grader] completed {len(rows)}/{cfg['episodes']} courses", file=sys.stderr, flush=True)
     return summarize(rows, cfg), rows
+
+
+def budget_verdict(completed, cfg, anchor, spec, elapsed):
+    """Keep observed physical successes and charge the original assigned denominator."""
+    n = cfg["episodes"]
+    metrics = summarize(completed, cfg)
+    wins = metrics["successes"]
+    metrics.update(
+        episodes=n,
+        episodes_completed=len(completed),
+        episodes_unfinished=n - len(completed),
+        elapsed_s=elapsed,
+        panel_deadline_exhausted=1,
+        mean_completion_sim_s_failure_at_horizon=(
+            sum(r["simulated_s"] for r in completed if r["strict_success"])
+            + (n - wins) * cfg["horizon"] * 0.02
+        )
+        / n,
+    )
+    verdict = ratio_rewards(
+        wins / n, anchor, cap=cfg["scoring_cap"], full_at=spec["full_at"], metric_name=METRIC, extra=metrics
+    )
+    verdict["diagnostic"] = (
+        f"Panel wall-time budget exhausted after {len(completed)}/{n} finalized courses; "
+        "motion costs cover finalized courses."
+    )
+    return verdict
 
 
 def verify():
     cfg = stage_config()
     anchor, spec = read_anchor()
+    completed = ()
+    published = False
+    publication_lock = threading.Lock()
+
+    def checkpoint(rows):
+        nonlocal completed
+        completed = rows
+
+    def publish(verdict, rows):
+        nonlocal published
+        with publication_lock:
+            if published:
+                return
+            detail = Path("/logs/verifier/navigation-courses.json")
+            manual_path = os.environ.get("ROBOTICS_GRADER_VERDICT_PATH")
+            if manual_path and not os.environ.get("ALE_VERIFY_PYTHON"):
+                verdict_path = Path(manual_path)
+                detail = verdict_path.with_name(verdict_path.stem + "-courses.json")
+            detail.write_text(json.dumps(rows, allow_nan=False) + "\n")
+            write_verdict(verdict)
+            published = True
 
     def timeout(elapsed):
-        write_verdict(
-            zero_verdict(
-                "verifier wall-time budget exhausted",
-                anchor is not None,
-                extra={"elapsed_s": elapsed, "episodes": cfg["episodes"]},
-            )
-        )
+        snapshot = completed
+        publish(budget_verdict(snapshot, cfg, anchor, spec, elapsed), snapshot)
 
     with VerifierDeadline(cfg["verifier_deadline_s"], timeout):
         check_numerics()
@@ -403,33 +681,29 @@ def verify():
         output, _ = child.communicate(timeout=15)
         require(child.returncode == 0 and output.strip() == "offline", "offline launcher self-test failed")
         try:
-
-            def solver_factory():
-                return OfflineSolver(step_timeout=cfg["step_timeout_s"])
-
-            metrics, rows = run_panel(solver_factory, cfg, seed_rng())
+            with participant_episodes(cfg["step_timeout_s"]) as solver_factory:
+                metrics, rows = run_panel(solver_factory, cfg, seed_rng(), on_complete=checkpoint)
         except SolverMissing as exc:
-            write_verdict(
+            publish(
                 zero_verdict(
                     str(exc),
                     anchor is not None,
                     extra={
                         "episodes": cfg["episodes"],
                         "episodes_aborted": cfg["episodes"],
+                        "episodes_completed": 0,
+                        "episodes_unfinished": cfg["episodes"],
+                        "panel_deadline_exhausted": 0,
                         METRIC: 0,
                         "successes": 0,
                     },
-                )
+                ),
+                completed,
             )
             return
         metrics.update(numerics_ok=1, offline_launcher_ok=1, agent_account_cleared=1)
-        detail = Path("/logs/verifier/navigation-courses.json")
-        manual_path = os.environ.get("ROBOTICS_GRADER_VERDICT_PATH")
-        if manual_path and not os.environ.get("ALE_VERIFY_PYTHON"):
-            verdict_path = Path(manual_path)
-            detail = verdict_path.with_name(verdict_path.stem + "-courses.json")
-        detail.write_text(json.dumps(rows, allow_nan=False) + "\n")
-        write_verdict(
+        metrics.update(episodes_completed=len(rows), episodes_unfinished=0, panel_deadline_exhausted=0)
+        publish(
             ratio_rewards(
                 metrics["successes"] / metrics["episodes"],
                 anchor,
@@ -437,7 +711,8 @@ def verify():
                 full_at=spec["full_at"],
                 metric_name=METRIC,
                 extra=metrics,
-            )
+            ),
+            rows,
         )
 
 

@@ -3,7 +3,7 @@
   "direction": "higher",
   "value": null,
   "full_at": 1,
-  "unit": "fraction of assigned dynamic courses with a genuine moving-aperture passage, all required static passages, zero obstacle contacts and all three stops",
-  "source": "Awaiting two independently initialized protected temporal reference measurements.",
+  "unit": "fraction of assigned warehouse courses passing the timed aperture, optional cabinet, covered departure rack and final upright stop without obstacle contact",
+  "source": "Awaiting two independently initialized protected warehouse reference measurements.",
   "preregistration": "review/scoring_protocol.md"
 }

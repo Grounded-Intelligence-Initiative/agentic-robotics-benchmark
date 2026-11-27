@@ -1,4 +1,4 @@
-"""Calculate the registered obstacle anchor from two actual null-anchor oracle verifications."""
+"""Calculate the registered compound warehouse anchor from two actual null-anchor oracle verifications."""
 
 import argparse
 import hashlib
@@ -30,6 +30,10 @@ def panel(path):
         "both_service_successes",
         "left_service_successes",
         "right_service_successes",
+        "low_rack_successes",
+        "high_rack_successes",
+        "left_rack_offset_successes",
+        "right_rack_offset_successes",
     ):
         if m[field] < 1:
             raise ValueError(f"missing strict course completion in {field}")
@@ -46,6 +50,11 @@ def panel(path):
             or m[p + "missed_passage"]
             or not m.get(p + "shutter_clear_width_m", 0) > 0
             or not m.get(p + "shutter_gap_edge_clearance_m", 0) > 0
+            or p + "rack_head_under_shelf_tick" not in m
+            or p + "rack_whole_body_clear_tick" not in m
+            or p + "rack_entry_tick" not in m
+            or p + "rack_exit_tick" not in m
+            or m.get(p + "min_head_height_during_final_dwell_m", 0) < 1.25
             or m[p + "passed_gates"] != m[p + "required_gates"]
         ):
             raise ValueError(f"{p}reported success inconsistent with its physics")
