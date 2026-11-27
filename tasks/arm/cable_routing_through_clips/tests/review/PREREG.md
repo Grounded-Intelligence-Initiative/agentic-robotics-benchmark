@@ -132,6 +132,45 @@ Shown after the change: the numerics fingerprint's simulation part is unchanged,
 completes 20 of 20 boards with the step count it had on every board when the set was drawn. Had one step count
 moved, the draw would have been void.
 
+## Second amendment after the draw (the post check brought to the rule)
+
+The validation review of #182 found that the post check took the cable's nearest vertex, not its nearest point:
+with segments of 17.5 to 22.5 mm, a straight pass whose closest approach fell midway between two vertices was made
+only up to 7.4 to 8.5 mm off the post's surface, where the rule above (and the instruction) says 10 mm. The check
+now takes the nearest point on the cable's segments (`harness_env._nearest_on_cable`, the projection of
+`_seg_dist`): the distance to the surface, the height below the post's top and the side are taken there, and the
+post's place along the cable is that point's arc length. Nothing else changed: the physics, the route generator,
+the cell, the reference's program (`solution/oracle/fitter.py` keeps its own check for its own decisions) and so
+every step of an episode; the cable is judged only after the episode. `tests/review/test_post_check.py` checks the
+rule on straight and wrapped cables (the old check fails it 9 mm off, midway between two vertices).
+
+Shown after the change, with the reference run in process as the walk runs it and the settled cable judged by both
+checks: the 20 kept boards are complete under both, with the step count each had when the set was drawn; candidate
+12, rejected because the reference failed (no post), fails under both with its 1500 steps. On the 15 posts of the
+set (14 boards) the reference leaves the cable at most 6.4 mm off the surface (nearest point; 7.2 mm at the nearest vertex).
+Over the wire (`ale validate`, validate-fdbc2035) the reference completes 20 of 20 with the same step counts. The keep
+rule's outcomes, and so the set, are unchanged.
+
+## Third amendment after the draw (the probe copy, the process count, the instruction's wording)
+
+From the same validation review, its recommendations and smaller points. None touches the physics, the route
+generator, the credit rule or the reference's program:
+
+- the probe copy of an observation (`harness_sim.Cell.probe`) is built as an observation is: the grip site's pose
+  one physics step behind the copy's joints (the kit's `stale_copy` rule) and one fresh draw of the wrist noise
+  around the noise-free reading. Before, the copy's pose was the exact kinematics of its joints and its wrench the
+  noisy reading plus more noise: on 400 pairs of a scripted motion the rule "the larger kinematics residual is the
+  real one" picked the real member 400 times, "the wrench nearer the noise-free reading" 308 times; now 195 and 196;
+- the controller's processes are counted before every request (`tests/verify.py`), as the instruction says;
+- the instruction states what happens at a malformed action, after three restarts, at an unstable simulation, at
+  a re-run of an episode, and how the hand-over is timed; `run_bench.py` judges a pair of replies as the grader does;
+  `tests/review/test_rerun.py` asserts what it states.
+
+The reference reads the real observation from the token truth, so the copy's content does not reach its program:
+over the wire it completes 20 of 20 boards with the draw's step count on every board, and the numerics fingerprint
+is unchanged. A controller that takes the copy's numbers into its state sees other numbers in its probed steps than
+before: the published frontier episode was replayed without a model call under each change (tests/review/mutants.md).
+
 ## The walk's tool and record
 
 `tests/review/select_set.py` walks the candidates and writes `tests/hidden/episodes.json` (the set, in the order
