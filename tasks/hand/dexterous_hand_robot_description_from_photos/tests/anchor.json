@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "full_at": 1.0,
+ "metric": "description_score",
+ "note": "description_score is the gated weighted mean of the five items, already on [0, 1]; ratio = score / 1.0, reward = ratio",
+ "source": "the reference description's own measured description_score: the grader is static and every band is measured against the photographed unit, so the unit's own description (its model and its calibration file) scores exactly 1.0 on every item on every run",
+ "value": 1.0
+}

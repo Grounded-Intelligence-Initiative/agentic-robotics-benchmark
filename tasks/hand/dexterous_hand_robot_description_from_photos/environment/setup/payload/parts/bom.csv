@@ -1,0 +1,67 @@
+part,kind,name,material,pieces,mesh
+P01,made part,P01,PLA,1,meshes/P01.stl
+P02,made part,P02,PLA,1,meshes/P02.stl
+P03,made part,P03,PLA,1,meshes/P03.stl
+P04,made part,P04,TPU,1,meshes/P04.stl
+P05,made part,P05,PLA,1,meshes/P05.stl
+P06,made part,P06,PLA,1,meshes/P06.stl
+P07,made part,P07,PLA,1,meshes/P07.stl
+P08,made part,P08,PLA,1,meshes/P08.stl
+P09,made part,P09,PLA,1,meshes/P09.stl
+P10,made part,P10,PLA,1,meshes/P10.stl
+P11,made part,P11,PLA,1,meshes/P11.stl
+P12,made part,P12,PLA,1,meshes/P12.stl
+P13,made part,P13,PLA,1,meshes/P13.stl
+P14,made part,P14,PLA,1,meshes/P14.stl
+P15,made part,P15,PLA,1,meshes/P15.stl
+P16,made part,P16,PLA,1,meshes/P16.stl
+P17,made part,P17,PLA,1,meshes/P17.stl
+P18,made part,P18,PLA,1,meshes/P18.stl
+P19,made part,P19,PLA,1,meshes/P19.stl
+P20,made part,P20,PLA,1,meshes/P20.stl
+P21,made part,P21,PLA,1,meshes/P21.stl
+P22,made part,P22,PLA,1,meshes/P22.stl
+P23,made part,P23,PLA,1,meshes/P23.stl
+P24,made part,P24,PLA,1,meshes/P24.stl
+P25,made part,P25,PLA,1,meshes/P25.stl
+P26,made part,P26,PLA,1,meshes/P26.stl
+P27,made part,P27,PLA,1,meshes/P27.stl
+P28,made part,P28,PLA,1,meshes/P28.stl
+P29,made part,P29,PLA,1,meshes/P29.stl
+P30,made part,P30,PLA,1,meshes/P30.stl
+P31,made part,P31,PLA,1,meshes/P31.stl
+P32,made part,P32,PLA,1,meshes/P32.stl
+P33,made part,P33,PLA,1,meshes/P33.stl
+P34,made part,P34,PLA,1,meshes/P34.stl
+P35,made part,P35,PLA,1,meshes/P35.stl
+P36,made part,P36,PLA,1,meshes/P36.stl
+P37,made part,P37,PLA,1,meshes/P37.stl
+P38,made part,P38,PLA,1,meshes/P38.stl
+P39,made part,P39,PLA,1,meshes/P39.stl
+P40,made part,P40,PLA,1,meshes/P40.stl
+P41,made part,P41,PLA,1,meshes/P41.stl
+P42,made part,P42,PLA,1,meshes/P42.stl
+P43,made part,P43,PLA,1,meshes/P43.stl
+P44,made part,P44,PLA,1,meshes/P44.stl
+P45,made part,P45,PLA,1,meshes/P45.stl
+P46,made part,P46,PLA,1,meshes/P46.stl
+P47,made part,P47,PLA,1,meshes/P47.stl
+P48,made part,P48,PLA,1,meshes/P48.stl
+P49,made part,P49,PLA,1,meshes/P49.stl
+P50,made part,P50,PLA,1,meshes/P50.stl
+P51,made part,P51,PLA,1,meshes/P51.stl
+P52,made part,P52,PLA,1,meshes/P52.stl
+BWD-RS8C,given part,bus distribution board,,1,meshes/BWD-RS8C.stl
+HNL-EX77,given part,miniature ball bearing,,18,meshes/HNL-EX77.stl
+HNL-NQ37,given part,dowel pin,,15,meshes/HNL-NQ37.stl
+JQT-NLP9,given part,power and bus hub board,,1,meshes/JQT-NLP9.stl
+VKR-4LBA,given part,servo actuator,,13,meshes/VKR-4LBA.stl
+ZCP-384F,given part,tactile interface board,,1,meshes/ZCP-384F.stl
+ZCP-DG1Z,given part,thumb tactile module,,1,meshes/ZCP-DG1Z.stl
+ZCP-F561,given part,fingertip tactile module,,3,meshes/ZCP-F561.stl
+SCR-M1.4x4-SOCKET,fastener,M1.4 x 4 socket head screw,,15,meshes/SCR-M1.4x4-SOCKET.stl
+SCR-M1.6x16-SOCKET,fastener,M1.6 x 16 socket head screw,,4,meshes/SCR-M1.6x16-SOCKET.stl
+SCR-M1.7x4-CHEESE,fastener,M1.7 x 4 cheese head screw,,36,meshes/SCR-M1.7x4-CHEESE.stl
+SCR-M2x4-PAN,fastener,M2 x 4 pan head screw,,98,meshes/SCR-M2x4-PAN.stl
+SCR-M2x6-FLAT,fastener,M2 x 6 flat head screw,,13,meshes/SCR-M2x6-FLAT.stl
+SCR-M2x6-SOCKET,fastener,M2 x 6 socket head screw,,54,meshes/SCR-M2x6-SOCKET.stl

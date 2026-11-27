@@ -1,0 +1,31 @@
+{
+ "format": "hd04-grader-config/1",
+ "weights": {"pinch": 0.55, "single": 0.15, "pose": 0.10, "travrej": 0.10, "force_load": 0.10},
+ "sub_weights": {"pose_point": 0.7, "pose_normal": 0.3, "travel": 0.6, "reject": 0.4, "force": 0.5, "load": 0.5},
+ "bands": {
+  "close": {"full": 0.75, "zero": 3.0, "unit": "mm"},
+  "mid": {"full": 0.75, "zero": 5.0, "unit": "mm"},
+  "pad": {"full": 0.75, "zero": 5.0, "unit": "mm"},
+  "pos": {"full": 0.75, "zero": 5.0, "unit": "mm"},
+  "nrm": {"full": 0.5, "zero": 10.0, "unit": "deg"},
+  "end": {"full": 2.0, "zero": 15.0, "unit": "deg"},
+  "force": {"full": 0.03, "zero": 0.30, "unit": "ratio"},
+  "mass": {"full": 0.03, "zero": 0.30, "unit": "ratio"},
+  "com": {"full": 1.0, "zero": 20.0, "unit": "mm"}
+ },
+ "zero_rules": {"hard_stop_deg": 2.0, "interpen_mm": 1.0, "out_of_range_deg": 2.0, "ik_accept_mm": 1.0,
+                "loop_residual_m": 1e-9, "range_check_deg": 2.0},
+ "ik": {"restarts": 24, "max_iters": 150, "tol_m": 1e-4, "normal_weight": 0.002, "shrink_deg": 2.0},
+ "counts": {"pinch": 36, "single": 32, "impossible": 16, "pose": 64, "force": 48, "load": 6},
+ "metric_keys": [
+  "description_score",
+  "model_loads", "pinch", "single", "pose", "travrej", "force_load",
+  "travel", "reject", "force", "load",
+  "consumer_thumb", "consumer_index", "consumer_middle", "consumer_ring",
+  "ind_L1_pose_err_mm", "ind_L2_turn_misses", "ind_L3_travel_mod_turn",
+  "n_ik_fail", "n_hard_stop", "n_interpen", "n_out_of_range", "n_loop_fail", "n_locked_out", "n_locked_hinges",
+  "agent_processes_killed", "agent_processes_left", "agent_processes_running", "agent_processes_frozen",
+  "stage_locked", "stage_parent_locked", "submission_late_writes", "late_write_gate_active", "submission_snapshot",
+  "submission_root_rejected", "submission_oversize", "submission_final", "grader_exception", "lockdown_exception"
+ ]
+}
