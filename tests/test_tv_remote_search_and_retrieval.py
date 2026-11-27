@@ -143,7 +143,9 @@ class NoAuthorPaths(unittest.TestCase):
 
     def test_no_home_directory_in_the_task_s_files(self):
         for path in TASK.rglob("*.py"):
-            self.assertNotRegex(path.read_text(), r"/home/(?!user\b)[a-z]", str(path))
+            if "robotics_grader" in path.parts:
+                continue                      # the kit's own files
+            self.assertFalse(re.search(r"/home/(?!user\b)[a-z]", path.read_text()), str(path))
 
 
 if __name__ == "__main__":
