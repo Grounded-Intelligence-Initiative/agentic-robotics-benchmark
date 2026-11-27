@@ -1,0 +1,52 @@
+# humanoid_robot_description_from_calibration_records: the robot-description stage of the humanoid workflow (an atomic
+# task). A partner's technician built one unit of a 25-actuator humanoid from the maker's kit and calibrated it over
+# two days (on its back by the maker's procedure; then on the gantry hook, driven by the lab's own control stack from a
+# template home table, recalibrating some joints at alignments and the four ankle motors with a digital level), then
+# locked up the ankle bars, fitted shoes and hands and crated it. The lab's modelling engineer has the unit's dossier,
+# the maker's design files, documentation and calibration procedure, the vendor's actuator sheet, the lab's notes and
+# the contract, and writes the unit's machine files: the model file corrected to the unit as crated (unit.xml) and its
+# calibration (calibration.yaml: per actuator the sense and the model angle at the stored zero, and per foot the
+# motor-to-foot map). Nothing can be run on the unit; there is no other unit and no checker that knows it.
+#
+# Grading (tests/verify.py with its configuration in tests/; static, nothing submitted runs): the contract gate
+# (incl. the verify-start lockdown's late-write rule) x M (the files against the unit at hidden bus samples: feet,
+# trunk, weight, sole, arms) x D (postures planned on the files, executed on the true unit as a rigid body on a level
+# plate: flat x weight x upright); description_score = gate x M x D; reward = description_score (the reference: 1.0).
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/humanoid_robot_description_from_calibration_records"
+
+[metadata]
+platform = "humanoid"
+
+[environment]
+cpus = 8
+memory_mb = 16384
+gpus = 0
+
+# setup: stage the givens read-only into the agent home (the large ones from the image's task assets). agent: the
+# engineer's reading of the records and the design files, the model and calibration writer (6 h).
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+# Separate verification: after the agent phase the engine releases the agent's sandbox and scores in a fresh verifier
+# sandbox started from this task's image, into which it restores only the declared artifact /home/user/submission.
+# Under shared verification the grader would run as root in the agent's own sandbox, where the ALE base image leaves
+# /usr/local/bin writable for the agent account and ahead of /usr/bin on root's PATH. The verifier has everything the
+# grader reads: tests/ (gt/ with the unit's truth, hidden/ with the bus samples and the postures, the grader's
+# configuration and reference value, rd04/ and the kit), the image's /opt/venv and its copy of the given model, and
+# the restored submission. setup.sh does not run there. Its machine: one single-threaded grading process (the
+# gate's compile of the given meshes is the peak of memory); 2 CPUs and 4 GB, no GPU; timeout_sec also covers the
+# verifier's start, the restore of the submission and the stage upload, far inside 1800 s.
+[verifier]
+timeout_sec = 1800
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 2
+memory_mb = 4096
+gpus = 0

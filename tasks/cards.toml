@@ -281,6 +281,12 @@ summary = "Rebuild the lost CAD of the 19 made parts of a humanoid robot's right
 platforms = ["humanoid"]
 stages = ["hardware-design"]
 
+[humanoid_robot_description_from_calibration_records]
+title = "Write a humanoid's model and calibration"
+summary = "Correct the maker's model file of a 25-actuator humanoid to one unit as crated and write its calibration, from the unit's build and calibration records, the maker's design and the lab's notes."
+platforms = ["humanoid"]
+stages = ["robot-description"]
+
 [quadruped_cad_design_from_photos]
 title = "Model a quadruped in CAD"
 summary = "Rebuild the lost CAD of a student-modified 12-joint quadruped in FreeCAD from photos of its teardown, so it can be re-printed and simulated."

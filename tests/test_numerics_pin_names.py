@@ -20,7 +20,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TASKS = ROOT / "tasks"
 VALUE = re.compile(r"NPY_DISABLE_CPU_FEATURES[\"']?\s*(?:=|:|,)\s*[\"']?([A-Z][A-Z0-9_]*(?:[ ,]+[A-Z][A-Z0-9_]*)*)")
-NUMPY = re.compile(r"^numpy==([0-9]+)\.([0-9]+)\.[0-9]+\s*$", re.M)
+# A plain pin (`numpy==2.5.4`) or a hash-locked one (`numpy==2.5.3 \` followed by its `--hash=` lines).
+NUMPY = re.compile(r"^numpy==([0-9]+)\.([0-9]+)\.[0-9]+[ \t]*(?:\\[ \t]*)?$", re.M)
 OLD = {"AVX512F", "AVX512CD", "AVX512_KNL", "AVX512_KNM", "AVX512_SKX", "AVX512_CLX", "AVX512_CNL", "AVX512FP16"}
 NEW = {"X86_V4"}
 # Files that run in the image or in the grader. A record of a past run (a selection log, a review tool) is no pin.
@@ -106,6 +107,11 @@ class Names(unittest.TestCase):
         self.assertEqual(VALUE.findall('ENV NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR"'), ["X86_V4 AVX512_ICL AVX512_SPR"])
         self.assertEqual(VALUE.findall('"NPY_DISABLE_CPU_FEATURES": "X86_V4,AVX512_ICL"'), ["X86_V4,AVX512_ICL"])
         self.assertEqual(VALUE.findall('os.environ.setdefault("NPY_DISABLE_CPU_FEATURES", "AVX512F AVX512_SKX")'), ["AVX512F AVX512_SKX"])
+
+    def test_the_numpy_pin_is_read_plain_and_hash_locked(self):
+        self.assertEqual(NUMPY.findall("numpy==2.5.4\n"), [("2", "5")])
+        self.assertEqual(NUMPY.findall("numpy==2.5.3 \\\n    --hash=sha256:" + "0" * 64 + "\n"), [("2", "5")])
+        self.assertEqual(NUMPY.findall("numpy>=2.5\nnumpy==2.5.3 ; python_version >= '3.11'\n"), [])
 
 
 class PantryJarRefilling(unittest.TestCase):

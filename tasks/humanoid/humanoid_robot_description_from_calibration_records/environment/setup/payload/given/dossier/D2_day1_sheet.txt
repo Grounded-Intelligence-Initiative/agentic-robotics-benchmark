@@ -1,0 +1,56 @@
+CALIBRATION SHEET: unit 01, day 1, 2026-10-12
+
+On its back on floor mats, firmware stopped, each actuator calibrated by the maker's procedure; after each click the
+console read 0.000 rad.
+
+no.  actuator          how the zero was set
+01   L_hip_pitch       leg lifted by the calf and pushed toward the head until the steel tab sat on the orange stop
+                       plate; held; Calibrate.
+02   L_hip_roll        an M4 x 10 cap screw in the free hole on the inner, lower side of the roll actuator's ring
+                       face; leg swung in onto the screw head; Calibrate.
+03   L_hip_yaw         turned toe-in; the thigh cover HM1_600_04C caught on the roll actuator HM1_200_14X, was
+                       lifted over with a finger, and the leg was turned until the thigh cover HM1_600_14C met the
+                       hip-roll bracket HM1_600_01B; held; Calibrate. After the hand let go, the console read
+                       -0.006 rad.
+04   L_knee            leg up; shank pushed into lock-out by hand; Calibrate. After the hand let go, the console
+                       read -0.008 rad.
+05   L_ankle_A         each crank's metal piece between its two screws; the foot set neutral, flat to the shin by
+                       eye; Calibrate Both (this motor and L_ankle_B).
+06   L_ankle_B         Calibrate Both, with L_ankle_A.
+07   R_hip_pitch       leg lifted by the calf and pushed toward the head until the steel tab sat on the orange stop
+                       plate; held; Calibrate.
+08   R_hip_roll        an M4 x 10 cap screw in the free hole on the inner, lower side of the roll actuator's ring
+                       face; leg swung in onto the screw head; Calibrate. Both screws removed after this row.
+09   R_hip_yaw         turned toe-in; the thigh cover HM1_500_04C caught on the roll actuator HM1_200_13X, was
+                       lifted over with a finger, and the leg was turned until the thigh cover HM1_500_14C met the
+                       hip-roll bracket HM1_500_01B; held; Calibrate. After the hand let go, the console read
+                       -0.001 rad.
+10   R_knee            leg up; shank pushed into lock-out by hand; Calibrate. After the hand let go, the console
+                       read +0.007 rad.
+11   R_ankle_A         each crank's metal piece between its two screws; the foot set neutral, flat to the shin by
+                       eye; Calibrate Both (this motor and R_ankle_B).
+12   R_ankle_B         Calibrate Both, with R_ankle_A.
+13   L_shoulder_pitch  six-bolt face of HM1_400_01A out; arm turned out to its limit; elbow bent fully; arm laid on
+                       the mat and pushed in against the torso; wrist and elbow pressed down; then the arm's five
+                       actuators calibrated in turn, this one first.
+14   L_shoulder_roll   the arm as set for L_shoulder_pitch; calibrated in turn. After the hand let go, the console
+                       read +0.005 rad.
+15   L_shoulder_yaw    the arm as set for L_shoulder_pitch; calibrated in turn. After the hand let go, the console
+                       read +0.008 rad.
+16   L_elbow           the arm as set for L_shoulder_pitch; calibrated in turn.
+17   L_wrist_yaw       the arm as set for L_shoulder_pitch; calibrated in turn, the last of the arm.
+18   R_shoulder_pitch  six-bolt face of HM1_300_01A out; arm turned out to its limit; elbow bent fully; arm laid on
+                       the mat and pushed in against the torso; wrist and elbow pressed down; then the arm's five
+                       actuators calibrated in turn, this one first.
+19   R_shoulder_roll   the arm as set for R_shoulder_pitch; calibrated in turn. After the hand let go, the console
+                       read -0.007 rad.
+20   R_shoulder_yaw    the arm as set for R_shoulder_pitch; calibrated in turn. After the hand let go, the console
+                       read -0.001 rad.
+21   R_elbow           the arm as set for R_shoulder_pitch; calibrated in turn.
+22   R_wrist_yaw       the arm as set for R_shoulder_pitch; calibrated in turn, the last of the arm.
+23   waist_yaw         the plates above and below the waist lined up by eye; Calibrate.
+24   neck_yaw          the head shell's seam centred by eye; Calibrate.
+25   neck_pitch        head pushed forward to its end and held; Calibrate. After the hand let go, the console read
+                       +0.005 rad.
+
+Check calibration: all green.

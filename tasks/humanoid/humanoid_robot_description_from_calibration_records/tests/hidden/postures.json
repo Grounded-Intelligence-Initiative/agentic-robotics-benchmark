@@ -1,0 +1,183 @@
+{
+ "schema": "rd04-postures/1",
+ "what": "The ten postures of D and the planner's set positions. Per posture: drop (m, the hip midpoint lowered from the straight-leg height), pitch (rad, the pelvis pitched about the hip midpoint), shift (m, the hip midpoint moved along the plate's y), feet (m, each foot moved along the plate's x), waist (rad, the waist yaw), arms (rad, model joint angles); every other joint at 0. Frame: nom_foot_m the feet's link origins on the plate (x, y; z from the sole), hip_mid_m the hip midpoint in the pelvis frame, leg_drop0_m the pelvis origin above the foot origin at the model's zero.",
+ "status": "OURS: a fixed list (it never changes once the task is frozen). The frame constants are MEAS from the given model at q = 0 (nom_foot y mirrored from the left foot; leg_drop0 rounded to 1e-6 m).",
+ "frame": {
+  "nom_foot_m": {
+   "left": [
+    -0.0534919979,
+    0.108500138,
+    0.0
+   ],
+   "right": [
+    -0.0534919979,
+    -0.108500138,
+    0.0
+   ]
+  },
+  "hip_mid_m": [
+   -0.0519919979,
+   0.0,
+   -0.044045
+  ],
+  "leg_drop0_m": 0.596347
+ },
+ "postures": [
+  {
+   "name": "neutral",
+   "drop": 0.005,
+   "pitch": 0.0,
+   "shift": 0.0,
+   "feet": {},
+   "waist": 0.0,
+   "arms": {
+    "left_shoulder_roll_joint": -0.15,
+    "right_shoulder_roll_joint": 0.15,
+    "left_elbow_joint": 0.3,
+    "right_elbow_joint": -0.3
+   }
+  },
+  {
+   "name": "squat_20mm",
+   "drop": 0.02,
+   "pitch": 0.0,
+   "shift": 0.0,
+   "feet": {
+    "left": 0.01,
+    "right": 0.01
+   },
+   "waist": 0.0,
+   "arms": {
+    "left_shoulder_roll_joint": -0.15,
+    "right_shoulder_roll_joint": 0.15,
+    "left_elbow_joint": 0.3,
+    "right_elbow_joint": -0.3
+   }
+  },
+  {
+   "name": "squat_35mm",
+   "drop": 0.035,
+   "pitch": 0.0,
+   "shift": 0.0,
+   "feet": {
+    "left": 0.03,
+    "right": 0.03
+   },
+   "waist": 0.0,
+   "arms": {
+    "left_shoulder_roll_joint": -0.15,
+    "right_shoulder_roll_joint": 0.15,
+    "left_elbow_joint": 0.3,
+    "right_elbow_joint": -0.3
+   }
+  },
+  {
+   "name": "reach_15deg",
+   "drop": 0.005,
+   "pitch": 0.2617993877991494,
+   "shift": 0.0,
+   "feet": {},
+   "waist": 0.0,
+   "arms": {
+    "left_shoulder_pitch_joint": -0.6,
+    "right_shoulder_pitch_joint": 0.6,
+    "left_elbow_joint": 0.5,
+    "right_elbow_joint": -0.5,
+    "left_shoulder_roll_joint": -0.1,
+    "right_shoulder_roll_joint": 0.1
+   }
+  },
+  {
+   "name": "reach_30deg",
+   "drop": 0.005,
+   "pitch": 0.5235987755982988,
+   "shift": 0.0,
+   "feet": {},
+   "waist": 0.0,
+   "arms": {
+    "left_shoulder_pitch_joint": -0.9,
+    "right_shoulder_pitch_joint": 0.9,
+    "left_elbow_joint": 0.4,
+    "right_elbow_joint": -0.4,
+    "left_shoulder_roll_joint": -0.1,
+    "right_shoulder_roll_joint": 0.1
+   }
+  },
+  {
+   "name": "waist_twist",
+   "drop": 0.015,
+   "pitch": 0.0,
+   "shift": 0.0,
+   "feet": {},
+   "waist": 0.45,
+   "arms": {
+    "left_shoulder_roll_joint": -0.15,
+    "right_shoulder_roll_joint": 0.15,
+    "left_elbow_joint": 0.3,
+    "right_elbow_joint": -0.3
+   }
+  },
+  {
+   "name": "weight_left",
+   "drop": 0.015,
+   "pitch": 0.0,
+   "shift": 0.016,
+   "feet": {},
+   "waist": 0.0,
+   "arms": {
+    "left_shoulder_roll_joint": -0.15,
+    "right_shoulder_roll_joint": 0.15,
+    "left_elbow_joint": 0.3,
+    "right_elbow_joint": -0.3
+   }
+  },
+  {
+   "name": "weight_right",
+   "drop": 0.015,
+   "pitch": 0.0,
+   "shift": -0.016,
+   "feet": {},
+   "waist": 0.0,
+   "arms": {
+    "left_shoulder_roll_joint": -0.15,
+    "right_shoulder_roll_joint": 0.15,
+    "left_elbow_joint": 0.3,
+    "right_elbow_joint": -0.3
+   }
+  },
+  {
+   "name": "stagger_L_fwd",
+   "drop": 0.008,
+   "pitch": 0.0,
+   "shift": 0.0,
+   "feet": {
+    "left": 0.05,
+    "right": -0.05
+   },
+   "waist": 0.0,
+   "arms": {
+    "left_shoulder_roll_joint": -0.15,
+    "right_shoulder_roll_joint": 0.15,
+    "left_elbow_joint": 0.3,
+    "right_elbow_joint": -0.3
+   }
+  },
+  {
+   "name": "stagger_R_fwd",
+   "drop": 0.008,
+   "pitch": 0.0,
+   "shift": 0.0,
+   "feet": {
+    "left": -0.05,
+    "right": 0.05
+   },
+   "waist": 0.0,
+   "arms": {
+    "left_shoulder_roll_joint": -0.15,
+    "right_shoulder_roll_joint": 0.15,
+    "left_elbow_joint": 0.3,
+    "right_elbow_joint": -0.3
+   }
+  }
+ ]
+}

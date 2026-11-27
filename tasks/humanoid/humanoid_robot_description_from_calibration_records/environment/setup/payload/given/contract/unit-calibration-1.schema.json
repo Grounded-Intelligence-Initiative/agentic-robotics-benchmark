@@ -1,0 +1,118 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "urn:unit-calibration:1",
+ "title": "unit-calibration/1",
+ "description": "The unit's calibration file, calibration.yaml: the home table of its 25 drive slots and, per foot, the map from the two ankle motors to the foot's hinge angles. Angles in rad. Every object refuses a key that it does not list. The file is at most 262144 bytes (256 KiB) and is read with yaml.safe_load after a scan of its YAML tokens (the contract's acceptance sheet lists what the scan refuses); this schema applies to the document as loaded.",
+ "x-file": {"name": "calibration.yaml", "max_bytes": 262144, "loader": "yaml.safe_load"},
+ "type": "object",
+ "additionalProperties": false,
+ "required": ["schema", "home_table", "ankle_map"],
+ "properties": {
+  "schema": {"const": "unit-calibration/1", "description": "the file's format and version"},
+  "home_table": {
+   "description": "25 rows in firmware slot order: row i is slot i, with that slot's actuator name. Per drive q = sign x r + home_rad, r the drive's reading from its stored zero, q the model file's angle of the slot's joint or, for an ankle motor, its coordinate in the firmware's ankle map.",
+   "type": "array",
+   "minItems": 25,
+   "maxItems": 25,
+   "prefixItems": [
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 0}, "actuator": {"const": "L_hip_pitch"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 1}, "actuator": {"const": "L_hip_roll"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 2}, "actuator": {"const": "L_hip_yaw"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 3}, "actuator": {"const": "L_knee"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 4}, "actuator": {"const": "L_ankle_A"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 5}, "actuator": {"const": "L_ankle_B"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 6}, "actuator": {"const": "R_hip_pitch"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 7}, "actuator": {"const": "R_hip_roll"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 8}, "actuator": {"const": "R_hip_yaw"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 9}, "actuator": {"const": "R_knee"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 10}, "actuator": {"const": "R_ankle_A"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 11}, "actuator": {"const": "R_ankle_B"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 12}, "actuator": {"const": "L_shoulder_pitch"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 13}, "actuator": {"const": "L_shoulder_roll"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 14}, "actuator": {"const": "L_shoulder_yaw"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 15}, "actuator": {"const": "L_elbow"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 16}, "actuator": {"const": "L_wrist_yaw"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 17}, "actuator": {"const": "R_shoulder_pitch"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 18}, "actuator": {"const": "R_shoulder_roll"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 19}, "actuator": {"const": "R_shoulder_yaw"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 20}, "actuator": {"const": "R_elbow"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 21}, "actuator": {"const": "R_wrist_yaw"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 22}, "actuator": {"const": "waist_yaw"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 23}, "actuator": {"const": "neck_yaw"}}},
+    {"$ref": "#/$defs/home_row", "properties": {"slot": {"const": 24}, "actuator": {"const": "neck_pitch"}}}
+   ],
+   "items": false
+  },
+  "ankle_map": {
+   "description": "Per foot: the model file's foot hinge angles, pitch (<side>_ankle_pitch_joint) and roll (<side>_ankle_roll_joint), in rad, as functions of the foot's two ankle motors' q, A and B (rad, the motors' coordinates under this file's home table). Nodes A_i = -0.787 + i x 1.574 / 18 (row index i) and B_j = -0.787 + j x 1.574 / 18 (column index j), i, j = 0 to 18; pitch[i][j] and roll[i][j] are the angles at (A_i, B_j). Between nodes the map is bilinear in A and B; outside the extent the bilinear formula of the nearest edge cell (its cell index clamped to 0 to 17) is extended.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["left", "right"],
+   "properties": {"left": {"$ref": "#/$defs/foot_map"}, "right": {"$ref": "#/$defs/foot_map"}}
+  }
+ },
+ "$defs": {
+  "not_nan": {
+   "description": "Refuses a NaN (YAML .nan), which minimum and maximum let through (every comparison with a NaN is false): the inner schema matches a NaN and no other value.",
+   "not": {"type": "number", "minimum": 0, "maximum": 0, "not": {"const": 0}}
+  },
+  "home_row": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["slot", "actuator", "sign", "home_rad"],
+   "properties": {
+    "slot": {"type": "integer", "minimum": 0, "maximum": 24, "description": "the firmware slot index"},
+    "actuator": {"type": "string", "description": "the slot's actuator name"},
+    "sign": {"type": "integer", "enum": [-1, 1], "description": "+1 or -1"},
+    "home_rad": {
+     "type": "number",
+     "minimum": -6.3,
+     "maximum": 6.3,
+     "$ref": "#/$defs/not_nan",
+     "x-unit": "rad",
+     "description": "q at the drive's stored zero (r = 0); finite, |home_rad| <= 6.3",
+     "$comment": "6.3 rad: a bound just above one turn (2 pi = 6.283 rad)"
+    }
+   }
+  },
+  "foot_map": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["axes", "extent", "nodes", "pitch", "roll"],
+   "properties": {
+    "axes": {"const": ["A", "B"], "description": "row index: motor A; column index: motor B"},
+    "extent": {
+     "const": [[-0.787, 0.787], [-0.787, 0.787]],
+     "x-unit": "rad",
+     "description": "fixed: A and B from -0.787 to 0.787 rad",
+     "$comment": "0.787 rad = 2.02 x 0.35 + 0.8 x 0.10: the largest |A| or |B| of a command inside the firmware's ankle box (pitch 0.35 rad, roll 0.10 rad) under its map A = 2.02 pitch - 0.8 roll, B = -2.02 pitch - 0.8 roll"
+    },
+    "nodes": {"const": 19, "description": "fixed: 19 nodes per axis"},
+    "pitch": {"$ref": "#/$defs/node_grid", "description": "the foot's pitch hinge angle at each node, [i][j] = (A_i, B_j)"},
+    "roll": {"$ref": "#/$defs/node_grid", "description": "the foot's roll hinge angle at each node, [i][j] = (A_i, B_j)"}
+   }
+  },
+  "node_grid": {
+   "type": "array",
+   "minItems": 19,
+   "maxItems": 19,
+   "items": {"$ref": "#/$defs/node_row"},
+   "description": "19 rows, one per A_i"
+  },
+  "node_row": {
+   "type": "array",
+   "minItems": 19,
+   "maxItems": 19,
+   "items": {"$ref": "#/$defs/node_value"},
+   "description": "19 values, one per B_j"
+  },
+  "node_value": {
+   "type": "number",
+   "minimum": -1.6,
+   "maximum": 1.6,
+   "$ref": "#/$defs/not_nan",
+   "x-unit": "rad",
+   "description": "a foot hinge angle; finite, |v| <= 1.6"
+  }
+ }
+}
