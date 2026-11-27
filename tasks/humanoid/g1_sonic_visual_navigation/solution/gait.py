@@ -9,7 +9,17 @@ class GaitPolicy:
     def __init__(self, encoder):
         self.encoder = encoder
 
-    def codes(self, tick, motion, forward, left, heading_error, speed, yaw_speed):
+    def codes(
+        self,
+        tick,
+        motion,
+        forward,
+        left,
+        heading_error,
+        speed,
+        yaw_speed,
+        lateral_speed=0.0,
+    ):
         """Track a sensor-derived target in horizontal pelvis coordinates at 50 Hz."""
         # The encoder takes ten poses spaced five 50 Hz control ticks apart.
         # Sample each pose on both sides as well, for its central-difference velocity.
@@ -31,6 +41,18 @@ class GaitPolicy:
             sideways = 0.0
             yaw_bias = np.clip(0.18 * steering, -0.19, 0.19)
             yaw_rate = np.clip(1.8 * steering - 0.08 * yaw_speed, -0.75, 0.75)
+        elif motion == "gate":
+            # Regulate lateral position separately from heading so the next
+            # cabinet stays in view. Slow forward progress while crossing the
+            # aisle; restore a full forward step when centered in the opening.
+            speed_fraction = (forward - 0.20) / max(0.25, abs(left) * 2.8) + np.clip(
+                1.0 - 4.0 * abs(left), 0.0, 1.0
+            )
+            stride = 0.25 * np.clip(speed_fraction, 0.42, 1.0)
+            sideways = np.clip(0.6 * left - 0.095 * lateral_speed, -0.25, 0.25)
+            gain = np.ones_like(samples)
+            yaw_bias = np.clip(0.22 * heading_error, -0.18, 0.18)
+            yaw_rate = np.clip(1.8 * heading_error - 0.08 * yaw_speed, -0.75, 0.75)
         elif motion == "pivot":
             sign = np.sign(heading_error)
             turning_speed = np.maximum(0.0, sign * yaw_speed)

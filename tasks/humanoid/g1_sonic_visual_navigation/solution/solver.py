@@ -11,7 +11,7 @@ import numpy as np
 
 from gait import GaitPolicy
 from sonic_sim.encoder import ReferenceEncoder
-from vision import beacons, horizontal_axes
+from vision import beacons, camera_arrays, gate_openings, horizontal_axes
 
 
 def rotation(yaw):
@@ -39,7 +39,9 @@ class Estimate:
     goal: np.ndarray | None = None
     marker: np.ndarray | None = None
     turn_sign: int = 0
+    aligning: bool = False
     parked: bool = False
+    gates: tuple = ()
 
 
 class VisualPolicy:
@@ -93,6 +95,7 @@ class VisualPolicy:
                 desired_yaw=s.yaw,
                 goal=s.xy.copy() if leg == "pivot" else None,
                 marker=None,
+                aligning=False,
                 parked=False,
             )
         if leg == "pivot":
@@ -132,7 +135,24 @@ class VisualPolicy:
     def compute(self, obs, parent):
         pro = obs["observation"]
         s = self.integrate(obs, parent)
-        s = self.localize(s, beacons(obs["camera"], pro["gravity_body"]))
+        arrays = camera_arrays(obs["camera"])
+        s = self.localize(s, beacons(obs["camera"], pro["gravity_body"], arrays=arrays))
+        if s.leg == "approach":
+            observed = gate_openings(*arrays, pro["gravity_body"], s.xy, s.yaw)
+            gates = list(s.gates)
+            for center in observed:
+                if center[0] < s.xy[0] + 0.35:
+                    continue
+                nearest = min(
+                    range(len(gates)),
+                    key=lambda i: abs(gates[i][0] - center[0]),
+                    default=None,
+                )
+                if nearest is None or abs(gates[nearest][0] - center[0]) > 0.50:
+                    gates.append(center)
+                else:
+                    gates[nearest] = 0.85 * gates[nearest] + 0.15 * center
+            s = replace(s, gates=tuple(sorted(gates, key=lambda g: g[0])))
         reverse = rotation(s.yaw).T
         forward, left = reverse @ (s.goal - s.xy) if s.goal is not None else (0.0, 0.0)
         speed = (reverse @ s.velocity)[0]
@@ -142,18 +162,45 @@ class VisualPolicy:
             motion = "stand"
         elif s.leg != "pivot":
             distance = math.hypot(forward, left)
-            if s.parked:
-                if distance > 0.245 or abs(yaw_error) > 0.174:
-                    s = replace(s, parked=False)
-            elif distance < 0.155 and abs(yaw_error) < 0.145 and abs(speed) < 0.13:
-                s = replace(s, parked=True)
+            if s.parked and (distance > 0.235 or abs(yaw_error) > 0.165):
+                s = replace(s, parked=False)
+            if not s.parked:
+                if distance < 0.21 and abs(yaw_error) > 0.14:
+                    s = replace(s, aligning=True)
+                elif distance > 0.24 or abs(yaw_error) < 0.09:
+                    s = replace(s, aligning=False)
+                if (
+                    distance < 0.175
+                    and abs(yaw_error) < 0.14
+                    and not s.aligning
+                    and np.linalg.norm(s.velocity) < 0.13
+                ):
+                    s = replace(s, parked=True)
             if s.parked:
                 motion = "stand"
-            elif distance < 0.205 and abs(yaw_error) > 0.17:
-                # A shrinking walking stride cannot correct a residual heading error at the waypoint.
+            elif s.aligning:
+                # A short stance-turn corrects heading even as walking stride
+                # shrinks. Hysteresis keeps it active through the correction.
                 motion = "pivot"
+        if s.leg == "approach" and s.gates and s.goal is not None:
+            pending = [g for g in s.gates if g[0] + 0.31 > s.xy[0]]
+            if pending or s.goal[0] - s.xy[0] > 0.85:
+                # Keep the camera facing along the aisle and sidestep on the
+                # walking cycle. Hold the current opening until the trailing
+                # arm and foot have passed its plane.
+                target = pending[0] if pending else s.goal
+                forward, left = target - s.xy
+                yaw_error = wrap(s.entry_yaw - s.yaw)
+                motion = "gate"
         codes = self.gait.codes(
-            s.tick - s.entered, motion, forward, left, yaw_error, speed, s.yaw_rate
+            s.tick - s.entered,
+            motion,
+            forward,
+            left,
+            yaw_error,
+            speed,
+            s.yaw_rate,
+            s.velocity[1],
         )
         return s, {"rows": [{"codes": codes.tolist()}]}
 

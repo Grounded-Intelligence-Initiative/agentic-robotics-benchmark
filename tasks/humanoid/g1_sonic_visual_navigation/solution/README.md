@@ -1,18 +1,18 @@
 # Reference solver
 
-The controller walks to the first visually marked stop, waits for the turn light, pivots to face the yellow heading beacon and walks to the final green stop. It receives the same JSONL camera and robot observations as a participant. It uses the released GEAR-SONIC V1 encoder to turn a feedback gait into 64 integer codes every 20 ms. The environment applies the released decoder and advances the robot.
+The G1 sidesteps through the visible cabinet openings, stops at the blue beacon, pivots toward the yellow heading beacon and walks to the final green stop. Every 20 ms the controller reads the public egocentric RGB-D image and local proprioception. The public GEAR-SONIC V1 encoder converts a ten-pose gait reference into 64 integer codes. The environment applies the released decoder and advances the robot.
 
-**Vision.** The controller separates colored components in the 128 × 96 RGB image. For each component it unprojects valid optical-axis depths, fits the public 0.12 m beacon sphere, compensates for the camera translation and projects the center onto the horizontal pelvis axes using measured gravity. On a walking leg, the requested stop is 1.50 m before the beacon along the heading at which that leg began.
+**Obstacle detection.** In the 128 × 96 RGB image, the controller finds vertical edges of teal cabinet panels. It checks that the adjacent depth is at least 30 cm farther away or beyond the sensor range. This can recover the second opening through the first even when both cabinets have similar colors. With the published opening width and camera calibration, each visible edge estimates the center of its own opening. The controller tracks those centers in a horizontal odometry frame using body velocity, gravity and yaw rate.
 
-**Feedback.** Body velocity and yaw rate maintain a local position and heading estimate between camera measurements. The bearing of a visible stationary walking beacon corrects yaw drift. The turn light supplies the initial direction while the yellow marker is outside the field of view. Once visible, its bearing determines the final yaw. A slower approach near the target and a constant standing reference inside the stop region stabilize the extra approach dwell. The new beacon starts the next leg.
+**Passing through an opening.** The gait controls forward stride and sideways stride independently. The pelvis faces down the aisle so that the next cabinet stays visible. As the lateral error grows, the controller reduces forward speed and increases sideways stride. It keeps tracking the same opening until the pelvis is 31 cm beyond its estimated plane, allowing the trailing foot and arm to clear the cabinet before the next lateral maneuver.
 
-**Same-tick observations.** Each action is computed from the estimate associated with its preceding committed observation. Several packets can arrive for a single tick. They each start from the same estimate and the next packet’s `last_observation_id` identifies which result advanced the robot.
+**Stopping and turning.** The controller unprojects colored beacon pixels and fits the public 0.12 m sphere to metric depth. The walking stop lies 1.50 m before the beacon along the leg’s entry heading. The turn light supplies the initial direction while the yellow target is outside the field of view. Once visible, its bearing determines the final yaw. The controller parks inside the stop region and resumes when the next light appears.
 
-In the task environment install the reference and run a public practice course:
+Install the reference in the task environment and run a public practice layout with opposite openings.
 
 ```sh
 bash solution/solve.sh
-python /home/user/practice.py --seed 7 --turn left
+python /home/user/practice.py --seed 7 --layout-seed 7 --gaps LR --turn left
 ```
 
-The periodic leg and arm motion is adapted from the public G1 SONIC command-sequence reference. The optical localization and robot-local state estimation in this solution use only the published calibration, visible lights and measured proprioception.
+The periodic leg and arm motion is adapted from the public G1 SONIC command-sequence reference. The solver uses the participant wire and published dimensions. It receives its observations and returns codes over JSONL.

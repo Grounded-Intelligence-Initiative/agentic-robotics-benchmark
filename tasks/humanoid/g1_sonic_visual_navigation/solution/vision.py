@@ -99,12 +99,18 @@ def _center(rows, cols, depth):
     return center, support
 
 
-def beacons(camera, gravity_body):
-    """Return each visible sphere center as [forward, left] metres from the pelvis."""
+def camera_arrays(camera):
+    """Decode the aligned RGB and optical-axis depth exactly once per observation."""
     rgb = _png(camera["rgb_png"])
     depth = _png(camera["depth_mm_png"])
     if rgb.shape != (HEIGHT, WIDTH, 3) or depth.shape != (HEIGHT, WIDTH):
         raise ValueError("expected 128 by 96 aligned RGB and depth images")
+    return rgb, depth
+
+
+def beacons(camera, gravity_body, *, arrays=None):
+    """Return each visible sphere center as [forward, left] metres from the pelvis."""
+    rgb, depth = camera_arrays(camera) if arrays is None else arrays
     level = np.stack(horizontal_axes(gravity_body))
     labels = _classify(rgb)
     labels[depth == 0] = 0
@@ -125,3 +131,48 @@ def beacons(camera, gravity_body):
                 found[color] = level @ (center + CAMERA_IN_PELVIS)
                 best = support
     return found
+
+
+def gate_openings(rgb, depth, gravity_body, xy, yaw):
+    """Map visible cabinet ends into the horizontal odometry frame.
+
+    A vertical end has foreground cabinet pixels on one side and space at least
+    30 cm farther away on the other. This also distinguishes two teal panels
+    seen through each other. The public opening spans about one metre.
+    """
+    r, g, b = rgb.astype(float).transpose(2, 0, 1)
+    cabinet = (g > 1.6 * r) & (b > 1.6 * r) & (g > 0.65 * b) & (b > 0.65 * g)
+    z_mm = depth.astype(np.int32)
+    plane = np.stack(horizontal_axes(gravity_body))
+    c, s = np.cos(yaw), np.sin(yaw)
+    horizontal = np.array([[c, -s], [s, c]]) @ plane
+    samples = []
+    for direction in (-1, 1):
+        # Require multiple rows of a consistent vertical discontinuity, to
+        # discard the top edge of a cabinet in a rolled camera.
+        next_z = np.roll(z_mm, -2 * direction, axis=1)
+        edge = cabinet & (z_mm > 0) & ((next_z == 0) | (next_z > z_mm + 300))
+        edge[:, :2] = edge[:, -2:] = False
+        runs = ndimage.minimum_filter1d(edge, size=5, axis=0, mode="constant")
+        rows, cols = np.nonzero(runs)
+        if not len(rows):
+            continue
+        z = z_mm[rows, cols] * 0.001
+        rays = np.column_stack(
+            (
+                np.ones(len(z)),
+                (63.5 - cols - direction * 0.5) / FOCAL,
+                (47.5 - rows) / FOCAL,
+            )
+        )
+        points = (rays * z[:, None] + CAMERA_IN_PELVIS) @ horizontal.T + xy
+        points[:, 0] += 0.07
+        points[:, 1] -= direction * 0.51
+        # Outside ends of the long furniture lie beyond the public aisle.
+        samples.extend(points[np.abs(points[:, 1]) < 1.3])
+    if not samples:
+        return []
+    values = np.asarray(samples)
+    ordered = values[np.argsort(values[:, 0])]
+    groups = np.split(ordered, np.flatnonzero(np.diff(ordered[:, 0]) > 0.36) + 1)
+    return [np.median(group, axis=0) for group in groups if len(group) >= 3]
