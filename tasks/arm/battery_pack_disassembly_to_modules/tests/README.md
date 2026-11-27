@@ -393,9 +393,9 @@ swollen modules (section 6, the entry "2026-11-26, from 07:52"), scored `mean_pa
 run, frozen before it).
 
 The anchor and its spread: see the status log (section 6) for the measured runs. `tests/anchor.json` holds the
-value measured through `ale validate` of the second round's version on an RTX 3090 host (section 6, the entry
-"2026-11-26, from 16:31"; before it, the entry "2026-11-26, from 03:54"): the same value, in the same steps, as the
-native runs on the author's server.
+value measured natively on the third round's version (section 6, the entry "2026-11-26, from 19:00": run ref3 on
+`383db135`); `ale validate` of that version is owed. The second round's value through `ale validate` on an RTX 3090
+host was the same, in the same steps as the native runs (the entry "2026-11-26, from 16:31").
 
 ## 5. Known limitations and open decisions (version 0.1.0)
 
