@@ -29,7 +29,9 @@
    "swollen_seed": 16049566731049444597,
    "swollen": true,
    "foam_seed": 14814331181428029708,
-   "foam_n": 2
+   "foam_n": 2,
+   "shank_seed": 388544490045743679,
+   "swollen3_seed": 5512305201146141692
   },
   {
    "seed": 18166115029290013393,
@@ -60,7 +62,9 @@
    "swollen_seed": 8193784037573283608,
    "swollen": true,
    "foam_seed": 10638465951787011354,
-   "foam_n": 1
+   "foam_n": 1,
+   "shank_seed": 9038667618986709475,
+   "swollen3_seed": 3672187967096209905
   },
   {
    "seed": 9429699338181942882,
@@ -91,7 +95,9 @@
    "swollen_seed": 4175648977437553629,
    "swollen": false,
    "foam_seed": 6624237903518949427,
-   "foam_n": 1
+   "foam_n": 1,
+   "shank_seed": 3623761010365755986,
+   "swollen3_seed": 2007685098579488696
   },
   {
    "seed": 2668488664467343524,
@@ -122,7 +128,9 @@
    "swollen_seed": 13004010384168206669,
    "swollen": true,
    "foam_seed": 3997508065325526115,
-   "foam_n": 2
+   "foam_n": 2,
+   "shank_seed": 10114733813340239833,
+   "swollen3_seed": 6649592528821026363
   },
   {
    "seed": 10067437286830775329,
@@ -153,7 +161,9 @@
    "swollen_seed": 8215821666515257532,
    "swollen": true,
    "foam_seed": 127413278742760984,
-   "foam_n": 0
+   "foam_n": 0,
+   "shank_seed": 17824408000097313855,
+   "swollen3_seed": 14714906507559818490
   },
   {
    "seed": 12647498776139476245,
@@ -184,7 +194,9 @@
    "swollen_seed": 11980843862877421225,
    "swollen": false,
    "foam_seed": 18439706256975687588,
-   "foam_n": 1
+   "foam_n": 1,
+   "shank_seed": 11779946155135102612,
+   "swollen3_seed": 12346468397685180580
   }
  ],
  "note": "the fixed hidden set: tests/review/select_set.py"
