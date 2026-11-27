@@ -341,10 +341,10 @@ seeds); the graded ones are in neither the image nor the sandbox.
 
 ## 6. Known limitations and open items (version 0.3)
 
-* **Version 0.3 is measured natively only.** `ale validate` passed on versions 0.1 and 0.2 on an RTX 3090 with driver
-  535 and rootless Docker that limits the CPUs by affinity instead of a quota (status log). Version 0.3 changes the
-  image's inputs (the service, its procedures, the manual): a new image, `ale validate` and its oracle's anchor are
-  due on the validate host. Not exercised for any version: a cloud GPU model, a host with a CPU quota.
+* **Validated in the engine on one host.** `ale validate` passed on version 0.3 (`e4ffe330`, status log, 2026-11-26,
+  night) as on versions 0.1 and 0.2, all on an RTX 3090 with driver 535 and rootless Docker that limits the CPUs by
+  affinity instead of a quota; the anchor is version 0.3's validate oracle. Not exercised for any version: a cloud
+  GPU model, a host with a CPU quota.
 * **Difficulty is measured by proxies only for version 0.3.** The target is a frontier-model reward of roughly 0.3 or
   below. Versions 0.1 and 0.2 were saturated by one Opus 5.5 episode each (rewards 1.0 and 0.92, status log). For
   0.3 the evidence is the frozen program of the 0.2 episode and a fresh-agent proxy adapted from it on development
@@ -414,6 +414,32 @@ seeds); the graded ones are in neither the image nor the sandbox.
 Newest first. Each entry says where the numbers come from; "here" is the development server (Ubuntu 22.04,
 RTX 6000 Ada, NVIDIA driver 570.195.03, Isaac Sim 6.2.0.0 + Isaac Lab 3.0.0 in a native Python 3.12 venv, no root,
 no Docker).
+
+### 2026-11-26, night: version 0.3 through `ale validate`, on the RTX 3090 host (tree `e4ffe330`)
+
+Where: the host of the version 0.1 and 0.2 runs (one RTX 3090 24 GB, NVIDIA driver 535.183.01, Intel i9-12900K, the
+pinned engine `bfb7505`, Docker 29.10.1 in rootless mode), with the same two deviations from an evaluation host: the
+renderer's driver check off (still in both copies of `endosim/render_server.py`), and the CPUs limited by an affinity
+of 8 instead of a quota. The image was rebuilt (`environment/` changed); nothing of the task had to change for the
+host.
+
+**Run** `validate-13c4ab75` (20:17 to 21:06, the image build included), first try:
+
+    ok    grounded-intelligence-initiative/endoscope_camera_assistance_from_video: untouched={'reward': 0.0}, oracle={'reward': 1.0}
+
+The untouched verdict: "no submission at /home/user/submission/run.sh", verify 6 s. Setup took 129 to 131 s in both
+episodes (the commissioning service's renderer up, its canary passed, the development set recording). The oracle, in
+the separate verifier sandbox: the renderer up in 123 s, the canary 10 of 10 markers (at most 0.75 px off) in 3 s,
+the agent account cleared (45 processes), the controller's network filter on. `useful_view_fraction` 0.81125, ratio
+1.0003, reward 1.0; per procedure 0.8450 0.8037 0.8900 0.6913 0.7675 0.8287 0.7275 0.8512 0.8612 0.9113 0.8225
+0.7350; no takeover, 45 critical actions, no lens contact, no renderer or solver restart; probe pairs 203 of 554
+differing; 125 ms a frame, 0.84 extra renders a frame, the controller 10.8 s over 10,154 requests; verify 1481 s.
+The mean is the native run's on the same tree to the last digit.
+
+*What was decided.* `tests/anchor.json` keeps 0.811, its source now this run; `full_at` stays 0.98. No second
+validate: the commit of this entry changes only `tests/anchor.json` and this file, so the `ok` line above stands for
+it. A frontier episode on the pushed commit follows (the 2 h budget); its numbers go into the pull request. Not
+exercised: the canary's renderer restart (the canary passed at once), any cloud GPU model, a host with a CPU quota.
 
 ### 2026-11-26, evening: version 0.3, made harder after the second frontier episode (trees `1dcff25` to `a647378`; measured on `d31ae95` and `a647378`)
 
