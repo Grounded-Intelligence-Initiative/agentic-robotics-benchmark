@@ -59,6 +59,7 @@ def statements(C):
     f_wrist = F.camera_K("wrist")[0][0]
     stalk = 2 * max(max(c["peduncle_r"][1] for c in F.CULTIVARS.values()), M.lit("farm", "^rp = st.uniform(#, #)")[1])
     return [
+        ("grader stops # s after it starts", (C["verifier_deadline_s"],)),
         ("# plants hang on their strings, with # trusses each", (R["plants"], R["trusses"])),
         ("a peduncle is # to # mm long and # to # mm thick. The mouth that takes it is # mm wide and # mm deep",
          (1e3 * cv["peduncle_len"][0], 1e3 * cv["peduncle_len"][1], 2e3 * cv["peduncle_r"][0], 2e3 * cv["peduncle_r"][1],

@@ -410,7 +410,7 @@ def tool_points():
 
 
 _TOOL_PTS = tool_points()
-APPROACH_ALPHAS = (0.0, -55.0, 55.0)
+APPROACH_ALPHAS = (0.0,)          # the one stated approach: in the peduncle's vertical plane, from above and in front
 APPROACH_BACK = 0.30
 
 
@@ -458,9 +458,9 @@ def _hits(pts, kind, item):
 
 
 def clear_alphas(truss, plants, leaves=True):
-    """The stated approach directions (APPROACH_ALPHAS) along which the tool reaches the truss's cut point in a
-    straight line of APPROACH_BACK without touching a stem, a fruit, another truss's peduncle or (with `leaves`) a
-    leaf, everything at rest."""
+    """The stated approach (APPROACH_ALPHAS: its angle about the peduncle, a list of one) when the tool reaches the
+    truss's cut point along it in a straight line of APPROACH_BACK without touching a stem, a fruit, another truss's
+    peduncle or (with `leaves`) a leaf, everything at rest; else an empty list."""
     out = []
     for al in APPROACH_ALPHAS:
         pts = _swept(truss, al)
@@ -480,9 +480,9 @@ def clear_alphas(truss, plants, leaves=True):
 
 def _plants(seed, cultivar):
     """The plants of a row section. By construction: 4 to 6 trusses are ready, on each plant the lowest ones; every
-    ready truss can be cut by a straight approach from at least one of the three stated directions without pushing
-    anything aside (a truss that cannot is drawn again, up to 40 times; a leaf that would close a ready truss's last
-    approach is one the grower has taken off)."""
+    ready truss can be cut by the stated straight approach (in its peduncle's vertical plane, from above and in
+    front) without pushing anything aside (a truss that cannot is drawn again, up to 40 times; a leaf that would
+    close a ready truss's approach is one the grower has taken off)."""
     for attempt in range(50):
         st = Stream(seed, "plants|%d" % attempt)
         leaf_p = st.uniform(*ROW["leaf_p"])

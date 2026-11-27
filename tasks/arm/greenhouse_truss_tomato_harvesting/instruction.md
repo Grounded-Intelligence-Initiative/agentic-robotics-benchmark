@@ -141,7 +141,9 @@ Your program shares the GPU and the sandbox's memory with the cell. If the cell 
 program is stopped, every file of your account outside the submission folder and every SysV IPC object of your
 account are removed, the submission folder is put back as it was handed over, and the row section is run again from
 the start in a fresh cell (that restart is not one of the three); if the cell fails again on that row section after
-your program was started again, or your program could not be stopped completely, the row section counts 0.
+your program was started again, or your program could not be stopped completely, the row section counts 0. The
+grader stops 13200 s after it starts, whatever is running then: the row sections graded by then count, the others
+count nothing.
 
 A row section ends when your program sends `done`, when its simulated time is used up, at the third protective
 stop, or when your program is given up on. Then, when everything has come to rest, a ready truss counts if all of

@@ -377,19 +377,24 @@ class Reference(object):
         tcp = T_of(truth["tcp_target"])[:3, 3]
         hang = tcp[2] - (low[2] - low[3])
         lag = max(0.0, sgn * (tcp[1] - low[1]))
-        # laid by feel: the lowest fruit comes down on the floor, then the clamp goes on along the bay and down behind
-        # it. A truss is a chain of fat links: let down, it now and then stands on a fruit and pushes back. The wrench
-        # tells: while the truss pushes, the clamp only goes on along the bay (and a little up), which draws the truss
-        # out flat; while it does not, the clamp also comes down.
+        # laid by feel, like a stick let down about its foot: the lowest fruit comes down on the floor, and the clamp
+        # goes along the bay on an arc about it. A truss is a chain of fat links: let down, it now and then stands on
+        # another fruit and pushes back. The wrench tells: while the truss pushes, the clamp only goes on along the bay
+        # (and a little up), which draws the truss out, and the arc is taken up again from there, wider.
         z_end = FZ + 0.100
-        room = abs(y_c - y_near) - 0.045 - lag
-        D = min(room, 1.6 * max(0.0, hang - 0.090) + 0.04)
-        y, z = y_c - sgn * D, FZ + hang + 0.010
+        L = math.hypot(lag, hang + 0.010)
+        phi1 = math.acos(min(1.0, (z_end - FZ) / L))
+        y_piv = y_c - sgn * L * math.sin(phi1)
+        if sgn * (y_piv - y_near) < 0.045:               # a long truss: its foot stays clear of the bay's near wall
+            y_piv = y_near + sgn * 0.045
+        y, z = y_piv + sgn * lag, FZ + hang + 0.010
+        D = abs(y_c - y)
         obs = yield from self.move(obs, mk(Rv, np.array([lane["x"], y, 0.25])), v=0.2)
         obs = yield from self.move(obs, mk(Rv, np.array([lane["x"], y, z])), v=0.15)
         obs = yield from self.hold(6)
+        phi = math.atan2(lag, hang + 0.010)
         pushed = 0
-        for _k in range(80):
+        for _k in range(160):
             if z <= z_end + 1e-4:
                 break
             push = obs["wrench"][2] > 1.5 or obs["status"]["guard"]
@@ -399,9 +404,17 @@ class Reference(object):
                 if left < 0.004:
                     break                                 # at the bay's end and still pushed: let go here
                 y, z = y + sgn * min(left, 0.012), z + 0.002
+                L = math.hypot(y - y_piv, z - FZ)
+                phi = math.atan2(sgn * (y - y_piv), z - FZ)
             else:
-                y, z = y + sgn * min(left, 0.008), max(z_end, z - 0.005)
-            obs = yield from self.move(obs, mk(Rv, np.array([lane["x"], y, z])), v=0.05, guard=3.0)
+                phi += 0.008 / L
+                y_n, z_n = y_piv + sgn * L * math.sin(phi), FZ + L * math.cos(phi)
+                if sgn * (y_n - y_c) > 0:                 # at the bay's end: straight down from here
+                    y_n, z_n = y_c, z - 0.004
+                    L = math.hypot(y_n - y_piv, z_n - FZ)
+                    phi = math.atan2(sgn * (y_n - y_piv), z_n - FZ)
+                y, z = y_n, max(z_end, z_n)
+            obs = yield from self.move(obs, mk(Rv, np.array([lane["x"], y, z])), v=0.03, guard=2.5)
             if DEBUG:
                 self.log("   lay: tcp y %.3f z %.3f fz %.2f%s" % (y, z - FZ, obs["wrench"][2], " pushed" if push else ""))
             if obs["status"]["stopped"]:

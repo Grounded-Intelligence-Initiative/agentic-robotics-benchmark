@@ -11,11 +11,6 @@ AGENT_USER="$(basename "$HOME_DIR")"
 # cp -r, NOT -a: with -a the `payload/.` form also copies the payload directory's own root ownership onto the agent
 # home, locking the agent out of its own workspace.
 cp -r payload/. "$HOME_DIR/"
-# the robot's description as NVIDIA's asset library ships it (USD), beside the task's own summary of it
-if [ -d /opt/assets/isaac/Isaac/Robots/UniversalRobots/ur20 ]; then
-  mkdir -p "$HOME_DIR/given/robot"
-  cp -r /opt/assets/isaac/Isaac/Robots/UniversalRobots/ur20 "$HOME_DIR/given/robot/ur20_usd"
-fi
 for entry in payload/* payload/.[!.]*; do
   [ -e "$entry" ] || continue
   chown -R "$AGENT_USER:$AGENT_USER" "$HOME_DIR/$(basename "$entry")"
