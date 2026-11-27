@@ -129,6 +129,18 @@ def summarize(rows):
             group = [r for r in rows if r[flag] == name]
             result[name+"_episodes"] = len(group)
             result[name+"_deliveries"] = sum(r["complete"] for r in group)
+    # ALE retains numeric metrics in verification.json. Keep terminal evidence for every allocation.
+    for i, row in enumerate(rows, 1):
+        prefix = f"trial_{i:02d}_"
+        result[prefix + "layout"] = row["pair"]
+        for key, name in (("start", "far"), ("shape", "cylinder"), ("side", "right"),
+                          ("outcome", "aborted"), ("outcome", "time_limit")):
+            result[prefix + name] = int(row[key] == name)
+        for key in ("walked", "docked", "contacted", "lifted", "wrong_pad", "disqualified", "fell", "complete",
+                    "applied_rows", "simulated_s", "changed_coordinates", "joint_acceleration_samples",
+                    "joint_accel_square_sum", "dock_s", "first_contact_s", "lift_s", "place_s"):
+            if row.get(key) is not None:
+                result[prefix + key] = row[key]
     return result
 
 
