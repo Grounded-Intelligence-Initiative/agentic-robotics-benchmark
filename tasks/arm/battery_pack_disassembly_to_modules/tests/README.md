@@ -395,15 +395,16 @@ swollen modules (section 6, the entry "2026-11-26, from 07:52"), scored `mean_pa
 run, frozen before it).
 
 The anchor and its spread: see the status log (section 6) for the measured runs. `tests/anchor.json` holds the
-value measured natively on the third round's final version (section 6, the entry "2026-11-26, from 19:00": run ref5
-on `b132827b`); `ale validate` of that version is owed. The second round's value through `ale validate` on an RTX 3090
-host was the same, in the same steps as the native runs (the entry "2026-11-26, from 16:31").
+value measured through `ale validate` of the third round's final version on an RTX 3090 host (section 6, the entry
+"2026-11-27, from 03:04"): the same value, in the same steps, as the native run ref5 on `b132827b` (the entry
+"2026-11-26, from 19:00"). The second round's value through `ale validate` was the same (the entry "2026-11-26, from
+16:31").
 
 ## 5. Known limitations and open decisions (version 0.1.0)
 
 - **Validated in the engine on one host.** `ale validate` passed on 2026-11-26 on the author's validate host (one
   RTX 3090 on driver 535, rootless Docker without a CPU quota; section 6, the entries "2026-11-26, from 03:54" and,
-  for the second round's version, "2026-11-26, from 16:31"): the image builds, setup starts the commissioning service, the verify stage's root-only paths ran (the cell as the
+  for the second and third rounds' versions, "2026-11-26, from 16:31" and "2026-11-27, from 03:04"): the image builds, setup starts the commissioning service, the verify stage's root-only paths ran (the cell as the
   account `packcell` from a private copy, the seccomp launcher, the kit's account clearing), the untouched sandbox
   scored 0.0 and the oracle 1.0. Not exercised there: an agent phase (the commissioning sessions as the agent
   reaches them), any cloud GPU model, a host with a CPU quota.
@@ -1491,6 +1492,32 @@ yield model, simulated (4,000 draws from the documented ranges each, outside the
 sheared no M6 or M8 shank; of the M6 fasteners that stalled it found a usable yield point on 1,473 of 1,480 (7 worked
 below 80 % of their shear torque), of the M8 ones on 1,391 of 1,403 (12 reached its cap without a knee).
 
+**2026-11-27, from 03:04. The third round's version through `ale validate`, on the RTX 3090 host (tree
+`fee41c05`).** The host of the earlier validate runs, with the same two deviations from an evaluation host (the cell's
+driver check off, still in both copies of `packcell/server.py`; the CPUs limited by an affinity of 8 instead of a
+quota) and the same engine `bfb7505`. The image was rebuilt (`environment/` changed); nothing of the task had to change
+for this host.
+
+*Run* `validate-59506641` (03:04 to 03:47, the image build included), first try:
+
+    ok    grounded-intelligence-initiative/battery_pack_disassembly_to_modules: untouched={'reward': 0.0}, oracle={'reward': 1.0}
+
+The untouched verdict: "no usable submission", verify 10 s. The oracle: setup 0.7 s; in the separate verifier sandbox
+the root path secured, the agent account cleared (49 processes), the controller behind the seccomp guard, the canary
+passed (the cell up in 15.6 s, a pack built and rendered in 125.6 s on a cold cache). `mean_pack_credit` 1.00000,
+ratio 1.000, reward 1.0, every pack counted under the completion gate: every pack 1.0 (49, 48, 59, 58, 67 and 69 items
+placed) in 1126, 1094, 1352, 1297, 1401 and 1499 steps, the native run ref5's steps exactly, 125 to 182 s of wall
+clock a pack; no protective stop, nothing stripped, sheared, dropped from the bit or loaded past its yield point, no
+module vented, no pack condemned, latched or incomplete; the margins as natively (the tip within 0.026 mm, 0.97 of a
+yield point, 1.45 m/s^2); the probe lock 99 of 99 (67 idle pairs not counted); the controller's own time 5.4 s;
+verify 1140 s.
+
+*What was decided.* `tests/anchor.json` keeps 1.0, its source now this run; `full_at` stays 0.95. No second validate:
+the commit of this entry changes only `tests/anchor.json` and this file, so the `ok` line above stands for it. A
+frontier episode on the pushed commit follows (the 2 h budget); its numbers go into the pull request's description.
+Not exercised in the engine: the third round's rules in an agent's hands (the episode follows), any cloud GPU model,
+a host with a CPU quota.
+
 ## 7. Final report (2026-11-24, 16:30 EST)
 
 **Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00"),
@@ -1537,6 +1564,8 @@ commissioning sessions and a two-hour session; then one amendment (the 13 mm soc
 1.00000 on the final tree; the frozen episode's program 0.00000 (on the tree before the amendment); the fresh-agent
 proxy 0.00000; its disclosed revision as in that entry. The anchor's source is the final tree's native run;
 `ale validate` and a frontier episode on it are owed.
+Then (the entry "2026-11-27, from 03:04") the third round's version through `ale validate` on the RTX 3090 host:
+untouched 0.0, oracle 1.0, the reference's packs in ref5's native steps; the anchor's source is that run.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
