@@ -2,7 +2,7 @@
 shapes: a convex decomposition (CoACD) of the same mesh, so that the hollow crown is hollow."""
 import os, numpy as np, trimesh, coacd
 from PIL import Image
-RAW = "/home/lingjun/ale/dev/assets_raw"; OUT = "/home/lingjun/ale/agentic-robotics-benchmark/tasks/arm/tv_remote_search_and_retrieval/environment/room"
+RAW = os.environ.get("ROOM_RAW_DIR", "assets_raw"); OUT = os.environ.get("ROOM_OUT_DIR", "room")    # the downloaded sources; the bundle
 SCALE = 1.25
 s = trimesh.load(f"{RAW}/ph/fishermans_hat/fishermans_hat.gltf"); g = list(s.geometry.values())[0]
 T = s.graph.get(s.graph.geometry_nodes[list(s.geometry)[0]][0])[0]

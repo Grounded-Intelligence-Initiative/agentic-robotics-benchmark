@@ -28,3 +28,10 @@ for entry in payload/* payload/.[!.]*; do
   [ -e "$entry" ] || continue
   chown -R "$AGENT_USER:$AGENT_USER" "$HOME_DIR/$(basename "$entry")"
 done
+
+# The session's time stamp (session_time.sh in the agent's home reads it): written now, moments
+# before the agent's session starts, in a folder that is root's, so that the agent's account can
+# read it and cannot change or replace it.
+install -d -o root -g root -m 755 /run/session
+date -u +%s > /run/session/start
+chown root:root /run/session/start && chmod 0444 /run/session/start

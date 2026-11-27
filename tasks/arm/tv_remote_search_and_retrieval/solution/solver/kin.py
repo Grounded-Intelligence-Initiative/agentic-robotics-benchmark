@@ -1,4 +1,4 @@
-"""Kinematics for the reference controller: forward kinematics and damped least-squares inverse
+"""Kinematics for the reference: forward kinematics and damped least-squares inverse
 kinematics of the rail-mounted Panda, on a private copy of the room's model."""
 
 import math

@@ -1,7 +1,7 @@
 """Convert the downloaded source models into the room's render bundle (OBJ, Z up, metres, PNG textures)."""
 import os, sys, numpy as np, trimesh
 from PIL import Image
-RAW = "/home/lingjun/ale/dev/assets_raw"; OUT = "/home/lingjun/ale/dev/room"
+RAW = os.environ.get("ROOM_RAW_DIR", "assets_raw"); OUT = os.environ.get("ROOM_OUT_DIR", "room")    # the downloaded sources; the bundle
 
 def write_obj(path, v, f, uv, n=None):
     with open(path, "w") as h:

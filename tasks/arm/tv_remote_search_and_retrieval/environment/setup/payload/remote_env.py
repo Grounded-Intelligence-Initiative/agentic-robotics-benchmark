@@ -221,7 +221,7 @@ LIFT_CLEAR = 0.08                       # free height below the held remote
 PARTIAL_SEEN = 0.2                      # score for the remote seen in a delivered image
 PARTIAL_REVEALED = 0.4                  # score for the remote laid open
 # Where the phone, the case and the book are when a scene has none.
-OUT_OF_ROOM = ((6.0, 6.0, 1.0, 0.0), (7.0, 6.0, 1.0, 0.0), (8.0, 6.0, 1.0, 0.0))
+OUT_OF_ROOM = ((6.0, 6.0, 1.0, 0.0), (7.0, 6.0, 1.0, 0.0), (8.0, 6.0, 1.0, 0.0), (9.0, 6.0, 1.0, 0.0))
 
 _MASK = (1 << 64) - 1
 
@@ -248,6 +248,7 @@ class Scene:
     phone: tuple
     case: tuple
     book: tuple
+    decoy: tuple            # the other remote (the air conditioner's: the TV remote's size, light grey)
     fabric_rgb: tuple       # tints: each multiplies a surface's texture
     pad_rgb: tuple
     wood_rgb: tuple
@@ -293,10 +294,10 @@ def _shade(rgb, factor):
     return tuple(min(1.0, max(0.0, c * factor)) for c in rgb)
 
 
-def make_scene(seed, remote, phone=None, case=None, book=None, hanger_swing=None):
+def make_scene(seed, remote, phone=None, case=None, book=None, hanger_swing=None, decoy=None):
     """The scene of `seed` with the remote at `remote` = (x, y, z, yaw), world frame, as the
     furniture stands in this scene (`place` turns a point of the nominal layout into it).
-    `phone`, `case` and `book` likewise, or None for a scene without them. The layout, the hat,
+    `phone`, `case`, `book` and `decoy` (the air conditioner's remote) likewise, or None for a scene without them. The layout, the hat,
     the box, the hanger's swing (unless given) and the look are drawn from the seed."""
     look = _Draw(seed, "look")
     room = _Draw(seed, "room")
@@ -328,6 +329,7 @@ def make_scene(seed, remote, phone=None, case=None, book=None, hanger_swing=None
         phone=tuple(float(v) for v in (phone if phone is not None else OUT_OF_ROOM[0])),
         case=tuple(float(v) for v in (case if case is not None else OUT_OF_ROOM[1])),
         book=tuple(float(v) for v in (book if book is not None else OUT_OF_ROOM[2])),
+        decoy=tuple(float(v) for v in (decoy if decoy is not None else OUT_OF_ROOM[3])),
         fabric_rgb=fabric,
         pad_rgb=_shade(fabric, look.uniform(0.90, 1.0)),
         wood_rgb=_shade(look.choice(WOODS), look.uniform(0.85, 1.0)),
@@ -595,6 +597,18 @@ def _remote():
                                 _mesh("remote_look", "remote", "remote"))
 
 
+def _decoy():
+    """The other remote in the room, the air conditioner's: the TV remote's shape, size and weight, light grey where
+    the TV remote is black. Under a seat pad it lies as the TV remote does (the pad does not touch it)."""
+    hx, hy, hz = REMOTE_HALF
+    volume = 8.0 * hx * hy * hz
+    return ('<body name="decoy" pos="9 6 1"><freejoint name="decoy_free"/>'
+            '<geom name="decoy" type="box" size="{}" density="{}" {} contype="9" conaffinity="10" '
+            'friction="0.5 0.01 0.0001" condim="4"/>'
+            '{}</body>').format(_fmt(REMOTE_HALF), _fmt((REMOTE_MASS / volume,)), HIDDEN,
+                                _mesh("decoy_look", "remote", "remote_b"))
+
+
 def _clutter():
     """The phone, the glasses case and the book: boxes as their models are drawn. A pad is as
     soft over the phone as over the remote (those two do not touch it); they touch each other."""
@@ -655,6 +669,7 @@ def build_xml():
     <texture name="sofa" type="2d" file="{room}/sofa.png"/>
     <texture name="commode" type="2d" file="{room}/commode.png"/>
     <texture name="remote" type="2d" file="{room}/remote.png"/>
+    <texture name="remote_b" type="2d" file="{room}/remote_b.png"/>
     <texture name="floor_a" type="2d" file="{room}/floor_a.png"/>
     <texture name="floor_b" type="2d" file="{room}/floor_b.png"/>
     <texture name="wall" type="2d" file="{room}/wall.png"/>
@@ -665,6 +680,7 @@ def build_xml():
     <material name="sofa_plain" texture="fabric" texuniform="true" texrepeat="3 3" specular="0.08" shininess="0.1"/>
     <material name="commode" texture="commode" specular="0.3" shininess="0.4"/>
     <material name="remote" texture="remote" specular="0.4" shininess="0.5"/>
+    <material name="remote_b" texture="remote_b" specular="0.4" shininess="0.5"/>
     <material name="floor_a" texture="floor_a" texrepeat="4 4" specular="0.2" shininess="0.3"/>
     <material name="floor_b" texture="floor_b" texrepeat="4 4" specular="0.2" shininess="0.3"/>
     <material name="wall" texture="wall" texrepeat="2 1" specular="0" shininess="0"/>
@@ -725,6 +741,7 @@ def build_xml():
     {hat}
     {box}
     {clutter}
+    {decoy}
     {remote}
   </worldbody>
   <contact>
@@ -742,7 +759,7 @@ def build_xml():
         dt=SIM_DT, assets=assets, arm=arm, room=room, pad=pad, sofa=_sofa(), cabinet=_cabinet(),
         pad_left=_pad("left", PAD_Y["left"]), pad_right=_pad("right", PAD_Y["right"]),
         drawer_upper=_drawer("upper"), drawer_mid=_drawer("mid"), drawer_lower=_drawer("lower"),
-        hanger=_hanger(), remote=_remote(), hat=_hat(), box=_storage_box(), clutter=_clutter(),
+        hanger=_hanger(), remote=_remote(), decoy=_decoy(), hat=_hat(), box=_storage_box(), clutter=_clutter(),
         hat_scale=_fmt((HAT_SCALE,) * 3),
         clutter_assets="\n    ".join(
             '<mesh name="{n}" file="{r}/{n}.obj"/><texture name="{n}" type="2d" file="{r}/{n}.png"/>'
@@ -814,7 +831,7 @@ class Env(object):
         self.arm_dadr = [m.jnt_dofadr[self._name(J, n)] for n in ["rail"] + ["joint{}".format(i) for i in range(1, 8)]]
         self.finger_qadr = [m.jnt_qposadr[self._name(J, n)] for n in ("finger_joint1", "finger_joint2")]
         self.drawer_qadr = {n: m.jnt_qposadr[self._name(J, "drawer_" + n)] for n in DRAWERS}
-        self.free_qadr = {n: m.jnt_qposadr[self._name(J, n + "_free")] for n in ("remote", "hanger", "pad_left", "pad_right", "hat", "box", "phone", "case", "book")}
+        self.free_qadr = {n: m.jnt_qposadr[self._name(J, n + "_free")] for n in ("remote", "hanger", "pad_left", "pad_right", "hat", "box", "phone", "case", "book", "decoy")}
         self.free_dadr = {n: m.jnt_dofadr[self._name(J, n + "_free")] for n in ("remote", "hanger", "pad_left", "pad_right", "hat")}
         self.body = {n: self._name(B, n) for n in ("remote", "hanger", "hat", "box", "pad_left", "pad_right", "drawer_upper",
                                                    "drawer_mid", "drawer_lower", "right_gripper", "pedestal",
@@ -850,6 +867,10 @@ class Env(object):
         self.steps = 0
         self.target = np.zeros(9)
         self.rng = np.random.default_rng(0)
+        self.place = None               # the grader's name for where the remote was put (a token run's truth only)
+        self._stale = np.zeros(8)       # rail and arm positions before the last physics substep (see observation)
+        self._true = None               # the last observation's readings before their noise
+        self._scratch = None
 
     # ------------------------------------------------------------------------------------------
     def reset(self, spec):
@@ -904,12 +925,13 @@ class Env(object):
         d.qpos[adr:adr + 3] = (bx, by, CAB_H + 0.001)
         d.qpos[adr + 3:adr + 7] = _quat_yaw(yaw)
         # The remote, the phone, the glasses case and the book where the scene has them.
-        for name, pose in (("remote", spec.remote), ("phone", spec.phone), ("case", spec.case), ("book", spec.book)):
+        for name, pose in (("remote", spec.remote), ("phone", spec.phone), ("case", spec.case), ("book", spec.book), ("decoy", spec.decoy)):
             adr = self.free_qadr[name]
             d.qpos[adr:adr + 3] = pose[:3]
             d.qpos[adr + 3:adr + 7] = _quat_yaw(pose[3])
         mujoco.mj_forward(m, d)
         for _ in range(500):                       # 1 s for the loose things to settle
+            self._stale = np.array([d.qpos[a] for a in self.arm_qadr])
             mujoco.mj_step(m, d)
         self.steps = 0
         self.stopped = None
@@ -971,6 +993,7 @@ class Env(object):
         for _ in range(SUBSTEPS):
             self.target += np.clip(goal - self.target, -speed, speed)
             self._set_ctrl()
+            self._stale = np.array([d.qpos[a] for a in self.arm_qadr])
             mujoco.mj_step(m, d)
         self.steps += 1
         self._pending = {name: bool(mask & CAMERAS[name][0]) for name in CAMERAS}
@@ -1016,8 +1039,9 @@ class Env(object):
         quat = np.empty(4)
         mujoco.mju_mat2Quat(quat, d.site_xmat[self.grip_site])
         rot = d.site_xmat[self.grip_site].reshape(3, 3)
-        force = rot @ d.sensordata[0:3] + rng.normal(0.0, 0.15, 3)
-        torque = rot @ d.sensordata[3:6] + rng.normal(0.0, 0.01, 3)
+        self._true = {"force": rot @ d.sensordata[0:3], "torque": rot @ d.sensordata[3:6], "gripper": self.gripper_opening()}
+        force = self._true["force"] + rng.normal(0.0, 0.15, 3)
+        torque = self._true["torque"] + rng.normal(0.0, 0.01, 3)
         obs = {
             "t": self.steps,
             "q": [round(float(v), 6) for v in q],
@@ -1037,6 +1061,48 @@ class Env(object):
                     self.progress["seen"] = True
         self._pending = dict.fromkeys(CAMERAS, False)
         return obs
+
+    def perturbed_observation(self, obs, rng):
+        """The grader's second copy of an observation for a repeated request (see the instruction's "Deliverable and
+        the wire"): the rail and the joints read up to 1 mm / 1 mrad off, the hand's and the wrist camera's poses as
+        those readings would give them, the wrench and the finger opening read once more; the images are the same. An
+        observation's poses are those of the joint positions one physics substep before its `q` (MuJoCo computes poses
+        at the start of a substep), so the copy's poses are computed the same way."""
+        m = self.model
+        if self._scratch is None:
+            self._scratch = mujoco.MjData(m)
+        d = self._scratch
+        d.qpos[:] = self.data.qpos
+        shift = rng.uniform(-0.001, 0.001, 8)
+        for adr, q in zip(self.arm_qadr, self._stale + shift):
+            d.qpos[adr] = q
+        mujoco.mj_kinematics(m, d)
+        mujoco.mj_camlight(m, d)
+        quat = np.empty(4)
+        mujoco.mju_mat2Quat(quat, d.site_xmat[self.grip_site])
+        cam = self.cam_id["wrist"]
+        pose = np.eye(4)
+        pose[:3, :3] = d.cam_xmat[cam].reshape(3, 3) @ np.diag([1.0, -1.0, -1.0])
+        pose[:3, 3] = d.cam_xpos[cam]
+        out = dict(obs)
+        out["q"] = [round(float(a + b), 6) for a, b in zip(obs["q"], shift)]
+        out["ee_pos"] = [round(float(v), 5) for v in d.site_xpos[self.grip_site]]
+        out["ee_quat"] = [round(float(v), 6) for v in quat]
+        out["T_world_wrist"] = [[round(float(v), 6) for v in row] for row in pose]
+        out["wrench"] = [round(float(v), 3) for v in np.concatenate([self._true["force"] + rng.normal(0.0, 0.15, 3),
+                                                                     self._true["torque"] + rng.normal(0.0, 0.01, 3)])]
+        out["gripper"] = round(self._true["gripper"] + float(rng.normal(0.0, 1e-4)), 5)
+        return out
+
+    def truth(self):
+        """The scene's hidden state, for the grader's reference run only (a submission never gets it): the scene as
+        drawn, the grader's name for the remote's place, and where the loose things and the drawers are now."""
+        d = self.data
+        loose = {}
+        for name, adr in self.free_qadr.items():
+            loose[name] = [round(float(v), 6) for v in d.qpos[adr:adr + 7]]
+        return {"scene": self.spec.as_dict(), "place": self.place, "loose": loose,
+                "drawers": {n: round(float(d.qpos[a]), 5) for n, a in self.drawer_qadr.items()}}
 
     # ------------------------------------------------------------------------------------------
     def _renderer(self, name):

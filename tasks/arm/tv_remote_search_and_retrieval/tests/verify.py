@@ -1,171 +1,429 @@
-"""Hidden grader for tv_remote_search_and_retrieval (closed loop, fixed hidden episodes).
+"""Hidden grader for tv_remote_search_and_retrieval (closed loop, a fixed hidden set of episodes).
 
-Runs as root in a separate verifier sandbox, after the agent is gone. It owns its own copy of the
-living room (remote_env.py, byte-identical to the copy the agent developed against) and the rule
-for where the remote is (episodes.py, which the agent never had: its simulator puts the remote
-wherever its caller says). It plays the fixed hidden episodes of hidden/episodes.json in order
-(each a seed and a hiding spot: two per place, the two seat pads counting as one place: ten in all), drives the agent's controller over
-the stdio wire at the agent's UID (`robotics_grader.Solver`) and scores every episode from its
-own simulator state (`Env.score`): 1 when the remote was retrieved, 0.4 for laying it open, 0.2
-for getting it into an image the controller asked for, else 0. The metric is the mean over the
-episodes.
+Runs as root in a SEPARATE verifier sandbox: no agent process exists there, the setup stage has not run there, and the
+engine restores only the declared artifact /home/user/submission. It reclaims root's PATH directories
+(robotics_grader.stage.secure_exec_path), stops any agent-UID process, hands the restored submission (at most
+MAX_SUBMISSION_FILES files and MAX_SUBMISSION_BYTES bytes) to the agent account in place, starts `bash run.sh` in it
+through nonet_exec.py (a seccomp filter: only AF_UNIX sockets; nice 19; RLIMIT_NPROC grader_config.json
+`solver_nproc_limit`; a fixed environment with the numerics pin) at the agent's UID, and speaks the kit wire through
+`remote_grade.run_episodes` (the kit Solver: READY within 120 s, each reply within 30 s, a reply line at most 4 MiB,
+at most 3 restarts; the probe lock).
 
-Time: every episode has a controller budget (grader_config.json `controller_budget_s`): the time
-the grader waits for the controller's replies plus a fixed charge for every image the controller
-asks for. The simulator's own time is not charged, so the grading machine's speed does not change
-a score; an episode whose budget runs out stops at that step and is scored as it stands. A
-wall-clock cap on the whole run (`wall_cap_s`, inside the stage's timeout) is a safety net only:
-episodes not finished by then score 0.
+Episodes: the fixed hidden set tests/hidden/episodes.json, the same for every submission, in the file's order: each a
+64-bit seed and the place the remote lies in (tests/episodes.py holds the rule for the places; the agent never had
+it). The set was drawn by tests/review/select_episodes.py under the rule in its docstring; the record is
+tests/hidden/selection.json. An episode's probe schedule is a function of its index and its seed alone, so
+the grader adds no run-to-run randomness of its own. An episode's score is the simulator's (`Env.score`: 1 retrieved,
+0.4 laid open, 0.2 seen, else 0); the metric `mean_retrieval_score` is the mean over the set; an episode that is
+aborted or not run counts 0.
 
-A probed step is asked twice with the same `t`, the real observation and a copy with slightly
-shifted joint readings in a hidden order; only the reply to the real one is applied. The record of
-whether the replies differ rides in the metrics and does not change the score: a controller that
-follows a plan between looks answers both alike, honestly.
+Time: every episode has a controller budget (grader_config.json `controller_budget_s`): what the grader waits for the
+reset and for each reply plus `image_charge_s` for every image an applied action asks for, a fixed price whatever this
+machine takes to draw it. The simulation and the drawing are the grader's and are not counted. An episode whose budget
+runs out stops there and is scored as it stands. `wall_cap_s`, inside the stage's timeout, is a safety net: episodes
+not started by then score 0 and the verdict is still written.
+
+Numerics: a controller's arithmetic depends on the CPU unless it is pinned (environment/Dockerfile). The image pins
+it, the launcher passes the same variables to run.sh, and tests/numerics_check.py's fingerprint is compared with
+tests/numerics.json before grading (metric `numerics_ok`); a machine that does not reproduce it is a task error.
+
+Oracle token: a submission whose .oracle_token hashes to tests/hidden/oracle_token.sha256 is the reference; only then
+does every observation also carry `truth` (the scene as drawn, the place's name, where the loose things are). An
+untokened submission never sees it.
+
+The probe lock (about 1 % of the steps asked twice, once with a copy of the observation read a moment earlier and a
+hair off) is recorded (`probes_total`, `probes_passed`, `match_lock_ok`) and not scored, as the instruction says: the
+graded episodes are a fixed set no submission has seen, so a replayed stream of actions has nothing to replay, and a
+controller that follows a planned path answers most copies as it answers the observation.
+
+The log and the verdict name an episode by its index in the set and nothing else: not its seed and not where the
+remote was. The places are what the task keeps from the agent; a published log must not list them.
 """
 
-import copy
+import hashlib
 import json
+import math
 import os
+import pwd
+import signal
+import stat
+import subprocess
 import sys
 import time
+from collections import Counter
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import nonet_exec  # noqa: E402
+import remote_grade as G  # noqa: E402
+from remote_grade import MAX_LINE  # noqa: E402
 from robotics_grader import (  # noqa: E402
-    ProbeLock,
     Solver,
     SolverAborted,
     SolverMissing,
+    agent_user,
     ratio_rewards,
     read_anchor,
-    seed_rng,
     stage_config,
     write_verdict,
     zero_verdict,
 )
-from robotics_grader.deadline import VerifierDeadline  # noqa: E402
+from robotics_grader.stage import fail, secure_exec_path  # noqa: E402
 
-METRIC = "mean_retrieval_score"
-
-
-def log(text):
-    print("[grader] " + text, file=sys.stderr, flush=True)
-
-
-def load_episodes():
-    with open(os.path.join(HERE, "hidden", "episodes.json")) as handle:
-        return json.load(handle)["episodes"]
-
-
-def perturbed_copy(obs, rng):
-    """The observation with its joint readings shifted a little (images and the rest unchanged)."""
-    other = copy.copy(obs)
-    other["q"] = [round(v + rng.uniform(-0.004, 0.004), 6) for v in obs["q"]]
-    other["gripper"] = round(obs["gripper"] + rng.uniform(-0.0005, 0.0005), 5)
-    return other
+STAGE = os.path.dirname(os.path.abspath(__file__))
+MAX_SUBMISSION_BYTES = 200 * 1024 * 1024
+MAX_SUBMISSION_FILES = 5000
+NONET = os.path.join(STAGE, "nonet_exec.py")
+TOKEN_SHA = os.path.join(STAGE, "hidden", "oracle_token.sha256")
+EPISODES = os.path.join(STAGE, "hidden", "episodes.json")
+NUMERICS = os.path.join(STAGE, "numerics_check.py")
+NUMERICS_REF = os.path.join(STAGE, "numerics.json")
+NUMERICS_TIMEOUT_S = 300
 
 
-def canonical(action):
-    values = [float(v) for v in action]
-    if len(values) != 10:
-        raise ValueError("an action is 10 numbers")
-    return values
+def log(msg):
+    print("[grader] " + msg, file=sys.stderr, flush=True)
 
 
-def run_episode(env, E, solver, lock, spec, config, rng, state):
-    """One episode; returns (score, steps, how it ended)."""
-    budget = float(config.get("controller_budget_s", 900.0))
-    charges = config.get("image_charge_s", {})
-    obs = env.reset(spec)
-    used = 0.0
-    started = time.monotonic()
-    solver.reset()
-    used += time.monotonic() - started
-    done = False
-    ended = "time"
-    while not done:
-        t = env.steps
-        started = time.monotonic()
-        if lock.due():
-            action = lock.probe(solver, t, obs, perturbed=perturbed_copy(obs, rng))
-        else:
-            action = solver.act(t, obs)
-        used += time.monotonic() - started
+def _agent_ids():
+    pw = pwd.getpwnam(agent_user())
+    return pw.pw_uid, pw.pw_gid
+
+
+def _agent_pids(uid):
+    pids = []
+    for name in os.listdir("/proc"):
+        if not name.isdigit():
+            continue
         try:
-            _, mask = env.clip_action(action)
-        except (ValueError, TypeError, OverflowError) as exc:
-            raise SolverAborted("malformed action: {}".format(exc)[:160])
-        used += sum(float(charges.get(name, 0.0)) for name in E.CAMERAS if mask & E.CAMERAS[name][0])
-        obs, done = env.step(action)
-        state["steps"] += 1
-        if not done and used > budget:
-            ended = "controller budget"
-            break
-    if done:
-        ended = env.stopped
-    return env.score(), env.steps, ended
+            with open("/proc/{}/status".format(name)) as f:
+                zombie = False
+                for line in f:
+                    if line.startswith("State:"):
+                        # a zombie runs no code; it only waits to be reaped (r5: a zombie made the
+                        # bounded kill report cleanup_failed in 1 of 24 oracle runs under load)
+                        zombie = line.split()[1].startswith(("Z", "X"))
+                    elif line.startswith("Uid:"):
+                        if int(line.split()[1]) == uid and not zombie:
+                            pids.append(int(name))
+                        break
+        except (OSError, ValueError, IndexError):
+            continue
+    return pids
+
+
+def kill_agent_processes(uid, rounds=20, pause=0.25):
+    """Kill every process of the agent account; True when none is left (bounded)."""
+    for _ in range(rounds):
+        pids = _agent_pids(uid)
+        if not pids:
+            return True
+        for pid in pids:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
+        time.sleep(pause)
+    return not _agent_pids(uid)
+
+
+def _proc_state(pid):
+    """The /proc state letter of `pid` ("X" once it is gone)."""
+    try:
+        with open("/proc/{}/status".format(pid)) as f:
+            for line in f:
+                if line.startswith("State:"):
+                    return line.split()[1]
+    except (OSError, IndexError):
+        pass
+    return "X"
+
+
+def _still_running(uid, bound_s=3.0):
+    """SIGSTOP every live process of `uid` until a pass finds none still running (a respawn that appears meanwhile is
+    stopped by the next pass) or `bound_s` elapsed; returns the PIDs still running (empty: every one is stopped)."""
+    deadline = time.monotonic() + float(bound_s)
+    while True:
+        for pid in _agent_pids(uid):
+            try:
+                os.kill(pid, signal.SIGSTOP)
+            except OSError:
+                pass
+        time.sleep(0.05)
+        running = [pid for pid in _agent_pids(uid) if _proc_state(pid) not in ("T", "t", "X")]
+        if not running or time.monotonic() > deadline:
+            return running
+
+
+def stop_agent_processes(uid):
+    """kill_agent_processes, then: True when none is left or every one left is stopped. The base image's supervisord
+    respawns the agent account's desktop as fast as it is killed, so in the separate verifier a process that outlives
+    the bounded kill is the image's own; it is stopped (a stopped process does not exit, so it is not respawned) and
+    only one still running once stopped fails the run (cleanup_failed), as before."""
+    if kill_agent_processes(uid):
+        return True
+    running = _still_running(uid)
+    log("{} process(es) of the agent account outlived the kill, {} still running after the freeze".format(
+        len(_agent_pids(uid)), len(running)))
+    return not running
+
+
+class GuardedSolver(Solver):
+    """The kit Solver, spawned through the seccomp launcher, with a reply-line cap."""
+
+    guard = True
+    nproc = 0
+
+    def _spawn(self):
+        uid, gid = _agent_ids()
+        cmd = [sys.executable, "-I", NONET, "--uid", str(uid), "--gid", str(gid), "--rlimit-nproc", str(self.nproc),
+               "--cwd", self.submission, "--", "bash", self.entry]
+        if not self.guard:
+            cmd = (["/usr/sbin/runuser", "-u", agent_user(), "--", "/usr/bin/env", "-i"]
+                   + ["{}={}".format(k, v) for k, v in sorted(nonet_exec.controller_env().items())]
+                   + ["bash", self.entry])
+        try:
+            return subprocess.Popen(cmd, cwd=self.submission, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                    stderr=subprocess.DEVNULL, universal_newlines=True, bufsize=1,
+                                    start_new_session=True, env={"PATH": "/usr/bin:/bin"})
+        except OSError as exc:
+            raise SolverAborted("solver could not be started: {}".format(exc))
+
+    @staticmethod
+    def _pump(proc, lines):
+        while True:
+            try:
+                line = proc.stdout.readline(MAX_LINE + 1)
+            except (ValueError, OSError, UnicodeDecodeError):
+                break
+            if not line:
+                break
+            if len(line) > MAX_LINE and not line.endswith("\n"):
+                break          # an oversize reply: a closed wire (the episode aborts)
+            lines.put(line)
+        lines.put(None)
+
+
+def egress_self_test(uid, gid, nproc=0):
+    """True if a probe started through the launcher cannot open an internet socket."""
+    probe = ("import socket,sys\n"
+             "bad=0\n"
+             "for fam in (socket.AF_INET, socket.AF_INET6, 40):\n"
+             "    try:\n"
+             "        socket.socket(fam, socket.SOCK_STREAM).close(); bad=1\n"
+             "    except OSError:\n"
+             "        pass\n"
+             "try:\n"
+             "    socket.socket(socket.AF_UNIX, socket.SOCK_STREAM).close()\n"
+             "except OSError:\n"
+             "    bad=1\n"
+             "sys.exit(3 if bad else 0)\n")
+    try:
+        r = subprocess.run([sys.executable, "-I", NONET, "--uid", str(uid), "--gid", str(gid),
+                            "--rlimit-nproc", str(nproc), "--cwd", "/",
+                            "--", sys.executable, "-I", "-c", probe],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60,
+                           env={"PATH": "/usr/bin:/bin"})
+        return r.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def agent_inet_sockets(uid):
+    """Count agent-UID internet sockets with a non-loopback peer (detection fallback)."""
+    n = 0
+    for name in ("tcp", "tcp6", "udp", "udp6", "raw", "raw6"):
+        try:
+            with open("/proc/net/" + name) as f:
+                next(f, None)
+                for line in f:
+                    parts = line.split()
+                    if len(parts) < 8 or int(parts[7]) != uid:
+                        continue
+                    rem = parts[2].split(":")[0]
+                    if rem.strip("0") == "" or rem in ("0100007F", "00000000000000000000000001000000"):
+                        continue
+                    n += 1
+        except (OSError, ValueError, StopIteration):
+            continue
+    return n
+
+
+def stage_submission(uid, gid):
+    """Make the restored submission the agent account's own folder, in place at ~user/submission: the
+    folder the instruction names, where run.sh is started and where the controller may write, as it can in
+    the practice grader. Ownership changes never follow a symlink (lchown, a walk that does not
+    follow links); size and file count are capped. Returns the path, or None if there is no usable
+    submission."""
+    src = os.path.join(os.path.expanduser("~" + agent_user()), "submission")
+    if not os.path.isdir(src) or os.path.islink(src):
+        return None
+    total = files = 0
+    for dp, dns, fns in os.walk(src, followlinks=False):
+        for fn in fns:
+            fp = os.path.join(dp, fn)
+            files += 1
+            if not os.path.islink(fp):
+                try:
+                    total += os.lstat(fp).st_size
+                except OSError:
+                    pass
+        if files > MAX_SUBMISSION_FILES or total > MAX_SUBMISSION_BYTES:
+            return None
+    for dp, dns, fns in os.walk(src, followlinks=False):
+        for name in dns + fns:
+            os.lchown(os.path.join(dp, name), uid, gid)
+    os.lchown(src, uid, gid)
+    os.chmod(src, 0o700)
+    return src
+
+
+def check_numerics():
+    """Run numerics_check.py in a fresh interpreter (a short scripted run of the simulation and a controller's
+    arithmetic; the sha256 of their results) and compare with tests/numerics.json. Returns the fingerprint; a machine
+    that does not reproduce the recorded one would run every controller along another trajectory, so it must not
+    grade: a task error."""
+    with open(NUMERICS_REF) as fh:
+        want = json.load(fh)["fingerprint"]
+    try:
+        proc = subprocess.run([sys.executable, "-I", NUMERICS], cwd=STAGE, stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL, timeout=NUMERICS_TIMEOUT_S, env=dict(os.environ))
+        report = json.loads(proc.stdout.decode("utf-8", "replace").strip().splitlines()[-1])
+        got = str(report["fingerprint"])
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, IndexError) as exc:
+        fail("the numerics check did not run: {}: {}".format(type(exc).__name__, str(exc)[:200]))
+    if got != want:
+        fail("this machine does not reproduce the recorded numerics (tests/numerics.json): got {}, recorded {}, "
+             "differs in {}; OPENBLAS_CORETYPE={!r}. Grading here would run every controller along another "
+             "trajectory".format(got[:16], want[:16], report.get("differs"), os.environ.get("OPENBLAS_CORETYPE")))
+    return got
+
+
+def oracle_token_ok(workdir):
+    """True when the submission's .oracle_token (a regular file, not followed if a link, at most 256 bytes)
+    hashes to the recorded value."""
+    path = os.path.join(workdir, ".oracle_token")
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        return False
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            return False
+        data = os.read(fd, 257)
+    finally:
+        os.close(fd)
+    if len(data) > 256:
+        return False
+    with open(TOKEN_SHA) as f:
+        want = f.read().strip()
+    return hashlib.sha256(data.strip()).hexdigest() == want
+
+
+def load_episode_set(path=EPISODES):
+    """The fixed hidden set: [(index, seed, place)] in the graded order."""
+    with open(path) as fh:
+        data = json.load(fh)
+    eps = [(i, int(e["seed"]), str(e["spot"])) for i, e in enumerate(data["episodes"])]
+    if not eps:
+        fail("the hidden episode set is empty")
+    return eps
+
+
+def grader_config(config):
+    out = dict(G.CONFIG)
+    for k in out:
+        if k in config:
+            out[k] = config[k]
+    return out
 
 
 def main():
+    t_start = time.monotonic()
+    secured = {"root_path_dirs_secured": float(len(secure_exec_path()))}   # before anything else runs
     config = stage_config()
-    rng = seed_rng()
     anchor, meta = read_anchor()
-    episodes = load_episodes()
-    state = {"scores": [], "steps": 0, "aborted": 0, "ended": [], "written": False}
-
-    def verdict(lock=None, note=""):
-        scores = state["scores"] + [0.0] * (len(episodes) - len(state["scores"]))
-        measured = sum(scores) / len(scores)
-        extra = {"episodes": len(episodes), "episodes_scored": len(state["scores"]),
-                 "episodes_aborted": state["aborted"], "episodes_retrieved": sum(1 for s in scores if s >= 1.0),
-                 "control_steps": state["steps"]}
-        if lock is not None:
-            extra.update(lock.rewards())
-        result = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5),
-                               higher_is_better=meta.get("direction", "higher") == "higher",
-                               metric_name=METRIC, extra=extra, full_at=meta.get("full_at", 1.0))
-        text = "{} episodes: {}{}".format(len(episodes), "; ".join(state["ended"]), note)
-        write_verdict(result, diagnostic=text[:4000])
-        state["written"] = True
-        log("measured={:.3f} anchor={} reward={:.3f} {}".format(
-            measured, anchor, result["rewards"]["reward"], note))
-
     try:
-        solver = Solver(step_timeout=config.get("step_timeout_s", 30))
-    except (SolverMissing, SolverAborted) as exc:
-        # An untouched sandbox, or a submission that never comes up: a real zero, not a crash.
-        write_verdict(zero_verdict(reason=str(exc), anchored=anchor is not None))
+        uid, gid = _agent_ids()
+    except KeyError:
+        write_verdict(zero_verdict(reason="no agent account", anchored=anchor is not None, extra=secured))
         return
+    if not stop_agent_processes(uid):
+        write_verdict(zero_verdict(reason="agent processes could not be stopped (cleanup_failed)",
+                                   anchored=anchor is not None, extra=secured))
+        return
+    try:
+        workdir = stage_submission(uid, gid)
+    except OSError as exc:
+        log("staging the submission failed: {}".format(type(exc).__name__))
+        workdir = None
+    if workdir is None or not os.path.isfile(os.path.join(workdir, "run.sh")):
+        # An untouched sandbox: a real zero, judged without the simulator.
+        write_verdict(zero_verdict(reason="no usable submission", anchored=anchor is not None, extra=secured))
+        return
+    episodes = load_episode_set()
+    t_num = time.monotonic()
+    check_numerics()                     # a task error on a machine that computes differently
+    log("numerics check passed ({:.1f} s)".format(time.monotonic() - t_num))
+    secured["numerics_ok"] = 1.0
+    truth = oracle_token_ok(workdir)
+    egress_mode = "seccomp" if egress_self_test(uid, gid, int(config.get("solver_nproc_limit", 0))) else "detect"
+    log("egress guard: {}; oracle token: {}; {} episodes in the fixed set".format(egress_mode, truth, len(episodes)))
+    GuardedSolver.guard = egress_mode == "seccomp"
+    GuardedSolver.nproc = int(config.get("solver_nproc_limit", 0))
+    egress = {"hits": 0}
 
-    # The simulator is imported only now: an untouched sandbox is judged without it.
-    import episodes as episodes_rule
-    import remote_env as E
+    def watch():
+        if egress_mode == "detect" and agent_inet_sockets(uid):
+            egress["hits"] += 1
 
-    lock = ProbeLock(rng, rate=config.get("probe_rate", 0.01),
-                     pass_fraction=config.get("probe_pass_fraction", 0.1), canonical=canonical)
-    env = E.Env()
-
-    def out_of_time(elapsed):
-        verdict(lock, note=" [wall cap reached after {:.0f} s: the rest score 0]".format(elapsed))
-
-    with VerifierDeadline(float(config.get("wall_cap_s", 6000)), out_of_time):
+    wall_cap = float(config.get("wall_cap_s", 12000))
+    gconfig = grader_config(config)
+    try:
+        solver = GuardedSolver(step_timeout=gconfig["step_timeout_s"], submission=workdir)
         try:
-            for index, item in enumerate(episodes):
-                spec = episodes_rule.make_episode(E, int(item["seed"]), item["spot"])
-                try:
-                    score, steps, ended = run_episode(env, E, solver, lock, spec, config, rng, state)
-                except SolverAborted as exc:
-                    # A crash, a missed deadline or a malformed reply: the episode scores 0.
-                    state["aborted"] += 1
-                    score, steps, ended = 0.0, env.steps, "aborted ({})".format(str(exc)[:80])
-                state["scores"].append(float(score))
-                state["ended"].append("{}:{} {:.1f} after {} steps ({})".format(index, item["spot"], score, steps, ended))
-                log(state["ended"][-1])
+            records, lock, clock = G.run_episodes(solver, episodes, truth, log=log, config=gconfig, on_step=watch,
+                                                  deadline=lambda: time.monotonic() - t_start > wall_cap)
         finally:
-            solver.close()
-            env.close()
-    verdict(lock)
+            try:
+                solver.close()
+            except Exception:  # noqa: BLE001 - closing a broken solver must not crash the grader
+                pass
+    except (SolverMissing, SolverAborted) as exc:
+        kill_agent_processes(uid)
+        write_verdict(zero_verdict(reason=str(exc)[:200], anchored=anchor is not None, extra=secured))
+        return
+    cleanup_ok = stop_agent_processes(uid)
+    scores = [r["score"] for r in records]
+    measured = sum(scores) / len(scores) if scores else 0.0
+    if egress["hits"] or not cleanup_ok or not math.isfinite(measured) or measured < 0:
+        measured = 0.0
+    count = Counter(r["score"] for r in records)
+    extra = dict(lock.rewards(),
+                 episodes_in_set=float(len(episodes)),
+                 episodes_scored=float(sum(1 for r in records if r["scored"])),
+                 episodes_aborted=float(sum(1 for r in records if r["ended"].startswith("aborted"))),
+                 episodes_not_run=float(sum(1 for r in records if r["ended"].startswith("not run"))),
+                 episodes_retrieved=float(count.get(1.0, 0)),
+                 episodes_laid_open=float(count.get(0.4, 0)),
+                 episodes_seen=float(count.get(0.2, 0)),
+                 episodes_unstable=float(sum(1 for r in records if r["ended"] == "unstable")),
+                 episodes_out_of_budget=float(sum(1 for r in records if r["ended"] == "controller budget")),
+                 control_steps=float(sum(r["steps"] for r in records)),
+                 controller_seconds=round(clock.total, 1),
+                 egress_guard_seccomp=1.0 if egress_mode == "seccomp" else 0.0,
+                 egress_detected=float(egress["hits"]),
+                 cleanup_failed=0.0 if cleanup_ok else 1.0,
+                 oracle_token=1.0 if truth else 0.0,
+                 **secured)
+    verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5), higher_is_better=True,
+                            metric_name="mean_retrieval_score", extra=extra,
+                            full_at=meta.get("full_at", 1.0))
+    note = "; ".join("{}: {:.1f} after {} steps ({})".format(r["index"], r["score"], r["steps"], r["ended"]) for r in records)
+    write_verdict(verdict, diagnostic=("{} episodes: ".format(len(records)) + note)[:4000])
+    log("measured={:.4f} anchor={} ratio={:.3f} reward={:.3f} lock={} scored={} egress={} controller={:.0f}s "
+        "wall={:.0f}s".format(measured, anchor, verdict["metrics"]["ratio"], verdict["rewards"]["reward"], lock.ok,
+                              extra["episodes_scored"], egress_mode, clock.total, time.monotonic() - t_start))
 
 
 if __name__ == "__main__":

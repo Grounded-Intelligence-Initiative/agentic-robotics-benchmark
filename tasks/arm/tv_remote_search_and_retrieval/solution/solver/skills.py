@@ -1,4 +1,4 @@
-"""Motion and perception primitives of the reference controller.
+"""Motion and perception primitives of the reference.
 
 A behaviour is a Python generator: it yields an action (10 numbers) and is sent the next
 observation. `Robot` keeps the latest observation and the targets it last commanded.
@@ -385,6 +385,9 @@ def overview_pose():
     return _OVERVIEW
 
 
+TV_BLACK_ONLY = False           # set by a controller that tells the TV remote from the other one by its colour
+
+
 def find_remote(points_rgb, z_range, xy_box=None, min_points=40, dark=False, sized=True, slab=False):
     """The remote among points of the frame in use: a slab of points in a height band above its
     surface (with `dark`, only its dark ones, for a far view whose depth is too coarse to tell
@@ -400,6 +403,7 @@ def find_remote(points_rgb, z_range, xy_box=None, min_points=40, dark=False, siz
     if dark:
         keep &= rgb.max(axis=1) < 60
     sel = pts[keep]
+    shade = rgb[keep].mean(axis=1)
     if len(sel) < min_points:
         return None
     # Things: connected groups of occupied cells (6 mm; 12 mm for a far view).
@@ -418,6 +422,8 @@ def find_remote(points_rgb, z_range, xy_box=None, min_points=40, dark=False, siz
         thing = sel[of == k]
         if len(thing) < min_points:
             continue
+        if TV_BLACK_ONLY and np.median(shade[of == k]) > 110:
+            continue                      # the other remote (light grey): the TV remote is black
         xy = thing[:, :2]
         centre = xy.mean(axis=0)
         w, v = np.linalg.eigh(np.cov((xy - centre).T))

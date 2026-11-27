@@ -2,7 +2,7 @@
 
 This file is the grader's alone. The simulator the agent has (remote_env.py) puts the remote
 wherever its caller says and holds no rule for it; this is the rule. An episode is a seed and one
-of six hiding spots:
+of seven hiding spots:
 
 * ``left_cushion`` / ``right_cushion``: on the seat deck, under one of the two loose seat pads
   (left is +y), under the pad's front half. A pad is soft: it lies flat on the deck over the
@@ -19,6 +19,13 @@ of six hiding spots:
   The book is too wide for the hand to take from above: the basket can be taken by its rim and
   tipped out.
 
+* ``in_drawer``: on the floor of a closed drawer the hat is not in, lying free (the phone or the glasses case may
+  lie in the same drawer, at least CLUTTER_GAP away).
+
+The other remote (the air conditioner's: the TV remote's size, light grey; `Scene.decoy`) lies in every episode in
+a place the TV remote is not in: under a seat pad, in a drawer the hat is not in, or under the hat. Taking it out
+scores nothing; a search that stops at the first remote-sized thing ends there.
+
 The book is always in the box. The phone lies under a seat pad, in a drawer the hat is not in,
 under the hat or in the box under the book (those two only when the remote is not there); the
 glasses case in a drawer the hat is not in. Things in one drawer or
@@ -30,7 +37,9 @@ of the graded episodes checks it).
 
 import math
 
-HIDING_SPOTS = ("left_cushion", "right_cushion", "under_sofa", "under_chest", "under_hat", "in_box")
+HIDING_SPOTS = ("left_cushion", "right_cushion", "under_sofa", "under_chest", "under_hat", "in_box", "in_drawer")
+DRAWER_REACH = (0.11, 0.21)             # a remote loose in a drawer: its centre this far behind the front of the floor
+DECOY_SPOTS = ("left_cushion", "right_cushion", "under_sofa", "under_chest", "under_hat", "in_box", "drawer")
 CLUTTER_GAP = 0.04
 PHONE_SPOTS = ("left_cushion", "right_cushion", "drawer", "drawer", "under_hat", "in_box")
 CASE_SPOTS = ("drawer",)
@@ -134,20 +143,69 @@ def make_episode(E, seed, hiding_spot):
         # front that nothing of it shows from above.
         xy = (E.CAB_X0 + pose.uniform(0.190, 0.200), E.CAB_CY + pose.uniform(-0.11, 0.11))
         yaw = pose.uniform(-0.2, 0.2) + (math.pi if pose.uniform() < 0.5 else 0.0)
-    else:
+    elif hiding_spot == "under_sofa":
         xy = (E.SOFA_X0 + pose.uniform(0.15, 0.19), pose.uniform(E.SOFA_Y[0] + 0.34, E.SOFA_Y[1] - 0.36))
         piece = "sofa"
+    drawers = [n for n in E.DRAWERS if n != base.hat_drawer]
+    if hiding_spot == "in_drawer":
+        # Loose in one of the two drawers the hat is not in.
+        own = pose.choice(drawers) + "_drawer"
+        # ... in the middle band of its depth, where a hand can come down on it at any angle: at the back of the
+        # pulled-out drawer the hand meets the front of the drawer above, at the front the drawer's own front panel.
+        front = _spot_area(E, own)[0][0]
+        while True:
+            xy, yaw = _lay(E, pose, own, E.REMOTE_HALF[:2], [])
+            if DRAWER_REACH[0] <= xy[0] - front <= DRAWER_REACH[1]:
+                break
+        z = E.DRAWER_FLOOR_Z[own.split("_")[0]] + half_z
+        things = {own: [(xy, yaw, E.REMOTE_HALF[:2])]}
+    else:
+        things = {hiding_spot: [(xy, yaw, E.REMOTE_HALF[:2])]}
     remote = _world(E, base, piece, xy, yaw, z)
     swing = pose.uniform(-0.06, 0.06)
+    # The other remote: in a place the TV remote is not in. (Its draw does not change the TV remote's.)
+    other = E._Draw(seed, "decoy")
+    spot = other.choice([s for s in DECOY_SPOTS if s != hiding_spot])
+    decoy_spot = spot
+    under_hat_taken = hiding_spot == "under_hat" or spot == "under_hat"
+    if spot == "under_hat":
+        lay = _under_hat(base, other.uniform(-0.003, 0.003), HAT_REMOTE_Y + other.uniform(-0.002, 0.002),
+                         0.5 * math.pi + other.uniform(-0.04, 0.04) + (math.pi if other.uniform() < 0.5 else 0.0))
+        decoy = _world(E, base, "cabinet", lay[0], lay[1], hat_floor + half_z)
+    elif spot == "in_box":
+        lay = _in_box(base, (BOX_BOOK_X + BOOK_SHIFT + other.uniform(-0.005, 0.005), other.uniform(-0.02, 0.02)),
+                      0.5 * math.pi + other.uniform(-0.05, 0.05) + (math.pi if other.uniform() < 0.5 else 0.0))
+        decoy = _world(E, base, "cabinet", lay[0], lay[1], box_floor + half_z)
+    elif spot == "under_chest":
+        lay = ((E.CAB_X0 + other.uniform(0.190, 0.200), E.CAB_CY + other.uniform(-0.11, 0.11)),
+               other.uniform(-0.2, 0.2) + (math.pi if other.uniform() < 0.5 else 0.0))
+        decoy = _world(E, base, "cabinet", lay[0], lay[1], half_z)
+    elif spot == "under_sofa":
+        lay = ((E.SOFA_X0 + other.uniform(0.15, 0.19), other.uniform(E.SOFA_Y[0] + 0.34, E.SOFA_Y[1] - 0.36)),
+               other.uniform(-math.pi, math.pi))
+        decoy = _world(E, base, "sofa", lay[0], lay[1], half_z)
+    else:
+        if spot == "drawer":
+            spot = other.choice(drawers) + "_drawer"
+        if spot.endswith("_cushion"):
+            centre = E.PAD_Y["left" if spot == "left_cushion" else "right"]
+            lay = ((other.uniform(E.SOFA_X0 + 0.11, E.SOFA_X0 + 0.24), centre + other.uniform(-0.12, 0.12)), other.uniform(-math.pi, math.pi))
+            surface, on = E.DECK_Z, "sofa"
+        else:
+            lay = _lay(E, other, spot, E.REMOTE_HALF[:2], things.get(spot, []))
+            if lay is None:
+                raise RuntimeError("no room for the other remote")
+            surface, on = E.DRAWER_FLOOR_Z[spot.split("_")[0]], "cabinet"
+        things.setdefault(spot, []).append((lay[0], lay[1], E.REMOTE_HALF[:2]))
+        decoy = _world(E, base, on, lay[0], lay[1], surface + half_z)
     # The other small things. (The remote's own draw does not depend on them.)
     clutter = E._Draw(seed, "clutter")
-    drawers = [n for n in E.DRAWERS if n != base.hat_drawer]
-    things = {hiding_spot: [(xy, yaw, E.REMOTE_HALF[:2])]}
     placed = {}
-    under_book = half_z if hiding_spot == "in_box" else 0.0     # half the height of what the book lies on
-    book_at = (xy, yaw) if hiding_spot == "in_box" else None
+    under_book = half_z if "in_box" in (hiding_spot, decoy_spot) else 0.0     # half the height of what the book lies on
+    book_at = (xy, yaw) if hiding_spot == "in_box" else (lay if decoy_spot == "in_box" else None)
     for name, spots, half in (("phone", PHONE_SPOTS, E.PHONE_HALF), ("case", CASE_SPOTS, E.CASE_HALF)):
-        spots = [s for s in spots if s != hiding_spot]
+        spots = [s for s in spots if s != hiding_spot and not (s == "under_hat" and under_hat_taken)
+                 and not (s == "in_box" and decoy_spot == "in_box")]
         spot = clutter.choice(spots)
         if spot == "drawer":
             spot = clutter.choice(drawers) + "_drawer"
@@ -181,4 +239,4 @@ def make_episode(E, seed, hiding_spot):
         c, s = math.cos(base.box_yaw), math.sin(base.box_yaw)
         book_at = ((book_at[0][0] - c * BOOK_SHIFT, book_at[0][1] - s * BOOK_SHIFT), base.box_yaw + clutter.uniform(-0.03, 0.03))
     book = _world(E, base, "cabinet", book_at[0], book_at[1], box_floor + 2.0 * under_book + E.BOOK_HALF[2] + 0.001)
-    return E.make_scene(seed, remote=remote, phone=placed["phone"], case=placed["case"], book=book, hanger_swing=swing)
+    return E.make_scene(seed, remote=remote, phone=placed["phone"], case=placed["case"], book=book, hanger_swing=swing, decoy=decoy)

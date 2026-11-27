@@ -18,6 +18,11 @@ room, and the robot can get it out of every one of them with what is in the room
 things lie somewhere too, some of them dark and about the remote's size (the simulator's model
 has them). Taking one of them out earns nothing: only the remote counts.
 
+**And there is a second remote.** The TV remote is the black one (`remote` in the simulator's
+model). The air conditioner's remote has the same shape and size and is light grey (`decoy` in the model);
+in every graded episode it lies somewhere too, in a place of the kind the TV remote may be in,
+and never in the same one. Holding it up earns nothing, and the episode goes on.
+
 Your controller sees the room through two RGB-D cameras (a fixed overview and one on the wrist),
 the joint readings and a wrist force/torque sensor. It gets no object poses of any kind. **The
 furniture does not stand in the same place twice**: in every episode the settee and the chest are
@@ -25,20 +30,32 @@ each shifted and turned a little from the nominal layout (see "The room"), and n
 says by how much. How the room looks (the tint of the fabric, the woods, the floor and the wall,
 the floor's boards, the lamp) and the sensor noise change too.
 
-You have **6 hours** of wall time. Have the controller in `/home/user/submission/` before the time
-is up. The sandbox has 4 CPU cores, 12 GB of memory, no GPU and no network.
+You have **6 hours** of wall time (see "Session time"). Have the controller in
+`/home/user/submission/` before the time is up. The sandbox has 4 CPU cores, 12 GB of memory, no
+GPU and no network; the grading sandbox has the same.
 
 ## What is in your home directory
 
 | Path | What it is |
 |---|---|
-| `remote_env.py` | The simulator, complete: the room's geometry as named constants, the robot and its controller, the cameras, how a scene is drawn from a seed (`make_scene(seed, remote)`: you say where the remote is), how an episode is judged (`Env.progress`, `Env.score`). The grader runs a byte-identical copy and adds only its own rule for where the remote and the other small things are. Read it: it is the data sheet. Copy it into your submission if your controller imports it. |
+| `remote_env.py` | The simulator, complete: the room's geometry as named constants, the robot and its controller, the cameras, how a scene is drawn from a seed (`make_scene(seed, remote, ..., decoy=...)`: you say where the remote and the other small things are), how an episode is judged (`Env.progress`, `Env.score`). The grader runs a byte-identical copy and adds only its own rule for where the remote and the other small things are. Read it: it is the data sheet. Copy it into your submission if your controller imports it. |
 | `practice_grader/grade.py` | Runs your controller over the grading wire on scenes of your own, with the remote where you put it, and prints the raw metric (see "Checking your work"). |
 | `example_controller/controller.py` | A minimal controller for the wire that holds still and decodes one pair of images. |
+| `session_time.sh` | Prints the minutes of your session used and left (see "Session time"). |
 
 Python 3.12 is `/opt/venv/bin/python3` (NumPy, SciPy, OpenCV (headless), Pillow, MuJoCo 3.16.0 and
 the robosuite 1.5.2 asset files of the Panda); call it by that path. MuJoCo renders offscreen on
 the CPU (`MUJOCO_GL=egl`, already set). The room's meshes and textures are in `/opt/room`.
+
+**Numerics.** Every `/opt/venv` Python computes the same here and in the graded run, on whatever
+machine: the image sets, when the variables are missing, NumPy's linear algebra on one fixed set
+of kernels (`OPENBLAS_CORETYPE=Haswell` with `OPENBLAS_L2_SIZE=256`) and on one thread
+(`OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`), NumPy without its AVX-512 loops
+(`NPY_DISABLE_CPU_FEATURES`) and OpenCV's IPP at AVX2 (`OPENCV_IPP=avx2`). Do not unset or change
+them: your controller would then compute differently on the grading machine's CPU than here, and
+in this room a difference in the last bit of one joint target is enough for a pad to slip that
+did not slip in your own runs. The grader checks before grading that its machine reproduces the
+image's recorded numerics.
 
 ## The room
 
@@ -68,7 +85,11 @@ the overview camera do not move.
 Things are solid, and their collision shapes follow what the cameras show: the arm cannot pass
 through the furniture, a loose thing that is pushed falls where it falls, and the pedestal cannot
 drive through something that stands in its way. The settee and the chest themselves do not move
-when pushed.
+when pushed. One simplification, which the model states where it builds the seat pads: a seat pad
+is a rigid box that stands for a soft cushion, so it does not touch a small flat thing that lies
+under it (a remote, the phone); the pad rests on the settee's deck and the thing lies on the deck
+inside the pad's volume, as it would lie pressed into a real cushion's underside. Everything else
+touches the pad as usual: the hand, the furniture, the other pad.
 
 ## Observation and action
 
@@ -111,17 +132,24 @@ The grader's own simulator decides; nothing your controller prints counts.
 - Otherwise 0. An episode in which the controller crashes, answers late or malformed, or drives
   an arm joint faster than 8 rad/s scores 0.
 
-Your result is the **mean score over 10 graded episodes**, in a fixed order, with seeds and
-places for the remote that you do not know. It is compared with a reference controller's result on the
-same episodes; the reference retrieves the remote in every one of them.
+Your result is the **mean score over 12 graded episodes**, in a fixed order, with seeds and
+places for the remote that you do not know. It is compared with a reference's result on the same
+episodes. The reference is not a submission like yours: the grader tells it which place the remote
+is in and where the furniture stands (no submission is told), and it retrieves the remote in
+every one of the episodes, using at most 60 % of an episode's steps.
 
 ## Deliverable and the wire
 
 Leave a controller in `/home/user/submission/` with a `run.sh`. The grader starts it as
 `bash run.sh` with that folder as working directory, under your user account, in a fresh sandbox
 that holds this image and your submission folder and nothing else of your home: everything the
-controller needs must be in that folder. One JSON object per line on stdin and stdout; keep
-stdout for the protocol and send diagnostics to stderr.
+controller needs must be in that folder (at most 5000 files and 200 MiB; a real folder, not a
+link). It runs at a low CPU priority (nice 19), with only local (AF_UNIX) sockets and at most
+4096 processes for your user, and `run.sh` starts with only `PATH`, `HOME`, `LANG`, the numerics
+variables above and what the simulator needs to draw (`MUJOCO_GL=egl`, `PYOPENGL_PLATFORM=egl`,
+`MESA_SHADER_CACHE_DISABLE=true`, `REMOTE_ROOM_DIR=/opt/room`) set: export anything else you need
+there. One JSON object per line on stdin and stdout; keep stdout for the protocol and send
+diagnostics to stderr.
 
 ```
                                   <- READY                  (when you are loaded)
@@ -143,13 +171,36 @@ has to work when started again.
 more than once with the same `t`; answer each request from the observation it carries. A repeated
 request does not advance the episode, so do not count requests as steps; use `t`. At about 1 % of
 the steps the grader asks the same `t` twice, once with the real observation and once with a copy
-whose joint readings are shifted slightly, in a hidden order, and applies only the reply to the
-real one. Whether the two replies differ is recorded and does not change your score.
+of it in which the rail and the arm are read a moment earlier and a hair off (up to 1 mm and
+1 mrad), with the hand's pose, the wrist camera's pose, the wrench and the gripper reading that
+go with those joint readings, in a hidden order, and applies only the reply to the real one.
+Whether the two replies differ is recorded and does not change your score.
 
 **Time.** Every episode has a controller budget of **900 s**: the time the grader waits for your
 replies plus 0.2 s for every image you ask for (the two images of an episode's first observation
 are free). The simulation's own time is not charged. An episode whose budget runs out stops there
 and is scored as it stands.
+
+**Two rules for the whole run.** If the grader cannot stop every process your submission left
+running (it checks when it starts and when the last episode is over), the run scores 0: do not
+start anything that respawns or detaches itself to survive a kill. Your processes cannot open an
+internet socket (the call fails); on a grading machine where that guard cannot be installed, an
+internet socket of yours scores the whole run 0.
+
+## Session time
+
+- This session is stopped 6 hours of wall-clock time after it started. What is in
+  `/home/user/submission/` at that moment is graded as it is: keep a complete, runnable submission
+  there from early on and replace it as you improve it.
+- The only clock for this limit is the wall clock. `bash /home/user/session_time.sh` prints the
+  minutes used and the minutes left, from a time stamp written when your sandbox was set up
+  (moments before your session started, so you have slightly more than it says, never less);
+  `date` shows the same clock. Run the script when you begin, again before every decision that
+  depends on the time left, and whenever you pick the work up from notes or from a summary of
+  what was done. Do not estimate the time used from how much you have done.
+- Two other counts in this task are not your session's time: an episode's length (4800 control
+  steps are 4 simulated minutes and one to three minutes of wall time in your simulator) and the
+  controller's 900 s budget per graded episode. Neither says how much of the 6 hours is left.
 
 ## Checking your work
 
@@ -157,7 +208,7 @@ and is scored as it stands.
 runs your controller over the same wire, with the same deadlines and a few repeated-`t` queries,
 on scenes of your own, and prints the raw metric with how each episode went. `--remote` is where
 you put the remote (x, y, z, yaw in the world frame; it is put there and let go), `--scenes` a
-JSON list of scenes for more than one place, with the other small things placed too if you want
-them (the script's head says how). The example above has the remote lying in the open on the floor.
+JSON list of scenes for more than one place, with the other small things and the second remote
+placed too if you want them (the script's head says how). The example above has the remote lying in the open on the floor.
 Which places are worth practising is your call: the practice grader knows neither the graded
 episodes' places nor what the reference achieves.

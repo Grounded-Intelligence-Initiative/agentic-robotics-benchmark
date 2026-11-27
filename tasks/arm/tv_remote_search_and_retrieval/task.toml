@@ -1,9 +1,10 @@
 # TV remote search and retrieval: a Franka Panda on a floor rail in a living room has to find a
-# TV remote that is hidden in one of six places (under either seat pad of a settee, under a hat
-# that lies in one of a chest's drawers, in a basket on the chest under a book, on the floor under
-# the chest, or on the floor under the settee, where only a clothes hanger reaches it) and take
-# it out, from two RGB-D cameras, joint readings and a wrist force sensor.
-# The grader drives the agent's controller over a stdio wire on a fixed hidden set of 10 episodes.
+# TV remote that is out of sight in one of seven places (under either seat pad of a settee, under a
+# hat that lies in one of a chest's drawers, loose in another drawer, in a basket on the chest under
+# a book, on the floor under the chest, or on the floor under the settee, where only a clothes
+# hanger reaches it), tell it from a second, light grey remote that lies in another of those
+# places, and take it out, from two RGB-D cameras, joint readings and a wrist force sensor.
+# The grader drives the agent's controller over a stdio wire on a fixed hidden set of 12 episodes.
 
 schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]
@@ -27,12 +28,15 @@ memory_mb = 12288
 timeout_sec = 21600
 network_mode = "no-network"
 
-# 10 episodes of at most 4800 control steps. Measured on the authoring host (one core, CPU
+# 12 episodes of at most 4800 control steps. Measured in the task image on one core (CPU
 # rendering): about 5 ms a control step and 30 ms an image, so about 20 s of simulation for an
-# episode; the reference's whole verify takes under 5 minutes. Worst case: the controller's
-# budget of 900 s an episode (its replies plus 0.2 s charged for an image; grader_config.json)
-# and a slow host at five times those costs: 10 x (900 + 100 + 4800 x 0.15) = 17200 s. The
-# grader's own wall cap (12000 s) ends the run with a verdict before the stage's limit.
+# episode; the reference's whole verify takes under 10 minutes. Worst case: the controller's
+# budget of 900 s an episode (its replies plus 0.2 s charged for an image; grader_config.json),
+# 120 s for READY at the start and after each of three restarts, and a slow host at five times
+# those costs: 12 x (900 + 4800 x (0.025 + 0.15)) + 4 x 120 = 21360 s. The grader's own wall cap
+# (12000 s, grader_config.json) stops starting episodes before the stage's limit: an episode not
+# started by then scores 0, and the last one started ends within 900 + 840 s of it, so the verdict
+# is written by 12000 + 1740 + 120 = 13860 s.
 [verifier]
 timeout_sec = 14400
 environment_mode = "separate"

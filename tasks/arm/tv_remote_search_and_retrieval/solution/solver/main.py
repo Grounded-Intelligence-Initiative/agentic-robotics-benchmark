@@ -1,6 +1,6 @@
-"""The reference controller on the grading wire: one JSON object per line on stdin and stdout.
+"""The reference on the grading wire: one JSON object per line on stdin and stdout.
 
-The behaviour (reference.py) is a generator that is sent observations and yields actions. A step
+The behaviour (oracle.py) is a generator that is sent observations and yields actions. A step
 index `t` that is asked a second time is answered with the action already given for it: the
 behaviour advances once per step, not once per request.
 """
@@ -8,7 +8,7 @@ behaviour advances once per step, not once per request.
 import json
 import sys
 
-from reference import Reference
+from oracle import Oracle
 
 
 def main():
@@ -30,7 +30,7 @@ def main():
             continue
         kind = request.get("type")
         if kind == "reset":
-            controller = Reference()
+            controller = Oracle()
             behaviour = None
             last_t = None
             reply = {"ok": True}

@@ -13,8 +13,9 @@ hat's drawer, the box, the hanger's swing and the look) and a place for the remo
 `--remote x,y,z,yaw` is the remote's centre and direction in the world frame, as the furniture
 stands in that scene: the remote is put there and let go, so give a z just above what it is to
 lie on. `remote_env.place` turns a point of the nominal layout into the scene's. `--scenes` names
-a JSON list of `{"seed": 1, "remote": [x, y, z, yaw], "phone": [...], "case": [...], "book": [...]}`
-(`phone`, `case` and `book` are optional: a scene without one has none in the room). The default is one scene
+a JSON list of `{"seed": 1, "remote": [x, y, z, yaw], "phone": [...], "case": [...], "book": [...],
+"decoy": [...]}` (`phone`, `case`, `book` and `decoy`, the light-grey second remote, are optional: a
+scene without one has none in the room). The default is one scene
 with the remote lying in the open on the floor in front of the settee.
 
 `--film DIR` saves a picture of the room every 50 steps (a view of your own choosing is easy to
@@ -22,7 +23,6 @@ add: the simulator is yours to read in /home/user/remote_env.py).
 """
 
 import argparse
-import copy
 import json
 import os
 import queue
@@ -32,6 +32,8 @@ import sys
 import threading
 
 sys.path.insert(0, os.environ.get("PRACTICE_HOME", "/home/user"))
+
+import numpy as np  # noqa: E402
 
 import remote_env as E  # noqa: E402
 
@@ -112,8 +114,9 @@ def episode(wire, env, spec, rng, max_steps, film, name):
     while not done and env.steps < max_steps:
         t = env.steps
         if rng.random() < REPEAT_RATE:
-            other = copy.copy(obs)
-            other["q"] = [v + rng.uniform(-0.004, 0.004) for v in obs["q"]]
+            # the copy the real grader sends: the arm read a moment earlier and a hair off, with the poses, the
+            # wrench and the gripper reading that go with it
+            other = env.perturbed_observation(obs, np.random.default_rng(rng.getrandbits(64)))
             pair = [obs, other]
             first = rng.random() < 0.5
             replies = [wire.act(t, pair[0 if first else 1]), wire.act(t, pair[1 if first else 0])]
@@ -161,7 +164,8 @@ def main():
     try:
         wire.await_ready()
         for index, item in enumerate(scenes):
-            spec = E.make_scene(int(item["seed"]), item["remote"], item.get("phone"), item.get("case"), item.get("book"))
+            spec = E.make_scene(int(item["seed"]), item["remote"], item.get("phone"), item.get("case"), item.get("book"),
+                                decoy=item.get("decoy"))
             results.append(episode(wire, env, spec, rng, args.max_steps, args.film, item.get("name", "scene{}".format(index))))
             print("[practice] {}".format(json.dumps(results[-1])), file=sys.stderr, flush=True)
     except WireError as exc:

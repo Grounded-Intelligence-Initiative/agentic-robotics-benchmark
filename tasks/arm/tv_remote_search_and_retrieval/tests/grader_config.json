@@ -5,5 +5,6 @@
   "controller_budget_s": 900,
   "image_charge_s": {"overview": 0.2, "wrist": 0.2},
   "wall_cap_s": 12000,
-  "scoring_cap": 1.5
+  "scoring_cap": 1.5,
+  "solver_nproc_limit": 4096
 }
