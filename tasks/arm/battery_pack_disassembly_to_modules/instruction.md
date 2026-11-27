@@ -153,12 +153,10 @@ undamaged where it belongs (service manual, section 9;
 `cell_interface.md`, section 7): a module standing in a bay of the rack, or a swollen one freed and left in its seat
 (value 8), the lid on its stand (5), the service disconnect in the electronics bin (3), a busbar in the copper bin
 (2), a bracket in the steel bin (1), a low-voltage plug or the harness remnant in the electronics bin (1 each), a
-fastener in a fasteners bin (0.5). **A pack counts only when it has been taken apart to module level**: every
-healthy module standing in a bay of the rack and a swollen one freed and left in its seat. A pack in which a module
-is still held, or lies anywhere else, goes on to the shredder as a pack and counts 0, whatever else was sorted from
-it; and a condemned pack counts 0. In a pack that counts, the credit is the value that counts divided by the value
-of everything in the pack; what was sorted before the pack ended still counts, and nothing is subtracted. Where
-things are is read from the physics engine, not from pictures.
+fastener in a fasteners bin (0.5). A condemned pack counts 0. Every other pack's credit is the value that counts
+divided by the value of everything in the pack: what was sorted before the pack ended counts, whether or not the
+pack was taken apart completely, and nothing is subtracted. Where things are is read from the physics engine, not
+from pictures.
 
 `mean_pack_credit` is the mean of the six credits. The reward you are judged on is `mean_pack_credit` relative to a
 hidden reference value. A program that does nothing scores 0.

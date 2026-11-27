@@ -207,12 +207,16 @@ precursor that can be observed, with conditions of the job taken from the merged
   of these events (section 4).
 - *Rule 11, the swollen decision at the criterion.* Bulges 0.45 to 0.80 mm, healthy crowns 0.10 to 0.33 mm, the
   criterion 0.4 mm unchanged (they were 0.6 to 3 mm and up to 0.25 mm). Telling them apart needs the documented shape
-  fitted over the rim plane from close wrist frames; a wrong lift vents (condemned), a wrong leave fails the gate.
-- *The completion gate* (with the study of the merged arm tasks, 2026-11-26, 19:45; all seven studied tasks have one:
-  "A run that does not count scores 0, whatever else was done"). A pack counts only when it has been taken apart to
-  module level: every healthy module standing in the rack and a swollen one freed in its seat. A pack with a module
-  still held, or anywhere else, goes to the shredder whole and counts 0. Inside a pack that counts, the credit is the
-  share it was. The round-2 agent's habit of skipping what would not come out (0.86 to 0.97 a pack) now costs the pack.
+  fitted over the rim plane from close wrist frames; a wrong lift vents (condemned), a wrong leave loses that module's value.
+- *The completion gate, in force from 2026-11-26 to 2026-11-27 and then removed.* It came with the study of the
+  merged arm tasks (2026-11-26, 19:45; all seven studied tasks have one: "A run that does not count scores 0, whatever
+  else was done"): a pack counted only when it had been taken apart to module level (every healthy module standing in
+  the rack and a swollen one freed in its seat), and counted 0 otherwise. The frontier episode on that tree scored 0.0
+  with every pack's lid fasteners sorted and no lid lifted (section 6, the entry of 2026-11-27, 05:00): the gate
+  turned about 7 % of a pack's work into none, and a score of exactly 0 does not tell one program from another. The
+  owner removed it on 2026-11-27. The credit is again the share of the pack's value that lies undamaged where it
+  belongs; whether a pack reached module level is reported (`packs_incomplete`) and not scored. Rules 8 to 12, the
+  condemned pack and the conditions of the job are unchanged, and nothing was drawn again.
 - *Conditions of the job* (the user's answer of 2026-11-26, 19:27, to the starting session's question; precedent
   `arm/kitchen_appliance_tending`, 2 h and one trial never refunded, and `arm/lab_sample_handling`, 2 h and a
   commissioning budget on units that differ from the scored ones): three commissioning sessions in all, never
@@ -318,12 +322,13 @@ cell's messages).
   0.10 m of the stand's centre, flat within 5 degrees, at the stand's height. A bin: centre over the inner footprint
   and at most 0.03 m above the walls. Not held by the gripper, not damaged (a stripped fastener, a chafed harness,
   a dropped module).
-- `mean_pack_credit` is the mean over the six packs. Since 2026-11-26 (the third round) a pack counts only when it is
-  taken apart to module level (every healthy module in a bay, a swollen one freed in its seat: `detail["incomplete"]`
-  otherwise), and a safety event (`live_contact`, `fastener_short`, `module_dropped`, `module_vented`) condemns it
-  (`detail["condemned"]`): either way its credit is 0. A pack that ends early otherwise (the simulated time, the third
-  protective stop, the controller given up on, its time budget) keeps what it had if it passes the gate; nothing is
-  subtracted anywhere. A controller that does nothing earns 0 (nothing lies where it belongs when a pack arrives).
+- `mean_pack_credit` is the mean over the six packs. A safety event (`live_contact`, `fastener_short`,
+  `module_dropped`, `module_vented`) condemns a pack (`detail["condemned"]`): its credit is 0. A pack that ends in any
+  other way (`done`, the simulated time, the third protective stop, the controller given up on, its time budget) keeps
+  what it had, whether or not it was taken apart to module level (every healthy module in a bay, a swollen one freed
+  in its seat; `detail["incomplete"]` reports a pack short of that, and from 2026-11-26 to 2026-11-27 such a pack
+  counted 0: the completion gate of section 2). Nothing is subtracted anywhere. A controller that does nothing earns 0
+  (nothing lies where it belongs when a pack arrives).
 - The verdict's metrics count each ending (`packs_condemned`, `packs_incomplete`, `packs_counted`,
   `packs_fastener_short`, `packs_stops_latched`, ...), the fasteners stripped, sheared, dropped from the bit and
   loaded past their yield point, and the run's largest distance to each cliff of rules 8 to 10
@@ -414,14 +419,16 @@ value measured through `ale validate` of the third round's final version on an R
   from it under the agent's conditions. Neither is a frontier episode; only a new `ale run` on the pushed tip says
   where a fresh agent lands, and whether the task is now too hard.
 - **The third round's cliffs are rules, stated as such.** Damage at once under load (rule 8), the magnet's limits and
-  the short check (rule 10) and the gate are rules of the cell, not physics: a socket does not slide over a hexagon
+  the short check (rule 10) are rules of the cell, not physics: a socket does not slide over a hexagon
   in PhysX, the magnet's hold is a threshold on the rigid tool centre point's acceleration, a short is a loose
   fastener's body within 3 mm of a seated busbar's box. The transducer of rule 12 is linear with one gain and one
   offset per cell; the shank's yield is a two-slope torque-angle law with a set above the knee. Each is in the
   documents with its numbers, and the reference's distance from each is in the verdict's `margin_*` metrics.
-- **The completion gate makes a pack's credit nearly all or nothing**, so a submission's score moves in steps of a
-  sixth with each pack that is or is not taken apart, and two runs of a program that is close to an edge can differ
-  by that much. The reference is far from every edge (section 6).
+- **The credit is additive, and a pack is worth most deep inside.** Without the completion gate (removed on
+  2026-11-27, section 2) a pack's lid fasteners are 6 to 8 % of its value, the lid 5 to 7 % and the modules 43 to
+  46 %, so the score follows how far into a pack a program gets. A program that skips what will not come out keeps the
+  rest, as in the second round; what holds the score down now is rules 8 to 12 and the conditions of the job, not the
+  scoring. One condemned pack still moves the score by up to a sixth.
 - **The arm's own tracking sets the floor of rule 8.** A bit's lateral offset is measured on the physics' tip, and
   the arm's position drives follow their targets to a fraction of a millimetre at rest; the reference engages from
   exact targets, so its offsets measure that floor (`margin_engaged_lat_mm_*`), which is the margin a program has
@@ -1518,6 +1525,50 @@ frontier episode on the pushed commit follows (the 2 h budget); its numbers go i
 Not exercised in the engine: the third round's rules in an agent's hands (the episode follows), any cloud GPU model,
 a host with a CPU quota.
 
+**2026-11-27, from 05:00. The third round's frontier episode scored 0.0; the completion gate removed (the owner's
+decision).** *The episode* (`ale run` `d50d202b` on `88421833`, the RTX 3090 host, Claude Opus 5.5 through claude-code
+2.1.309, effort high, no web tools, the task's 2 h): reward 0.0, `mean_pack_credit` 0.0. The agent ended by itself
+after 40 min with its three sessions used; 103 model calls, none stopped at `max_tokens`, the slowest 137 s, no stream
+cut off, so the score is the model's. In the graded set it placed 12, 11, 11, 14, 13 and 15 of 49, 48, 59, 58, 67 and
+69 items: each pack's lid fasteners, and then no lid came off. Five packs ended `done`, one latched at its third
+protective stop; 15 shanks loaded past their yield point, one head stripped, nothing sheared, dropped or vented, no
+pack condemned, the probe lock 77 of 77. Its own closing summary says the same: none of its three sessions got a lid
+off (two stripped Torx heads and a latched cell; a missed harness; a lid lift that tripped its force guard), so
+everything after the lid was never tried on a cell. Every pack was `incomplete`, and the gate made each count 0.
+
+*The same runs without the gate* (`mean_pack_credit`; recomputed from the native runs' per-item records,
+`verdict.json.records.json`, with the values of `series.VALUES`; the episode's from its counts, taking the items
+placed before a lid comes off as fasteners at 0.5, since the engine keeps no per-item record):
+
+| Run | With the gate | Without it |
+| --- | --- | --- |
+| the reference (`ref5`) | 1.000 | 1.000 |
+| the proxy's disclosed revision (an expert's upper bound) | 0.477 | 0.760 |
+| the fresh-agent proxy | 0.000 | 0.279 |
+| the frozen program of the second round's episode (on `e430a7ca`) | 0.000 | 0.055 |
+| the third round's episode `d50d202b` | 0.000 | about 0.075 |
+
+*What was decided.* The owner's words on 2026-11-27: the score must not be 0. A gate that zeroes a pack turns partial
+work into none, and with rules 8 to 12 in place the additive credit already spreads these runs from 0.06 to 1.0 with
+the frontier run far below 0.5. So the gate is removed and nothing else: rules 8 to 12, the condemned pack, the
+1500 s a pack, the three sessions and the 2 h stay, and no hidden value was drawn again. Not chosen: a credit by the
+share of modules racked (the episode would still be 0), more sessions with the gate kept (the score would move in
+sixths and could be 0 again), half credit for an unfinished pack (a deduction by another name).
+
+*What changed.* `packcell/rules.py` `credit` (and the commissioning service's copy): a pack short of module level
+keeps the value of what lies where it belongs; `detail["incomplete"]` and the verdict's `packs_incomplete` still
+report it. `instruction.md`, the service manual's section 9 and the cell interface's section 7 (through
+`review/make_documents.py`): the gate's paragraphs replaced by the rule above. `review/test_rules.py`, check 12: a
+module held or beside its bay loses its own value and nothing else. `verify.py`'s header. The reference is not
+affected: it takes every pack apart, and its credit is 1.0 under either rule.
+
+*Checks* (no simulator): `review/test_rules.py` 62, `review/test_sensors.py` 11, `review/test_practice.py`,
+`review/test_grader.py`, `review/check_numbers.py` (30 statements, 4 documents), `review/check_copies.py`: all ok.
+
+*Owed:* `ale validate` on this tree (the oracle is expected at 1.0 as before) and a fresh frontier episode. The
+0.075 above is a recomputation, not a measurement: the instruction told the agent that an unfinished pack counts 0,
+and it no longer does, so only a new episode gives the number for the pull request.
+
 ## 7. Final report (2026-11-24, 16:30 EST)
 
 **Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00"),
@@ -1566,6 +1617,9 @@ proxy 0.00000; its disclosed revision as in that entry. The anchor's source is t
 `ale validate` and a frontier episode on it are owed.
 Then (the entry "2026-11-27, from 03:04") the third round's version through `ale validate` on the RTX 3090 host:
 untouched 0.0, oracle 1.0, the reference's packs in ref5's native steps; the anchor's source is that run.
+Then (the entry "2026-11-27, from 05:00") the frontier episode on that version scored 0.0, every pack short of module
+level, and the completion gate was removed: the credit is additive again, and everything else of the third round
+stays.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops

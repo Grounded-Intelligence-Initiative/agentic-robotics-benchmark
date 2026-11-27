@@ -481,8 +481,9 @@ class Rules(object):
 
     def credit(self, part_poses, fastener_poses):
         """The pack's credit: the value of what lies undamaged where it belongs over the value of everything in the
-        pack; 0 for a condemned pack (a safety event: rule 10), which goes to quarantine whole, and 0 for a pack not
-        taken apart to module level (a module not where it belongs: the completion gate). Returns (credit, detail)."""
+        pack; 0 for a condemned pack (a safety event: rule 10), which goes to quarantine whole. `detail` also says
+        whether the pack was left short of module level (`incomplete`: a module not where it belongs), which the
+        verdict reports and the credit does not use. Returns (credit, detail)."""
         total = earned = 0.0
         detail = {}
         for pid, p in self.part.items():
@@ -501,10 +502,11 @@ class Rules(object):
             earned += f["value"] if ok else 0.0
         if self.condemned():
             return 0.0, dict(detail, condemned=self.ended)
-        # (the completion gate, 2026-11-26) a pack counts only when it is taken apart to module level: every healthy
-        # module standing in a bay of the rack, a swollen one freed and left in its seat
+        # reported, not scored: whether the pack was taken apart to module level (every healthy module standing in a
+        # bay of the rack, a swollen one freed and left in its seat). From 2026-11-26 to 2026-11-27 a pack short of
+        # that counted 0 (the completion gate); it was removed because it turned partial work into no work.
         if not all(detail[pid] for pid, p in self.part.items() if p["kind"] == "module"):
-            return 0.0, dict(detail, incomplete=True)
+            detail = dict(detail, incomplete=True)
         return (earned / total if total > 0 else 0.0), detail
 
     # ------------------------------------------------------------------ the privileged view (reference runs only)

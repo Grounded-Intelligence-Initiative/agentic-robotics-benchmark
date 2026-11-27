@@ -266,15 +266,17 @@ def main():
     r.fast[some]["stripped"] = True
     want = 1.0 - S.VALUES["fastener"] / total
     assert abs(r.credit(parts, fast)[0] - want) < 1e-12
-    # the completion gate: a module not where it belongs (held, or beside its bay) and the pack counts nothing
+    # a module not where it belongs (held, or beside its bay) loses its own value and nothing else; the pack is
+    # reported as short of module level (there is no completion gate)
+    less = want - S.VALUES["module"] / total
     r.part["M2"]["grasped"] = True
-    assert r.credit(parts, fast) [0] == 0.0 and r.credit(parts, fast)[1]["incomplete"]
+    assert abs(r.credit(parts, fast)[0] - less) < 1e-12 and r.credit(parts, fast)[1]["incomplete"]
     r.part["M2"]["grasped"] = False
     keep = parts["M1"]
     parts["M1"] = at(rk["bay_centers"][0][0] + 0.09, rk["bay_centers"][0][1], S.TABLE_Z + 0.055)
-    assert r.credit(parts, fast)[0] == 0.0
+    assert abs(r.credit(parts, fast)[0] - less) < 1e-12 and r.credit(parts, fast)[1]["incomplete"]
     parts["M1"] = keep
-    assert abs(r.credit(parts, fast)[0] - want) < 1e-12
+    assert abs(r.credit(parts, fast)[0] - want) < 1e-12 and "incomplete" not in r.credit(parts, fast)[1]
     # a safety event condemns the pack whatever lies where
     for ev in S.CONSEQUENCE["condemn"]:
         r.ended = ev
@@ -651,7 +653,7 @@ def huge_numbers():
 def round3_rules():
     """Checks 22 to 27 (the third round, rules 8 to 12): immediate head damage under load, the reamed Torx recess,
     the shank's own strength, yield and wind-up, working at 80 % of the own shear torque, the short check, the
-    condemned and the incomplete pack."""
+    condemned pack."""
     import math
     import json
     packs = json.load(open(os.path.join(os.path.dirname(HERE), "hidden", "packs.json")))["packs"]

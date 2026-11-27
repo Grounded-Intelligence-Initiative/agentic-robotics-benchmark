@@ -249,10 +249,9 @@ When a pack has ended and everything has come to rest, each component counts if 
   off);
 - a fastener: in either fasteners bin.
 
-A pack counts only when it has been taken apart to module level: every module that is not swollen stands in a bay
-of the rack as above, and a swollen one lies freed in its seat. Otherwise the pack's credit is 0 (service manual,
-section 9), and so is a condemned pack's (section 4). In a pack that counts, the credit is the value of what counts
-divided by the value of everything in the pack (a missing fastener is not in the pack). Nothing is subtracted.
+A condemned pack's credit is 0 (service manual, section 9; section 4 here). Every other pack's credit is the value
+of what counts divided by the value of everything in the pack (a missing fastener is not in the pack), whether or
+not the pack was taken apart completely. Nothing is subtracted.
 
 ## 8. Commissioning
 

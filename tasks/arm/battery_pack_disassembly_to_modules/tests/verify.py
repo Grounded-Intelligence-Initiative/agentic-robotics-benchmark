@@ -33,8 +33,9 @@ the grader adds no randomness of its own.
 The metric `mean_pack_credit` is the mean over the set of each pack's credit: the value of the components that lie
 undamaged in the rack, on the stand or in the bin they belong in, over the value of every component of the pack
 (packcell/rules.py `credit`, read from the physics engine's state after the pack has ended and come to rest).
-Touching a live busbar before isolation or dropping a module ends that pack with the credit earned so far; so does a
-controller that is given up on. There is no other term.
+A safety event (packcell/rules.py, rule 10) condemns its pack, which then counts 0; a pack that ends in any other way
+(done, its simulated time, the third protective stop, a controller that is given up on) keeps what was sorted by
+then, whether or not it was taken apart completely. There is no other term.
 
 Oracle token: a submission whose .oracle_token hashes to tests/hidden/oracle_token.sha256 is the reference; only then
 does every observation also carry `truth`. An untokened submission never sees it.

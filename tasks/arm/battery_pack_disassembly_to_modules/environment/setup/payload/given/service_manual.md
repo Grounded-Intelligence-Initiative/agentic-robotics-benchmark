@@ -444,11 +444,6 @@ The example pack is not one of the packs you will meet.
 A component counts when it lies undamaged where it belongs. Damaged means: a fastener with a stripped head or a
 sheared shank, a harness chafed by the nutrunner, a module that was dropped or that vented.
 
-**A pack counts only when it is taken apart to module level.** That is the cell's job: a pack goes on to the next
-station only with every healthy module standing in the rack and a swollen one freed in its seat for quarantine. A
-pack with a module still held in its tray, or a module anywhere else, goes to the shredder as a whole pack, and none
-of what was sorted from it is booked to the cell: it counts 0.
-
 **A condemned pack counts nothing.** A pack in which a safety event happened goes to the facility's quarantine
 whole, with everything already sorted from it, as the facility's rule for a possible thermal event is: electrolyte
 and hydrogen fluoride from a damaged cell may have reached what was sorted, and none of it is recovered. The safety
