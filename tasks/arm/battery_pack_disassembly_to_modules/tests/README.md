@@ -163,6 +163,71 @@ committed before its draw (`review/select_set.py`, rules 5 to 7):
   step), adhesive on the lid or modules (a force ramp is a recipe, and the cell's protective stops already teach it),
   pre-damaged heads (little at stake: the extractor frees the part), bit wear (a counter is a recipe).
 
+**The third round (since 2026-11-26, evening): what stays hard when the procedure is known.** A fresh Claude Opus 5.5
+episode on the second round's tree scored reward 0.97 (`mean_pack_credit` 0.926) in 75 minutes (section 6, the entry
+"2026-11-26, from 19:00"). It took the manual's working cycle as a fixed recipe, the bit order as a free trial, the
+nominal places as a map that a 2 mm socket tolerance made exact enough, a test turn on a clean trace as a free judge
+of engagement, and it skipped whatever would not come out at no other cost. Every lever until then was a rule with a
+recipe. The third round asks one question of each lever: when an expert knows exactly what to do, is it still hard to
+do well? It combines four of them, each a physical or facility consequence with a line in the documents and a
+precursor that can be observed, with conditions of the job taken from the merged arm tasks (rules 8 to 12 of
+`review/select_set.py`, committed before their draws):
+
+- *Rule 8, precision engagement, damage at once.* A socket drives within 0.8 mm (was 2.0), a Torx bit within 0.5 mm
+  (was 1.2), both within 2 degrees (was 3). A bit that is on a head without driving it (outside those, one size off,
+  a Torx bit pressed too lightly), run at a torque limit of 1 N m or more, strips the head at once; below 1 N m the
+  spindle only stalls, the same reading as on a head it drives, so no reading tells a partial engagement before it
+  is too late. A reamed Torx recess takes no extractor (its part stays held); a rounded hexagon still does. With holes
+  within 2 mm of nominal, every head's centre has to be measured to sub-millimetre (a close wrist frame, the outline
+  fitted where sealant does not hide it, the camera's own mounting known to 0.2 mm), or found by touch under a pad.
+- *Rule 9, every shank its own, read through a real transducer.* A corroded or seized fastener's shank has lost
+  section: its shear torque is 70 to 100 % of the thread's, drawn per fastener, invisible from outside; it yields at
+  86 to 92 % of its own shear torque. The angle reading winds up with the torque held (1.2 to 1.8 degrees per N m on
+  M6, 0.6 to 0.9 on M8, per fastener), and past the yield point six times as fast, a set that stays. The torque reading
+  carries 0.15 N m + 1 % of noise per sample, the angle 0.2 degrees. Working a thread loose needs a loosening stall at
+  80 % or more of its own shear torque: between that and its shear torque lies a window of 6 to 14 % that only a
+  measured yield point finds. A fixed limit is safe for no fastener of unknown strength (the episode's 19.5 N m shears
+  every weakened M6 shank whose breakaway lies above its strength, and many corroded ones now do).
+- *Rule 12, a cell's own nutrunner.* Each cell's torque transducer reads 0.88 to 1.12 times the torque plus -0.3 to
+  0.3 N m, and the spindle stalls where that reading meets the commanded limit: the manual's torques are torques on
+  the bit, and a limit commanded from the table holds a different torque in every cell. A development cell shows what
+  the cells are like, not what a graded cell's values are (the sentence `arm/lab_sample_handling` uses). What
+  calibrates a cell on site: the free-running drag (0.15 N m) and a fastener running out (12 % of its assembly
+  torque).
+- *Rule 10, consequences, not deductions.* Four safety events condemn the pack, the facility's rule for a possible
+  thermal event (electrolyte and hydrogen fluoride from a damaged cell may have reached what was sorted from it): a
+  tool on a live part before isolation, a loose fastener at a busbar still in its seat (a short, before isolation or
+  after it: a module keeps its own voltage), a module that falls, a swollen module moved off its seat; a condemned
+  pack counts 0. A freed fastener rides out on the magnetic bit only when drawn straight out of its hole first (15 mm
+  for M6, 20 mm for M8, before 1.5 mm sideways) and carried gently (the rigid tool centre point under 4 m/s^2, the
+  tool axis within 25 degrees); otherwise it falls where it is. The third protective stop in a pack latches the cell
+  and ends the pack (an unattended cell needs a person to reset it), keeping what was sorted. The reference makes none
+  of these events (section 4).
+- *Rule 11, the swollen decision at the criterion.* Bulges 0.45 to 0.80 mm, healthy crowns 0.10 to 0.33 mm, the
+  criterion 0.4 mm unchanged (they were 0.6 to 3 mm and up to 0.25 mm). Telling them apart needs the documented shape
+  fitted over the rim plane from close wrist frames; a wrong lift vents (condemned), a wrong leave fails the gate.
+- *The completion gate* (with the study of the merged arm tasks, 2026-11-26, 19:45; all seven studied tasks have one:
+  "A run that does not count scores 0, whatever else was done"). A pack counts only when it has been taken apart to
+  module level: every healthy module standing in the rack and a swollen one freed in its seat. A pack with a module
+  still held, or anywhere else, goes to the shredder whole and counts 0. Inside a pack that counts, the credit is the
+  share it was. The round-2 agent's habit of skipping what would not come out (0.86 to 0.97 a pack) now costs the pack.
+- *Conditions of the job* (the user's answer of 2026-11-26, 19:27, to the starting session's question; precedent
+  `arm/kitchen_appliance_tending`, 2 h and one trial never refunded, and `arm/lab_sample_handling`, 2 h and a
+  commissioning budget on units that differ from the scored ones): three commissioning sessions in all, never
+  refunded, fewer than the four development packs; the agent's session 2 h (was 6 h); the development packs and cells
+  differ from the graded ones in stated ways (combinations and counts, every cell's own camera mounting and
+  transducer). The simulated-time allowance per pack is set at about 1.3 times the reference's slowest hidden pack
+  (section 6), as `arm/keyed_nut_peg_assembly` set its takt against its reference's pace.
+- *The documents keep facts and lose procedures* (`arm/keyed_nut_peg_assembly` took the method out of its data
+  sheet): the working cycle is stated as how a thread's bond responds, not as numbered steps; "look at every head",
+  "raise the limit", "tell the variant from", the touch method under pads, the trial order of bits and the hint to
+  calibrate the cameras from the plates are gone; every number an expert needs stays.
+- *Not used, with reasons:* the pack shifting in its fixture or a knocked camera (moving every kinematic body of a
+  pack mid-run is a risk this deadline does not allow; a careful program re-measures each head before it engages
+  anyway), revision layouts not on file (they would make a padded fastener unknowable), adhesive peel and lift-tilt
+  jamming (a force ramp and a vertical lift are recipes an expert runs without difficulty), fewer development packs
+  (the conditions above already make practice scarce).
+
 **What is rule-based (the stated simplifications).**
 
 - *Fasteners are rule-based constraints.* A fastener's body sits on its seat (its head is a real collider the bit
@@ -251,9 +316,17 @@ cell's messages).
   0.10 m of the stand's centre, flat within 5 degrees, at the stand's height. A bin: centre over the inner footprint
   and at most 0.03 m above the walls. Not held by the gripper, not damaged (a stripped fastener, a chafed harness,
   a dropped module).
-- `mean_pack_credit` is the mean over the six packs. A pack that ends early (live contact, a dropped module, the
-  simulated time, the controller given up on, its time budget) keeps what it had; nothing is subtracted anywhere.
-  A controller that does nothing earns 0 (nothing lies where it belongs when a pack arrives).
+- `mean_pack_credit` is the mean over the six packs. Since 2026-11-26 (the third round) a pack counts only when it is
+  taken apart to module level (every healthy module in a bay, a swollen one freed in its seat: `detail["incomplete"]`
+  otherwise), and a safety event (`live_contact`, `fastener_short`, `module_dropped`, `module_vented`) condemns it
+  (`detail["condemned"]`): either way its credit is 0. A pack that ends early otherwise (the simulated time, the third
+  protective stop, the controller given up on, its time budget) keeps what it had if it passes the gate; nothing is
+  subtracted anywhere. A controller that does nothing earns 0 (nothing lies where it belongs when a pack arrives).
+- The verdict's metrics count each ending (`packs_condemned`, `packs_incomplete`, `packs_counted`,
+  `packs_fastener_short`, `packs_stops_latched`, ...), the fasteners stripped, sheared, dropped from the bit and
+  loaded past their yield point, and the run's largest distance to each cliff of rules 8 to 10
+  (`margin_engaged_lat_mm_hex` / `_torx`, `margin_engaged_tilt_deg`, `margin_load_over_yield`, `margin_carry_accel`,
+  `margin_carry_tilt_deg`, `margin_carry_side_mm_before_out`): how close the reference comes to each threshold.
 - Pixels are never scored. Measured on the author's server: two renders of one scene on the same GPU differ in
   about half the pixels (mean absolute difference 0.36 of 255).
 - A failure of the cell itself (`cellproc.CellError`): the controller is stopped with its process group (as root,
@@ -290,12 +363,15 @@ submission carries a 256-bit token, the grader then adds `truth` (every part's p
 fastener's head and seat, the harness' path, the exact commanded targets) to its observations. With that it skips
 perception and state estimation: it works through the public actions, pays for every tool and bit exchange, presses
 and turns every fastener under the same rules, and decides from the nutrunner's torque and angle that a fastener is
-stalled (and raises the torque limit, as the manual says for corroded fasteners; since 2026-11-26 to the highest that
-harms nothing, below the shear torque, and works a seized fastener loose with the manual's cycles); that a fastener
+stalled (and raises the torque limit for corroded fasteners; since 2026-11-26 to the highest that harms nothing:
+since the third round 97 % of the shank's own yield point, from `truth`, commanded through the cell's transducer
+gain and offset, also from `truth`; it works a seized fastener loose with cycles at that limit and at 1.1 times the
+assembly torque); that a fastener
 is out (`captured`), how long to work a seized one (its breakaway), which module is swollen (it stays in its seat),
 which parts are locked or have left their seat, whether the pack is isolated and its waypoints' exact targets it
 takes from `truth` (its displacements are taken from the observation it answers, so the lock is honest).
-Its order: a harness on the lid, the lid's bolts by head type, the lid to its stand (a half turn of the first
+Since the third round it carries a freed fastener slowly (a straight lift at 0.12 m/s, transfers at 0.15 m/s and
+0.35 rad/s), under the magnet's limit. Its order: a harness on the lid, the lid's bolts by head type, the lid to its stand (a half turn of the first
 joint), the service disconnect and the plugs, the wait for isolation, a harness on the busbars, the busbar and
 bracket bolts, the busbars, brackets and modules. Transfers go round the base by a turn of the first joint (a straight line near the base's axis runs the arm
 through its shoulder singularity). It answers a repeated step from the observation it comes with: its plan yields a
