@@ -1,487 +1,64 @@
 {
- "rule": "first 2 (one for each seat pad) of 8 os.urandom candidates per spot that the reference retrieves, also in 3 replays with the loose things nudged by 1e-5",
- "candidates": [
+ "format": "tv_remote_search_and_retrieval episode selection 2",
+ "rule": "Selection of the fixed hidden episode set (a maintainer's tool; the grader never runs it).\n\nThe rule, fixed before any candidate was drawn (it is also in the pull request's pre-registration):\n\n1. Freeze. The grader's episode loop and world (tests/remote_grade.py, tests/episodes.py, tests/remote_env.py,\n   tests/grader_config.json), the launcher and the numerics fingerprint (tests/nonet_exec.py,\n   tests/numerics_check.py, tests/numerics.json), the room's files' pin (environment/assets.sha256) and the reference\n   (solution/solver/*.py, solution/solve.sh) are committed first: `draw` refuses to start while any of them differs\n   from the checkout's HEAD and records their sha256 and the commit; `run` and `make` refuse to go on when any of\n   them differs from the recorded hashes.\n2. Draw. `draw` takes the set's key from os.urandom(32) (hex) and writes it to the record before any candidate runs.\n   Place p's candidate i (i = 0, 1, 2, ...) has the 64-bit seed\n   int.from_bytes(blake2b(b\"candidate|<p>|<i>\", key=key, digest_size=8).digest(), \"little\").\n3. Composition. 12 episodes: two per place for under the settee, under the chest, under the hat, in the basket and\n   loose in a drawer; one under each seat pad (the two pads are one place).\n4. Run. Candidates i = 0..BATCH-1 of every place, then the next BATCH of a place that is still short, up to\n   MAX_CANDIDATES. A candidate in which more than HIDDEN_PIXELS pixels of the TV remote show in either camera at the\n   start is rejected unplayed. Otherwise the privileged reference plays it three times over the real wire\n   (remote_grade.run_episodes with that one episode and the oracle submission as solution/solve.sh lays it out, given\n   the token truth; the probe lock at the grader's rate with a fresh OS-entropy stream per run), stopping at the first\n   run that is not kept.\n5. Keep. A candidate is kept when each of the three wire runs scores 1.0 within STEP_MARGIN of the step cap (so no\n   graded episode needs the reference to use more than 60 % of its steps). Per place the first kept candidates in\n   candidate order are the place's episodes. Every candidate tried is recorded: kept, or rejected with its runs.\n6. Void. If a place is short after MAX_CANDIDATES, the draw is void: `draw --void REASON` records why and draws a\n   new key; the record keeps every draw. A frozen file that changes after a draw voids it too\n   (`draw --void REASON --refreeze`).\n7. Order. `make` shuffles the 12 (places in the order of PLAN, a place's episodes in candidate order; a Fisher-Yates\n   in which position i swaps with int.from_bytes(blake2b(b\"order|<i>\", key=key, digest_size=8).digest(), \"little\")\n   mod (i + 1), i from 11 down to 1) and writes tests/hidden/episodes.json in that order: the graded order.",
+ "plan": [
+  [
+   "left_cushion",
+   1
+  ],
+  [
+   "right_cushion",
+   1
+  ],
+  [
+   "under_sofa",
+   2
+  ],
+  [
+   "under_chest",
+   2
+  ],
+  [
+   "under_hat",
+   2
+  ],
+  [
+   "in_box",
+   2
+  ],
+  [
+   "in_drawer",
+   2
+  ]
+ ],
+ "wire_runs": 3,
+ "batch": 4,
+ "max_candidates": 16,
+ "hidden_pixels": 8,
+ "step_margin": 0.6,
+ "frozen": {
+  "tests/remote_grade.py": "37b6eea426fecc9ad00545fc467a26fad8f6f1167312207ccad7ad7982e56a7f",
+  "tests/episodes.py": "05c718aadd5fb434fbda8662120cbef4a5b3123c883be101e7385583d4f47c72",
+  "tests/remote_env.py": "0e8054b8d9c0659791ebe4eea759e87d248acbef329af6481ab9546a0c3051ad",
+  "tests/grader_config.json": "94807255728d655bc41e8828018427f480544412d6b94dfe0f7a69210ba0fae4",
+  "tests/nonet_exec.py": "21681d1866479ce3f1943a9d366c3b134097c39c6e3c5dd8bc02f309679bdefb",
+  "tests/numerics_check.py": "1e43ec12fc27f7ced4d8c6080cdeda1b59b55ff943f1345e02f2bd348dc8a70e",
+  "tests/numerics.json": "565cc617cead0b61c3b73835c7d86ba3a080c5d6912cf53de03c6c43ca6d9557",
+  "environment/assets.sha256": "d165989e83b6f0e5346c490c80d172c30b1182c3fc53c5ff6d37a25daba4ccac",
+  "solution/solver/main.py": "5f4328cb0be6cd3413adf7ad77951dcdf25320f831c48332c4d0437f0e836e06",
+  "solution/solver/oracle.py": "44dfeeb9a6249cb648a82894c3c6c0be8597e0bf8963fe9cd527632fe42e3707",
+  "solution/solver/search_skills.py": "7331c0e0d38d4674c0251dd3882238e4e1fba8b1d495dec04ec403e954f16f6c",
+  "solution/solver/skills.py": "b6b1e8d61591d4ca8caf1d59576e50e07dcd74c49afb24b5cf376231c989b4d3",
+  "solution/solver/kin.py": "1aeabc2ca9e141aee315d577f5e2865d50ba43e594a4654043a43ba0596fd8f7",
+  "solution/solve.sh": "10dfe9af0c72e2aa9fba0abe0170d75f28d7d6cfa92a8ce4437d8f1044c6f37b"
+ },
+ "frozen_commit": "1852ba99f96354763c4785ad786cda6acf472ade",
+ "draws": [
   {
-   "spot": "left_cushion",
-   "seed": 14142185728236843755,
-   "reference_score": 1.0,
-   "steps": 2646,
-   "ended": "retrieved",
-   "replays": [
-    1.0,
-    1.0,
-    1.0
-   ],
-   "selected": true
-  },
-  {
-   "spot": "left_cushion",
-   "seed": 7968623289884233827,
-   "reference_score": 1.0,
-   "steps": 2642,
-   "ended": "retrieved",
-   "replays": [
-    1.0,
-    1.0,
-    1.0
-   ],
-   "selected": false,
-   "note": "retrieved, and selected until the two seat pads became one place with one episode each"
-  },
-  {
-   "spot": "left_cushion",
-   "seed": 14826625076443069256,
-   "reference_score": 1.0,
-   "steps": 2646,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "left_cushion",
-   "seed": 1512945861602724752,
-   "reference_score": 1.0,
-   "steps": 2682,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "left_cushion",
-   "seed": 15949879900400427281,
-   "reference_score": 1.0,
-   "steps": 2642,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "left_cushion",
-   "seed": 1473724266353450493,
-   "reference_score": 1.0,
-   "steps": 2629,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "left_cushion",
-   "seed": 13345516365580089571,
-   "reference_score": 1.0,
-   "steps": 2637,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "left_cushion",
-   "seed": 3850108192303833920,
-   "reference_score": 1.0,
-   "steps": 2681,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "right_cushion",
-   "seed": 5927692743451469211,
-   "reference_score": 0.0,
-   "steps": 4800,
-   "ended": "time",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "right_cushion",
-   "seed": 1170350963377297977,
-   "reference_score": 1.0,
-   "steps": 2969,
-   "ended": "retrieved",
-   "replays": [
-    1.0,
-    1.0,
-    1.0
-   ],
-   "selected": true
-  },
-  {
-   "spot": "right_cushion",
-   "seed": 1872635958908235506,
-   "reference_score": 1.0,
-   "steps": 3040,
-   "ended": "retrieved",
-   "replays": [
-    1.0,
-    1.0,
-    1.0
-   ],
-   "selected": false,
-   "note": "retrieved, and selected until the two seat pads became one place with one episode each"
-  },
-  {
-   "spot": "right_cushion",
-   "seed": 9277299347286744208,
-   "reference_score": 1.0,
-   "steps": 3023,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "right_cushion",
-   "seed": 12102012215948350891,
-   "reference_score": 1.0,
-   "steps": 3068,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "right_cushion",
-   "seed": 5132862845937582021,
-   "reference_score": 0.0,
-   "steps": 2039,
-   "ended": null,
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "right_cushion",
-   "seed": 2101231723009467021,
-   "reference_score": 0.0,
-   "steps": 2045,
-   "ended": null,
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "right_cushion",
-   "seed": 12698096968625385432,
-   "reference_score": 1.0,
-   "steps": 2990,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_sofa",
-   "seed": 4964165059243108713,
-   "reference_score": 1.0,
-   "steps": 1491,
-   "ended": "retrieved",
-   "replays": [
-    1.0,
-    1.0,
-    1.0
-   ],
-   "selected": true
-  },
-  {
-   "spot": "under_sofa",
-   "seed": 3359693599485511764,
-   "reference_score": 1.0,
-   "steps": 1495,
-   "ended": "retrieved",
-   "replays": [
-    1.0,
-    1.0,
-    1.0
-   ],
-   "selected": true
-  },
-  {
-   "spot": "under_sofa",
-   "seed": 41642095135460665,
-   "reference_score": 1.0,
-   "steps": 1465,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_sofa",
-   "seed": 5955473438371373813,
-   "reference_score": 1.0,
-   "steps": 1491,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_sofa",
-   "seed": 10029844520413784340,
-   "reference_score": 0.2,
-   "steps": 1345,
-   "ended": null,
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_sofa",
-   "seed": 8363106437203287971,
-   "reference_score": 1.0,
-   "steps": 1478,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_sofa",
-   "seed": 9905259550460701866,
-   "reference_score": 1.0,
-   "steps": 1482,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_sofa",
-   "seed": 10008284784750108605,
-   "reference_score": 1.0,
-   "steps": 1496,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_chest",
-   "seed": 9178393723718829184,
-   "reference_score": 1.0,
-   "steps": 1341,
-   "ended": "retrieved",
-   "replays": [
-    1.0,
-    1.0,
-    1.0
-   ],
-   "selected": true
-  },
-  {
-   "spot": "under_chest",
-   "seed": 591463683311361700,
-   "reference_score": 1.0,
-   "steps": 1342,
-   "ended": "retrieved",
-   "replays": [
-    1.0,
-    1.0,
-    1.0
-   ],
-   "selected": true
-  },
-  {
-   "spot": "under_chest",
-   "seed": 315270014030502003,
-   "reference_score": 1.0,
-   "steps": 1336,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_chest",
-   "seed": 2666541851691655835,
-   "reference_score": 1.0,
-   "steps": 1329,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_chest",
-   "seed": 13507149993333146723,
-   "reference_score": 1.0,
-   "steps": 1386,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_chest",
-   "seed": 9649913208463357544,
-   "reference_score": 1.0,
-   "steps": 1321,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_chest",
-   "seed": 7850712930489455651,
-   "reference_score": 1.0,
-   "steps": 1328,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_chest",
-   "seed": 10233878137612921623,
-   "reference_score": 1.0,
-   "steps": 1341,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_hat",
-   "seed": 12399417636335905164,
-   "reference_score": 0.0,
-   "steps": 2069,
-   "ended": null,
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_hat",
-   "seed": 5899572720505561200,
-   "reference_score": 1.0,
-   "steps": 4503,
-   "ended": "retrieved",
-   "replays": [
-    1.0,
-    1.0,
-    1.0
-   ],
-   "selected": true
-  },
-  {
-   "spot": "under_hat",
-   "seed": 6091971461896482945,
-   "reference_score": 1.0,
-   "steps": 3607,
-   "ended": "retrieved",
-   "replays": [
-    1.0,
-    1.0,
-    1.0
-   ],
-   "selected": true
-  },
-  {
-   "spot": "under_hat",
-   "seed": 3882189866421815143,
-   "reference_score": 1.0,
-   "steps": 3535,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_hat",
-   "seed": 512980289988022287,
-   "reference_score": 1.0,
-   "steps": 4526,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_hat",
-   "seed": 5771139715091004676,
-   "reference_score": 1.0,
-   "steps": 4560,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_hat",
-   "seed": 2872397195475987096,
-   "reference_score": 1.0,
-   "steps": 3500,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "under_hat",
-   "seed": 3668548082380385782,
-   "reference_score": 1.0,
-   "steps": 4512,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "in_box",
-   "seed": 3782714109533947410,
-   "reference_score": 1.0,
-   "steps": 1761,
-   "ended": "retrieved",
-   "replays": [
-    1.0,
-    1.0,
-    1.0
-   ],
-   "selected": true
-  },
-  {
-   "spot": "in_box",
-   "seed": 5530507277777520817,
-   "reference_score": 1.0,
-   "steps": 1742,
-   "ended": "retrieved",
-   "replays": [
-    1.0,
-    1.0,
-    1.0
-   ],
-   "selected": true
-  },
-  {
-   "spot": "in_box",
-   "seed": 5305567996491283032,
-   "reference_score": 1.0,
-   "steps": 1757,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "in_box",
-   "seed": 1283973611986645166,
-   "reference_score": 1.0,
-   "steps": 1762,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "in_box",
-   "seed": 3247166074838154890,
-   "reference_score": 1.0,
-   "steps": 2078,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "in_box",
-   "seed": 10827744796132674896,
-   "reference_score": 1.0,
-   "steps": 1746,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "in_box",
-   "seed": 1571202376174592706,
-   "reference_score": 1.0,
-   "steps": 1756,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
-  },
-  {
-   "spot": "in_box",
-   "seed": 5503497818973645033,
-   "reference_score": 1.0,
-   "steps": 1759,
-   "ended": "retrieved",
-   "replays": [],
-   "selected": false
+   "key": "7a234b62dec547c461c8910fdaac40ae746c20647596c3162c022e63242e8df3",
+   "drawn": "2026-11-27T01:19:22Z",
+   "status": "open",
+   "candidates": []
   }
  ]
 }

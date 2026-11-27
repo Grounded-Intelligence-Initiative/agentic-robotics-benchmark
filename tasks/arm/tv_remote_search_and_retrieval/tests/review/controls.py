@@ -14,10 +14,12 @@ seeds or (after the draw) on the fixed hidden set:
     python3 -B tests/review/controls.py <control> dev <first seed> <seeds per place> [<place> ...]
     python3 -B tests/review/controls.py <control> hidden
 
-Prints one JSON line per episode (by index in a hidden run; never the seed or the place) and the mean. Needs the task
+Prints one JSON line per episode (by index in a hidden run, never the seed or the place; in a development run with a
+hash of the final state, to compare machines) and the mean. Needs the task
 image's Python and the numerics pin (tests/nonet_exec.NUMERICS_ENV), like tests/review/select_episodes.py.
 """
 
+import hashlib
 import json
 import os
 import sys
@@ -100,7 +102,7 @@ def play(env, name, seed, place):
                 action = behaviour.send(wire(obs))
     except StopIteration:
         pass
-    return env.score(), env.steps, env.stopped
+    return env.score(), env.steps, env.stopped, hashlib.sha256(env.data.qpos.tobytes()).hexdigest()[:12]
 
 
 def main(argv):
@@ -112,14 +114,15 @@ def main(argv):
         places = argv[4:] or list(R.HIDING_SPOTS)
         for place in places:
             for seed in range(first, first + per):
-                score, steps, ended = play(env, name, seed, place)
+                score, steps, ended, state = play(env, name, seed, place)
                 scores.append(score)
-                print(json.dumps({"control": name, "place": place, "seed": seed, "score": score, "steps": steps, "ended": ended}), flush=True)
+                print(json.dumps({"control": name, "place": place, "seed": seed, "score": score, "steps": steps, "ended": ended,
+                                  "state": state}), flush=True)
     else:
         with open(os.path.join(TASK, "tests", "hidden", "episodes.json")) as f:
             episodes = json.load(f)["episodes"]
         for index, ep in enumerate(episodes):
-            score, steps, ended = play(env, name, int(ep["seed"]), ep["spot"])
+            score, steps, ended, _ = play(env, name, int(ep["seed"]), ep["spot"])
             scores.append(score)
             print(json.dumps({"control": name, "episode": index, "score": score, "steps": steps, "ended": ended}), flush=True)
     print(json.dumps({"control": name, "episodes": len(scores), "mean": round(sum(scores) / max(1, len(scores)), 4)}), flush=True)

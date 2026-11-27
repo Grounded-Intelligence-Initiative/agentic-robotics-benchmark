@@ -385,6 +385,9 @@ def overview_pose():
     return _OVERVIEW
 
 
+# The median brightness (mean of R, G, B; 0-255) of a remote's pixels in a wrist view, measured on development seeds in
+# every place, in shadow under the furniture too: the black TV remote 42 at most, the light grey one 83 at least.
+GREY_SHADE = 62
 TV_BLACK_ONLY = False           # set by a controller that tells the TV remote from the other one by its colour
 
 
@@ -422,7 +425,7 @@ def find_remote(points_rgb, z_range, xy_box=None, min_points=40, dark=False, siz
         thing = sel[of == k]
         if len(thing) < min_points:
             continue
-        if TV_BLACK_ONLY and np.median(shade[of == k]) > 110:
+        if TV_BLACK_ONLY and np.median(shade[of == k]) > GREY_SHADE:
             continue                      # the other remote (light grey): the TV remote is black
         xy = thing[:, :2]
         centre = xy.mean(axis=0)

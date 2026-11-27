@@ -21,7 +21,15 @@ has them). Taking one of them out earns nothing: only the remote counts.
 **And there is a second remote.** The TV remote is the black one (`remote` in the simulator's
 model). The air conditioner's remote has the same shape and size and is light grey (`decoy` in the model);
 in every graded episode it lies somewhere too, in a place of the kind the TV remote may be in,
-and never in the same one. Holding it up earns nothing, and the episode goes on.
+and never in the same one. Picking it up or holding it up earns nothing and does not end the
+episode: the episode goes on until the TV remote is retrieved or the steps run out. The two differ
+in colour only (`remote.png` and `remote_b.png` in `/opt/room`): the grey one's colour map is light
+where the black one's is dark (median 176 against 30, of 255). In this simulator's light that difference survives shadow: in wrist
+camera views at working distance (0.34 to 0.56 m), under the settee and the chest, in a drawer
+and in the basket, the median brightness (mean of R, G and B, 0 to 255) of the black remote's
+pixels was 42 at most and the grey remote's 83 at least, and the two remotes' mean colours were
+at least 30 apart in CIELAB in every view, against camera noise of 1.5 per channel. Measure it in
+your own renders before you rely on a threshold.
 
 Your controller sees the room through two RGB-D cameras (a fixed overview and one on the wrist),
 the joint readings and a wrist force/torque sensor. It gets no object poses of any kind. **The
