@@ -45,10 +45,10 @@ def test_single_set_has_exact_cap_and_one_world(monkeypatch):
     World.instances = []
     monkeypatch.setattr(episode, 'ArenaRound', World)
     solver = Solver()
-    result = episode.run_episode(17, None, solver, Lock(), max_actions=13)
-    assert result == {'actions': 13}
+    result = episode.run_episode(17, None, solver, Lock(), max_actions=14)
+    assert result == {'actions': 14}
     assert len(World.instances) == 1 and World.instances[0].closed
-    assert solver.observations == [{'rgbd': 17}] * 13
+    assert solver.observations == [{'rgbd': 17}] * 14
 
 
 def test_explicit_reference_observer_does_not_change_public_default(monkeypatch):

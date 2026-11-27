@@ -128,7 +128,7 @@ def add(parent, tag, **attrs):
 def model_for(layout):
     tree = ET.fromstring((ROOT / "yam.xml").read_text().split("-->")[-1])
     tree.find("compiler").set("meshdir", str(ROOT.parent / "assets"))
-    option = add(tree, "option", timestep=DT, integrator="implicit", cone="elliptic")
+    option = add(tree, "option", timestep=DT, integrator="implicitfast", cone="elliptic")
     add(option, "flag", autoreset="disable")
     world = tree.find("worldbody")
     for geom in world.iter("geom"):

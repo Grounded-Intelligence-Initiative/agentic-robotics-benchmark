@@ -16,6 +16,8 @@ def test_receivers_remain_fixed_while_robot_and_physics_advance():
     try:
         targets = {item.target for item in world.items.values()}
         assert len(world.items) == 13
+        assert world.model.opt.integrator == mj.mjtIntegrator.mjINT_IMPLICITFAST
+        assert world.model.opt.disableflags & mj.mjtDisableBit.mjDSBL_AUTORESET
         assert len(targets) == 11
         before = {name: (world.data.geom(name).xpos.copy(),
                          world.data.geom(name).xmat.copy()) for name in targets}

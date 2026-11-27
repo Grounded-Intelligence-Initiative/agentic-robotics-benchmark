@@ -23,7 +23,7 @@ def main(single_set=False):
     lock = ProbeLock(rng, rate=0 if single_set else config["probe_rate"],
                      pass_fraction=config["probe_pass_fraction"])
     count = 1 if single_set else config["episodes"]
-    action_limit = 13 if single_set else MAX_ACTIONS
+    action_limit = 14 if single_set else MAX_ACTIONS
     totals = {"left": 0, "right": 0}
     episodes = []
     aborted = 0
@@ -61,5 +61,5 @@ def main(single_set=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--single-set", action="store_true",
-                        help="seed 17, one layout, at most 13 actions; diagnostic only")
+                        help="seed 17, one layout, at most 14 actions; diagnostic only")
     main(parser.parse_args().single_set)
