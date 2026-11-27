@@ -1,6 +1,6 @@
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/ale-robotics-assets
-# revision: (set when the task is published)
+# revision: a0d5ec3864f7b7dc96baad5d31776793ae3d6cde
 # prefix: tasks/humanoid/humanoid_robot_description_from_calibration_records/payload
 c13c1a77408bb333773314aef4a0879237674c265ee0d57c2406c45cc1b8094c  given/cad/README.txt
 7d09ff038fc1cf210f8d613bf1287720ab742c8e33de0304d3d8b8916b71a8c1  given/cad/bolted_pairs.csv
