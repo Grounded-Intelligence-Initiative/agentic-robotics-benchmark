@@ -22,9 +22,17 @@ A straight electric nutrunner with a sprung, floating spindle and exchangeable m
 | spindle float | 25 mm; spring 4 N per mm of compression (`stroke_mm` in the observation) |
 | speed | up to 300 rpm either way; a negative speed loosens |
 | torque limit | settable from 0 to 60 N m; the spindle stalls at the limit |
-| readings | torque (N m), speed (rpm), angle (degrees, cumulative, signed), stroke (mm) |
+| readings | torque (N m, the cell's transducer: below), speed (rpm), angle (degrees, cumulative, signed), stroke (mm) |
 | bit and spindle diameter | below 22 mm over the last 130 mm |
 | body | diameter 60 mm, from 30 to 170 mm from the flange |
+
+**The torque transducer is the cell's own.** Each NR-60 in the line has its own transducer, and the spindle's
+controller works from its reading: while the spindle runs, the reading is a gain of 0.88 to 1.12 times the torque on the
+bit plus an offset of -0.3 to 0.3 N m, the same throughout a cell's life and different from cell to cell, and the
+spindle stalls where the reading meets the commanded torque limit (so a commanded limit L holds the torque
+(L - offset) / gain). With the spindle standing the reading is 0. A development cell's transducer shows what the
+line's transducers are like, not what a graded cell's gain and offset are. Every torque in the service manual is a
+torque on the bit, not a reading.
 
 **Bits.** S10 and S13: sockets for 10 and 13 mm hexagons. T30 and T40: Torx bits. EX: an extractor for stripped
 heads. The bit is exchanged in the bit station of the tool stand: the bit's tip in the station position, tool axis
@@ -36,10 +44,10 @@ What a turning bit does on a head:
 | bit | on S10 | on S13 | on T30 | on T40 |
 |---|---|---|---|---|
 | S10 | drives it | turns freely | turns freely | turns freely |
-| S13 | wears it | drives it | turns freely | turns freely |
-| T30 | turns freely | turns freely | drives it | wears it |
+| S13 | strips it | drives it | turns freely | turns freely |
+| T30 | turns freely | turns freely | drives it | strips it |
 | T40 | turns freely | turns freely | turns freely | drives it |
-| EX | wears it | wears it | wears it | wears it |
+| EX | strips it | strips it | strips it | strips it |
 
 ## 3. Engaging a fastener
 
@@ -54,20 +62,20 @@ The bit drives a fastener when all of this holds:
 - the torque limit is at least what the fastener needs (the service manual's torque table).
 
 A bit that is on the head but outside these tolerances (up to 3.5 mm off for a socket, 2.5 mm for a Torx bit, up to
-8 degrees), a bit one size too large or too small in the "wears it" cells, or a Torx bit that cams out, turns on
-the head without driving it: the reading shows a low, uneven torque while the angle runs on, and the head wears. A
-head is stripped after about one and a half turns of that; a Torx recess that is cammed out, after about one turn.
-Stop as soon as the readings show it. Further off than that, or with a bit that does not fit at all, the bit turns
-freely (torque about 0.15 N m) and nothing happens to the head.
+8 degrees), a bit one size too large or too small in the "strips it" cells, or a Torx bit that cams out, is on the
+head without driving it. Run with a torque limit of 1 N m or more, it strips the head at once: a socket rounds the
+hexagon's corners, a Torx bit reams the recess out, and no reading warns before it happens. Below that limit the
+spindle only stalls on the head, and the reading looks the same as on a head the bit drives. Further off than that,
+or with a bit that does not fit at all, the bit turns freely (torque about 0.15 N m) and nothing happens to the head.
 
 A spindle that is stalled at its limit on a fastener it should drive is doing no harm, as long as the limit is below
-the head's limit and the thread's shear torque (the service manual's torque table; at the shear torque the shank
-twists off).
+the head's limit and the fastener's yield point (the service manual, section 5; at its shear torque the shank twists
+off).
 
-**The extractor EX** bites into a stripped head: within 1.5 mm and 2 degrees, pressed on with at least 50 N, with
-the torque limit at 1.2 times the fastener's breakaway torque (below the shear torque, which holds for the extractor
-too); it turns the fastener out at half the spindle's speed.
-On a sound head it only does damage.
+**The extractor EX** bites into a rounded hexagon (S10, S13): within 1.5 mm and 2 degrees, pressed on with at least
+50 N, with the torque limit at 1.2 times the fastener's breakaway torque (below its shear torque, which holds for the
+extractor too); it turns the fastener out at half the spindle's speed. In a reamed Torx recess it finds nothing to
+bite on and turns freely; such a fastener stays in for good. On a sound head it strips it.
 
 **A freed fastener** stays on the bit. `eject` lets it fall; do that over a fasteners bin. With a fastener on the
 bit the nutrunner engages nothing else and the bit cannot be exchanged.

@@ -143,8 +143,12 @@ def run_pack(solver, lock, clock, index, entry, truth, config, start_cell, log):
         score = cell.request({"cmd": "score", "final": True}, timeout=120.0)["score"]
         rec.update(credit=float(score["credit"]), ended=score["ended"], steps=t, sim_s=score["time"],
                    frames=score["frames"], protective_stops=score["protective_stops"], stripped=len(score["stripped"]),
-                   sheared=len(score.get("sheared", [])),
-                   placed=sum(1 for v in score["detail"].values() if v), items=len(score["detail"]),
+                   sheared=len(score.get("sheared", [])), dropped=len(score.get("dropped", [])),
+                   yielded=len(score.get("yielded", [])), condemned=bool(score.get("condemned")),
+                   margins=score.get("margins", {}),
+                   placed=sum(1 for k, v in score["detail"].items() if v is True and k not in ("incomplete", "condemned")),
+                   items=sum(1 for k in score["detail"] if k not in ("incomplete", "condemned")),
+                   incomplete=bool(score["detail"].get("incomplete")),
                    detail=score["detail"], events=score["events"], cell_wall=score["wall"])
     except cellproc.CellError as exc:
         exc.controller_ran = ran

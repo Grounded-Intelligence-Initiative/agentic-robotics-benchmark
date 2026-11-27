@@ -141,7 +141,7 @@ An action with an unknown key, a wrong type or a number out of range is not a va
                                   one sample per tick of the action just executed: the wrench's force along the
                                   tool axis (N), and the spindle's torque, angle and stroke
  "events": [strings], "frames_left": n, "time_left": s,
- "ended": null | "done" | "sim_cap" | "live_contact" | "module_dropped",
+ "ended": null | "done" | "sim_cap" | "stops_latched" | "live_contact" | "fastener_short" | "module_dropped" | "module_vented",
  "images": {"overhead": {"rgb": .., "depth": .., "depth_unit_m": 0.0001, "t": s},
             "wrist": {..., "pose": [x, y, z, rx, ry, rz]}}}
 ```
@@ -152,12 +152,19 @@ The nutrunner's tool centre point is the bit's tip with the spindle unloaded: wi
 **Protective stops.** When the force on the tool exceeds 220 N, the moment 80 N m, or a joint lags its command by
 more than 0.12 rad (a collision, a part that is still fastened, a command the arm cannot follow), the robot backs off
 a little and stands still for 3 s (`stopped`, then `locked_s` counting down); moves commanded meanwhile are ignored.
-`busy` and `busy_s` say the same for a tool or bit exchange. Protective stops are counted but cost nothing else.
+`busy` and `busy_s` say the same for a tool or bit exchange. The cell runs unattended: **at the third protective stop of
+a pack the safety controller latches** and the pack ends there (`stops_latched`), as a cell that needs a person to
+reset it does; what was sorted by then counts. A protective stop's back-off jolts the tool: a fastener on the bit
+falls off (service manual, section 5).
 
-**What ends a pack**: `done`; the simulated time is used up (`sim_cap`, 2700 s per pack); a tool touches a live part
-before isolation (`live_contact`, service manual section 1); a module falls (`module_dropped`: a free module that is
-not held and drops faster than 0.7 m/s, i.e. from more than about 25 mm); a swollen module is moved 5 mm or more
-from its seat (`module_vented`, service manual section 7). After the end nothing moves any more.
+**What ends a pack**: `done`; the simulated time is used up (`sim_cap`, 2700 s per pack); the protective stops latch
+(`stops_latched`, above); and four safety events, each of which **condemns the pack** (service manual, section 9: its
+credit is 0): a tool touches a live part before isolation (`live_contact`, service manual section 1); a loose fastener
+lies at a busbar still in its seat (`fastener_short`, service manual section 1); a module falls (`module_dropped`: a
+free module that is not held and drops faster than 0.7 m/s, i.e. from more than about 25 mm); a swollen module is
+moved 5 mm or more from its seat (`module_vented`, service manual section 7). After the end nothing moves any
+more. Nothing on the wire reports a stripped head, a sheared shank or a dropped fastener: the readings show what the
+tools felt.
 
 ## 5. Cameras
 
@@ -177,8 +184,8 @@ offset of its own: up to 15 mm along and 1.5 degrees about each of its own axes 
 and 1 degree for the wrist camera (against its nominal place on the flange). The true pose is the nominal pose
 times the offset (a translation and a rotation in the camera's own frame). The offset belongs to the cell: it is
 the same throughout a pack and differs from cell to cell. Every pack is taken apart in a cell of its own, the graded
-packs and each development pack alike, so a program identifies the cameras of the cell it is running in, in every
-pack. Located through the nominal poses, a point on the fixture seen by the overhead camera is typically 4 cm off
+packs and each development pack alike: a development cell shows what the cells are like, not what a graded cell's
+offsets are. Located through the nominal poses, a point on the fixture seen by the overhead camera is typically 4 cm off
 (up to about 8 cm), and a point 0.35 m in front of the wrist camera typically 6 mm (up to about 13 mm). What is
 exact: the robot's kinematic model (`../robot/ur20.json`) and its joint readings, the intrinsics, and the
 calibration plates:
@@ -242,8 +249,10 @@ When a pack has ended and everything has come to rest, each component counts if 
   off);
 - a fastener: in either fasteners bin.
 
-The pack's credit is the value of what counts divided by the value of everything in the pack (a missing fastener is
-not in the pack). Nothing is subtracted for anything.
+A pack counts only when it has been taken apart to module level: every module that is not swollen stands in a bay
+of the rack as above, and a swollen one lies freed in its seat. Otherwise the pack's credit is 0 (service manual,
+section 9), and so is a condemned pack's (section 4). In a pack that counts, the credit is the value of what counts
+divided by the value of everything in the pack (a missing fastener is not in the pack). Nothing is subtracted.
 
 ## 8. Commissioning
 
@@ -258,8 +267,11 @@ frames, the robot's and the tools' readings. You get no ground truth, no credit 
 - `packcell_client.Session(pack)` (in `~/given/lib`) opens a session on development pack 1 to 4 and steps it
   interactively; `~/commission/run_session.py --pack N` runs your `run.sh` in a session the way it is run when it is
   graded, repeated steps included.
-- **10 sessions in all**, one at a time; a session is counted when it opens and ends when the pack ends, when you
-  close it or after 900 s without a request. `/run/packcell/status.json` shows how many are left.
+- **3 sessions in all, never refunded**, one at a time (fewer than there are development packs): a session is counted
+  when it opens and ends when the pack ends, when you close it or after 900 s without a request; a session that ends
+  early, for whatever reason, is spent. `/run/packcell/status.json` shows how many are left. The development packs
+  differ from the graded ones: each shows the series' conditions, but none in the combinations and numbers a graded
+  pack carries, and no graded pack is among them.
 - A session starts Isaac Sim on the sandbox's GPU: opening one takes one to two minutes, the very first one several
   minutes more (the renderer compiles its shaders once).
 

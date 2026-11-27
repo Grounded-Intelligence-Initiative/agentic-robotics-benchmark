@@ -4,9 +4,14 @@ A fastener is a rule-based constraint (the design's stated simplification, tests
 when the right bit is on its head, the axes are aligned, the bit is pressed on hard enough and enough loosening
 turns are applied; a wrong bit or a bad alignment wears the head until it is stripped. A part is held until its
 fasteners are out (or, for the plugs, until it is pulled hard enough along its axis), then it is an ordinary rigid
-body. The gripper holds a part when it closes on one of the part's grip features. Two events end a pack: a tool
-touching a live busbar before the pack is isolated, and a module falling. The credit is read from where the bodies
-are at the end.
+body. The gripper holds a part when it closes on one of the part's grip features. Events end a pack: a tool
+touching a live busbar before the pack is isolated, a loose fastener on a seated busbar, a module falling, a swollen
+module moved off its seat (the safety events: they condemn the pack, whose credit is then 0; rule 10 of
+tests/review/select_set.py), and the third protective stop. The credit is read from where the bodies are at the end.
+
+Since rules 8 and 9 (2026-11-26): a bit on a head that it does not drive, run at a torque limit of
+`series.DAMAGE["torque"]` or more, strips the head at once; every fastener has a shank of its own (`shear`, `yield`, `compliance`: series.SHANK)
+whose wind-up the spindle's angle reading shows (`windup`), elastic below its yield point, a set that stays above it.
 
 The cell (`cell.py`) owns the bodies; it calls in here once per control tick with poses and forces read from the
 physics engine, and applies what comes back (free a part, attach it to the gripper, hand a fastener to the socket).
@@ -36,7 +41,8 @@ class Rules(object):
             head = S.HEADS[f["head"]]
             self.fast[f["id"]] = dict(
                 f, status="missing" if f["missing"] else "seated", turned=0.0, wear=0.0, stripped=False, broken=False,
-                sheared=False, load_s=0.0, tight_s=0.0, loaded=False, cycles=0,
+                sheared=False, load_s=0.0, tight_s=0.0, loaded=False, cycles=0, tmax=0.0, engaged_lat=None,
+                engaged_tilt=None,
                 top=(self.T[:3, :3] @ (np.array(f["pos"]) + [0, 0, head["height"]])) + self.T[:3, 3])
         self.part = {}
         for p in pack["parts"]:
@@ -53,6 +59,7 @@ class Rules(object):
         self.events = []
         self.t = 0.0
         self.angle = 0.0               # the spindle's angle (rad, signed, since the cell started)
+        self.windup = 0.0              # the elastic wind-up the bit holds now (rad, signed): the reading is angle + windup
         # live zones (pack frame boxes) around every busbar with its bolts and posts
         self.hv = []
         for p in pack["parts"]:
@@ -83,6 +90,26 @@ class Rules(object):
                     self.log("live_contact", busbar=bid)
                     return
 
+    def short_check(self, positions):
+        """`positions`: {fastener id: world position of its body} of the loose fasteners (let go or fallen from the
+        bit). One that lies at a busbar still in its seat (its live zone) shorts it: a safety event (rule 10), before
+        isolation or after it (a module's own voltage stays on its terminals)."""
+        if self.ended:
+            return
+        Ti = np.linalg.inv(self.T)
+        for fid, pt in positions.items():
+            if self.fast[fid]["status"] != "free":
+                continue
+            q = (Ti[:3, :3] @ np.asarray(pt)) + Ti[:3, 3]
+            for bid, lo, hi in self.hv:
+                if not self.part[bid]["left_seat"] and np.all(q >= lo) and np.all(q <= hi):
+                    self.ended = "fastener_short"
+                    self.log("fastener_short", id=fid, busbar=bid)
+                    return
+
+    def condemned(self):
+        return self.ended in S.CONSEQUENCE["condemn"]
+
     # ------------------------------------------------------------------ the nutrunner on a fastener
     def under_tip(self, tip, axis):
         """The seated fastener the bit's tip is on, with the lateral offset, the gap and the tilt; or None."""
@@ -108,8 +135,10 @@ class Rules(object):
             return "none"
         kind = S.HEADS[f["head"]]["kind"]
         if f["stripped"]:
+            # (rule 8) a reamed Torx recess is smooth: the extractor turns freely in it
             x = E["extractor"]
-            ok = self.bit == "EX" and lat <= x["lateral"] and tilt <= E["tilt_full_deg"] and force >= x["force"]
+            ok = (self.bit == "EX" and kind == "hex" and lat <= x["lateral"] and tilt <= E["tilt_full_deg"]
+                  and force >= x["force"])
             return "full" if ok else "none"
         how = "loose" if self.bit == "EX" else S.BIT_ON_HEAD.get((self.bit, f["head"]))
         if how is None or lat > E[kind]["partial"] or tilt > E["tilt_partial_deg"]:
@@ -136,6 +165,7 @@ class Rules(object):
                         self.part["harness"]["damaged"] = True
                         self.log("harness_damaged")
                     break
+        self.windup = 0.0
         hit = self.under_tip(tip, axis)
         free = (E["free_torque"], speed)
         if hit is None:
@@ -152,22 +182,32 @@ class Rules(object):
         need = running if f["broken"] else f["breakaway"]
         rev = abs(speed) * dt / (2 * math.pi)
         if g == "partial":
-            f["wear"] += E["wear_per_rev_partial"] * rev
+            # (rule 8) on the head without driving it: loaded, the corners round off, the recess reams out at once;
+            # below the damage torque the bit only catches on the head and the spindle stalls
+            if limit < S.DAMAGE["torque"]:
+                return limit, 0.0
+            f["wear"] = max(f["wear"], 1.0)
             self.angle += speed * dt
             torque = min(limit, 0.4 * need * (0.6 + 0.4 * math.sin(6 * self.angle)))
             return self._wear(f, torque, speed)
+        if f["engaged_lat"] is None or lat > f["engaged_lat"]:
+            f["engaged_lat"] = round(lat, 6)
+        if f["engaged_tilt"] is None or tilt > f["engaged_tilt"]:
+            f["engaged_tilt"] = round(tilt, 4)
         ex = self.bit == "EX"
         if speed < 0:                                   # loosening
             if ex:
                 need *= E["extractor"]["torque_factor"]
             held = min(limit, need)                     # the torque the bit puts on the head
             if S.HEADS[f["head"]]["kind"] == "torx" and not ex and force < E["torx_force_base"] + E["torx_force_per_Nm"] * held:
-                # not pressed hard enough for that torque: the bit rides up out of the recess (at a stall too)
-                f["wear"] += E["wear_per_rev_camout"] * rev
+                # not pressed hard enough for that torque: the bit rides up out of the recess (at a stall too), and
+                # (rule 8) reams it out at once
+                f["wear"] = max(f["wear"], 1.0) if limit >= S.DAMAGE["torque"] else f["wear"]
                 self.angle += speed * dt
                 return self._wear(f, min(limit, 0.3 * need * (0.6 + 0.4 * math.sin(6 * self.angle))), speed)
-            if held >= th["shear"]:
+            if held >= f["shear"]:
                 return self._shear(fid, f)
+            self._load(f, held, -1.0)
             if limit < need:                            # stalled at the limit
                 if limit > th["head_limit"]:
                     f["wear"] += E["wear_per_s_overtorque"] * dt
@@ -190,13 +230,28 @@ class Rules(object):
             if f["turned"] == 0.0:
                 f["broken"] = False
             return running, speed
-        if limit >= th["shear"]:
+        if limit >= f["shear"]:
             return self._shear(fid, f)
+        self._load(f, limit, 1.0)
         if limit > th["head_limit"]:
             f["wear"] += E["wear_per_s_overtorque"] * dt
             return self._wear(f, limit, 0.0)
         self._work(f, "tighten", limit, dt)
         return limit, 0.0
+
+    def _load(self, f, torque, sign):
+        """The bit holds `torque` on the shank (rule 9): the reading winds up elastically by its compliance; past its
+        yield point the shank twists plastically, a set that stays (the spindle's angle moves on by it)."""
+        c = math.radians(f["compliance"])
+        if torque > f["yield"] and torque > f["tmax"]:
+            plastic = (S.SHANK["plastic"] - 1.0) * c
+            grow = (torque - max(f["tmax"], f["yield"])) * plastic
+            self.angle += sign * grow
+            if not f.get("yielded"):
+                f["yielded"] = True
+                self.log("fastener_yielding", id=f["id"])
+        f["tmax"] = max(f["tmax"], torque)
+        self.windup = sign * c * torque
 
     def _shear(self, fid, f):
         """The shank twists off: the head rides on the bit (it can be let go like a fastener), the stub stays in the
@@ -214,7 +269,7 @@ class Rules(object):
         W, th = S.WORK, S.THREADS[f["thread"]]
         if phase == "loosen":
             f["tight_s"] = 0.0
-            if torque >= W["loosen"] * th["shear"]:
+            if torque >= W["loosen"] * f["shear"]:
                 f["load_s"] += dt
                 if f["load_s"] >= W["loosen_s"] - 1e-9:
                     f["loaded"] = True
@@ -424,7 +479,8 @@ class Rules(object):
 
     def credit(self, part_poses, fastener_poses):
         """The pack's credit: the value of what lies undamaged where it belongs over the value of everything in the
-        pack. Returns (credit, detail)."""
+        pack; 0 for a condemned pack (a safety event: rule 10), which goes to quarantine whole, and 0 for a pack not
+        taken apart to module level (a module not where it belongs: the completion gate). Returns (credit, detail)."""
         total = earned = 0.0
         detail = {}
         for pid, p in self.part.items():
@@ -441,6 +497,12 @@ class Rules(object):
                   and self.placed(f, fastener_poses[fid]))
             detail[fid] = bool(ok)
             earned += f["value"] if ok else 0.0
+        if self.condemned():
+            return 0.0, dict(detail, condemned=self.ended)
+        # (the completion gate, 2026-11-26) a pack counts only when it is taken apart to module level: every healthy
+        # module standing in a bay of the rack, a swollen one freed and left in its seat
+        if not all(detail[pid] for pid, p in self.part.items() if p["kind"] == "module"):
+            return 0.0, dict(detail, incomplete=True)
         return (earned / total if total > 0 else 0.0), detail
 
     # ------------------------------------------------------------------ the privileged view (reference runs only)
@@ -448,7 +510,8 @@ class Rules(object):
         fs = {fid: {"top": [round(float(v), 5) for v in f["top"]], "head": f["head"], "thread": f["thread"],
                     "status": f["status"], "stripped": f["stripped"], "corroded": f["corroded"], "group": f["group"],
                     "holds": f["holds"], "seized": f["seized"], "sheared": f["sheared"],
-                    "breakaway": round(float(f["breakaway"]), 3), "cycles": f["cycles"]} for fid, f in self.fast.items()}
+                    "breakaway": round(float(f["breakaway"]), 3), "cycles": f["cycles"], "shear": f["shear"],
+                    "yield": f["yield"], "tmax": round(float(f["tmax"]), 3)} for fid, f in self.fast.items()}
         ps = {}
         for pid, p in self.part.items():
             Tp = part_poses.get(pid)

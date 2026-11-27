@@ -115,6 +115,11 @@ class Cell(object):
         self.wall = {"physics": 0.0, "render": 0.0, "rules": 0.0}
         self.fingers_dirty = True
         self.q_hist = []
+        # a freed fastener on the bit (rule 10): where it came out, whether it is drawn out of its hole, the rigid tool
+        # centre point's last positions (its acceleration), and the largest values seen while carrying (diagnostics)
+        self.carry = None
+        self.carry_max = {"accel": 0.0, "tilt_deg": 0.0, "side_mm": 0.0}
+        self.angle_reading = 0.0
         # check that the views follow the order they were asked in
         tfs = np.array(self.pv.get_transforms())
         d = float(np.max(np.linalg.norm(tfs[:, :3] - self.seat_pos, axis=1)))
@@ -326,12 +331,22 @@ class Cell(object):
                     hp, Th = r.part["harness"], poses["harness"]
                     h = [(Th[:3, :3] @ (np.array(p) - np.array(hp["pos"]))) + Th[:3, 3] for p in hp["path"]]
                 had = r.captured
-                tq, sp = r.spindle(tip, axis, force, spindle[0], spindle[1], S.TICK, h)
-                self.spindle_torque = tq + (float(self.rng.normal(0.0, 0.03)) if tq > 0 else 0.0)
+                # (rule 12) the cell's own transducer: the controller stalls the spindle where the reading
+                # (gain x torque + offset) meets the commanded limit
+                g, o = self.pack["transducer"]["gain"], self.pack["transducer"]["offset"]
+                tq, sp = r.spindle(tip, axis, force, spindle[0], max(0.0, (spindle[1] - o) / g), S.TICK, h)
+                # (rule 9) the transducers: torque noise of sigma + a share of the reading, angle noise
+                X = S.TRANSDUCER
+                self.spindle_torque = (g * tq + o + float(self.rng.normal(0.0, X["torque_sigma"] + X["torque_rel"] * tq))) if tq > 0 else 0.0
                 self.spindle_speed = sp
                 if r.captured is not None and r.captured != had:
                     self._capture(r.captured)
+                    self.carry = {"fid": r.captured, "p0": tip.copy(), "out": False, "hist": []}
+            else:
+                r.windup = 0.0
+            self.angle_reading = math.degrees(r.angle + r.windup)
             r.hv_check([tip])
+            self._carry_check(tip, axis)
         elif self.tool == "gripper":
             tcp = self.ee_T @ self.tcp_offset()
             w0 = r.width
@@ -343,6 +358,9 @@ class Cell(object):
             elif ev is not None and ev[0] == "detach":
                 self._detach()
             r.hv_check(r.grip_points(tcp))
+        if any(f["status"] == "free" for f in r.fast.values()):
+            ftf = np.array(self.fv.get_transforms())
+            r.short_check({fid: ftf[i, :3] for fid, i in self.fast_order.items() if r.fast[fid]["status"] == "free"})
         if self.module_idx:
             vel = np.array(self.pv.get_velocities())
             r.drop_check({pid: float(vel[i, 2]) for pid, i in self.module_idx})
@@ -359,6 +377,10 @@ class Cell(object):
             r.log("protective_stop", force=[round(float(v), 1) for v in self.f_ext], torque=[round(float(v), 1) for v in self.t_ext],
                   joint_error=round(err, 4), tcp=[round(float(v), 3) for v in (self.flange_T @ self.tcp_offset())[:3, 3]],
                   holding=r.grasp)
+            if self.stops >= S.CONSEQUENCE["latch"] and not r.ended:
+                # (rule 10) the safety controller latches: an unattended cell waits for a person to reset it
+                r.ended = "stops_latched"
+                r.log("stops_latched", stops=self.stops)
         elif self.lock_ticks > 0:
             self.lock_ticks -= 1
         if self.busy_ticks > 0:
@@ -367,11 +389,49 @@ class Cell(object):
             z = self.flange_T[:3, 2]
             trace["force_axial"].append(round(float(np.dot(self.f_ext, z)), 2))
             trace["torque"].append(round(self.spindle_torque, 3))
-            trace["angle_deg"].append(round(math.degrees(r.angle), 2))
+            trace["angle_deg"].append(round(self.angle_reading + float(self.rng.normal(0.0, S.TRANSDUCER["angle_sigma_deg"])), 2))
             trace["stroke_mm"].append(round(self.stroke * 1000.0, 3))
         if r.ended and not self.ended:
             self.ended = r.ended
         self.wall["rules"] += time.time() - t1
+
+    def _carry_check(self, tip, axis):
+        """Rule 10: a freed fastener rides on the magnetic bit while it is drawn straight out of its hole first (the
+        bit's tip `withdraw` along the fastener's axis before it has moved `side` sideways), while the rigid tool
+        centre point (the robot's joints, without the spindle's float) accelerates less than `accel` and while the
+        tool axis stays within `tilt_deg` of the fastener's axis; otherwise it falls off where it is."""
+        c, r = self.carry, self.rules
+        if c is None:
+            return
+        if r.captured != c["fid"] or self.tool != "nutrunner":
+            self.carry = None
+            return
+        M = S.CONSEQUENCE["magnet"]
+        why = None
+        d = tip - c["p0"]
+        along = float(np.dot(d, r.n))
+        side = float(np.linalg.norm(d - along * r.n))
+        if not c["out"]:
+            self.carry_max["side_mm"] = max(self.carry_max["side_mm"], side * 1000.0)
+            if along >= M["withdraw"][r.fast[c["fid"]]["thread"]]:
+                c["out"] = True
+            elif side > M["side"]:
+                why = "moved sideways before it was out of its hole"
+        c["hist"] = (c["hist"] + [(self.flange_T @ self.tcp_offset())[:3, 3].copy()])[-3:]
+        if len(c["hist"]) == 3:
+            a = float(np.linalg.norm(c["hist"][2] - 2 * c["hist"][1] + c["hist"][0])) / S.TICK ** 2
+            self.carry_max["accel"] = max(self.carry_max["accel"], a)
+            if a > M["accel"] and why is None:
+                why = "shaken off (%.1f m/s^2)" % a
+        tilt = rules.angle_deg(-np.asarray(axis), r.n)
+        self.carry_max["tilt_deg"] = max(self.carry_max["tilt_deg"], tilt)
+        if tilt > M["tilt_deg"] and why is None:
+            why = "tilted off (%.0f degrees)" % tilt
+        if why is not None:
+            fid = c["fid"]
+            self.carry = None
+            self._eject()
+            r.log("fastener_dropped", id=fid, why=why)
 
     # ------------------------------------------------------------------ bodies the rules hand over
     def _set_kinematic(self, path, on):
@@ -588,7 +648,8 @@ class Cell(object):
             "tool": self.tool or "none",
             "bit": r.bit if self.tool == "nutrunner" else None,
             "spindle": {"torque": round(self.spindle_torque, 3), "speed_rpm": round(self.spindle_speed * 60 / (2 * math.pi), 2),
-                        "angle_deg": round(math.degrees(r.angle), 2), "stroke_mm": round(self.stroke * 1000.0, 3)},
+                        "angle_deg": round(self.angle_reading + float(self.rng.normal(0.0, S.TRANSDUCER["angle_sigma_deg"])), 2),
+                        "stroke_mm": round(self.stroke * 1000.0, 3)},
             "gripper": {"width": round(r.width, 5) if self.tool == "gripper" else None,
                         "holding": bool(r.grasp is not None)},
             "status": dict(flags or {"clipped": False, "guard": False, "stopped": False, "busy": False},
@@ -618,6 +679,7 @@ class Cell(object):
         t["tip"] = [round(float(v), 5) for v in self.tip()[0]] if self.tool == "nutrunner" else None
         # the commanded targets exactly (an observation of a repeated step may carry shifted ones)
         t["tcp_target"] = wire.pose6(kin.flange(self.q_cmd) @ self.tcp_offset())
+        t["transducer"] = dict(self.pack["transducer"])
         t["q_target"] = [round(float(v), 6) for v in self.q_cmd]
         t["time"] = round(self.rules.t, 3)
         return t
@@ -639,4 +701,25 @@ class Cell(object):
                 "ticks": self.tick_n, "frames": self.frames_used, "protective_stops": self.stops,
                 "stripped": sorted(fid for fid, f in r.fast.items() if f["stripped"]),
                 "sheared": sorted(fid for fid, f in r.fast.items() if f["sheared"]),
+                "dropped": sorted(e["id"] for e in r.events if e["kind"] == "fastener_dropped"),
+                "yielded": sorted(fid for fid, f in r.fast.items() if f.get("yielded")),
+                "condemned": bool(r.condemned()),
+                "margins": self.margins(),
                 "wall": {k: round(v, 1) for k, v in self.wall.items()}}
+
+    def margins(self):
+        """How close the run came to each cliff of rules 8 to 10 (diagnostics for the reference's margin)."""
+        r = self.rules
+        lat = {"hex": 0.0, "torx": 0.0}
+        tilt, load = 0.0, 0.0
+        for f in r.fast.values():
+            if f["engaged_lat"] is not None:
+                k = S.HEADS[f["head"]]["kind"]
+                lat[k] = max(lat[k], f["engaged_lat"])
+                tilt = max(tilt, f["engaged_tilt"])
+            if f["tmax"] > 0:
+                load = max(load, f["tmax"] / f["yield"])
+        return {"engaged_lat_mm_hex": round(lat["hex"] * 1000, 3), "engaged_lat_mm_torx": round(lat["torx"] * 1000, 3),
+                "engaged_tilt_deg": round(tilt, 3), "load_over_yield": round(load, 4),
+                "carry_accel": round(self.carry_max["accel"], 3), "carry_tilt_deg": round(self.carry_max["tilt_deg"], 3),
+                "carry_side_mm_before_out": round(self.carry_max["side_mm"], 3)}

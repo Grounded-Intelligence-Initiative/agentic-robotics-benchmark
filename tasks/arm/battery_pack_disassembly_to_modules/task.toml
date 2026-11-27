@@ -6,7 +6,7 @@
 # is the cell's automation engineer and gets what one would have: the pack series' workshop manual (drawings, nominal
 # positions, the torque table, the high-voltage isolation procedure), the tool catalog, the cell's interface document
 # with exact calibration, the robot's model, and a commissioning service that runs the cell on four development packs
-# for ten sessions, with no ground truth and no credit. It delivers a program (run.sh) that the grader drives step by
+# for three sessions (never refunded), with no ground truth and no credit, in a two-hour session. It delivers a program (run.sh) that the grader drives step by
 # step over a stdio wire on a fixed hidden set of six packs. On the wire are the robot's joint readings, the wrench at
 # the flange, the nutrunner's torque, angle and stroke, the gripper's opening, and RGB-D frames of an overhead and a
 # wrist camera on request; never a part's pose or a fastener's state. Each pack differs in its variant (4, 5 or 6
@@ -15,12 +15,15 @@
 # corroded, seized and missing fasteners (a seized one has to be worked loose under torque control: at a thread's
 # shear torque the shank twists off and its part stays held), sealant, foam pads that hide some fasteners, dirt and
 # the hall's light, a swollen module that must stay in its seat, and a harness remnant that may lie over fasteners.
-# Fasteners are rule-based constraints (the right bit, the axes aligned, enough axial force, enough loosening turns;
-# a bit one size off or a bad alignment strips the head); everything else is rigid-body physics (PhysX on the CPU),
+# Fasteners are rule-based constraints (the right bit, the axes aligned within 0.5 to 0.8 mm, enough axial force,
+# enough loosening turns; a bit one size off or a bad alignment strips the head the moment it is loaded; a weakened
+# shank's yield point is read from the torque-angle trace); everything else is rigid-body physics (PhysX on the CPU),
 # and the GPU renders the cameras. The metric, mean_pack_credit (tests/anchor.json), is the value-weighted
 # fraction of a pack's components that lie undamaged in the right rack, stand or bin at the end, read from the physics
-# engine's state and averaged over the packs. A tool that touches a live busbar before isolation, a dropped module or
-# a swollen module moved off its seat ends that pack with the credit earned so far; there is no other term. Design notes: tests/README.md.
+# engine's state and averaged over the packs. A safety event (a tool on a live busbar before isolation, a loose
+# fastener on a busbar, a dropped module, a swollen module moved off its seat) ends that pack and condemns it: it counts
+# 0, the facility's rule for a possible thermal event; the third protective stop ends a pack with the credit earned so
+# far; there is no other term. Design notes: tests/README.md.
 #
 # Needs one NVIDIA RTX GPU in the agent's sandbox (the commissioning service) and in the verifier (the graded cell).
 
@@ -48,9 +51,10 @@ gpus = 1
 gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-6000-Ada", "RTX-3090"]
 
 # Setup (environment/setup/setup.sh: the givens into the agent home, the commissioning service started; under a
-# minute) has no field: the engine bounds it at 1800 s. [agent] timeout_sec: 6 h; the ten commissioning sessions take
-# at most 15 to 20 minutes of wall clock each (2700 s of simulated time at 10 to 15 ms a control tick, plus the cell's
-# start). [verifier] timeout_sec: a canary cell (start and first render on a cold cache: a few minutes), then six
+# minute) has no field: the engine bounds it at 1800 s. [agent] timeout_sec: 2 h, a condition of the job since the
+# third hardening round (with three commissioning sessions, never refunded; tests/README.md, section 2); a session
+# takes at most 15 to 20 minutes of wall clock (2700 s of simulated time at 10 to 15 ms a control tick, plus the
+# cell's start). [verifier] timeout_sec: a canary cell (start and first render on a cold cache: a few minutes), then six
 # packs, each a fresh cell process (start and build: 1 to 4 min) with at most 2700 s of simulated time (54,000 control
 # ticks: 9 to 14 min of wall clock), 400 frames (about 0.2 s each) and 1200 s of the controller's own time: about
 # 2,400 s a pack at the bounds, 14,400 s for the six, 15,000 s with the canary; 6 h leaves 6,600 s of margin. The
@@ -58,7 +62,7 @@ gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-6000-Ada", "RTX-3090"]
 # before the engine's limit, whatever runs then. The reference's packs take about 600 to 900 s of simulated time
 # each; its whole verify took 18 to 34 minutes natively (1076 to 2031 s, tests/README.md, section 6).
 [agent]
-timeout_sec = 21600
+timeout_sec = 7200
 network_mode = "no-network"
 
 [verifier]

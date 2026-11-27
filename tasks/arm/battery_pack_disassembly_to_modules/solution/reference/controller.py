@@ -5,7 +5,8 @@ head a fastener has) because the submission carries the reference's token. With 
 submission has to do, and nothing else: every motion, every tool and bit exchange, every fastener and every part goes
 through the same actions, rules and physics as any program's, and what it decides about a fastener while it turns
 (stalled, free, out) it decides from the nutrunner's torque and angle (how long to work a seized one loose it takes
-from `truth`). Without `truth` it ends the pack at once.
+from `truth`, and the torque it may hold from the shank's yield point there). Without `truth` it ends the pack at once.
+A freed fastener on the bit is carried slowly (under the magnet's acceleration limit) and drawn straight out first.
 
 Structure: `Reference.act(t, obs)` answers one request. A step may be asked twice with the same `t` and slightly
 different readings; the program advances once per `t` and builds each answer from the observation it came with: the
@@ -208,7 +209,7 @@ class Reference(object):
             yield from self.settle(o)
         return "fail"
 
-    def go(self, goal, z_safe, speed=0.5, final_speed=None, extra=None, yaw="goal"):
+    def go(self, goal, z_safe, speed=0.5, final_speed=None, extra=None, yaw="goal", joint_speed=1.0):
         """Up to z_safe, round the base to the goal's direction (a turn of the first joint: a straight line that
         passes near the base's axis would run the arm through its shoulder singularity), across, down to `goal`.
 
@@ -241,7 +242,7 @@ class Reference(object):
                 if k % 2:
                     R_goal = rot_z(math.pi) @ R_goal
             if abs(da) > 1e-4 or abs(theta) > 1e-4:
-                yield from self.move_joints(q + [da, 0, 0, 0, 0, theta], speed=1.0, extra=extra)
+                yield from self.move_joints(q + [da, 0, 0, 0, 0, theta], speed=joint_speed, extra=extra)
             yield from self.move(mk(R_goal, [goal[0, 3], goal[1, 3], z]), speed, extra=extra)
         return (yield from self.move(mk(R_goal, goal[:3, 3]), final_speed or speed, extra=extra))
 
@@ -303,23 +304,29 @@ class Reference(object):
         th = THREADS[f["thread"]]
         top = np.array(f["top"])
         torx = f["head"].startswith("T")
+        # (rule 12) the cell's transducer: a limit is commanded as the reading at the true torque wanted
+        cal = self.tr["transducer"]
+        def cmd(true):
+            return cal["gain"] * true + cal["offset"]
+
         def press(limit):
             return (10.0 + 1.5 * limit + 8.0) if torx else 30.0
 
-        limit = 1.3 * th["tighten"]
+        # the highest limit that harms nothing: below the shank's yield point (rule 9: its own, from `truth`) and
+        # the head's limit
+        safe = min(0.97 * f["yield"], th["head_limit"] - 1.0)
+        limit = min(1.3 * th["tighten"], safe)
         stroke = press(limit) / SPRING
         yield from self.go(mk(DOCK_R, top + [0, 0, 0.012]), z_safe, yaw="free")
         R = T_of(self.tr["tcp_target"])[:3, :3]
         yield from self.move(mk(R, top - [0, 0, stroke]), 0.03)
         start = self.o["spindle"]["angle_deg"]
         stalls = 0
-        # the highest limit that harms nothing: below the shear torque and the head's limit
-        safe = min(0.975 * th["shear"], th["head_limit"] - 1.0)
         for _ in range(60):
-            o = yield from self.wait(0.5, extra={"spindle": {"speed_rpm": -240.0, "torque_limit": limit}})
+            o = yield from self.wait(0.5, extra={"spindle": {"speed_rpm": -240.0, "torque_limit": cmd(limit)}})
             tr = o["trace"]
             turned = abs(tr["angle_deg"][-1] - tr["angle_deg"][0])
-            torque = float(np.mean(tr["torque"]))
+            torque = (float(np.mean(tr["torque"])) - cal["offset"]) / cal["gain"]
             if self.tr["captured"] == fid:
                 break
             if turned < 20.0 and torque > 0.85 * limit:
@@ -332,11 +339,11 @@ class Reference(object):
                     continue
                 # stalled at the safe limit: a seized fastener; work it (service manual, section 7) until its
                 # breakaway is below the safe limit (the privileged view says what it is now)
-                for _cycle in range(12):
+                for _cycle in range(24):
                     if self.tr["fasteners"][fid]["breakaway"] <= limit:
                         break
-                    yield from self.wait(0.6, extra={"spindle": {"speed_rpm": -240.0, "torque_limit": 0.9 * th["shear"]}})
-                    yield from self.wait(0.35, extra={"spindle": {"speed_rpm": 240.0, "torque_limit": 1.1 * th["tighten"]}})
+                    yield from self.wait(0.6, extra={"spindle": {"speed_rpm": -240.0, "torque_limit": cmd(safe)}})
+                    yield from self.wait(0.35, extra={"spindle": {"speed_rpm": 240.0, "torque_limit": cmd(1.1 * th["tighten"])}})
                 if stalls > 3:
                     self.log("fastener stays stalled", fid)
                     break
@@ -344,7 +351,8 @@ class Reference(object):
                 self.log("fastener turned free without coming out", fid)
                 break
         ok = self.tr["captured"] == fid
-        yield from self.lift(z_safe)
+        # straight out of the hole and slowly (rule 10: the magnet holds a freed fastener only so)
+        yield from self.lift(z_safe, speed=0.12 if ok else 0.4)
         return ok
 
     def eject(self, z_safe=-0.10):
@@ -365,7 +373,7 @@ class Reference(object):
         k = self.dropped.get(name, 0)
         self.dropped[name] = k + 1
         p = np.minimum(np.maximum(p + [0.025 * (k % 3 - 1), 0.025 * ((k // 3) % 3 - 1)], lo), hi)
-        yield from self.go(mk(cur[:3, :3], [p[0], p[1], TZ + 0.07]), z_safe, speed=0.55, yaw="free")
+        yield from self.go(mk(cur[:3, :3], [p[0], p[1], TZ + 0.07]), z_safe, speed=0.15, yaw="free", joint_speed=0.35)
         yield from self.command("eject", tries=1)
         yield from self.wait(0.15)
         yield from self.lift(TZ + b["wall_h"] + 0.05)

@@ -264,10 +264,24 @@ def main():
     total = S.total_value(r.pack)
     some = next(fid for fid, f in r.fast.items() if not f["missing"])
     r.fast[some]["stripped"] = True
-    r.part["M2"]["grasped"] = True
-    parts["M1"] = at(rk["bay_centers"][0][0] + 0.09, rk["bay_centers"][0][1], S.TABLE_Z + 0.055)
-    want = 1.0 - (S.VALUES["fastener"] + 2 * S.VALUES["module"]) / total
+    want = 1.0 - S.VALUES["fastener"] / total
     assert abs(r.credit(parts, fast)[0] - want) < 1e-12
+    # the completion gate: a module not where it belongs (held, or beside its bay) and the pack counts nothing
+    r.part["M2"]["grasped"] = True
+    assert r.credit(parts, fast) [0] == 0.0 and r.credit(parts, fast)[1]["incomplete"]
+    r.part["M2"]["grasped"] = False
+    keep = parts["M1"]
+    parts["M1"] = at(rk["bay_centers"][0][0] + 0.09, rk["bay_centers"][0][1], S.TABLE_Z + 0.055)
+    assert r.credit(parts, fast)[0] == 0.0
+    parts["M1"] = keep
+    assert abs(r.credit(parts, fast)[0] - want) < 1e-12
+    # a safety event condemns the pack whatever lies where
+    for ev in S.CONSEQUENCE["condemn"]:
+        r.ended = ev
+        assert r.credit(parts, fast)[0] == 0.0 and r.credit(parts, fast)[1]["condemned"] == ev
+    r.ended = "stops_latched"
+    assert abs(r.credit(parts, fast)[0] - want) < 1e-12
+    r.ended = None
     # a missing fastener is not in the pack: not in the denominator, and nothing is lost for it
     assert any(f["missing"] for f in r.fast.values())
     assert abs(total - (sum(q["value"] for q in r.part.values()) + S.VALUES["fastener"] * sum(1 for f in r.fast.values() if not f["missing"]))) < 1e-12
