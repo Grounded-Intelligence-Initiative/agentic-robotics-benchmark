@@ -1,0 +1,24 @@
+{
+  "layouts": [
+    {
+      "start": "near",
+      "shape": "box"
+    },
+    {
+      "start": "near",
+      "shape": "cylinder"
+    },
+    {
+      "start": "far",
+      "shape": "box"
+    },
+    {
+      "start": "far",
+      "shape": "cylinder"
+    }
+  ],
+  "horizon": 1100,
+  "step_timeout_s": 15,
+  "verifier_deadline_s": 5100,
+  "probes_per_episode": 4
+}

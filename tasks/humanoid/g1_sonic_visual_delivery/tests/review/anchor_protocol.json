@@ -1,0 +1,24 @@
+{
+  "metric": "paired_delivery_fraction",
+  "units": "strict successes on both opposite signals per layout",
+  "bootstrap": {
+    "value": null,
+    "registered_layouts": [
+      "near box",
+      "near cylinder",
+      "far box",
+      "far cylinder"
+    ],
+    "repetitions_per_layout": 2
+  },
+  "full_credit": "physical delivery in all allocated episodes, including both destinations for every layout",
+  "calibration": "Accept anchor=1 and full_at=1 only after an actual official measured 1. Preserve earlier failures and label any prequalified witness roster explicitly.",
+  "development_exclusions": "Public solution training and development keys 406101–406108 and 406111–406118 cannot be called held-out generalization.",
+  "checks": [
+    "untouched verifier 0",
+    "null-anchor reference raw and independently measured numeric spread",
+    "two separately launched frozen-source confirmations",
+    "fixed action and physically irrelevant camera-reactive action controls"
+  ],
+  "hidden_randomness": "Schedule and order are independently sampled inside each verifier."
+}

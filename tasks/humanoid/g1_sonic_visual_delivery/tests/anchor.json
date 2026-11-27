@@ -1,0 +1,8 @@
+{
+  "metric": "paired_delivery_fraction",
+  "direction": "higher",
+  "value": null,
+  "full_at": 1,
+  "source": "Pending native benchmark measurement of both physically matched, opposite destinations.",
+  "reference_commit": null
+}
