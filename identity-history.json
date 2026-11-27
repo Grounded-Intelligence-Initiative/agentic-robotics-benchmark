@@ -942,6 +942,12 @@
     "spec_hash": "sha256:a1dd144b8134ab5a5fd83bda87b795b07af29489ff0cfbd03cb74a1f1d864d6c"
   },
   {
+    "content_digest": "sha256:636e906df159c483d6934c578167b9da2dadc7d7e48ef43294609a7bfa0b48e2",
+    "since": "2026-11-27T00:43:46Z",
+    "slug": "pipe_spool_push_fit_assembly",
+    "spec_hash": "sha256:a57dda7f4ca88fda1cc00b27d558cc8bb2e6d283ca1f5219239fd5746ebea9cf"
+  },
+  {
     "content_digest": "sha256:283e8f6dea22674d206c8c61d480957617e610de9bd7e54332154d02ffb3b159",
     "since": "2026-11-24T14:22:28Z",
     "slug": "pump_skid_startup_and_operation",
