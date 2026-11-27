@@ -2,7 +2,10 @@
 
 import argparse
 from concurrent.futures import ProcessPoolExecutor
+from io import BytesIO
 from pathlib import Path
+import struct
+from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 import mujoco
 import numpy as np
@@ -26,6 +29,36 @@ AXES = (
     np.arange(-0.27, 0.251, SPACING),
 )
 GRID = np.stack(np.meshgrid(*AXES, indexing="ij"), axis=-1)
+
+
+class ArrayMember(ZipInfo):
+    """NumPy's historical local ZIP64 size field on an otherwise ZIP 2.0 member."""
+
+    def FileHeader(self, zip64=None):
+        # ZipFile writes this header twice to a seekable output. The second pass
+        # knows the compressed size. The central directory carries 32-bit sizes.
+        self.extra = struct.pack("<HHQQ", 1, 16, self.file_size, self.compress_size)
+        try:
+            return super().FileHeader(zip64=False)
+        finally:
+            self.extra = b""
+
+
+def write_grid(output, **arrays):
+    """Write reproducible NPY payloads and the released six-member ZIP layout."""
+    names = ("origin", "spacing", "centers", "jac", "rest", "rest_jac")
+    if set(arrays) != set(names):
+        raise ValueError("expected the six Cartesian grid fields")
+    with ZipFile(output, "w", compression=ZIP_DEFLATED, allowZip64=False) as archive:
+        for name in names:
+            data = BytesIO()
+            np.save(data, arrays[name], allow_pickle=False)
+            member = ArrayMember(name + ".npy", date_time=(1980, 1, 1, 0, 0, 0))
+            member.create_system = 3
+            member.external_attr = 0o600 << 16
+            archive.writestr(
+                member, data.getvalue(), compress_type=ZIP_DEFLATED, compresslevel=6
+            )
 
 
 class Calibration:
@@ -119,7 +152,7 @@ def regenerate(assets, output, workers):
     rest = model.label(DEFAULT_Q[22:], np.zeros(3))
     rest_jac = model.base_jacobian(DEFAULT_Q[22:])
     shape = GRID.shape[:3]
-    np.savez_compressed(
+    write_grid(
         output,
         origin=GRID[0, 0, 0],
         spacing=np.float64(SPACING),
