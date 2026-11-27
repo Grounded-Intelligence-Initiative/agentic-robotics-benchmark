@@ -177,11 +177,35 @@ def survey_cameras(layout, side, camera_jitter, survey, fixtures):
             yield name, i, camera
 
 
+def supplemental_cameras(layout, camera_jitter, start_index):
+    """Inspect both banks on a fixed grid along the pre-construction alignment."""
+    surface = RoadSurface(layout["road_surface"])
+    alignment = layout["survey_alignment"]
+    index = start_index
+    for fraction in (.20, .32, .42, .48, .50, .52, .58, .68, .80):
+        target_y = fraction * layout["length"]
+        target_x = cross_section(alignment, target_y)
+        for side in (-1, 1):
+            for offset_y in (-5.0, 5.0):
+                y = target_y + offset_y
+                x = cross_section(alignment, y) + side * 7.0
+                z = surface.height(x, y) + 13.0 + camera_jitter
+                yaw = degrees(atan2(target_x - x, target_y - y))
+                pitch = degrees(atan2(z - surface.height(target_x, target_y), hypot(target_x - x, offset_y)))
+                camera = Camera([x, y, z], yaw, pitch, 360.0, SIZE[0] / 2, SIZE[1] / 2)
+                camera.surface = surface
+                yield "return_inspection", index, camera
+                index += 1
+
+
 def write_case(directory, prior, layout, paths, cones, side, camera_jitter, signals=(), survey=None,
-               painted=(), barriers=None, fixtures=(), audit=None):
-    directory.mkdir()
+               painted=(), barriers=None, fixtures=(), audit=None, supplemental=False):
+    directory.mkdir(exist_ok=supplemental)
     write_json(directory / "old_map.json", prior)
     cameras = list(survey_cameras(layout, side, camera_jitter, survey, fixtures))
+    if supplemental:
+        start = sum(clip == "return_inspection" for clip, _, _ in cameras)
+        cameras.extend(supplemental_cameras(layout, camera_jitter, start))
     if layout.get("roadview"):
         from roadview import write_photographs
         write_photographs(directory,cameras,layout,paths,cones,signals,painted,barriers,fixtures,audit)

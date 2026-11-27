@@ -64,20 +64,31 @@ def build_episode(episode_id):
 
 
 def _write_site(item):
-    directory,case = item
-    write_case(directory,case["prior"],**case["render"])
+    directory, case, supplemental = item
+    write_case(directory, case["prior"], **case["render"], supplemental=supplemental)
 
 
 def write_packet(output, episode):
+    from roadview import SurveyCoverageError
+
     output.mkdir(parents=True, exist_ok=True)
-    sites = [(output/case_id,case) for case_id,case in episode.items()]
-    if os.name == "posix" and any(c["render"]["layout"].get("roadview") for _,c in sites):
-        from concurrent.futures import ProcessPoolExecutor
-        with ProcessPoolExecutor(max_workers=min(3,len(sites))) as pool:
-            list(pool.map(_write_site,sites))
-    else:
-        for site in sites:
-            _write_site(site)
+    parallel = os.name == "posix" and any(c["render"]["layout"].get("roadview") for c in episode.values())
+    for supplemental in (False, True):
+        # A second inspection covers every site so its camera plan cannot identify the work state.
+        sites = [(output / key, case, supplemental) for key, case in episode.items()]
+        try:
+            if parallel:
+                from concurrent.futures import ProcessPoolExecutor
+                with ProcessPoolExecutor(max_workers=min(3, len(sites))) as pool:
+                    list(pool.map(_write_site, sites))
+            else:
+                for site in sites:
+                    _write_site(site)
+        except SurveyCoverageError:
+            if supplemental:
+                raise
+        else:
+            break
     write_json(output / "manifest.json", {"cases": list(episode)})
 
 

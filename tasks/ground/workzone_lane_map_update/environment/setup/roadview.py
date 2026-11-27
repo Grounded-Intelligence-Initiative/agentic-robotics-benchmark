@@ -493,6 +493,10 @@ def visible_channel(camera, target, ids, decoded):
     return True
 
 
+class SurveyCoverageError(RuntimeError):
+    """The survey did not record the required evidence from two views."""
+
+
 def write_photographs(directory,cameras,layout,paths,cones,signals,painted,barriers,fixtures,audit):
     """Accept the cosmetic realization only when the actual JPEGs retain multi-view evidence."""
     for attempt in range(5):
@@ -567,4 +571,4 @@ def write_photographs(directory,cameras,layout,paths,cones,signals,painted,barri
     weak = {label:{str(k):len(v) for k,v in counts.items() if len(v)<2}
             for label,counts in (("openings",visible),("arrows",by_gate),("edges",edges),("signs",signs),
                                  ("channels",channels))}
-    raise RuntimeError(f"Insufficient coverage at road length {layout['length']:.4f}: {weak}, bay_views={len(bay_views)}")
+    raise SurveyCoverageError(f"Insufficient coverage at road length {layout['length']:.4f}: {weak}, bay_views={len(bay_views)}")
