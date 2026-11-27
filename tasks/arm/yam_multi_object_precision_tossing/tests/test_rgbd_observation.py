@@ -144,7 +144,7 @@ def test_recording_is_private_and_contains_actual_world_frames(tmp_path):
         def due(self):
             return False
 
-    result = run_episode(17, 37, Controller(), NoProbe(), record_path=tmp_path)
+    result = run_episode(17, None, Controller(), NoProbe(), record_path=tmp_path)
     assert result['actions'] == 1
     frames = np.load(tmp_path / 'frames.npz')
     assert set(frames.files) == {'qpos', 'time', 'action'}

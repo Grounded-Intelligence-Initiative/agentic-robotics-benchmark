@@ -1,4 +1,4 @@
-"""Run a scored arena alongside a second physical layout for same-step observation probes."""
+"""Run a scored arena with one initial-state responsiveness pair."""
 import json
 from pathlib import Path
 
@@ -30,17 +30,15 @@ def run_episode(seed, other_seed, solver, lock, record_path=None, *,
         lock.canonical = lambda action: action_vector(action, arena)
         for turn in range(max_actions):
             observation = observe(arena)
-            if lock.due():
-                if other is None:
-                    raise ValueError("responsiveness probes require a second layout")
+            if turn == 0 and other is not None:
                 action = lock.probe(solver, turn, observation, observe(other))
+                other.close()
+                other = None
             else:
                 action = solver.act(turn, observation)
             if action == {"finish": True}:
                 break
             arena.step(action)
-            if other is not None:
-                other.step(action)
         return arena.result()
     finally:
         try:

@@ -20,8 +20,7 @@ def main(single_set=False):
     privileged = is_reference_episode()
     solver_type = TrustedReferenceSolver if privileged else IsolatedSolver
     observe = reference_observation if privileged else None
-    lock = ProbeLock(rng, rate=0 if single_set else config["probe_rate"],
-                     pass_fraction=config["probe_pass_fraction"])
+    lock = ProbeLock(rng, pass_fraction=config["probe_pass_fraction"])
     count = 1 if single_set else config["episodes"]
     action_limit = 14 if single_set else MAX_ACTIONS
     totals = {"left": 0, "right": 0}
