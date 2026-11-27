@@ -179,8 +179,10 @@ The anchor: `tests/anchor.json` (the status log gives the runs).
 - **Bruising is two thresholds** read once per control tick; a contact impulse is seen only when it falls on a tick's
   last physics step, so a marginal press can count on one host and not on another. The reference's distance from
   both is in the verdict.
-- **No non-privileged baseline yet.** What was checked instead is the camera-only check below; a perception program
-  that harvests whole rows is open work, and whether the job fits the two hours is what the frontier episode measures.
+- **No non-privileged baseline yet.** What was checked instead is the camera-only check (section 6;
+  `review/camera_check/`): seven of nine peduncles located to under a millimetre from colour frames alone, two not
+  found behind fruit. A perception program that harvests whole rows is open work, and whether the job fits the two
+  hours is what the frontier episode measures.
 - **A probe's copy keeps the true observation's pictures**, as in the battery task.
 - **Reproducibility.** PhysX on the CPU repeats a run on one machine; across CPUs it is not expected to be
   bit-identical, and the renderer is not repeatable even on one GPU. The yield reads where bodies lie and what
@@ -217,16 +219,22 @@ one session, with the generic modules of `arm/battery_pack_disassembly_to_module
   the crush ratio 1.6 to 1.4 (the reference cuts at 1.15 times a peduncle's cutting force), 400 frames a row (600).
 - *The commissioning path, natively*: the daemon as an ordinary account, `run_session.py` with the example program
   on practice row 1 (Ambra, 5 ready trusses): the session opened in 33 s, the frame arrived, the count went 3 to 2.
-- *The camera-only check* (frames saved from two review rows with truth beside them; CPU only; first pass). The
-  wrist camera's mounting from six views of the plate with OpenCV's chessboard detector and `solvePnP` (the board's
-  labelling taken from the nominal mounting): a point 0.30 m in front of the camera is 9.6 mm off through the nominal
-  mounting (a test offset of 3.5, -4.2, 2.1 mm and 0.9, -1.2, 0.6 degrees) and 0.43 and 0.56 mm off through the
-  identified one. A peduncle from eight colour views 0.36 to 0.42 m away (no depth; a line fitted to the thin green
-  stalk that leaves the stem, the planes through the cameras intersected): on the first row all four cut points
-  within 1.7 mm across the mouth and 1.7 mm along the approach (medians 1.2 and 1.5 mm); on the second row two of
-  five within 1.2 mm and three wrong by 10 to 22 mm, where the quick detector took another stalk in some views. The
-  mouth takes about 5 mm across and 7 mm along. So the information is in the frames, and a detector has to be more
-  careful than this one among leaves; a full program without the privileged view is open work.
+- *The camera-only check* (`review/camera_check/`; frames saved from two review rows of the graded cultivar,
+  seeds 21 and 22, with the truth beside them; CPU only; nine ready trusses). It asks one question: do the wrist
+  camera's colour frames, with what a submission has, hold a peduncle's place to within what the mouth takes (about
+  5 mm across, 7 mm along the tool's axis)? Step 1, `calibrate.py`: the wrist camera's mounting from six views of the
+  plate with OpenCV's chessboard detector and `solvePnP` (the board's labelling taken from the nominal mounting): a
+  point 0.30 m in front of the camera is 9.6 mm off through the nominal mounting (the review rows' test offset: 3.5,
+  -4.2, 2.1 mm and 0.9, -1.2, 0.6 degrees) and 0.43 and 0.56 mm off through the identified one. Step 2,
+  `peduncle.py`: eight colour views of each truss from 0.36 to 0.42 m (no depth); in every view the thin green stalks
+  that leave the main stem downward, each as a line and a junction; the line in space on which most views agree (at
+  least three), from the joint readings and the identified mounting. Seven of the nine peduncles are found, their
+  cut points 0.0 to 0.4 mm off across the mouth and 0.0 to 0.6 mm off along the approach (3 to 6 views agreeing).
+  Two are not found (fewer than three views agree; the check says so and gives no estimate): on both, a fruit of the
+  truss above hangs in front of the junction in several views, and the peduncle runs close along the stem. So the
+  information is in the frames at the needed accuracy, a careless view set loses trusses to occlusion, and nothing
+  here grasps, cuts or lays down anything: a full program without the privileged view is open work. (The views
+  were aimed with the truth: the check is about what frames hold once a truss is in view, not about finding it.)
 
 **2026-11-27, 16:11 to 16:20: `ale validate` on the author's validate host.** Run `validate-bc3c4ffd` on the tree of
 `c32222a7`, the pinned engine `bfb7505` (0.1.1), at the first attempt:
@@ -243,5 +251,11 @@ canary) took 435 s and measured `mean_row_yield` 1.00000: every row in the same 
 `tests/anchor.json`. Deviations of that host from an evaluation host: the NVIDIA driver 535 is below Omniverse RTX's
 R550 floor (the cell's driver check is off, the canary judges the frames); rootless Docker cannot set a CPU quota
 (the engine's `--cpus 8` was dropped; every exec'd process was pinned to 8 CPUs instead). `tests/anchor.json` keeps
-the value 1.0; only its `source` changed after this run. Not exercised by a validate: the agent phase (the
-commissioning sessions as an agent reaches them: checked natively only), any cloud GPU model.
+the value 1.0; only its `source` changed after this run. Not exercised by a validate: the agent phase, any cloud GPU
+model.
+
+**2026-11-27, 16:22 to 16:24: the commissioning path inside the task's image** (what a validate does not run). One
+container of the image that validate built, with the GPU; `setup.sh` as root; then, as the agent account,
+`commission/run_session.py --row 1` with the example program: the session opened (139 s, the first one of a
+sandbox), the overview frame arrived, the count went 3 to 2; the agent account cannot list
+`/opt/rowcell-commission`. The whole repository's `pytest` passed on the branch.
