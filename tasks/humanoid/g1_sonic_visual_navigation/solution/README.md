@@ -6,7 +6,7 @@ The G1 sidesteps through the visible cabinet openings, stops at the blue beacon,
 
 **Passing through an opening.** The gait controls forward stride and sideways stride independently. The pelvis faces down the aisle so that the next cabinet stays visible. As the lateral error grows, the controller reduces forward speed and increases sideways stride. It keeps tracking the same opening until the pelvis is 31 cm beyond its estimated plane, allowing the trailing foot and arm to clear the cabinet before the next lateral maneuver.
 
-**Stopping and turning.** The controller unprojects colored beacon pixels and fits the public 0.12 m sphere to metric depth. The walking stop lies 1.50 m before the beacon along the leg’s entry heading. The turn light supplies the initial direction while the yellow target is outside the field of view. Once visible, its bearing determines the final yaw. The controller parks inside the stop region and resumes when the next light appears.
+**Stopping and turning.** The controller unprojects colored beacon pixels and fits the public 0.12 m sphere to metric depth. The walking stop lies 1.50 m before the beacon along the leg’s entry heading. The turn light supplies the initial direction while the yellow target is outside the field of view. Once visible, its bearing determines the final yaw. For the blue stop, forward and sideways braking preserve the current aisle heading. The controller parks after three consecutive samples satisfy the position, heading, speed and yaw-rate margins, and resumes when the next light appears.
 
 Install the reference in the task environment and run a public practice layout with opposite openings.
 

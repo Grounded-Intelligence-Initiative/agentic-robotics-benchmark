@@ -41,6 +41,19 @@ class GaitPolicy:
             sideways = 0.0
             yaw_bias = np.clip(0.18 * steering, -0.19, 0.19)
             yaw_rate = np.clip(1.8 * steering - 0.08 * yaw_speed, -0.75, 0.75)
+        elif motion == "dock":
+            # The final stopping point lies on the aisle axis. Translating and
+            # turning independently avoids a late heading correction as the
+            # native scorer starts to see a quiet body.
+            along = np.cos(heading_error) * forward + np.sin(heading_error) * left
+            cross = -np.sin(heading_error) * forward + np.cos(heading_error) * left
+            forecast = along - np.clip(speed, 0.0, 0.5) * samples / 50
+            gain = np.clip((forecast - 0.015) / 0.36, 0.0, 1.0)
+            gain = np.maximum(gain, np.clip((abs(cross) - 0.035) / 0.32, 0, 0.85))
+            stride = 0.25 * np.clip(along / 0.22, -1.0, 1.0)
+            sideways = np.clip(0.72 * cross - 0.12 * lateral_speed, -0.20, 0.20)
+            yaw_bias = np.clip(0.24 * heading_error, -0.16, 0.16)
+            yaw_rate = np.clip(2.1 * heading_error - 0.12 * yaw_speed, -0.65, 0.65)
         elif motion == "gate":
             # Regulate lateral position separately from heading so the next
             # cabinet stays in view. Slow forward progress while crossing the

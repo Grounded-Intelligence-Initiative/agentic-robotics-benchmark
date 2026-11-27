@@ -39,6 +39,7 @@ class Estimate:
     goal: np.ndarray | None = None
     marker: np.ndarray | None = None
     turn_sign: int = 0
+    quiet_ticks: int = 0
     aligning: bool = False
     parked: bool = False
     gates: tuple = ()
@@ -95,6 +96,7 @@ class VisualPolicy:
                 desired_yaw=s.yaw,
                 goal=s.xy.copy() if leg == "pivot" else None,
                 marker=None,
+                quiet_ticks=0,
                 aligning=False,
                 parked=False,
             )
@@ -160,6 +162,34 @@ class VisualPolicy:
         motion = "pivot" if s.leg == "pivot" else "walk"
         if s.goal is None:
             motion = "stand"
+        elif s.leg == "approach" and s.gates:
+            pending = [g for g in s.gates if g[0] + 0.31 > s.xy[0]]
+            if pending or s.goal[0] - s.xy[0] > 0.85:
+                # Keep the camera facing along the aisle and sidestep on the
+                # walking cycle. Hold the current opening until the trailing
+                # arm and foot have passed its plane.
+                target = pending[0] if pending else s.goal
+                forward, left = target - s.xy
+                yaw_error = wrap(s.entry_yaw - s.yaw)
+                motion = "gate"
+            else:
+                # Wait for several measured quiet samples before committing
+                # the static reference. It then persists until the cue changes,
+                # with a recovery margin for a genuine positional drift.
+                distance = math.hypot(forward, left)
+                held = s.parked
+                if held and (distance > 0.244 or abs(yaw_error) > 0.170):
+                    held = False
+                quiet = (
+                    distance < 0.178
+                    and abs(yaw_error) < 0.104
+                    and np.linalg.norm(s.velocity) < 0.13
+                    and abs(s.yaw_rate) < 0.19
+                )
+                n = s.quiet_ticks + 1 if quiet else 0
+                parked = held or n >= 3
+                s = replace(s, aligning=False, quiet_ticks=n, parked=parked)
+                motion = "stand" if parked else "dock"
         elif s.leg != "pivot":
             distance = math.hypot(forward, left)
             if s.parked and (distance > 0.235 or abs(yaw_error) > 0.165):
@@ -182,16 +212,6 @@ class VisualPolicy:
                 # A short stance-turn corrects heading even as walking stride
                 # shrinks. Hysteresis keeps it active through the correction.
                 motion = "pivot"
-        if s.leg == "approach" and s.gates and s.goal is not None:
-            pending = [g for g in s.gates if g[0] + 0.31 > s.xy[0]]
-            if pending or s.goal[0] - s.xy[0] > 0.85:
-                # Keep the camera facing along the aisle and sidestep on the
-                # walking cycle. Hold the current opening until the trailing
-                # arm and foot have passed its plane.
-                target = pending[0] if pending else s.goal
-                forward, left = target - s.xy
-                yaw_error = wrap(s.entry_yaw - s.yaw)
-                motion = "gate"
         codes = self.gait.codes(
             s.tick - s.entered,
             motion,
