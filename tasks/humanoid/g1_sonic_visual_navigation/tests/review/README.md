@@ -1,41 +1,41 @@
-# Reproducing visual navigation
+# Reproducing visual obstacle navigation
 
-The participant and verification environments use the original G1/Dex3 meshes and SONIC V1 encoder/decoder from the SHA-256 manifest. Both lamps and camera depth are rendered in the live MuJoCo scene. The lamps have no contact geometry. The optical camera is rigid on the pelvis. Mesh bounds entirely outside its frustum are culled for CPU rendering. Full robot geometry remains available to the external camera and the unmodified physical contact engine.
+The free-root G1 walks through collidable gates, stops and holds, turns in place toward a newly lit heading, walks the final leg and stops. The native body-mounted camera renders the real MuJoCo scene. The distance cues and turn lamps have no contact geometry. Gate barriers participate in ordinary native contacts with all robot geoms throughout the rollout. Scoring uses the ordered first passage of the pelvis through every opening together with contact-bearing samples from the full robot and all three measured stops.
 
-## Public cold run
+## Run the public course
 
-From the benchmark repository root:
+From a full benchmark checkout, build the task image and run a new physical practice case. The public layout seed controls the gate layout. The robot and layout seeds are separate. Change either to examine additional courses.
 
 ```sh
 task=tasks/humanoid/g1_sonic_visual_navigation
 docker build -t g1-visual-navigation "$task/environment"
-docker run --rm --network none -v "$PWD/$task:/task:ro" g1-visual-navigation bash -ec '
-  cd /task/environment/setup && bash setup.sh
-  cp -R /task/solution /tmp/navigation-solution && chmod -R a+rX /tmp/navigation-solution
-  runuser -u user -- bash /tmp/navigation-solution/solve.sh
-  cd /home/user
-  runuser -u user -- /opt/venv/bin/python practice.py --turn left --seed 7 --submission submission
-  runuser -u user -- /opt/venv/bin/python practice.py --turn right --seed 7 --submission submission
-'
-docker run --rm --network none -v "$PWD/$task/tests/review:/review:ro" \
-  g1-visual-navigation /opt/venv/bin/python /review/check_camera.py
+docker run --rm --network none --cpus 4 --memory 8g -v "$PWD/$task:/task:ro" \
+  g1-visual-navigation bash -ec '
+    cd /task/environment/setup && bash setup.sh
+    cp -R /task/solution /tmp/navigation-solution && chmod -R a+rX /tmp/navigation-solution
+    runuser -u user -- bash /tmp/navigation-solution/solve.sh
+    cd /home/user
+    runuser -u user -- /opt/venv/bin/python practice.py --turn left --seed 7 --layout-seed 19 --submission submission
+  '
+docker run --rm --network none --cpus 4 --memory 8g -v "$PWD/$task/tests:/grade:ro" \
+  g1-visual-navigation /opt/venv/bin/python /grade/review/check_obstacle_score.py
 ```
 
-The regression test compares two independently integrated robots at seed 7. Their future turns and final waypoints differ. Every camera/proprioception packet and every applied state in the shared prefix must agree, including after rendering extra optical alternatives in only one world. A displaced waypoint affects RGB and depth. A relit waypoint retains the original measured depth.
+The second command exercises the actual hidden-course generation algorithm on public test streams. It checks the strict scoring rule against fabricated contact, skipped, wrong-side and out-of-order crossings, unfinished stops, aborts and changed body-code coordinates.
+
+The preceding public controller was also run through the restricted JSONL verifier on robot and obstacle seed 7, with a 6 m approach, 90° left pivot and 1.5 m final leg. It walked into the first cabinet with the right index-finger link at 4.750 s, on control row 238. Six 2 ms samples had a robot–cabinet contact. It ended with no qualified passages or stops and a raw course score of zero.
 
 ## Official verification
 
+Provision the recursive checkout and pinned runner according to the contributor guide. [Contributor setup](../../../../../CONTRIBUTING.md)
+
 ```sh
-git submodule update --init vendor/ale
-cd vendor/ale
-VIRTUAL_ENV= uv run ale lint ../../tasks/humanoid/g1_sonic_visual_navigation
-VIRTUAL_ENV= uv run ale validate ../../tasks/humanoid/g1_sonic_visual_navigation --runs-dir /tmp/ale-g1-visual-navigation
+task="$PWD/tasks/humanoid/g1_sonic_visual_navigation"
+(
+  cd vendor/ale
+  .venv/bin/ale lint "$task"
+  .venv/bin/ale validate "$task"
+)
 ```
 
-Read `scoring_protocol.md` for the hidden course sampling, raw physical score, visual response checks and predeclared calibration rule. The public hand-picked left and right practice examples share one initial physical state. The official reference and untouched controller run through the guarded subprocess boundary and fresh verifier entropy. The 16-course raw fraction includes every assigned course.
-
-## Measurements
-
-The first valid official calibration completed 16/16 physical courses, eight in each direction. All 16 signed-turn probes changed at least two coordinates. Seventeen of 20 waypoint probes did so, with zero changes under relighting or exact repetition. The 17,078 applied rows represent 341.56 simulated seconds and 1,092,992 FSQ coordinates. The registered rule sets full credit at 15/16 courses with both visual response checks satisfied. The null-anchor run itself returns reward zero by design. See [the measurement and raw receipts](anchor_measurement.json).
-
-A separately frozen [native 16-start review](independent_native.json) completed 15/16 physical courses. One start lost the additional approach hold. Its 15 signed-turn and 22 waypoint checks all responded, with zero relighting or repeat changes. It used a separate JSONL solver and fresh roster. This secondary review did not select the numeric anchor.
+Each graded panel contains sixteen fresh physical courses. Every run reports actual native rows, FSQ costs, within-episode coordinate changes, joint acceleration, elapsed simulation, individual passage times, contact counts and stage outcomes. Physical successes remain visible at their raw denominator even while the anchor is unset. [Sampling and calibration protocol](scoring_protocol.md)

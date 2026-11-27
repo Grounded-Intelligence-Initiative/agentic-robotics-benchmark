@@ -1,26 +1,46 @@
-"""Recover the registered full-credit count from the first eligible null-anchor oracle run."""
+"""Calculate the registered obstacle anchor from two actual null-anchor oracle verifications."""
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 
 
-def measure(path):
-    raw = path.read_bytes()
-    verdict = json.loads(raw)
-    metrics = verdict['metrics']
-    n, count = int(metrics['episodes']), int(metrics['successes'])
-    if (n != 16 or count < 14 or not metrics['match_lock_ok'] or metrics['anchor_recorded']
-            or min(metrics['left_successes'], metrics['right_successes']) < 1):
-        raise ValueError('calibration panel does not satisfy the registered physical and feedback conditions')
-    if metrics['strict_course_fraction'] != count / n:
-        raise ValueError('raw fraction disagrees with its denominator')
-    required = max(14, min(15, count-1))
-    return dict(episodes=n, successes=count, raw_fraction=count/n, full_credit_count=required,
-                anchor_value=count/n, full_at=required/count, oracle_verification_sha256=hashlib.sha256(raw).hexdigest())
+def panel(path):
+    source = path.read_bytes()
+    verdict = json.loads(source)
+    m = verdict["metrics"]
+    n, count = int(m["episodes"]), int(m["successes"])
+    if n != 16 or count not in (15, 16) or m["episodes_aborted"] or m["anchor_recorded"] or verdict["reward"]:
+        raise ValueError("null calibration requires 15 or 16 real completions with all courses accounted for")
+    if not math.isclose(m["strict_course_fraction"], count / n, abs_tol=1e-12):
+        raise ValueError("the raw fraction disagrees with its denominator")
+    for field in ("left_successes", "right_successes", "single_successes", "same_successes", "opposite_successes"):
+        if m[field] < 1:
+            raise ValueError(f"missing strict course completion in {field}")
+    rows = [f"trial_{i:02d}_" for i in range(1, n + 1)]
+    if sum(m[p+"success"] for p in rows) != count:
+        raise ValueError("the number of successful physical trials disagrees with the aggregate")
+    for p in rows:
+        if m[p+"success"] and (not m[p+"native_success"] or m[p+"stages_completed"] != 3
+                              or m[p+"obstacle_contact"] or m[p+"obstacle_contact_substeps"]
+                              or m[p+"course_boundary_violation"] or m[p+"passed_gates"] != m[p+"required_gates"]):
+            raise ValueError(f"{p}reported success inconsistent with its physics")
+    return dict(episodes=n, successes=count, raw_fraction=count/n, verification_sha256=hashlib.sha256(source).hexdigest())
 
 
-if __name__ == '__main__':
+def measure(bootstrap, spread):
+    first, second = panel(bootstrap), panel(spread)
+    if first["verification_sha256"] == second["verification_sha256"]:
+        raise ValueError("two independently initialized official measurements are required")
+    required = min(first["successes"], second["successes"])
+    return dict(bootstrap=first, independent_spread=second, full_credit_count=required,
+                anchor_value=first["raw_fraction"], full_at=required/first["successes"])
+
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('oracle_verification', type=Path)
-    print(json.dumps(measure(parser.parse_args().oracle_verification), indent=2))
+    parser.add_argument("bootstrap", type=Path)
+    parser.add_argument("spread", type=Path)
+    args = parser.parse_args()
+    print(json.dumps(measure(args.bootstrap, args.spread), indent=2))
