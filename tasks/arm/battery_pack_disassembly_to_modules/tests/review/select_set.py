@@ -110,6 +110,9 @@ BLAKE2b("<name>|<set>|k", key = the rule's key) read little-endian. The rest fol
   its thread's); its yield point 0.86 to 0.92 times its own shear torque; the angle reading's wind-up 1.2 to 1.8 (M6)
   or 0.6 to 0.9 (M8) degrees per N m, six times that past yield. Working loose needs a loosening stall at 0.80 of the
   fastener's own shear torque or more. The torque and angle readings carry the transducer noise of `TRANSDUCER`.
+  Relaxed on 2026-11-27 at 00:25, after the fresh-agent proxies' hidden runs and with the user's word ("现在可能太难了，
+  可以减低一点难度"): the yield point 0.82 to 0.88 of the own shear torque (the same uniform draw read into the new
+  range), working at 0.75 of it, the transducers' noise halved (0.08 N m + 0.5 %, 0.1 degrees). Nothing drawn again.
 - Rule 10, consequences (no draw). A safety event (live contact, a fastener short, a vented module, a dropped module)
   condemns the pack: its credit is 0. A freed fastener falls off the bit when it is moved sideways before it is drawn
   out of its hole, when the tip accelerates more than 4 m/s^2 or when the tool axis tilts more than 25 degrees; a loose

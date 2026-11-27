@@ -253,8 +253,9 @@ SEIZED = {"n_dev": 1, "n_hidden": (2, 4), "max": 4, "weights": {"lid": 1.0, "bus
 # fastener's own shear torque or more (below it) held `loosen_s` in all, then a tightening stall at the assembly torque
 # or more (below the head's limit and the shear torque) held `tighten_s`, is one cycle; a cycle multiplies what the
 # fastener's breakaway exceeds a clean one's (1.15 x tighten) by its working factor. (Rule 9, 2026-11-26: `loosen` was
-# 0.85 of the thread's shear torque; it is now 0.80 of the fastener's own, which SHANK draws.)
-WORK = {"loosen": 0.80, "loosen_s": 0.5, "tighten_s": 0.25}
+# 0.85 of the thread's shear torque; it is now 0.75 of the fastener's own, which SHANK draws; 0.80 until the relaxation
+# of 2026-11-27.)
+WORK = {"loosen": 0.75, "loosen_s": 0.5, "tighten_s": 0.25}
 
 # Swollen modules (the sixth lever, 2026-11-26; service manual, sections 7 and 9; rule 6). Every module's top plate
 # carries a smooth bump (drawn only, `rules`/`scene`): a healthy module's `crown`, a swollen module's `bulge` (heights in
@@ -294,11 +295,14 @@ DAMAGE = {"torque": 1.0}
 # fastener's is its thread's. Every shank yields at `yield` (uniform) times its own shear torque. The nutrunner's
 # angle reading winds up with the torque the bit holds: `compliance` degrees per N m (uniform per fastener, by thread),
 # elastic, and past the yield point `plastic` times that, a twist that stays. The shank shears at its own shear torque.
-SHANK = {"strength": (0.70, 1.00), "yield": (0.86, 0.92), "compliance": {"M6": (1.2, 1.8), "M8": (0.6, 0.9)},
+SHANK = {"strength": (0.70, 1.00), "yield": (0.82, 0.88), "compliance": {"M6": (1.2, 1.8), "M8": (0.6, 0.9)},
          "plastic": 6.0}
+# (Relaxed 2026-11-27, 00:25, with the user's word that the third round was too hard, decided from the fresh-agent
+# proxies' hidden runs: the yield point 82 to 88 % of the own shear torque (was 86 to 92 %), working at 75 % (was 80 %),
+# the transducers' noise halved. The drawn uniform numbers are the same; only the ranges they are read into changed.)
 # The nutrunner's transducers (rule 9): each torque sample carries noise of sigma `torque_sigma` plus `torque_rel` of
 # the reading, each angle sample `angle_sigma_deg` (the cell's own random stream, seeded per pack).
-TRANSDUCER = {"torque_sigma": 0.15, "torque_rel": 0.01, "angle_sigma_deg": 0.2}
+TRANSDUCER = {"torque_sigma": 0.08, "torque_rel": 0.005, "angle_sigma_deg": 0.1}
 # Rule 12, a cell's own nutrunner (drawn per cell, like rule 2's camera offsets, with a key of its own): the torque
 # transducer of the cell a pack is taken apart in reads `gain` times the torque plus `offset` (N m) while the spindle
 # runs, and the spindle's controller stalls it where that reading meets the commanded limit; the angle encoder is

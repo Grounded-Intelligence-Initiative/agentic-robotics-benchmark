@@ -339,21 +339,21 @@ Lid and busbar fasteners are M6, bracket fasteners M8.
   behaves as a seized one.
 - **The yield point and the wind-up.** Under the torque the bit holds, the shank and the drive twist: the
   nutrunner's angle reading winds up by the wind-up of the table (degrees per N m, elastic, the same fastener's
-  wind-up each time; it springs back when the torque is let off). Every shank yields at 86 to 92 % of its own shear
+  wind-up each time; it springs back when the torque is let off). Every shank yields at 82 to 88 % of its own shear
   torque: above its yield point it twists 6 times as fast, and that twist stays. At its shear torque it twists off.
 - **The head's limit** holds both ways: a spindle stalled at a limit above it, tightening or loosening, wears the
   head through within half a second.
 - **Seized fasteners.** Up to 4 fasteners of a pack, in any group (a bracket fastener twice as often as a lid or a
   busbar fastener), are seized by corrosion or by thread-locker; a seized fastener may look clean or rusty. Its
   breakaway is 1.15 to 1.6 times its thread's shear torque: no torque its shank survives turns it at first. Working
-  breaks a seized thread's bond: each time a fully driven bit has held the fastener against loosening at 80 % or
+  breaks a seized thread's bond: each time a fully driven bit has held the fastener against loosening at 75 % or
   more of its own shear torque for 0.5 s in all, and then against tightening at the assembly torque or more for 0.25 s,
   what its breakaway exceeds a clean one's falls by a factor of 0.55 to 0.8 (one factor per fastener). Held at a lower
   torque, or tightened without the loosening before it, the bond does not change. A corroded fastener behaves the
   same way.
-- **What the nutrunner reads.** Its torque transducer reads to within 0.15 N m plus 1 % of the reading (one
+- **What the nutrunner reads.** Its torque transducer reads to within 0.08 N m plus 0.5 % of the reading (one
   standard deviation, every sample) about its own calibration line (`tool_catalog.md`, section 2), its angle encoder
-  to within 0.2 degrees; the trace has one sample per control tick.
+  to within 0.1 degrees; the trace has one sample per control tick.
 - **Tightening by mistake.** A seated fastener does not turn further: the spindle stalls at its limit, which does no
   harm below the head's limit and the fastener's yield point.
 - **The wrong bit, or a bit that is not square on the head, strips the head at once** (section 3 of

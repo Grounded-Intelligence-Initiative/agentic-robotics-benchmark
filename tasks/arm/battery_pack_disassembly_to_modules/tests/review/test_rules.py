@@ -706,12 +706,12 @@ def round3_rules():
     # elastic to the new torque plus the set: (plastic - 1) x compliance x what lies above the yield point
     assert weak.get("yielded") and abs((a2 - a3) - (c * (weak["yield"] + 0.5 - 0.85 * weak["yield"]) + (S.SHANK["plastic"] - 1) * c * 0.5)) < 1e-6
     assert weak["status"] == "seated" and not weak["sheared"]
-    # working counts at 80 % of the own shear torque, not below it
+    # working counts at 75 % of the own shear torque, not below it
     b0 = weak["breakaway"]
-    turn(weak["id"], -60, 0.79 * weak["shear"], 12, force=60.0)
+    turn(weak["id"], -60, 0.74 * weak["shear"], 12, force=60.0)
     turn(weak["id"], 60, S.THREADS[weak["thread"]]["tighten"] + 0.2, 6, force=60.0)
     assert weak["breakaway"] == b0
-    turn(weak["id"], -60, 0.81 * weak["shear"], 12, force=60.0)
+    turn(weak["id"], -60, 0.76 * weak["shear"], 12, force=60.0)
     turn(weak["id"], 60, S.THREADS[weak["thread"]]["tighten"] + 0.2, 6, force=60.0)
     assert weak["breakaway"] < b0 and weak["cycles"] == 1
     turn(weak["id"], -60, weak["shear"] + 0.01, 1, force=60.0)
