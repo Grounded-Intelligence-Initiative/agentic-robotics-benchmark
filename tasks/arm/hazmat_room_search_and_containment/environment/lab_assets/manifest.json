@@ -1,0 +1,1271 @@
+{
+ "source": "Poly Haven",
+ "license": "CC0 1.0",
+ "units": "metres, z up",
+ "frame": "origin at bbox centre in x/y and at the bottom (min z = 0); front +y, back (wall side) -y",
+ "front_axis": "+y",
+ "rgba_note": "mean colour of the part's PNG over the texels its UVs use (alpha-masked texels excluded)",
+ "surfaces_note": "axis-aligned rectangles in the model frame on the top level as seen from above (top-down heightmap, 5 mm cells); only for desks, low tables and sideboards",
+ "models": {
+  "canister_5_litre": {
+   "size": [
+    0.2193,
+    0.1058,
+    0.3003
+   ],
+   "kind": "bin",
+   "source_id": "multi_cleaner_5_litre",
+   "parts": [
+    {
+     "file": "canister_5_litre/0.obj",
+     "texture": "canister_5_litre/0.png",
+     "rgba": [
+      0.2425,
+      0.3242,
+      0.4959,
+      1
+     ],
+     "material": "multi_cleaner_5_litre"
+    }
+   ],
+   "surfaces": []
+  },
+  "plastic_jerrycan": {
+   "size": [
+    0.268,
+    0.3409,
+    0.3184
+   ],
+   "kind": "bin",
+   "source_id": "plastic_jerrycan",
+   "parts": [
+    {
+     "file": "plastic_jerrycan/0.obj",
+     "texture": "plastic_jerrycan/0.png",
+     "rgba": [
+      0.4403,
+      0.2473,
+      0.2015,
+      1
+     ],
+     "material": "plastic_jerrycan"
+    }
+   ],
+   "surfaces": []
+  },
+  "cardboard_box_01": {
+   "size": [
+    0.387,
+    0.5159,
+    0.3418
+   ],
+   "kind": "box",
+   "source_id": "cardboard_box_01",
+   "parts": [
+    {
+     "file": "cardboard_box_01/0.obj",
+     "texture": "cardboard_box_01/0.png",
+     "rgba": [
+      0.6286,
+      0.5462,
+      0.3882,
+      1
+     ],
+     "material": "cardboard_box_01"
+    }
+   ],
+   "surfaces": []
+  },
+  "industrial_plastic_container": {
+   "size": [
+    0.4572,
+    0.6315,
+    0.4188
+   ],
+   "kind": "box",
+   "source_id": "industrial_pastic_container",
+   "parts": [
+    {
+     "file": "industrial_plastic_container/0.obj",
+     "texture": "industrial_plastic_container/0.png",
+     "rgba": [
+      0.1213,
+      0.221,
+      0.6525,
+      1
+     ],
+     "material": "industrial_pastic_container"
+    }
+   ],
+   "surfaces": []
+  },
+  "plastic_container": {
+   "size": [
+    0.8951,
+    0.6264,
+    0.4297
+   ],
+   "kind": "box",
+   "source_id": "plastic_container",
+   "parts": [
+    {
+     "file": "plastic_container/0.obj",
+     "texture": "plastic_container/0.png",
+     "rgba": [
+      0.3499,
+      0.2333,
+      0.2246,
+      1
+     ],
+     "material": "plastic_container"
+    }
+   ],
+   "surfaces": []
+  },
+  "plastic_crate_01": {
+   "size": [
+    0.298,
+    0.408,
+    0.2642
+   ],
+   "kind": "box",
+   "source_id": "plastic_crate_01",
+   "parts": [
+    {
+     "file": "plastic_crate_01/0.obj",
+     "texture": "plastic_crate_01/0.png",
+     "rgba": [
+      0.3974,
+      0.1721,
+      0.1722,
+      1
+     ],
+     "material": "plastic_crate_01"
+    }
+   ],
+   "surfaces": []
+  },
+  "plastic_crate_02": {
+   "size": [
+    0.5055,
+    0.4055,
+    0.2541
+   ],
+   "kind": "box",
+   "source_id": "plastic_crate_02",
+   "parts": [
+    {
+     "file": "plastic_crate_02/0.obj",
+     "texture": "plastic_crate_02/0.png",
+     "rgba": [
+      0.5245,
+      0.2056,
+      0.0,
+      1
+     ],
+     "material": "plastic_crate_02"
+    }
+   ],
+   "surfaces": []
+  },
+  "bar_chair_round_01": {
+   "size": [
+    0.4832,
+    0.486,
+    0.7505
+   ],
+   "kind": "chair",
+   "source_id": "bar_chair_round_01",
+   "parts": [
+    {
+     "file": "bar_chair_round_01/0.obj",
+     "texture": "bar_chair_round_01/0.png",
+     "rgba": [
+      0.2921,
+      0.1995,
+      0.1297,
+      1
+     ],
+     "material": "Bar Chair"
+    }
+   ],
+   "surfaces": []
+  },
+  "metal_stool_01": {
+   "size": [
+    0.352,
+    0.3546,
+    0.8828
+   ],
+   "kind": "chair",
+   "source_id": "metal_stool_01",
+   "parts": [
+    {
+     "file": "metal_stool_01/0.obj",
+     "texture": "metal_stool_01/0.png",
+     "rgba": [
+      0.299,
+      0.2135,
+      0.1575,
+      1
+     ],
+     "material": "metal_stool_01"
+    }
+   ],
+   "surfaces": []
+  },
+  "metal_stool_03": {
+   "size": [
+    0.4606,
+    0.4706,
+    1.0231
+   ],
+   "kind": "chair",
+   "source_id": "metal_stool_03",
+   "parts": [
+    {
+     "file": "metal_stool_03/0.obj",
+     "texture": "metal_stool_03/0.png",
+     "rgba": [
+      0.2204,
+      0.2041,
+      0.142,
+      1
+     ],
+     "material": "metal_stool_03"
+    }
+   ],
+   "surfaces": []
+  },
+  "school_chair_01": {
+   "size": [
+    0.5659,
+    0.6753,
+    1.006
+   ],
+   "kind": "chair",
+   "source_id": "SchoolChair_01",
+   "parts": [
+    {
+     "file": "school_chair_01/0.obj",
+     "texture": "school_chair_01/0.png",
+     "rgba": [
+      0.2501,
+      0.2897,
+      0.3497,
+      1
+     ],
+     "material": "SchoolChair_01"
+    }
+   ],
+   "surfaces": []
+  },
+  "metal_office_desk": {
+   "size": [
+    2.0,
+    0.9472,
+    0.7875
+   ],
+   "kind": "desk",
+   "source_id": "metal_office_desk",
+   "parts": [
+    {
+     "file": "metal_office_desk/0.obj",
+     "texture": "metal_office_desk/0.png",
+     "rgba": [
+      0.3666,
+      0.367,
+      0.3768,
+      1
+     ],
+     "material": "metal_office_desk"
+    }
+   ],
+   "surfaces": [
+    {
+     "z": 0.7875,
+     "x": [
+      -0.9775,
+      0.9775
+     ],
+     "y": [
+      -0.4711,
+      0.4389
+     ]
+    }
+   ]
+  },
+  "school_desk_01": {
+   "size": [
+    0.7118,
+    0.546,
+    0.8826
+   ],
+   "kind": "desk",
+   "source_id": "SchoolDesk_01",
+   "parts": [
+    {
+     "file": "school_desk_01/0.obj",
+     "texture": "school_desk_01/0.png",
+     "rgba": [
+      0.3377,
+      0.2938,
+      0.2472,
+      1
+     ],
+     "material": "SchoolDesk_01"
+    }
+   ],
+   "surfaces": [
+    {
+     "z": 0.8826,
+     "x": [
+      -0.3434,
+      0.3416
+     ],
+     "y": [
+      -0.2555,
+      0.2645
+     ]
+    }
+   ]
+  },
+  "wooden_table_02": {
+   "size": [
+    1.1344,
+    0.706,
+    0.7995
+   ],
+   "kind": "desk",
+   "source_id": "wooden_table_02",
+   "parts": [
+    {
+     "file": "wooden_table_02/0.obj",
+     "texture": "wooden_table_02/0.png",
+     "rgba": [
+      0.5486,
+      0.3131,
+      0.171,
+      1
+     ],
+     "material": "wooden_table_02"
+    }
+   ],
+   "surfaces": [
+    {
+     "z": 0.7995,
+     "x": [
+      -0.5597,
+      0.5603
+     ],
+     "y": [
+      -0.3505,
+      0.3495
+     ]
+    }
+   ]
+  },
+  "steel_frame_shelves_01": {
+   "size": [
+    1.0974,
+    0.5021,
+    2.1405
+   ],
+   "kind": "shelves",
+   "source_id": "steel_frame_shelves_01",
+   "parts": [
+    {
+     "file": "steel_frame_shelves_01/0.obj",
+     "texture": "steel_frame_shelves_01/0.png",
+     "rgba": [
+      0.6038,
+      0.4643,
+      0.3213,
+      1
+     ],
+     "material": "steel_frame_shelves_01"
+    }
+   ],
+   "surfaces": []
+  },
+  "steel_frame_shelves_02": {
+   "size": [
+    0.5933,
+    0.5024,
+    2.1416
+   ],
+   "kind": "shelves",
+   "source_id": "steel_frame_shelves_02",
+   "parts": [
+    {
+     "file": "steel_frame_shelves_02/0.obj",
+     "texture": "steel_frame_shelves_02/0.png",
+     "rgba": [
+      0.5538,
+      0.432,
+      0.3075,
+      1
+     ],
+     "material": "steel_frame_shelves_02"
+    }
+   ],
+   "surfaces": []
+  },
+  "worn_metal_rack": {
+   "size": [
+    0.9154,
+    0.6,
+    1.9
+   ],
+   "kind": "shelves",
+   "source_id": "worn_metal_rack",
+   "parts": [
+    {
+     "file": "worn_metal_rack/0.obj",
+     "texture": "worn_metal_rack/0.png",
+     "rgba": [
+      0.4227,
+      0.3936,
+      0.3506,
+      1
+     ],
+     "material": "worn_metal_rack"
+    }
+   ],
+   "surfaces": []
+  },
+  "tool_cart": {
+   "size": [
+    1.2734,
+    0.7536,
+    0.9646
+   ],
+   "kind": "sideboard",
+   "source_id": "tool_cart",
+   "parts": [
+    {
+     "file": "tool_cart/0.obj",
+     "texture": "tool_cart/0.png",
+     "rgba": [
+      0.2716,
+      0.3365,
+      0.2619,
+      1
+     ],
+     "material": "tool_cart"
+    }
+   ],
+   "surfaces": [
+    {
+     "z": 0.9007,
+     "x": [
+      -0.5542,
+      0.5558
+     ],
+     "y": [
+      -0.3593,
+      0.3307
+     ]
+    }
+   ]
+  },
+  "fire_extinguisher_01": {
+   "size": [
+    0.28,
+    0.3674,
+    0.6593
+   ],
+   "kind": "standing",
+   "source_id": "korean_fire_extinguisher_01",
+   "parts": [
+    {
+     "file": "fire_extinguisher_01/0.obj",
+     "texture": "fire_extinguisher_01/0.png",
+     "rgba": [
+      0.52,
+      0.1968,
+      0.1581,
+      1
+     ],
+     "material": "korean_fire_extinguisher_01_body"
+    },
+    {
+     "file": "fire_extinguisher_01/1.obj",
+     "texture": "fire_extinguisher_01/1.png",
+     "rgba": [
+      0.6748,
+      0.7216,
+      0.7663,
+      1
+     ],
+     "material": "korean_fire_extinguisher_01_glass",
+     "transparent": true
+    },
+    {
+     "file": "fire_extinguisher_01/2.obj",
+     "texture": "fire_extinguisher_01/2.png",
+     "rgba": [
+      0.7702,
+      0.7388,
+      0.7351,
+      1
+     ],
+     "material": "korean_fire_extinguisher_01_paper"
+    }
+   ],
+   "surfaces": []
+  },
+  "hand_truck": {
+   "size": [
+    0.5933,
+    0.6925,
+    1.4025
+   ],
+   "kind": "standing",
+   "source_id": "hand_truck",
+   "parts": [
+    {
+     "file": "hand_truck/0.obj",
+     "texture": "hand_truck/0.png",
+     "rgba": [
+      0.4111,
+      0.2865,
+      0.261,
+      1
+     ],
+     "material": "hand_truck"
+    }
+   ],
+   "surfaces": []
+  },
+  "metal_tool_chest": {
+   "size": [
+    0.6854,
+    0.4072,
+    0.6518
+   ],
+   "kind": "standing",
+   "source_id": "metal_tool_chest",
+   "parts": [
+    {
+     "file": "metal_tool_chest/0.obj",
+     "texture": "metal_tool_chest/0.png",
+     "rgba": [
+      0.4926,
+      0.2353,
+      0.2242,
+      1
+     ],
+     "material": "metal_tool_chest"
+    }
+   ],
+   "surfaces": []
+  },
+  "propane_tank": {
+   "size": [
+    0.3374,
+    0.3374,
+    0.5538
+   ],
+   "kind": "standing",
+   "source_id": "propane_tank",
+   "parts": [
+    {
+     "file": "propane_tank/0.obj",
+     "texture": "propane_tank/0.png",
+     "rgba": [
+      0.5077,
+      0.2344,
+      0.2312,
+      1
+     ],
+     "material": "propane_tank"
+    }
+   ],
+   "surfaces": []
+  },
+  "small_lpg_tank": {
+   "size": [
+    0.41,
+    0.4092,
+    0.642
+   ],
+   "kind": "standing",
+   "source_id": "small_lpg_tank",
+   "parts": [
+    {
+     "file": "small_lpg_tank/0.obj",
+     "texture": "small_lpg_tank/0.png",
+     "rgba": [
+      0.3438,
+      0.1996,
+      0.1675,
+      1
+     ],
+     "material": "small_lpg_tank"
+    }
+   ],
+   "surfaces": []
+  },
+  "wet_floor_sign_01": {
+   "size": [
+    0.3001,
+    0.3585,
+    0.6295
+   ],
+   "kind": "standing",
+   "source_id": "WetFloorSign_01",
+   "parts": [
+    {
+     "file": "wet_floor_sign_01/0.obj",
+     "texture": "wet_floor_sign_01/0.png",
+     "rgba": [
+      0.7827,
+      0.7217,
+      0.1837,
+      1
+     ],
+     "material": "WetFloorSign_01"
+    }
+   ],
+   "surfaces": []
+  },
+  "alarm_clock_01": {
+   "size": [
+    0.1317,
+    0.0667,
+    0.1742
+   ],
+   "kind": "thing",
+   "source_id": "alarm_clock_01",
+   "parts": [
+    {
+     "file": "alarm_clock_01/0.obj",
+     "texture": "alarm_clock_01/0.png",
+     "rgba": [
+      0.5214,
+      0.5554,
+      0.5202,
+      1
+     ],
+     "material": "alarm_clock_01"
+    },
+    {
+     "file": "alarm_clock_01/1.obj",
+     "texture": "alarm_clock_01/1.png",
+     "rgba": [
+      0.0022,
+      0.0022,
+      0.0021,
+      1
+     ],
+     "material": "alarm_clock_01_Glass",
+     "transparent": true
+    }
+   ],
+   "surfaces": []
+  },
+  "all_purpose_cleaner": {
+   "size": [
+    0.1568,
+    0.1174,
+    0.3197
+   ],
+   "kind": "thing",
+   "source_id": "all_purpose_cleaner",
+   "parts": [
+    {
+     "file": "all_purpose_cleaner/0.obj",
+     "texture": "all_purpose_cleaner/0.png",
+     "rgba": [
+      0.8437,
+      0.3781,
+      0.6409,
+      1
+     ],
+     "material": "all_purpose_cleaner"
+    }
+   ],
+   "surfaces": []
+  },
+  "bleach_bottle": {
+   "size": [
+    0.0884,
+    0.0612,
+    0.2937
+   ],
+   "kind": "thing",
+   "source_id": "bleach_bottle",
+   "parts": [
+    {
+     "file": "bleach_bottle/0.obj",
+     "texture": "bleach_bottle/0.png",
+     "rgba": [
+      0.3161,
+      0.2091,
+      0.3342,
+      1
+     ],
+     "material": "bleach_bottle"
+    }
+   ],
+   "surfaces": []
+  },
+  "book_encyclopedia_set_01": {
+   "size": [
+    0.5513,
+    0.1631,
+    0.2374
+   ],
+   "kind": "thing",
+   "source_id": "book_encyclopedia_set_01",
+   "parts": [
+    {
+     "file": "book_encyclopedia_set_01/0.obj",
+     "texture": "book_encyclopedia_set_01/0.png",
+     "rgba": [
+      0.2507,
+      0.1613,
+      0.1265,
+      1
+     ],
+     "material": "book_encyclopedia_set_01_cover"
+    },
+    {
+     "file": "book_encyclopedia_set_01/1.obj",
+     "texture": "book_encyclopedia_set_01/1.png",
+     "rgba": [
+      0.812,
+      0.7561,
+      0.7009,
+      1
+     ],
+     "material": "book_encyclopedia_set_01_paper"
+    }
+   ],
+   "surfaces": []
+  },
+  "bunsen_burner": {
+   "size": [
+    0.1389,
+    0.1389,
+    0.1731
+   ],
+   "kind": "thing",
+   "source_id": "bunsen_burner",
+   "parts": [
+    {
+     "file": "bunsen_burner/0.obj",
+     "texture": "bunsen_burner/0.png",
+     "rgba": [
+      0.3477,
+      0.3411,
+      0.525,
+      1
+     ],
+     "material": "bunsen_burner"
+    }
+   ],
+   "surfaces": []
+  },
+  "chemistry_set": {
+   "size": [
+    1.0784,
+    0.3539,
+    0.429
+   ],
+   "kind": "thing",
+   "source_id": "chemistry_set",
+   "parts": [
+    {
+     "file": "chemistry_set/0.obj",
+     "texture": "chemistry_set/0.png",
+     "rgba": [
+      0.6739,
+      0.6826,
+      0.6782,
+      1
+     ],
+     "material": "chemistry_set"
+    },
+    {
+     "file": "chemistry_set/1.obj",
+     "texture": "chemistry_set/1.png",
+     "rgba": [
+      0.2391,
+      0.2161,
+      0.1957,
+      1
+     ],
+     "material": "chemistry_set_glass",
+     "transparent": true
+    }
+   ],
+   "surfaces": []
+  },
+  "circuit_board": {
+   "size": [
+    0.4035,
+    0.3974,
+    0.0783
+   ],
+   "kind": "thing",
+   "source_id": "circuit_board",
+   "parts": [
+    {
+     "file": "circuit_board/0.obj",
+     "texture": "circuit_board/0.png",
+     "rgba": [
+      0.3881,
+      0.3708,
+      0.3525,
+      1
+     ],
+     "material": "circuit_board"
+    },
+    {
+     "file": "circuit_board/1.obj",
+     "texture": "circuit_board/1.png",
+     "rgba": [
+      0.272,
+      0.298,
+      0.2373,
+      1
+     ],
+     "material": "circuit_board_alpha"
+    }
+   ],
+   "surfaces": []
+  },
+  "classic_laptop": {
+   "size": [
+    0.6519,
+    0.4859,
+    0.5428
+   ],
+   "kind": "thing",
+   "source_id": "classic_laptop",
+   "parts": [
+    {
+     "file": "classic_laptop/0.obj",
+     "texture": "classic_laptop/0.png",
+     "rgba": [
+      0.6184,
+      0.6211,
+      0.5803,
+      1
+     ],
+     "material": "classic_laptop"
+    },
+    {
+     "file": "classic_laptop/1.obj",
+     "texture": "classic_laptop/1.png",
+     "rgba": [
+      0.0196,
+      0.0196,
+      0.0196,
+      1
+     ],
+     "material": "classic_laptop_screen"
+    }
+   ],
+   "surfaces": []
+  },
+  "cleaner_bottle": {
+   "size": [
+    0.0885,
+    0.0898,
+    0.2286
+   ],
+   "kind": "thing",
+   "source_id": "multi_cleaner_bottle",
+   "parts": [
+    {
+     "file": "cleaner_bottle/0.obj",
+     "texture": "cleaner_bottle/0.png",
+     "rgba": [
+      0.5541,
+      0.5686,
+      0.5528,
+      1
+     ],
+     "material": "multi_cleaner_bottle"
+    }
+   ],
+   "surfaces": []
+  },
+  "clipboard": {
+   "size": [
+    0.2286,
+    0.3366,
+    0.042
+   ],
+   "kind": "thing",
+   "source_id": "clipboard",
+   "parts": [
+    {
+     "file": "clipboard/0.obj",
+     "texture": "clipboard/0.png",
+     "rgba": [
+      0.5223,
+      0.4049,
+      0.2977,
+      1
+     ],
+     "material": "clipboard"
+    }
+   ],
+   "surfaces": []
+  },
+  "desk_lamp_arm_01": {
+   "size": [
+    0.2017,
+    0.6139,
+    0.8926
+   ],
+   "kind": "thing",
+   "source_id": "desk_lamp_arm_01",
+   "parts": [
+    {
+     "file": "desk_lamp_arm_01/0.obj",
+     "texture": "desk_lamp_arm_01/0.png",
+     "rgba": [
+      0.7491,
+      0.4924,
+      0.3701,
+      1
+     ],
+     "material": "desk_lamp_arm_01"
+    },
+    {
+     "file": "desk_lamp_arm_01/1.obj",
+     "texture": "desk_lamp_arm_01/1.png",
+     "rgba": [
+      0.9972,
+      0.9969,
+      0.9966,
+      1
+     ],
+     "material": "desk_lamp_arm_01_light"
+    }
+   ],
+   "surfaces": []
+  },
+  "first_aid_box": {
+   "size": [
+    0.5255,
+    0.3502,
+    0.0975
+   ],
+   "kind": "thing",
+   "source_id": "medical_box",
+   "parts": [
+    {
+     "file": "first_aid_box/0.obj",
+     "texture": "first_aid_box/0.png",
+     "rgba": [
+      0.2438,
+      0.3755,
+      0.2916,
+      1
+     ],
+     "material": "medical_box"
+    }
+   ],
+   "surfaces": []
+  },
+  "industrial_microscope": {
+   "size": [
+    0.2145,
+    0.4981,
+    0.4617
+   ],
+   "kind": "thing",
+   "source_id": "industrial_microscope",
+   "parts": [
+    {
+     "file": "industrial_microscope/0.obj",
+     "texture": "industrial_microscope/0.png",
+     "rgba": [
+      0.3198,
+      0.337,
+      0.3292,
+      1
+     ],
+     "material": "industrial_microscope"
+    }
+   ],
+   "surfaces": []
+  },
+  "magnifying_glass_01": {
+   "size": [
+    0.1321,
+    0.0267,
+    0.2716
+   ],
+   "kind": "thing",
+   "source_id": "magnifying_glass_01",
+   "parts": [
+    {
+     "file": "magnifying_glass_01/0.obj",
+     "texture": "magnifying_glass_01/0.png",
+     "rgba": [
+      0.1716,
+      0.1755,
+      0.1834,
+      1
+     ],
+     "material": "magnifying_glass_01"
+    },
+    {
+     "file": "magnifying_glass_01/1.obj",
+     "texture": "magnifying_glass_01/1.png",
+     "rgba": [
+      0.7176,
+      0.8,
+      0.7922,
+      1
+     ],
+     "material": "magnifying_glass_01_lense",
+     "transparent": true
+    }
+   ],
+   "surfaces": []
+  },
+  "metal_toolbox": {
+   "size": [
+    0.4,
+    0.2705,
+    0.3047
+   ],
+   "kind": "thing",
+   "source_id": "metal_toolbox",
+   "parts": [
+    {
+     "file": "metal_toolbox/0.obj",
+     "texture": "metal_toolbox/0.png",
+     "rgba": [
+      0.4271,
+      0.4422,
+      0.389,
+      1
+     ],
+     "material": "metal_toolbox"
+    }
+   ],
+   "surfaces": []
+  },
+  "plastic_bottle_gallon": {
+   "size": [
+    0.1663,
+    0.1264,
+    0.2745
+   ],
+   "kind": "thing",
+   "source_id": "plastic_bottle_gallon",
+   "parts": [
+    {
+     "file": "plastic_bottle_gallon/0.obj",
+     "texture": "plastic_bottle_gallon/0.png",
+     "rgba": [
+      0.7509,
+      0.7271,
+      0.6114,
+      1
+     ],
+     "material": "plastic_bottle_gallon"
+    }
+   ],
+   "surfaces": []
+  },
+  "stationery_supplies": {
+   "size": [
+    0.3019,
+    0.0837,
+    0.1643
+   ],
+   "kind": "thing",
+   "source_id": "stationery_supplies",
+   "parts": [
+    {
+     "file": "stationery_supplies/0.obj",
+     "texture": "stationery_supplies/0.png",
+     "rgba": [
+      0.6078,
+      0.5889,
+      0.5482,
+      1
+     ],
+     "material": "stationery_supplies"
+    }
+   ],
+   "surfaces": []
+  },
+  "vintage_microscope": {
+   "size": [
+    0.1068,
+    0.1819,
+    0.3996
+   ],
+   "kind": "thing",
+   "source_id": "vintage_microscope",
+   "parts": [
+    {
+     "file": "vintage_microscope/0.obj",
+     "texture": "vintage_microscope/0.png",
+     "rgba": [
+      0.4929,
+      0.4443,
+      0.3944,
+      1
+     ],
+     "material": "vintage_microscope"
+    },
+    {
+     "file": "vintage_microscope/1.obj",
+     "texture": "vintage_microscope/1.png",
+     "rgba": [
+      0.2735,
+      0.2893,
+      0.2932,
+      1
+     ],
+     "material": "vintage_microscope_glass",
+     "transparent": true
+    }
+   ],
+   "surfaces": []
+  }
+ },
+ "textures": {
+  "floor": [
+   {
+    "file": "textures/floor_tiles_06.png",
+    "source_id": "floor_tiles_06",
+    "name": "Floor Tiles 06",
+    "tile_m": [
+     1.2,
+     1.2
+    ],
+    "rgba": [
+     0.4765,
+     0.4367,
+     0.4204,
+     1
+    ]
+   },
+   {
+    "file": "textures/floor_tiles_02.png",
+    "source_id": "floor_tiles_02",
+    "name": "Floor Tiles 02",
+    "tile_m": [
+     2.0,
+     2.0
+    ],
+    "rgba": [
+     0.621,
+     0.5661,
+     0.4943,
+     1
+    ]
+   }
+  ],
+  "wall": [
+   {
+    "file": "textures/painted_plaster_wall.png",
+    "source_id": "painted_plaster_wall",
+    "name": "Painted Plaster Wall",
+    "tile_m": [
+     2.0,
+     2.0
+    ],
+    "rgba": [
+     0.6695,
+     0.639,
+     0.6264,
+     1
+    ]
+   },
+   {
+    "file": "textures/concrete_wall_001.png",
+    "source_id": "concrete_wall_001",
+    "name": "Concrete Wall 001",
+    "tile_m": [
+     1.5,
+     1.5
+    ],
+    "rgba": [
+     0.5729,
+     0.56,
+     0.5288,
+     1
+    ]
+   }
+  ],
+  "casework": [
+   {
+    "file": "textures/grey_oak_veneer_01.png",
+    "source_id": "grey_oak_veneer_01",
+    "name": "Grey Oak Veneer 01",
+    "tile_m": [
+     1.0,
+     1.0
+    ],
+    "rgba": [
+     0.8042,
+     0.7188,
+     0.6389,
+     1
+    ]
+   },
+   {
+    "file": "textures/blue_metal_plate.png",
+    "source_id": "blue_metal_plate",
+    "name": "Blue Metal Plate",
+    "tile_m": [
+     2.5,
+     2.5
+    ],
+    "rgba": [
+     0.1593,
+     0.2435,
+     0.2988,
+     1
+    ]
+   }
+  ],
+  "worktop": [
+   {
+    "file": "textures/black_painted_planks.png",
+    "source_id": "black_painted_planks",
+    "name": "Black Painted Planks",
+    "tile_m": [
+     1.6,
+     1.6
+    ],
+    "rgba": [
+     0.0978,
+     0.1045,
+     0.1232,
+     1
+    ]
+   },
+   {
+    "file": "textures/granite_tile_04.png",
+    "source_id": "granite_tile_04",
+    "name": "Granite Tile 04",
+    "tile_m": [
+     2.0,
+     2.0
+    ],
+    "rgba": [
+     0.4416,
+     0.3937,
+     0.3366,
+     1
+    ]
+   }
+  ]
+ },
+ "textures_note": "512x512 tileable base-colour PNGs; tile_m = real-world size of one tile (Poly Haven); in MuJoCo use a material with texuniform=true and texrepeat = 1/tile_m"
+}

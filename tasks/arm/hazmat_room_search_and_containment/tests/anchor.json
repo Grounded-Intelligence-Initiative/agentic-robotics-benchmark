@@ -1,0 +1,9 @@
+{
+  "metric": "containment_rate",
+  "direction": "higher",
+  "value": 0.9697,
+  "full_at": 0.85,
+  "source": "Measured: the reference controller (solution/controller.py: a floor map from the camera's depth pictures, a search for drawer pulls and for the packages' handles, drawers pulled open and pushed shut by their pulls, each handle found to the millimetre with the latch, closed only on a still tool, the class label read beside it, two slow force probes for the weight and the centre of mass, input-shaped carrying on the mobile base, every package set on the trolley's tray, the trolley hooked by its handle and towed into the store, the vessels' plates read, each package lifted from the tray into the vessel of its class and that vessel's lid led shut on its circle, the lab put right) won 64 of 66 hidden episodes over the wire under the fixed limits (5 degrees, 2 m/s^2) and the one countdown for all of it (1200 s with two packages, 1500 s with three), with the grader's repeated-step queries, containment_rate = 0.9697 (2026-11-27; the two lost: one ran out of its countdown, one moved a stool; episodes took 1114 s of simulated time in the median, 1392 s at most). The reference was developed against the live range (tests/lab_sim.py), which the agent does not have: it measures what a controller can do there.",
+  "note": "full_at: with a win rate of 64/66, a 24-episode run reads 20 or more wins (ratio 0.85 or more) in more than 99.9% of runs, so 0.85 covers the worst honest ratio.",
+  "reference_commit": "the commit that adds tasks/arm/hazmat_room_search_and_containment (its solution/)"
+}
