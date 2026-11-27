@@ -256,9 +256,10 @@ there, without saying why.
 * `~/commission/run_session.py <procedure>`: runs a controller folder (`run.sh`) through one session exactly as the
   grader will: the handshake, the deadlines, the repeated requests. `--save DIR` keeps frames and a log of joints and
   actions.
-* 12 sessions in all, one at a time, each at most one procedure (800 steps, 80 s of procedure time). A session is
-  counted when it starts. Use `--status` (or `Commissioning().status()`) to see what is left. Sessions are refused
-  while the development set is still being written.
+* 3 sessions in all (theatre time for commissioning is scarce), one at a time, each at most one procedure (800 steps,
+  80 s of procedure time). A session is counted when it starts and is never given back, however it ends. Use
+  `--status` (or `Commissioning().status()`) to see what is left. Sessions are refused while the development set is
+  still being written.
 
 ## 10. Working in the sandbox
 

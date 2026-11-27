@@ -15,7 +15,7 @@
 # surgeon take the camera back, and the rest of that procedure is not usable. The agent gets what the device's
 # engineer would have: the holder's manual and kinematic model, the scopes' intrinsics, ten development procedures as
 # video with an annotation team's 2D labels, and a commissioning service that plays ten procedures of its own for its
-# controller without ground truth or score (12 sessions). Version 0.3. Design notes, what is verified and what is
+# controller without ground truth or score (3 sessions, never refunded; a 2 h session). Version 0.3. Design notes, what is verified and what is
 # not: tests/README.md. Needs one NVIDIA RTX GPU.
 
 schema_version = "1.4+ale.1"
@@ -44,8 +44,11 @@ gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-3090"]
 # Setup (environment/setup/setup.sh) has no field: the engine bounds it at a fixed 1800 s. It stages the givens and
 # starts the commissioning service, waiting for its renderer (Isaac Sim's start; on a cold cache the RTX pipelines
 # compile, measured for this stack by hazard_bay_build at about 7 minutes in a fresh container; 20 s here, warm).
-# [agent] timeout_sec: 4 h. The development set records in the background during the first minutes (ten procedures,
-# 401 frames each: 7 min 15 s here); a commissioning session takes 1 to 3 minutes of wall clock.
+# [agent] timeout_sec: 2 h since version 0.3 (4 h before; the owner's choice of 2026-11-26, as merged tasks with scarce
+# practice have it: arm/kitchen_appliance_tending, arm/lab_sample_handling). The development set records in the
+# background during the first minutes (ten procedures, 401 frames each: 8.5 to 16 min natively here beside other jobs;
+# in the version 0.2 episode on the RTX 3090 host it was complete 11.5 min into the agent's session); a commissioning
+# session takes 2 to 4 minutes of wall clock, and there are 3 of them.
 # [verifier] timeout_sec: the renderer's start (cold, up to renderer_start_timeout_s = 2400 s), the canary (seconds),
 # then 12 procedures x 800 steps: each step one frame, plus a probe copy on about one step in sixteen (about 10,200
 # frames; 0.07 s a frame on a quiet GPU, 0.12 s in the RTX 3090 validate, 0.17 to 0.26 s beside other jobs here; in
@@ -55,7 +58,7 @@ gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-3090"]
 # 2400 + 10200 x 0.26 + 2400 + 12 x 7 = about 7550 s at the bounds on a busy GPU. The grader's VerifierDeadline
 # (tests/grader_config.json, 8400 s) writes a verdict from the steps judged so far before this limit is reached.
 [agent]
-timeout_sec = 14400
+timeout_sec = 7200
 network_mode = "no-network"
 
 [verifier]

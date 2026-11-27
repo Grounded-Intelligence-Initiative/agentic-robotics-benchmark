@@ -106,9 +106,10 @@ program's **stdout is the wire**: print `READY` when you are ready, then only re
 The **commissioning service** plays ten commissioning procedures of its own for your controller (`c01` to `c10`: not
 the recorded ones; drawn like the graded procedures, nothing about them on file), with the grader's observations,
 servo, lens and takeovers, and gives no ground truth, no labels and no judgement of the view; a session that the
-surgeon takes back just ends. You have 12 sessions, one at a time, each one procedure long at most. The graded
+surgeon takes back just ends. Theatre time for commissioning is scarce: **you have 3 sessions in all**, one at a
+time, each one procedure long at most; a session counts when it starts and is never given back. The graded
 procedures are among neither set.
 
 Tools: Python 3.12 at `/opt/venv/bin/python3` (call it by that path) with numpy, OpenCV, Pillow, PyTorch and
-torchvision on the sandbox's GPU. No network. Your session is limited to 4 hours; what is in
-`/home/user/submission` when it ends is what is graded.
+torchvision on the sandbox's GPU. No network. Your session is limited to **2 hours**, the development set's recording in
+its first minutes included; what is in `/home/user/submission` when it ends is what is graded.

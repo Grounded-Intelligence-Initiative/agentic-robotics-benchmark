@@ -148,6 +148,7 @@ material that is what a real team has rather than the simulator's truth.
 | tighter rules where perception error bites | horizon within 10 degrees (was 15); fine-work picture speed 32 px/s (was 48) | they cost the reference 0.4 and 1.4 points render-free; a narrower zoom band (26-38 px) and safe zone (0.25) were tried and rejected: they cost the reference 16 and 5 points, through the tips' depth spread and the holder's speed, not perception |
 | development material without 3D truth (`episode.Episode.annotation`, `recorder.py`) | labels on every 4th step, only the tips an annotator can see (inside the disk, out of the tissue, no tissue in the line of sight, not in a dense plume), marked with an error of 1.5 px per coordinate (at most 4); role, present, active, catalogue size, lens, joints, the lab's head angle; no depth, apparent size, fine-work flag, horizon error or judgement. The development look pool narrowed to 3 finishes, 2 palettes, staining to 0.3 | the episode's program rebuilt every development instrument's 3D path from the labels' depth, scored its commissioning sessions exactly against it and labelled its own session frames from it |
 | a commissioning bench of its own (`commission_procedures.json`) | the service plays ten procedures of its own (the development table, new seeds, rigs and salts, the graded look pool), nothing about them on file; a session ends at a takeover without saying why | no free judge and no free labels: what a real team has is unlabelled video from the target rooms |
+| scarce practice, a shorter session | 3 commissioning sessions in all (was 12), counted when they start, never given back; the agent's session 2 h (was 4 h), the development set's recording in its first minutes included | the owner's choice of 2026-11-26, as merged tasks with low frontier scores have it (`arm/kitchen_appliance_tending`: 2 h and one trial in total; `arm/lab_sample_handling`: 2 h and a commissioning step budget). Practice on the graded distribution, even blind, is a judge an agent debugs against until its program works; with three sessions a first-attempt error has to be avoided, not fixed. Constants and text only: no draw, the reference and the grader unchanged |
 | the render canary | one renderer restart and a second canary before a task error (grader and service) | a validate run lost an evaluation to a renderer that hung at the canary (`Out of resource descriptors!`) |
 
 Kept: the scoring formula, the probe lock's rule, the kit, the action set, the hidden and development seeds and
@@ -325,8 +326,9 @@ the development set, and the status log's evidence for 0.3 is the frozen episode
 * The commissioning service (`environment/commission_service/commissiond.py`, account `endosim`, started by
   `setup.sh`): the grader's simulator on ten commissioning procedures of its own (since 0.3:
   `commission_procedures.json`, the development table with new seeds, rigs and salts, the graded look pool; nothing
-  about them in the agent's documents but their names), 12 sessions, one at a time, the grader's observations, limits
-  and takeovers (a session ends there, without a reason), no ground truth, no labels, no score, no summary.
+  about them in the agent's documents but their names), 3 sessions in all since 0.3 (12 before), counted when they
+  start and never given back, one at a time, the grader's observations, limits and takeovers (a session ends there,
+  without a reason), no ground truth, no labels, no score, no summary.
   `~/commission/run_session.py` runs a controller folder through a session as the grader will, repeated requests
   included.
 * `~/example/`: a controller that speaks the wire, keeps memory by step index and holds still.
@@ -528,13 +530,18 @@ bound with perfect detection of every visible tip and a naive hold-last tracker 
 a non-privileged controller below that is the quality of its perception and tracking. Whether a frontier agent lands
 near 0.35 or near 0.6 of the reference only a frontier episode can say.
 
-**Considered and left out, for the owner.** A shorter agent session and fewer commissioning sessions (as merged
-low-scoring tasks have: `arm/kitchen_appliance_tending`, `arm/lab_sample_handling`) were proposed during this work;
-the brief of this round excluded the time budget and the session count as levers, so version 0.3 keeps 4 h and 12
-sessions. Both would be constants and text only (`task.toml` `[agent] timeout_sec`, `commission_procedures.json`
-`sessions`, the instruction and the manual's section 9), with no effect on the draws, the reference or `ale validate`.
+**Scarce practice and a shorter session, the owner's choice.** After the proxy's run, the owner chose on 2026-11-26
+(19:30) to cut the commissioning sessions from 12 to 3, counted when they start and never given back, and the agent's
+session from 4 h to 2 h, as merged tasks with low frontier scores have it (`arm/kitchen_appliance_tending`: 2 h and
+one lab trial in total; `arm/lab_sample_handling`: 2 h and a commissioning step budget). The brief of this round had
+excluded both as levers; the owner lifted that. Constants and text only (`task.toml` `[agent] timeout_sec`,
+`commission_procedures.json` `sessions`, the instruction, the manual's section 9): no draw changes, and the reference
+and `ale validate` are untouched. The development set fits: it was complete 11.5 min into the agent's session in the
+version 0.2 episode on the RTX 3090 host, and took 8.5 to 16 min natively here. The proxy above had 12 sessions and
+no time limit to speak of, so it is an upper bound for the new conditions; it was not run again.
 
-**Not measured here:** anything in the engine (no Docker here: the image must be rebuilt, `environment/` changed);
+**Not measured here:** anything in the engine (no Docker here: the image must be rebuilt, `environment/` changed;
+the 2 h session and the 3 sessions are exercised only by a frontier episode);
 the proxy's and the episode program's run-to-run spread (each was run once on the hidden set); the moving mesh's
 stale captures beyond the frame clock's check (section 6). Next on the validate host: rebuild, `ale validate` (the
 anchor from its oracle), one frontier episode.
