@@ -194,6 +194,10 @@ def verify():
         score = metrics["strict_layout_fraction"]
         metrics.update(numerics_ok=1, offline_launcher_ok=1)
         detail = Path("/logs/verifier/delivery-episodes.json")
+        manual_path = os.environ.get("ROBOTICS_GRADER_VERDICT_PATH")
+        if manual_path and not os.environ.get("ALE_VERIFY_PYTHON"):
+            verdict_path = Path(manual_path)
+            detail = verdict_path.with_name(verdict_path.stem + "-episodes.json")
         detail.write_text(json.dumps(rows, allow_nan=False, indent=2) + "\n")
         write_verdict(ratio_rewards(score, anchor, metric_name="strict_layout_fraction",
                                     full_at=calibration["full_at"], extra=metrics))

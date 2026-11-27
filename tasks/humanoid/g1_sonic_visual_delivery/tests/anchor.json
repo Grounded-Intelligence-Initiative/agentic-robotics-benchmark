@@ -1,8 +1,8 @@
 {
   "metric": "strict_layout_fraction",
   "direction": "higher",
-  "value": null,
+  "value": 1.0,
   "full_at": 1,
-  "source": "Pending native benchmark measurement of all three matched deliveries, covering both destinations.",
-  "reference_commit": null
+  "source": "Pinned ALE 0.1.1 Docker bootstrap and independently initialized oracle calibration on the registered bank. Each measured 4/4 fully completed layouts and 12/12 physical deliveries. All 24 trials docked, lifted and qualified their releases.",
+  "reference_commit": "212369c6d12045a98a2af79683892bbc574594c3"
 }
