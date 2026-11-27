@@ -1,0 +1,9 @@
+# bucket: https://omniverse-content-production.s3-us-west-2.amazonaws.com
+# root: Assets/Isaac/6.2/
+143077f9f6a8de5a99f78c2c2472801fb53cf240277ef661642f079b9acdfff8  1459  Isaac/Robots/UniversalRobots/ur20/LICENSE
+9c659b5115540ac6f0af94d504e04ca734afaa304dc0c1e8392741c20ca055ea  1561213  Isaac/Robots/UniversalRobots/ur20/configuration/materials/textures/UR20_DIFF_8bit_2K.png
+8d4b0bbb9a5133ac610baa9af458216fee4c2b933b8392ec9faaf46c294c2aec  25850694  Isaac/Robots/UniversalRobots/ur20/configuration/ur20_base.usd
+c4b355edf92e338f31276d2add3a289d65a0661da3bc8a93b678c896f04cc085  6719  Isaac/Robots/UniversalRobots/ur20/configuration/ur20_physics.usd
+d57e2764d457500bcac5690fc52e022ee26345ec76d8b991f02f3fa69a714d7f  2227  Isaac/Robots/UniversalRobots/ur20/configuration/ur20_robot_schema.usd
+3d589a64b5a80d8fe923fd29ca1cba8c9c37468e026ef7f39f37913797c78dfe  602  Isaac/Robots/UniversalRobots/ur20/configuration/ur20_sensor.usd
+ddff1362196e718ad7be1ec750016b08d7f3390f5c83dd953c18715210817b52  2606  Isaac/Robots/UniversalRobots/ur20/ur20.usd
