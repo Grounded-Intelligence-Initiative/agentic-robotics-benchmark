@@ -1,0 +1,1596 @@
+{
+ "format": "hand-twin-selftest/1",
+ "geometric": {
+  "R0001": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0003": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0004": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0005": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0006": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0010": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0011": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0012": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0013": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0014": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0015": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0016": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0017": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0018": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0019": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0020": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0021": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0022": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0023": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0024": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0025": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0026": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0027": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0028": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0029": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0030": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0031": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0032": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0033": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0034": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0035": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0036": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0037": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0038": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0039": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0040": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0041": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0042": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0043": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0044": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0045": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0046": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0047": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0048": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0049": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0050": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0051": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0052": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0053": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0054": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0055": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0056": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0057": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0058": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0059": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0060": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0061": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0062": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0063": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0064": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0065": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0066": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0067": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0068": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0069": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0070": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0071": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0072": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0073": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0074": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0075": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0076": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0077": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0078": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0079": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0080": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0082": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0083": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0084": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0085": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0086": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0087": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0089": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0090": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0091": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0092": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0093": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0095": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0096": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0097": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0098": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0099": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0101": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0102": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0103": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0104": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0105": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0107": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0108": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0109": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0110": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0111": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0113": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0114": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0115": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0116": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0117": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0118": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0119": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0120": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0121": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0122": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0123": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0124": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0125": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0126": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0127": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0128": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0129": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0130": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0131": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0133": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0134": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0137": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0138": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0139": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0140": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0141": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0142": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0143": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0144": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0145": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0146": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0147": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0148": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0149": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0150": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0151": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0152": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0153": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0154": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0155": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0157": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0158": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0159": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0160": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0161": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0162": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0163": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0164": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0165": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0166": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0167": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0169": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0170": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0171": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0172": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0173": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0174": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0175": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0176": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0177": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0178": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0179": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0180": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0181": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0182": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0183": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0184": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0185": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0186": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0187": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0188": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0189": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0190": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0192": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0193": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0194": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0195": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0196": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0197": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0199": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0200": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0201": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0202": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0203": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0204": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0205": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0206": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0207": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0208": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0209": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0210": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0211": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0212": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0213": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0214": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0215": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0216": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0217": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0218": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0219": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0220": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0221": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0222": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0223": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0224": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0225": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0226": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0227": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0228": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0229": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0230": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0231": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0232": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0233": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0234": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0235": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0236": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0237": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0238": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0239": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0240": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0241": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0242": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0243": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0244": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0245": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0246": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0247": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0248": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0249": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0250": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0251": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0252": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0253": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0254": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0255": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0256": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0257": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0258": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0259": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0260": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0261": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0262": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0263": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0264": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0265": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0266": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0267": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0268": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0269": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0270": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0271": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0272": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0273": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0274": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0275": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0276": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0277": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0279": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0280": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0281": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0282": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0283": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0284": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0285": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0286": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0289": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0290": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0291": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0292": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0293": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0294": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0295": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0296": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0297": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0298": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0299": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0300": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0301": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0302": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0303": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0304": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0305": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0307": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0308": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0309": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0310": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0311": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0313": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0314": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0315": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0316": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0317": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0319": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0320": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0321": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0322": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0323": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0325": {
+   "by": null,
+   "hit": null,
+   "outcome": "done"
+  },
+  "R0326": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0327": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0328": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0329": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0330": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0331": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0332": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0333": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0334": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0335": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0336": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0337": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0338": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0339": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0340": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0341": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  },
+  "R0342": {
+   "by": null,
+   "hit": null,
+   "outcome": "declined"
+  }
+ },
+ "lifts": []
+}
