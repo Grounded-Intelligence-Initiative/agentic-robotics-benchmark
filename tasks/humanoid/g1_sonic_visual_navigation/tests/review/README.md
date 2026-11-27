@@ -54,3 +54,23 @@ task_dir="$PWD/tasks/humanoid/g1_sonic_visual_navigation"
 ```
 
 Each protected draw assigns sixteen courses, twelve with low shelves and four with high shelves. Review the raw low and high counts, contact samples, entry/exit and whole-head-under-roof events, upright inspection dwell and applied native motion alongside normalized reward. A full native trajectory has at most 4,350 applied rows (87 seconds). The verifier allows 60 wall seconds for `READY`, 15 wall seconds per reset/action exchange, and 3,540 seconds for the entire protected panel inside the engine’s 3,600-second limit.
+
+## Physical calibration
+
+The protected bootstrap and independent spread used the frozen participant `5561bc376e7fd86b75e82c69a1ece7107c1d147b`.
+
+| Panel | Strict courses | Low / high strict | Approach passages | Full rack exits | Contact samples | Body rows | Native s | Acceleration RMS (rad/s²) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| WarehouseN0 | 15/16 | 12/12, 3/4 | 24/24 | 15/16 | 0 | 40,437 | 808.74 | 6.128 |
+| WarehouseN1 | 16/16 | 12/12, 4/4 | 24/24 | 16/16 | 0 | 41,924 | 838.48 | 6.052 |
+
+Bootstrap raw completion set the anchor to 0.9375. Full credit requires 15/16 strict completions. The missing submission scored zero. Raw physical outcomes remain visible for both null-anchor runs. [Numerical measurements and official receipt digests](anchor_measurement.json)
+
+An independently preregistered 16-start native cohort selected eight low and eight high racks. It completed 15/16. Its 96 registered seed fingerprints had zero intersection with either protected draw’s robot, shutter, geometry or rack seed identities. [Independent native trial results](independent_native.json)
+
+
+The Docker examples above were exercised with participant `5561bc376e7fd86b75e82c69a1ece7107c1d147b`.
+
+The right-going low example finished with success in 2,346 body rows (46.92 native seconds). Its minimum measured roof-to-robot separation was 50.01 mm. The final dwell's minimum head apex was 1.28022 m.
+
+The left-going high example finished with success in 2,441 body rows (48.82 native seconds). Its minimum measured roof-to-robot separation was 67.94 mm. The final dwell's minimum head apex was 1.28065 m.
