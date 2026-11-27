@@ -96,7 +96,8 @@ def main():
                                                                        "ok" if ok else "MISMATCH"))
     cdoc = json.load(open(COMMISSION))
     want = commission_items(cdoc["v3_draw"]["key"], docs["dev"]["procedures"])
-    ok = want == cdoc["procedures"]
+    strip = lambda item: dict(item, factors={k: v for k, v in item["factors"].items() if k != "unit"})   # noqa: E731
+    ok = want == [strip(item) for item in cdoc["procedures"]]          # (version 0.4's units: draw_v4.py checks them)
     bad += not ok
     for item in cdoc["procedures"]:
         r = item["factors"]["rig"]
