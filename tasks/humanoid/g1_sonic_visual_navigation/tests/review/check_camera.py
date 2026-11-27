@@ -1,4 +1,5 @@
-"""Check that a changed physical gate is observable and an unrevealed future pivot is private."""
+"""Show the moving shutter in true RGB-D while keeping an unrevealed future maneuver private."""
+
 import argparse
 import base64
 from contextlib import ExitStack
@@ -8,7 +9,6 @@ import os
 
 import numpy as np
 from PIL import Image
-
 from navigation_io import Course, HORIZON, NavigationEpisode
 from sonic_loco import LocomotionSession
 from sonic_loco.obstacles import make_layout
@@ -19,38 +19,57 @@ def pixels(packet, field):
 
 
 def check(assets):
-    fields = {"q", "dq", "base_gyro", "gravity_body", "yaw_rate_rad_s", "velocity_body",
-              "left_foot_contact", "right_foot_contact"}
-    course = Course(6., 90., 1.5)
-    alternate_future = Course(6., -83., 1.9)
-    layout_key = 7
-    live_side = make_layout(layout_key, course.first_m).gates[0].side
-    opposite = next(i for i in range(64) if make_layout(i, course.first_m).gates[0].side == -live_side)
-    action = {"rows": [{"codes": [16]*64}]}
-    differences = {}
+    fields = {
+        "q",
+        "dq",
+        "base_gyro",
+        "gravity_body",
+        "yaw_rate_rad_s",
+        "velocity_body",
+        "left_foot_contact",
+        "right_foot_contact",
+    }
+    live_course = Course(6.25, 90.0, 1.5)
+    hidden_pivot = Course(6.25, -84.0, 1.9)
+    action = {"rows": [{"codes": [16] * 64}]}
     with ExitStack() as stack:
-        def start(route, obstacle_key):
+
+        def start(course, phases):
             env = stack.enter_context(LocomotionSession(assets, 7, horizon=HORIZON))
-            return NavigationEpisode(env, route, obstacle_seed=obstacle_key)
-        main = start(course, layout_key)
-        twin = start(alternate_future, layout_key)
-        changed = start(course, opposite)
+            layout = make_layout(7, course.first_m, service="both", tail="right", phases=phases)
+            return NavigationEpisode(env, course, obstacle_seed=7, layout=layout)
+
+        live = start(live_course, (2.0, 9.0))
+        twin = start(hidden_pivot, (2.0, 9.0))
+        swapped = start(live_course, (9.0, 2.0))
+        changed = {}
         for tick in range(11):
-            live, other, changed_packet = main.observe(), twin.observe(), changed.observe()
-            assert live == other and live["tick"] == tick
-            assert set(live["observation"]) == fields
-            assert live["observation"] == changed_packet["observation"]
+            current, future, alt = live.observe(), twin.observe(), swapped.observe()
+            assert current == future and current["tick"] == tick and set(current["observation"]) == fields
+            assert (
+                current["observation"] == alt["observation"]
+                and current["decoder_history"] == alt["decoder_history"]
+            )
             if tick == 0:
                 for modality in ("rgb_png", "depth_mm_png"):
-                    differences[modality] = int(np.count_nonzero(pixels(live, modality) != pixels(changed_packet, modality)))
-                    assert differences[modality] > 0, modality
-            for ep, packet in ((main, live), (twin, other), (changed, changed_packet)):
+                    changed[modality] = int(
+                        np.count_nonzero(pixels(current, modality) != pixels(alt, modality))
+                    )
+                    assert changed[modality] > 0, modality
+            for ep, packet in ((live, current), (twin, future), (swapped, alt)):
                 ep.advance(action, packet["observation_id"])
             for key in ("qpos", "qvel", "ctrl"):
-                assert np.array_equal(getattr(main.session.data, key), getattr(twin.session.data, key))
-                assert np.array_equal(getattr(main.session.data, key), getattr(changed.session.data, key))
-    return dict(robot_seed=7, layout_seed=layout_key, alternative_layout_seed=opposite,
-                identical_future_prefix_rows=11, native_motion_rows_checked=11, changed_reset_values=differences)
+                assert np.array_equal(getattr(live.session.data, key), getattr(twin.session.data, key)), key
+        assert not live.summary()["obstacle_contact"] and not swapped.summary()["obstacle_contact"]
+    return dict(
+        robot_seed=7,
+        layout_seed=7,
+        scene_phases_right_left_s=[2.0, 9.0],
+        alternate_phases_s=[9.0, 2.0],
+        identical_future_prefix_rows=11,
+        unchanged_robot_sensors_on_phase_swap=11,
+        changed_reset_values=changed,
+    )
 
 
 if __name__ == "__main__":

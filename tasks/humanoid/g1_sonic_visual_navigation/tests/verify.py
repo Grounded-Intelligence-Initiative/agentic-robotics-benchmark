@@ -1,4 +1,5 @@
-"""Grade physically completed obstacle courses in the native G1 SONIC runtime."""
+"""Grade actual shutter passage, zero cabinet contact and all three stops in native G1 physics."""
+
 import json
 import math
 import os
@@ -11,9 +12,18 @@ sys.path.insert(0, str(STAGE))
 sys.path.insert(1, "/opt/sonic")
 
 from robotics_grader import (
-    SolverAborted, SolverMissing, VerifierDeadline, clear_agent_account,
-    deprivileged, ratio_rewards, read_anchor, require, seed_rng,
-    stage_config, write_verdict, zero_verdict,
+    SolverAborted,
+    SolverMissing,
+    VerifierDeadline,
+    clear_agent_account,
+    deprivileged,
+    ratio_rewards,
+    read_anchor,
+    require,
+    seed_rng,
+    stage_config,
+    write_verdict,
+    zero_verdict,
 )
 from navigation_io import Course, NavigationEpisode
 from solver_host import OfflineSolver, check_numerics, offline_command, solver_environment
@@ -39,82 +49,119 @@ def stratified(rng, bounds, count):
     return shuffled(rng, [lo + (hi - lo) * (i + rng.random()) / count for i in range(count)])
 
 
-def layout_family(sides):
-    if len(sides) == 1:
-        return "single"
-    if len(sides) != 2:
-        raise ValueError("the registered course has one or two gates")
-    return "same" if sides[0] == sides[1] else "opposite"
-
-
 def schedule(rng, cfg):
-    require(cfg["episodes"] == 16, "obstacle roster expects sixteen courses")
-    diagonal = rng.seed(bits=1)
+    require(cfg["episodes"] == 16, "timed-door roster expects sixteen courses")
     jobs = []
-    used_layouts = set()
-    for turn_index, turn_sign in enumerate((-1, 1)):
-        for side_index, first_side in enumerate((-1, 1)):
-            # One of each shape per cell. A random diagonal balances the extra
-            # double-gate shape across both turn signs and both first openings.
-            extra = "same" if (turn_index + side_index + diagonal) % 2 == 0 else "opposite"
-            patterns = shuffled(rng, ("single", "same", "opposite", extra))
-            first = stratified(rng, cfg["first_distance_m"], len(patterns))
-            angle = stratified(rng, cfg["turn_magnitude_deg"], len(patterns))
-            last = stratified(rng, cfg["last_distance_m"], len(patterns))
-            for pattern, distance, magnitude, end in zip(patterns, first, angle, last):
-                course = Course(distance, turn_sign * magnitude, end)
-                for _ in range(1024):
-                    obstacle_seed = rng.seed(bits=64)
-                    if obstacle_seed in used_layouts:
-                        continue
-                    layout = make_layout(obstacle_seed, course.first_m)
-                    sides = tuple(gate.side for gate in layout.gates)
-                    if sides[0] == first_side and layout_family(sides) == pattern:
-                        break
-                else:
-                    raise ValueError("course generator did not produce a registered layout stratum")
-                used_layouts.add(obstacle_seed)
-                jobs.append((course, rng.seed(bits=64), obstacle_seed, sides))
+    diagonal = rng.seed(bits=1)
+    for idx, sign in enumerate((-1, 1)):
+        variants = [("both", "none"), ("both", "none"), ("both", "left"), ("both", "right")]
+        for j, side in enumerate(("left", "right")):
+            extra_tail = "left" if (idx + j + diagonal) % 2 == 0 else "right"
+            variants.extend(((side, "none"), (side, extra_tail)))
+        first = stratified(rng, cfg["first_distance_m"], len(variants))
+        angle = stratified(rng, cfg["turn_magnitude_deg"], len(variants))
+        last = stratified(rng, cfg["last_distance_m"], len(variants))
+        for i, (service, tail) in enumerate(shuffled(rng, variants)):
+            course = Course(first[i], sign * angle[i], last[i])
+            jobs.append((course, rng.seed(bits=64), rng.seed(bits=64), rng.seed(bits=64), service, tail))
     return shuffled(rng, jobs)
 
 
-def strict_course(result, sides):
-    """Independently require an ordered positive-clearance crossing and three accepted stops."""
-    if not (result["success"] and result["reason"] == "success" and result["stages_completed"] == len(PHASES)):
+def crossing(event, plane_x, lo, hi, previous_time, previous_tick, stop_tick):
+    """Check the interpolation coordinates, clock interval, and positive nearest-edge clearance."""
+    x, y = event["forward_m"], event["left_m"]
+    when, tick = event["native_time_s"], event["tick"]
+    clearance = min(y - lo, hi - y)
+    return (
+        all(math.isfinite(v) for v in (x, y, lo, hi, when, clearance, event["gap_edge_clearance_m"]))
+        and math.isclose(x, plane_x, abs_tol=1e-9)
+        and previous_time < when
+        and previous_tick <= tick <= stop_tick
+        and (tick - 1) * 0.02 - 1e-9 <= when <= tick * 0.02 + 1e-9
+        and clearance > 0
+        and math.isclose(event["gap_edge_clearance_m"], clearance, abs_tol=1e-9)
+    )
+
+
+def strict_course(result):
+    """Demand the actual moving and fixed plane crossings plus all three accepted native stops."""
+    if not (result["success"] and result["reason"] == "success" and result["stages_completed"] == 3):
         return False
-    if (result["obstacle_contact"] or result["obstacle_contact_substeps"]
-            or result["course_boundary_violation"] or result["missed_passage"]
-            or result["first_obstacle_contact_tick"] is not None):
+    if (
+        result["obstacle_contact"]
+        or result["obstacle_contact_substeps"]
+        or result["course_boundary_violation"]
+        or result["missed_passage"]
+        or result["first_obstacle_contact_tick"] is not None
+    ):
         return False
     stages = result["stages"]
-    if (tuple(s["stage"] for s in stages) != PHASES
-            or not all(s["reason"] == "success" and s["grade"]["success"] for s in stages)):
+    if tuple(s["stage"] for s in stages) != PHASES or not all(
+        s["reason"] == "success" and s["grade"]["success"] for s in stages
+    ):
         return False
-    events = result["passages"]
-    if not (result["passed_gates"] == result["required_gates"] == len(sides) == len(events) == len(result["gate_layout"])):
+    stop_tick = stages[0]["exit_tick"]
+    gates, events = result["gate_layout"], result["passages"]
+    if not (
+        1 <= len(gates) <= 2
+        and len(gates) == len(events) == result["required_gates"] == result["passed_gates"]
+    ):
         return False
-    previous_time = -1.
-    previous_tick = -1
-    for index, (side, event, gate) in enumerate(zip(sides, events, result["gate_layout"])):
-        tick, when = event["tick"], event["native_time_s"]
-        clearance = event["gap_edge_clearance_m"]
-        left_m = event["left_m"]
-        edge = gate["gap_width_m"] / 2 - abs(left_m - gate["left_m"])
-        if (event["gate_index"] != index or event["side"] != side or gate["side"] != side
-                or not math.isclose(event["forward_m"], gate["forward_m"], abs_tol=1e-9)
-                or not math.isclose(clearance, edge, abs_tol=1e-9)
-                or not (tick-1)*.02 - 1e-9 <= when <= tick*.02 + 1e-9
-                or not math.isfinite(clearance) or clearance <= 0.
-                or not previous_tick < tick <= stages[0]["exit_tick"]
-                or not math.isfinite(when) or not previous_time < when <= result["simulated_s"] + 1e-9):
+    fork, event = gates[0], events[0]
+    if fork["gate_kind"] != "timed_fork" or event["gate_index"] != 0 or event["side"] not in (-1, 1):
+        return False
+    apertures = {a["side"]: a for a in fork["apertures"]}
+    if set(apertures) != {-1, 1}:
+        return False
+    aperture = apertures[event["side"]]
+    lo, hi = aperture["gap_min_m"], aperture["gap_max_m"]
+    shutter = event.get("shutter_crossing")
+    if not shutter or shutter["side"] != event["side"]:
+        return False
+    travel = shutter["actual_slide_m"]
+    if not math.isfinite(travel):
+        return False
+    width = hi - lo
+    exposed = min(width, max(0.0, travel - (1.08 - width) / 2))
+    clear_lo, clear_hi = (lo, lo + exposed) if event["side"] == 1 else (hi - exposed, hi)
+    observed = (shutter["clear_lo_m"], shutter["clear_hi_m"], shutter["clear_width_m"])
+    if not all(math.isclose(a, b, abs_tol=1e-8) for a, b in zip(observed, (clear_lo, clear_hi, exposed))):
+        return False
+    if not crossing(shutter, fork["forward_m"] - 0.14, clear_lo, clear_hi, -1.0, -1, stop_tick):
+        return False
+    if not crossing(event, fork["forward_m"], lo, hi, shutter["native_time_s"], shutter["tick"], stop_tick):
+        return False
+    if len(gates) == 2:
+        tail, next_event = gates[1], events[1]
+        if (
+            tail["gate_kind"] != "fixed_offset"
+            or next_event["gate_index"] != 1
+            or next_event["side"] != tail["side"]
+        ):
             return False
-        previous_tick, previous_time = tick, when
+        if not crossing(
+            next_event,
+            tail["forward_m"],
+            tail["gap_min_m"],
+            tail["gap_max_m"],
+            event["native_time_s"],
+            event["tick"],
+            stop_tick,
+        ):
+            return False
     return True
 
 
-def run_episode(solver_factory, course, robot_seed, obstacle_seed, sides, cfg, assets):
+def run_episode(solver_factory, course, robot_seed, obstacle_seed, phase_seed, service, tail, cfg, assets):
+    layout = make_layout(obstacle_seed, course.first_m, service=service, tail=tail, phase_seed=phase_seed)
+    expected_tail = None if tail == "none" else (1 if tail == "left" else -1)
+    measured_tail = None if layout.tail is None else layout.tail.side
+    require(
+        layout.service == service and measured_tail == expected_tail,
+        "native scene did not instantiate the assigned stratum",
+    )
     with LocomotionSession(assets, robot_seed, horizon=cfg["horizon"]) as session:
-        episode = NavigationEpisode(session, course, obstacle_seed=obstacle_seed)
+        episode = NavigationEpisode(session, course, obstacle_seed=obstacle_seed, layout=layout)
         try:
             with solver_factory() as solver:
                 solver.reset()
@@ -125,10 +172,20 @@ def run_episode(solver_factory, course, robot_seed, obstacle_seed, sides, cfg, a
             result = episode.summary()
         except SolverAborted:
             result = dict(episode.summary(), success=False, reason="solver_abort")
-    return dict(result, strict_success=strict_course(result, sides), obstacle_seed=obstacle_seed,
-                robot_seed=robot_seed, direction="left" if course.turn_deg > 0 else "right",
-                first_gap_side=sides[0], gate_sides=list(sides), layout_family=layout_family(sides),
-                requested_first_m=course.first_m, requested_turn_deg=course.turn_deg, requested_last_m=course.last_m)
+    return dict(
+        result,
+        strict_success=strict_course(result),
+        robot_seed=robot_seed,
+        obstacle_seed=obstacle_seed,
+        phase_seed=phase_seed,
+        initial_phases_s=list(layout.phases),
+        service_family=service,
+        tail_family=tail,
+        direction="left" if course.turn_deg > 0 else "right",
+        requested_first_m=course.first_m,
+        requested_turn_deg=course.turn_deg,
+        requested_last_m=course.last_m,
+    )
 
 
 def summarize(rows, cfg):
@@ -141,22 +198,33 @@ def summarize(rows, cfg):
         stopped = [int(r["stages_completed"]) for r in items]
         eligible = total("eligible_code_pairs")
         samples = total("joint_accel_samples")
-        out = dict(episodes=n, successes=len(wins), episodes_aborted=sum(r["reason"] == "solver_abort" for r in items),
-                   applied_native_rows=total("applied_rows"), fsq_scalar_codes=total("scalar_codes"),
-                   changed_fsq_coordinates=total("code_changes"), eligible_adjacent_scalar_pairs=eligible,
-                   coordinate_change_fraction=total("code_changes") / eligible if eligible else 0.,
-                   joint_accel_samples=samples,
-                   joint_accel_rms_rad_s2=math.sqrt(total("joint_accel_square_sum") / samples) if samples else 0.,
-                   actual_elapsed_sim_s=total("simulated_s"),
-                   mean_actual_elapsed_sim_s=total("simulated_s") / n,
-                   mean_completed_sim_s=sum(r["simulated_s"] for r in wins) / len(wins) if wins else 0.,
-                   mean_completion_sim_s_failure_at_horizon=(
-                       sum(r["simulated_s"] for r in wins) + (n - len(wins)) * cfg["horizon"] * .02) / n)
-        out.update(required_gates=total("required_gates"), passed_gates=total("passed_gates"),
-                   full_passage_courses=sum(r["passed_gates"] == r["required_gates"] for r in items),
-                   obstacle_contact_courses=sum(bool(r["obstacle_contact"]) for r in items),
-                   obstacle_contact_substeps=total("obstacle_contact_substeps"),
-                   boundary_violations=sum(bool(r["course_boundary_violation"]) for r in items))
+        out = dict(
+            episodes=n,
+            successes=len(wins),
+            episodes_aborted=sum(r["reason"] == "solver_abort" for r in items),
+            applied_native_rows=total("applied_rows"),
+            fsq_scalar_codes=total("scalar_codes"),
+            changed_fsq_coordinates=total("code_changes"),
+            eligible_adjacent_scalar_pairs=eligible,
+            coordinate_change_fraction=total("code_changes") / eligible if eligible else 0.0,
+            joint_accel_samples=samples,
+            joint_accel_rms_rad_s2=math.sqrt(total("joint_accel_square_sum") / samples) if samples else 0.0,
+            actual_elapsed_sim_s=total("simulated_s"),
+            mean_actual_elapsed_sim_s=total("simulated_s") / n,
+            mean_completed_sim_s=sum(r["simulated_s"] for r in wins) / len(wins) if wins else 0.0,
+            mean_completion_sim_s_failure_at_horizon=(
+                sum(r["simulated_s"] for r in wins) + (n - len(wins)) * cfg["horizon"] * 0.02
+            )
+            / n,
+        )
+        out.update(
+            required_gates=total("required_gates"),
+            passed_gates=total("passed_gates"),
+            full_passage_courses=sum(r["passed_gates"] == r["required_gates"] for r in items),
+            obstacle_contact_courses=sum(bool(r["obstacle_contact"]) for r in items),
+            obstacle_contact_substeps=total("obstacle_contact_substeps"),
+            boundary_violations=sum(bool(r["course_boundary_violation"]) for r in items),
+        )
         clearances = [e["gap_edge_clearance_m"] for r in items for e in r["passages"]]
         if clearances:
             out["min_passage_pelvis_edge_clearance_m"] = min(clearances)
@@ -166,14 +234,28 @@ def summarize(rows, cfg):
             out[name + "_revealed"] = len(stage_records)
             if stage_records:
                 count = len(stage_records)
-                out[name + "_actual_rows"] = sum(s["exit_tick"] - s["revealed_at_tick"] for s in stage_records)
-                for key in ("forward_m", "lateral_m", "signed_turn_rad", "max_abs_lateral_m",
-                            "max_pivot_drift_m", "final_xy_error_m", "max_stop_dwell_s"):
+                out[name + "_actual_rows"] = sum(
+                    s["exit_tick"] - s["revealed_at_tick"] for s in stage_records
+                )
+                for key in (
+                    "forward_m",
+                    "lateral_m",
+                    "signed_turn_rad",
+                    "max_abs_lateral_m",
+                    "max_pivot_drift_m",
+                    "final_xy_error_m",
+                    "max_stop_dwell_s",
+                ):
                     out[name + "_mean_" + key] = sum(s["grade"][key] for s in stage_records) / count
                 out[name + "_mean_absolute_final_heading_error_rad"] = (
-                    sum(abs(s["grade"]["final_heading_error_rad"]) for s in stage_records) / count)
-                out[name + "_mean_requested_distance_m"] = sum(s["command_distance_m"] for s in stage_records) / count
-                out[name + "_mean_requested_turn_deg"] = sum(s["command_turn_deg"] for s in stage_records) / count
+                    sum(abs(s["grade"]["final_heading_error_rad"]) for s in stage_records) / count
+                )
+                out[name + "_mean_requested_distance_m"] = (
+                    sum(s["command_distance_m"] for s in stage_records) / count
+                )
+                out[name + "_mean_requested_turn_deg"] = (
+                    sum(s["command_turn_deg"] for s in stage_records) / count
+                )
                 for foot in ("left", "right"):
                     for transition in ("unloads", "reloads"):
                         key = foot + "_" + transition
@@ -187,46 +269,106 @@ def summarize(rows, cfg):
     for r in rows:
         name = "terminal_" + str(r["reason"])
         metrics[name] = metrics.get(name, 0) + 1
-    for kind in ("single", "same", "opposite"):
-        subset = [r for r in rows if r["layout_family"] == kind]
-        metrics[kind + "_courses"] = len(subset)
-        metrics[kind + "_successes"] = sum(r["strict_success"] for r in subset)
+    for family in ("both", "left", "right"):
+        members = [r for r in rows if r["service_family"] == family]
+        metrics[family + "_service_courses"] = len(members)
+        metrics[family + "_service_successes"] = sum(r["strict_success"] for r in members)
+    for kind in ("none", "left", "right"):
+        members = [r for r in rows if r["tail_family"] == kind]
+        metrics[kind + "_tail_courses"] = len(members)
+        metrics[kind + "_tail_successes"] = sum(r["strict_success"] for r in members)
+    forks = [event for r in rows for event in r["passages"] if event["gate_index"] == 0]
+    if forks:
+        widths = [e["shutter_crossing"]["clear_width_m"] for e in forks]
+        metrics["minimum_crossed_shutter_width_m"] = min(widths)
+        metrics["mean_crossed_shutter_width_m"] = sum(widths) / len(widths)
+        metrics["minimum_crossed_shutter_pelvis_edge_clearance_m"] = min(
+            e["shutter_crossing"]["gap_edge_clearance_m"] for e in forks
+        )
+    metrics["fork_left_passages"] = sum(e["side"] == 1 for e in forks)
+    metrics["fork_right_passages"] = sum(e["side"] == -1 for e in forks)
+    metrics["fork_staging_slow_s"] = sum(r["fork_staging_slow_s"] for r in rows)
+    contacts = [r["first_obstacle_contact"] for r in rows if r["first_obstacle_contact"] is not None]
+    metrics["first_contact_moving_shutter_courses"] = sum(
+        c["obstacle_geom"] in ("shutter_left", "shutter_right") for c in contacts
+    )
+    metrics["first_contact_fixed_obstacle_courses"] = (
+        len(contacts) - metrics["first_contact_moving_shutter_courses"]
+    )
     for index, r in enumerate(rows, 1):
         prefix = f"trial_{index:02d}_"
-        fields = dict(success=int(r["strict_success"]), native_success=int(r["success"]),
-                      turn_left=int(r["direction"] == "left"), first_gap_side=r["first_gap_side"],
-                      required_gates=r["required_gates"], passed_gates=r["passed_gates"],
-                      obstacle_contact=int(r["obstacle_contact"]), obstacle_contact_substeps=r["obstacle_contact_substeps"],
-                      course_boundary_violation=int(r["course_boundary_violation"]), missed_passage=int(r["missed_passage"]),
-                      stages_completed=r["stages_completed"],
-                      applied_rows=r["applied_rows"], simulated_s=r["simulated_s"], code_changes=r["code_changes"],
-                      joint_accel_samples=r["joint_accel_samples"], joint_accel_square_sum=r["joint_accel_square_sum"],
-                      requested_first_m=r["requested_first_m"], requested_turn_deg=r["requested_turn_deg"],
-                      requested_last_m=r["requested_last_m"])
+        fields = dict(
+            success=int(r["strict_success"]),
+            native_success=int(r["success"]),
+            turn_left=int(r["direction"] == "left"),
+            left_full_service=int(r["service_family"] in ("left", "both")),
+            right_full_service=int(r["service_family"] in ("right", "both")),
+            tail_side={"none": 0, "left": 1, "right": -1}[r["tail_family"]],
+            right_initial_phase_s=r["initial_phases_s"][0],
+            left_initial_phase_s=r["initial_phases_s"][1],
+            required_gates=r["required_gates"],
+            passed_gates=r["passed_gates"],
+            obstacle_contact=int(r["obstacle_contact"]),
+            obstacle_contact_substeps=r["obstacle_contact_substeps"],
+            course_boundary_violation=int(r["course_boundary_violation"]),
+            missed_passage=int(r["missed_passage"]),
+            stages_completed=r["stages_completed"],
+            applied_rows=r["applied_rows"],
+            simulated_s=r["simulated_s"],
+            code_changes=r["code_changes"],
+            joint_accel_samples=r["joint_accel_samples"],
+            joint_accel_square_sum=r["joint_accel_square_sum"],
+            requested_first_m=r["requested_first_m"],
+            requested_turn_deg=r["requested_turn_deg"],
+            requested_last_m=r["requested_last_m"],
+            fork_staging_slow_s=r["fork_staging_slow_s"],
+        )
+        if r["fork_staging_entry_s"] is not None:
+            fields["fork_staging_entry_s"] = r["fork_staging_entry_s"]
         if r["first_obstacle_contact_tick"] is not None:
             fields["first_obstacle_contact_tick"] = r["first_obstacle_contact_tick"]
             fields["first_obstacle_contact_time_s"] = r["first_obstacle_contact_time_s"]
-        for i, gate in enumerate(r["gate_layout"]):
-            key = f"gate_{i}_"
-            fields[key + "side"] = gate["side"]
-            fields[key + "center_left_m"] = gate["left_m"]
-            fields[key + "width_m"] = gate["gap_width_m"]
-            fields[key + "plane_forward_m"] = gate["forward_m"]
+            fields["first_contact_is_moving_shutter"] = int(
+                r["first_obstacle_contact"]["obstacle_geom"] in ("shutter_left", "shutter_right")
+            )
+        for j, gate in enumerate(r["gate_layout"]):
+            stem = f"gate_{j}_"
+            fields[stem + "plane_forward_m"] = gate["forward_m"]
+            openings = gate["apertures"] if j == 0 else [gate]
+            for opening in openings:
+                side = "left" if opening["side"] == 1 else "right"
+                fields[stem + side + "_gap_min_m"] = opening["gap_min_m"]
+                fields[stem + side + "_gap_max_m"] = opening["gap_max_m"]
         for event in r["passages"]:
-            gate = f"gate_{event['gate_index']}_"
-            for key in ("tick", "native_time_s", "forward_m", "left_m", "gap_edge_clearance_m"):
-                fields[gate + key] = event[key]
-        for s in r["stages"]:
-            if s["reason"] == "success":
-                fields[s["stage"] + "_stop_tick"] = s["exit_tick"]
+            stem = f"gate_{event['gate_index']}_"
+            for key in ("side", "tick", "native_time_s", "forward_m", "left_m", "gap_edge_clearance_m"):
+                fields[stem + key] = event[key]
+            if "shutter_crossing" in event:
+                leaf = event["shutter_crossing"]
+                for key in (
+                    "side",
+                    "tick",
+                    "native_time_s",
+                    "forward_m",
+                    "left_m",
+                    "actual_slide_m",
+                    "clear_lo_m",
+                    "clear_hi_m",
+                    "clear_width_m",
+                    "gap_edge_clearance_m",
+                ):
+                    fields["shutter_" + key] = leaf[key]
+        for stage in r["stages"]:
+            if stage["reason"] == "success":
+                fields[stage["stage"] + "_stop_tick"] = stage["exit_tick"]
         metrics.update({prefix + k: v for k, v in fields.items()})
     return metrics
 
 
 def run_panel(solver_factory, cfg, rng, assets=ASSETS):
     rows = []
-    for course, robot_seed, obstacle_seed, sides in schedule(rng, cfg):
-        rows.append(run_episode(solver_factory, course, robot_seed, obstacle_seed, sides, cfg, assets))
+    for job in schedule(rng, cfg):
+        rows.append(run_episode(solver_factory, *job, cfg, assets))
         print(f"[grader] completed {len(rows)}/{cfg['episodes']} courses", file=sys.stderr, flush=True)
     return summarize(rows, cfg), rows
 
@@ -236,25 +378,49 @@ def verify():
     anchor, spec = read_anchor()
 
     def timeout(elapsed):
-        write_verdict(zero_verdict("verifier wall-time budget exhausted", anchor is not None,
-                                  extra={"elapsed_s": elapsed, "episodes": cfg["episodes"]}))
+        write_verdict(
+            zero_verdict(
+                "verifier wall-time budget exhausted",
+                anchor is not None,
+                extra={"elapsed_s": elapsed, "episodes": cfg["episodes"]},
+            )
+        )
 
     with VerifierDeadline(cfg["verifier_deadline_s"], timeout):
         check_numerics()
-        require(os.environ.get("ALE_VERIFY_PYTHON") or Path("/.dockerenv").is_file(),
-                "isolated verifier sandbox required")
+        require(
+            os.environ.get("ALE_VERIFY_PYTHON") or Path("/.dockerenv").is_file(),
+            "isolated verifier sandbox required",
+        )
         require(clear_agent_account(force=True)["cleared"], "could not isolate the solver account")
-        child = deprivileged(offline_command("--self-test"), env=solver_environment(),
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        child = deprivileged(
+            offline_command("--self-test"),
+            env=solver_environment(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         output, _ = child.communicate(timeout=15)
         require(child.returncode == 0 and output.strip() == "offline", "offline launcher self-test failed")
         try:
+
             def solver_factory():
                 return OfflineSolver(step_timeout=cfg["step_timeout_s"])
+
             metrics, rows = run_panel(solver_factory, cfg, seed_rng())
         except SolverMissing as exc:
-            write_verdict(zero_verdict(str(exc), anchor is not None, extra={
-                "episodes": cfg["episodes"], "episodes_aborted": cfg["episodes"], METRIC: 0, "successes": 0}))
+            write_verdict(
+                zero_verdict(
+                    str(exc),
+                    anchor is not None,
+                    extra={
+                        "episodes": cfg["episodes"],
+                        "episodes_aborted": cfg["episodes"],
+                        METRIC: 0,
+                        "successes": 0,
+                    },
+                )
+            )
             return
         metrics.update(numerics_ok=1, offline_launcher_ok=1, agent_account_cleared=1)
         detail = Path("/logs/verifier/navigation-courses.json")
@@ -263,9 +429,16 @@ def verify():
             verdict_path = Path(manual_path)
             detail = verdict_path.with_name(verdict_path.stem + "-courses.json")
         detail.write_text(json.dumps(rows, allow_nan=False) + "\n")
-        write_verdict(ratio_rewards(metrics["successes"] / metrics["episodes"], anchor,
-                                    cap=cfg["scoring_cap"], full_at=spec["full_at"],
-                                    metric_name=METRIC, extra=metrics))
+        write_verdict(
+            ratio_rewards(
+                metrics["successes"] / metrics["episodes"],
+                anchor,
+                cap=cfg["scoring_cap"],
+                full_at=spec["full_at"],
+                metric_name=METRIC,
+                extra=metrics,
+            )
+        )
 
 
 if __name__ == "__main__":

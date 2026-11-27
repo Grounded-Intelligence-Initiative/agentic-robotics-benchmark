@@ -1,41 +1,54 @@
-# Reproducing visual obstacle navigation
+# Reproducing timed cabinet navigation
 
-The free-root G1 walks through collidable gates, stops and holds, turns in place toward a newly lit heading, walks the final leg and stops. The native body-mounted camera renders the real MuJoCo scene. The distance cues and turn lamps have no contact geometry. Gate barriers participate in ordinary native contacts with all robot geoms throughout the rollout. Scoring uses the ordered first passage of the pelvis through every opening together with contact-bearing samples from the full robot and all three measured stops.
+A free-root G1 must find a traversable opening between a stationary island and two moving shutters. At least one shutter can retract fully. A restricted shutter still moves visibly. Many starts also have a second, offset cabinet after the timed doorway. The robot continues through the blue stop, signed pivot and final walking stop in one native MuJoCo trajectory. The G1 receives an egocentric RGB-D camera and robot-local sensors and sends one or more genuine 64-code SONIC V1 body rows per decision.
+
+The verifier reconstructs the exposed opening from the **measured native slide position** at the forward moving-plane crossing. It checks the reported plane position, nearest-edge clearance, crossing time, chosen side, and the later fixed-frame passage through that same opening. A contact by any robot collision geom with a moving or static obstacle invalidates the course, even after the pelvis clears the moving plane. No hidden side label, deadline within the shutter cycle or response to a visual probe grants score. [Full sampling and measurement protocol](scoring_protocol.md)
 
 ## Run the public course
 
-From a full benchmark checkout, build the task image and run a new physical practice case. The public layout seed controls the gate layout. The robot and layout seeds are separate. Change either to examine additional courses.
+Run from the checkout root with a working Docker daemon. These commands build the checksum-pinned task environment and install the public reference as its ordinary unprivileged participant. The two physical rollouts use the same robot and layout, with their two shutter phases exchanged. The file for each rollout contains its actual gate crossings, measured slide position, stop and contact events, time and body code cost.
 
 ```sh
-task=tasks/humanoid/g1_sonic_visual_navigation
-docker build -t g1-visual-navigation "$task/environment"
-docker run --rm --network none --cpus 4 --memory 8g -v "$PWD/$task:/task:ro" \
-  g1-visual-navigation bash -ec '
-    cd /task/environment/setup && bash setup.sh
-    cp -R /task/solution /tmp/navigation-solution && chmod -R a+rX /tmp/navigation-solution
-    runuser -u user -- bash /tmp/navigation-solution/solve.sh
-    cd /home/user
-    runuser -u user -- /opt/venv/bin/python practice.py --turn left --seed 7 --layout-seed 19 --submission submission
-  '
-docker run --rm --network none --cpus 4 --memory 8g -v "$PWD/$task/tests:/grade:ro" \
-  g1-visual-navigation /opt/venv/bin/python /grade/review/check_obstacle_score.py
+task_dir="$PWD/tasks/humanoid/g1_sonic_visual_navigation"
+docker build -t g1-sonic-timed-navigation:review "$task_dir/environment"
+mkdir -p "$PWD/navigation-review"
+for trial in 1 2; do
+  if [ "$trial" -eq 1 ]; then right=6.3; left=11.8; else right=11.8; left=6.3; fi
+  docker run --rm --network none --cpus 4 --memory 8g \
+    -v "$task_dir:/task:ro" g1-sonic-timed-navigation:review bash -ec '
+      cd /task/environment/setup && bash setup.sh
+      cp -R /task/solution /tmp/navigation-solution && chmod -R a+rX /tmp/navigation-solution
+      runuser -u user -- bash /tmp/navigation-solution/solve.sh
+      cd /home/user
+      runuser -u user -- /opt/venv/bin/python practice.py --seed 7 --layout-seed 7 --service both \
+        --tail right --right-phase-s "$1" --left-phase-s "$2" --turn left --submission submission
+    ' _ "$right" "$left" > "$PWD/navigation-review/phase-$trial.json"
+done
 ```
 
-The second command exercises the actual hidden-course generation algorithm on public test streams. It checks the strict scoring rule against fabricated contact, skipped, wrong-side and out-of-order crossings, unfinished stops, aborts and changed body-code coordinates.
+Run the public sensor and scorer checks against the same built image.
 
-The preceding public controller was also run through the restricted JSONL verifier on robot and obstacle seed 7, with a 6 m approach, 90° left pivot and 1.5 m final leg. It walked into the first cabinet with the right index-finger link at 4.750 s, on control row 238. Six 2 ms samples had a robot–cabinet contact. It ended with no qualified passages or stops and a raw course score of zero.
+```sh
+task_dir="$PWD/tasks/humanoid/g1_sonic_visual_navigation"
+docker run --rm --network none --cpus 4 --memory 8g -v "$task_dir/tests:/grade:ro" \
+  g1-sonic-timed-navigation:review /opt/venv/bin/python /grade/review/check_camera.py
+docker run --rm --network none --cpus 4 --memory 8g -v "$task_dir/tests:/grade:ro" \
+  g1-sonic-timed-navigation:review /opt/venv/bin/python /grade/review/check_obstacle_score.py
+```
+
+The camera test puts the same robot and furniture in corresponding scenes. It checks that physically different shutter phases are visible in RGB and depth, and that an unrevealed future turn leaves the current sensor packet and motion unchanged. The scorer test checks 64 independent public sixteen-course roster draws and rejects stale or fabricated shutter bounds, negative clearance, reversed or missing passages, robot contacts and failed stops.
 
 ## Official verification
 
-Provision the recursive checkout and pinned runner according to the contributor guide. [Contributor setup](../../../../../CONTRIBUTING.md)
+Provision the recursive checkout and pinned runner using the contributor setup. [Contributor setup](../../../../../CONTRIBUTING.md)
 
 ```sh
-task="$PWD/tasks/humanoid/g1_sonic_visual_navigation"
+task_dir="$PWD/tasks/humanoid/g1_sonic_visual_navigation"
 (
   cd vendor/ale
-  .venv/bin/ale lint "$task"
-  .venv/bin/ale validate "$task"
+  .venv/bin/ale lint "$task_dir"
+  .venv/bin/ale validate "$task_dir"
 )
 ```
 
-Each graded panel contains sixteen fresh physical courses. Every run reports actual native rows, FSQ costs, within-episode coordinate changes, joint acceleration, elapsed simulation, individual passage times, contact counts and stage outcomes. Physical successes remain visible at their raw denominator even while the anchor is unset. [Sampling and calibration protocol](scoring_protocol.md)
+The two protected reference measurements and the separate held native cohort use different reset draws. The official record reports the raw completed-course fraction, numerical reward, per-family outcomes, actual passages, contacts, native seconds, applied FSQ coordinates, token churn and pooled joint acceleration. Each recorded shutter crossing includes its measured width and both edges. A sampled pelvis clearance is a geometric point measurement. Whole-body collision monitoring covers every 2 ms native step.
