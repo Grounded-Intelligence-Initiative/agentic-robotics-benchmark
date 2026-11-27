@@ -1,0 +1,134 @@
+diff --git a/OmniGibson/omnigibson/envs/__init__.py b/OmniGibson/omnigibson/envs/__init__.py
+index c9a6566..3636695 100644
+--- a/OmniGibson/omnigibson/envs/__init__.py
++++ b/OmniGibson/omnigibson/envs/__init__.py
+@@ -1,6 +1,9 @@
+ from omnigibson.envs.data_wrapper import DataWrapper, DataPlaybackWrapper
+ from omnigibson.envs.hdf5_data_wrapper import HDF5CollectionWrapper, HDF5PlaybackWrapper
+-from omnigibson.envs.lerobot_data_wrapper import LeRobotDataWrapper, LeRobotPlaybackWrapper
++try:
++    from omnigibson.envs.lerobot_data_wrapper import LeRobotDataWrapper, LeRobotPlaybackWrapper
++except ImportError:  # lerobot left out: its numpy>=2 conflicts with omnigibson
++    LeRobotDataWrapper = LeRobotPlaybackWrapper = None
+ from omnigibson.envs.metrics_wrapper import MetricsWrapper
+ from omnigibson.metrics.metric_base import MetricBase
+ from omnigibson.envs.env_base import Environment
+diff --git a/OmniGibson/omnigibson/prims/material_prim.py b/OmniGibson/omnigibson/prims/material_prim.py
+index 50e08c4..d429dc5 100644
+--- a/OmniGibson/omnigibson/prims/material_prim.py
++++ b/OmniGibson/omnigibson/prims/material_prim.py
+@@ -272,7 +272,7 @@ class MaterialPrim(BasePrim):
+         if non_default_inp is not None:
+             return non_default_inp
+ 
+-        return self._shader_node.GetInput(inp).GetDefaultValue()
++        return self._shader_node.GetShaderInput(inp).GetDefaultValue()
+ 
+     def set_input(self, inp, val):
+         """
+@@ -314,7 +314,7 @@ class MaterialPrim(BasePrim):
+         Returns:
+             set: All the shader input names associated with this material that have default values
+         """
+-        return set(self._shader_node.GetInputNames())
++        return set(self._shader_node.GetShaderInputNames())
+ 
+     def get_shader_input_names_by_type(self, input_type, include_default=False):
+         """
+@@ -332,7 +332,7 @@ class MaterialPrim(BasePrim):
+         shader_default_input_names = {
+             inp_name
+             for inp_name in self.shader_default_input_names
+-            if self._shader_node.GetInput(inp_name).GetType() == input_type
++            if self._shader_node.GetShaderInput(inp_name).GetType() == input_type
+         }
+         return shader_input_names | shader_default_input_names
+ 
+diff --git a/OmniGibson/omnigibson/simulator.py b/OmniGibson/omnigibson/simulator.py
+index a5c4cce..c26ef64 100644
+--- a/OmniGibson/omnigibson/simulator.py
++++ b/OmniGibson/omnigibson/simulator.py
+@@ -74,6 +74,7 @@ m.INITIAL_SCENE_PRIM_Z_OFFSET = -100.0
+ 
+ m.KIT_FILES = {
+     (5, 1, 0): "omnigibson_5_1_0.kit",
++    (6, 1, 0): "omnigibson_6_1_0.kit",
+ }
+ 
+ 
+@@ -109,6 +110,7 @@ m.INITIAL_SCENE_PRIM_Z_OFFSET = -100.0
+ 
+ m.KIT_FILES = {
+     (5, 1, 0): "omnigibson_5_1_0.kit",
++    (6, 1, 0): "omnigibson_6_1_0.kit",
+ }
+ 
+ 
+@@ -494,19 +496,19 @@ def _launch_simulator(*args, **kwargs):
+             # Store other references to variables that will be initialized later
+             self._scenes = []
+             # The callback will be called right *before* the physics step
+-            self._pre_physics_step_callback = self._physics_context._physx_interface.subscribe_physics_on_step_events(
++            self._pre_physics_step_callback = lazy.omni.physx.get_physx_interface().subscribe_physics_on_step_events(
+                 lambda _: self._on_pre_physics_step(),
+                 pre_step=True,
+                 order=0,
+             )
+             # The callback will be called right *after* the physics step
+-            self._post_physics_step_callback = self._physics_context._physx_interface.subscribe_physics_on_step_events(
++            self._post_physics_step_callback = lazy.omni.physx.get_physx_interface().subscribe_physics_on_step_events(
+                 lambda _: self._on_post_physics_step(),
+                 pre_step=False,
+                 order=0,
+             )
+             self._simulation_event_callback = (
+-                self._physics_context._physx_interface.get_simulation_event_stream_v2().create_subscription_to_pop(
++                lazy.omni.physx.get_physx_interface().get_simulation_event_stream_v2().create_subscription_to_pop(
+                     self._on_simulation_event
+                 )
+             )
+@@ -1164,11 +1166,11 @@ def _launch_simulator(*args, **kwargs):
+ 
+         @property
+         def pi(self):
+-            return self._physics_context._physx_interface
++            return lazy.omni.physx.get_physx_interface()
+ 
+         @property
+         def psi(self):
+-            return self._physics_context._physx_sim_interface
++            return lazy.omni.physx.get_physx_simulation_interface()
+ 
+         @property
+         def psqi(self):
+diff --git a/OmniGibson/omnigibson/utils/deprecated_utils.py b/OmniGibson/omnigibson/utils/deprecated_utils.py
+index f4857ba..8610bab 100644
+--- a/OmniGibson/omnigibson/utils/deprecated_utils.py
++++ b/OmniGibson/omnigibson/utils/deprecated_utils.py
+@@ -591,10 +591,10 @@ class ArticulationView(_ArticulationView):
+ 
+     def _invalidate_physics_handle_callback(self, event):
+         # Overwrite super method, add additional de-initialization
+-        if event.type == int(omni.timeline.TimelineEventType.STOP):
+-            self._physics_view = None
+-            self._invalidate_physics_handle_event = None
+-            self._is_initialized = False
++        # Isaac Sim 6.1 subscribes this callback to the timeline stop event only
++        self._physics_view = None
++        self._invalidate_physics_handle_event = None
++        self._is_initialized = False
+ 
+     @property
+     def initialized(self):
+diff --git a/OmniGibson/setup.py b/OmniGibson/setup.py
+index 220517f..d4d6bb9 100644
+--- a/OmniGibson/setup.py
++++ b/OmniGibson/setup.py
+@@ -55,7 +55,6 @@ setup(
+         "pillow~=11.0.0",
+         "websockets>=15.0.1",
+         "omegaconf>=2.3.0",
+-        "lerobot[dataset] @ git+https://github.com/wensi-ai/lerobot@release/b1k",
+     ],
+     extras_require={
+         "dev": [

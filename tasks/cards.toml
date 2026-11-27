@@ -41,6 +41,12 @@ summary = "Two fixed Franka Pandas replace a cabinet door on loose-pin hinges: a
 platforms = ["arm"]
 stages = ["behavior"]
 
+[chute_realtime_bimanual_tracking]
+title = "Take moving parts off a chute with an R1Pro"
+summary = "Program a mobile dual-arm robot to take 20 different parts off a chute while they accelerate past, seeing them only through late camera frames, and put them in a tote."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [pipe_spool_push_fit_assembly]
 title = "Build a push-fit pipe spool with two Pandas"
 summary = "Two Pandas build a copper pipe spool in free space from loose pipes and push-fit elbows: one hand holds while the other pushes each joint home past a hidden O-ring, from cameras and wrist force."

@@ -1,0 +1,13 @@
+{
+  "shifts": 6,
+  "events_per_shift": 20,
+  "step_timeout_s": 30,
+  "probe_rate": 0.01,
+  "scoring_cap": 1.5,
+  "program_slack_s": 10,
+  "program_time_per_sim_time": 1.0,
+  "reply_deadline_s": 0.1,
+  "late_replies_allowed": 3,
+  "first_reply_grace_s": 5.0,
+  "reply_wall_cap_s": 10.0
+}

@@ -1,0 +1,8 @@
+{
+  "metric": "part_pickup_score",
+  "direction": "higher",
+  "value": 0.8583,
+  "full_at": 0.95,
+  "source": "Own measurement, 2026-11-26: the privileged reference (solution/solve.sh, token-gated ground truth) on the 6 hidden shifts of tests/hidden/shifts.json over the real grading path (tests/verify.py, 20 parts a shift, PhysX on the CPU, Isaac Sim 6.1 on an NVIDIA H200). value is the mean of the second of two independent runs (0.8583); the first, which selected the shifts, gave 0.8583 (tests/hidden/shift_selection.json).",
+  "note": "part_pickup_score = mean per-part credit (1.0 in the tote, 0.5 held for 1 s, 0 lost, -0.5 per disturbed bystander), mean over the hidden shifts. The reference is a ground-truth controller with assisted grasping, not a ceiling: it places 15 to 18 of the 20 parts of a hidden shift and never the cracker box. full_at is sized from the two runs' means (the lower over the higher, less 0.05)."
+}
