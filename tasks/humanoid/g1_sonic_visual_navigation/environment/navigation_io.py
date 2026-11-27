@@ -3,7 +3,7 @@ import base64
 from collections import deque
 from io import BytesIO
 from PIL import Image
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import hashlib
 import json
 import math
@@ -11,14 +11,15 @@ from numbers import Real
 
 import numpy as np
 
+from sonic_loco.obstacles import LANE_HALF_WIDTH, Layout, make_layout
 from sonic_loco.score import (
-    PhysicalScore, STOP_SPEED_M_S, STOP_YAW_RATE_RAD_S, STRAIGHT_DISK_M,
+    PhysicalScore, STRAIGHT_CORRIDOR_M, STOP_SPEED_M_S, STOP_YAW_RATE_RAD_S, STRAIGHT_DISK_M,
     TURN_DISK_M, YAW_TOLERANCE_RAD,
 )
 
 PROTOCOL = "g1-sonic-visual-navigation/1"
 STAGES = ("approach", "pivot", "departure")
-STAGE_LIMITS = (1300, 450, 650)
+STAGE_LIMITS = (2000, 450, 650)
 HORIZON = sum(STAGE_LIMITS)
 EXTRA_APPROACH_HOLD = 75
 CHUNK = 5
@@ -46,7 +47,7 @@ class Course:
         values = (self.first_m, self.turn_deg, self.last_m)
         if not all(isinstance(x, Real) and not isinstance(x, bool) and math.isfinite(x) for x in values):
             raise ValueError("course parameters must be finite numbers")
-        if not (3.0 <= self.first_m <= 6.0 and 75 <= abs(self.turn_deg) <= 105 and .8 <= self.last_m <= 2.5):
+        if not (5.0 <= self.first_m <= 8.0 and 75 <= abs(self.turn_deg) <= 105 and .8 <= self.last_m <= 2.5):
             raise ValueError("course parameters are outside the supported route limits")
 
     def current_goal(self, stage):
@@ -62,7 +63,7 @@ class Course:
 def practice_course(turn):
     if turn not in ("left", "right"):
         raise ValueError("practice turn must be left or right")
-    return Course(5., 90. if turn == "left" else -90., 1.5)
+    return Course(6.25, 90. if turn == "left" else -90., 1.5)
 
 
 def stamp_observation(obs):
@@ -93,11 +94,19 @@ def validate_action(action, tick, horizon):
 class NavigationEpisode:
     """One native world, three sequential goals, and measured stops at each reveal."""
 
-    def __init__(self, session, course):
+    def __init__(self, session, course, obstacle_seed=7, *, layout=None):
         if session.tick != 0 or not isinstance(course, Course):
             raise ValueError("a new sequence requires a reset native session and a Course")
         self.session = session
         self._course = course
+        self.layout = make_layout(obstacle_seed, course.first_m) if layout is None else layout
+        if not isinstance(self.layout, Layout):
+            raise ValueError("expected a physical obstacle layout")
+        session.install_layout(self.layout)
+        self.passages = []
+        self.course_boundary_violation = False
+        self._last_approach_xyz_t = (0., 0., 0.)
+        self._missed_passage = False
         self._stage_index = 0
         self._completed = []
         self.reason = None
@@ -136,7 +145,8 @@ class NavigationEpisode:
         self._cap = min(STAGE_LIMITS[self._stage_index], self.session.horizon - self._start_tick)
         self._score = PhysicalScore("right_turn_stop" if self.stage == "pivot" else "straight_stop",
                                     self._distance, -abs(self._turn), state["metrics"],
-                                    state["observation"]["dq"], self._cap)
+                                    state["observation"]["dq"], self._cap,
+                                    corridor_m=LANE_HALF_WIDTH if self.stage == "approach" else STRAIGHT_CORRIDOR_M)
 
         self.session.beacons = self.landmarks()
 
@@ -180,6 +190,12 @@ class NavigationEpisode:
             "last_observation_id": self.last_observation_id,
         })
 
+    def observe_mirrored_layout(self):
+        """Auditor-only counterfactual. The normal policy wire carries only the live scene."""
+        live = self.observe()
+        rgb, depth = self.session.mirrored_camera(self.layout, self.landmarks())
+        return stamp_observation(dict(live, camera={"rgb_png": _png(rgb), "depth_mm_png": _png(depth)}))
+
     def relight(self, live, brightness):
         """Render a different lamp exposure using exactly the live depth acquisition."""
         if live["tick"] != self.session.tick or live["last_observation_id"] != self.last_observation_id:
@@ -222,11 +238,41 @@ class NavigationEpisode:
                 and math.hypot(*sample["velocity_xy"]) <= STOP_SPEED_M_S
                 and abs(sample["yaw_rate_rad_s"]) <= STOP_YAW_RATE_RAD_S)
 
+    def _measure_passages(self, samples):
+        """Interpolate the pelvis crossing of each actual cabinet mid-plane in temporal order."""
+        positions = np.array([s["base_xy"] for s in samples])
+        local = (positions - self.session.layout_origin_xy) @ self.session.layout_axes
+        previous_x, previous_y, previous_t = self._last_approach_xyz_t
+        for (x, y), sample in zip(local, samples):
+            now = sample["time_s"]
+            self.course_boundary_violation |= bool(abs(y) > LANE_HALF_WIDTH)
+            index = len(self.passages)
+            if index < len(self.layout.gates):
+                gate = self.layout.gates[index]
+                if previous_x < gate.forward_m <= x:
+                    fraction = (gate.forward_m-previous_x) / (x-previous_x)
+                    crossing_y = float(previous_y + fraction*(y-previous_y))
+                    crossing_t = float(previous_t + fraction*(now-previous_t))
+                    lo, hi = gate.edges
+                    clearance = min(crossing_y-lo, hi-crossing_y)
+                    if clearance > 0:
+                        self.passages.append(dict(gate_index=index, side=gate.side, tick=self.session.tick,
+                            native_time_s=crossing_t, forward_m=gate.forward_m, left_m=crossing_y,
+                            gap_edge_clearance_m=clearance,
+                            world_xy_m=(self.session.layout_origin_xy+self.session.layout_axes @
+                                        [gate.forward_m,crossing_y]).tolist()))
+                    else:
+                        self._missed_passage = True
+            previous_x, previous_y, previous_t = x, y, now
+        self._last_approach_xyz_t = (previous_x, previous_y, previous_t)
+
     def _advance_row(self, codes):
         state = self.session.step((codes.astype(np.float32) - 16) / 16)
         samples = self.session.last_substeps
         dq = state["observation"]["dq"]
         self._record_cost(codes, dq)
+        if self.stage == "approach":
+            self._measure_passages(samples)
         if not self._score.done:
             graded = samples
             if self._turn > 0:
@@ -237,6 +283,12 @@ class NavigationEpisode:
             self._score.update_tick(codes, dq, graded)
             if self._score.done:
                 self._stop_tick = self.session.tick
+        if self.session.first_obstacle_contact is not None:
+            return "obstacle_contact"
+        if self.course_boundary_violation:
+            return "course_boundary"
+        if self._missed_passage:
+            return "missed_passage"
         if state["metrics"]["fallen"]:
             return "fall"
         if self._score.done:
@@ -247,6 +299,8 @@ class NavigationEpisode:
             extra = EXTRA_APPROACH_HOLD if self.stage == "approach" else 0
             if self.session.tick - self._stop_tick >= extra and (
                     self.stage == "departure" or self.session.tick % CHUNK == 0):
+                if self.stage == "approach" and len(self.passages) != len(self.layout.gates):
+                    return "missed_passage"
                 return "success"
         if self.stage_tick >= self._cap:
             return "time_limit"
@@ -283,7 +337,18 @@ class NavigationEpisode:
         rows = self.session.tick
         eligible = CODE_DIM * max(0, rows - 1)
         stages = [*self._completed] if self.done else [*self._completed, self._stage_record()]
+        contact = self.session.first_obstacle_contact
         return {"success": self.reason == "success", "reason": self.reason, "stages": stages,
+                "gate_layout": [dict(asdict(g), side=g.side, gap_min_m=g.edges[0], gap_max_m=g.edges[1])
+                                for g in self.layout.gates],
+                "required_gates": len(self.layout.gates), "passed_gates": len(self.passages),
+                "passages": list(self.passages), "obstacle_contact": contact is not None,
+                "obstacle_contact_substeps": self.session.obstacle_contact_substeps,
+                "first_obstacle_contact": contact,
+                "first_obstacle_contact_tick": None if contact is None else contact["tick"],
+                "first_obstacle_contact_time_s": None if contact is None else contact["time_s"],
+                "course_boundary_violation": self.course_boundary_violation,
+                "missed_passage": self._missed_passage,
                 "stages_completed": sum(s["reason"] == "success" for s in self._completed),
                 "simulated_s": self.session.state["metrics"]["time_s"], "applied_rows": rows,
                 "issued_control_s": rows / 50, "scalar_codes": CODE_DIM * rows,

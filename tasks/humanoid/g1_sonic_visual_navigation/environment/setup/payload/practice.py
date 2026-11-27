@@ -12,12 +12,14 @@ import sys
 from navigation_io import Course, HORIZON, NavigationEpisode, validate_action
 from practice_wire import WireError, solver
 from sonic_loco import LocomotionSession
+from sonic_loco.obstacles import GAP_PATTERNS, make_layout
 
 
 def run(args, course):
     with ExitStack() as stack:
         session = stack.enter_context(LocomotionSession(args.assets_root, args.seed, horizon=HORIZON))
-        episode = NavigationEpisode(session, course)
+        layout = make_layout(args.layout_seed, course.first_m, gaps=args.gaps)
+        episode = NavigationEpisode(session, course, layout=layout)
         if args.inspect:
             args.inspect.mkdir(parents=True, exist_ok=True)
             obs = episode.observe()
@@ -44,7 +46,7 @@ def run(args, course):
                 trace.write(json.dumps(dict(observation=obs, proposed_rows=rows, applied_rows=applied),
                                        allow_nan=False, separators=(',', ':'))+'\n')
         result = episode.summary()
-        result.update(seed=args.seed, reason=episode.reason or 'step_limit')
+        result.update(seed=args.seed, layout_seed=args.layout_seed, reason=episode.reason or 'step_limit')
         return result
 
 
@@ -52,7 +54,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--turn', choices=('left', 'right'), default='left')
     parser.add_argument('--seed', type=int, default=7)
-    parser.add_argument('--first-m', type=float, default=5.)
+    parser.add_argument('--layout-seed', type=int, default=7, help='independent furniture layout seed')
+    parser.add_argument('--gaps', choices=GAP_PATTERNS, help='override opening sides, L=starting left, R=right')
+    parser.add_argument('--first-m', type=float, default=6.25)
     parser.add_argument('--angle-deg', type=float, default=90.)
     parser.add_argument('--last-m', type=float, default=1.5)
     parser.add_argument('--steps', type=int, default=HORIZON)

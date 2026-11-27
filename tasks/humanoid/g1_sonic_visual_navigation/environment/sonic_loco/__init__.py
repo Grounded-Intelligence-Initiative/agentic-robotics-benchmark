@@ -1,4 +1,5 @@
 """Native 50 Hz token control of a free-base G1/Dex3 on a flat floor."""
+from copy import copy
 import hashlib
 import math
 from pathlib import Path
@@ -8,6 +9,7 @@ import numpy as np
 
 from sonic_sim.decoder import DEFAULT_Q, Decoder, DecoderHistory
 
+from .obstacles import LANE_HALF_WIDTH, MAX_GATES, PANEL_HEIGHT, PANEL_LENGTH, heading_axes
 from .model import BODY_JOINTS, FINGER_JOINTS, PHYSICS_DT, RIGHT_CLOSURE, SIDES, SUBSTEPS, floor_contacts, make_model
 
 
@@ -43,6 +45,20 @@ class LocomotionSession:
         self._torso = model.body("torso_link").id
         self._feet = [model.site(s + "_foot").id for s in SIDES]
         self._floor = model.geom("floor").id
+        self.gate_geom_ids = {}
+        self._gate_mocaps = {}
+        for i in range(MAX_GATES):
+            for side in ("minus_y", "plus_y"):
+                name = f"gate_{i}_{side}"
+                gid = model.geom(name+"_cabinet").id
+                self.gate_geom_ids[gid] = (i, side)
+                self._gate_mocaps[gid] = model.body_mocapid[model.body(name).id]
+        self._stripe_mocaps = [model.body_mocapid[model.body("lane_"+s).id] for s in ("minus_y","plus_y")]
+        # The original robot is a single body tree rooted at its free pelvis.
+        root = model.body_rootid[self._pelvis]
+        self._robot_physical_geoms = frozenset(g for g in range(model.ngeom)
+            if model.body_rootid[model.geom_bodyid[g]] == root
+            and (model.geom_contype[g] or model.geom_conaffinity[g]))
         joints = [model.joint(name).id for name in BODY_JOINTS]
         self._qadr = model.jnt_qposadr[joints].copy()
         self._vadr = model.jnt_dofadr[joints].copy()
@@ -68,6 +84,10 @@ class LocomotionSession:
         self.beacons = ()
         self.data = data = mujoco.MjData(self.model)
         self.tick = 0
+        self.obstacle_contact_substeps = 0
+        self.first_obstacle_contact = None
+        for mid in (*self._gate_mocaps.values(), *self._stripe_mocaps):
+            data.mocap_pos[mid] = (0., 0., -4.)
         self._history = DecoderHistory()
         self.last_target = None
         self.last_substeps = ()
@@ -86,6 +106,53 @@ class LocomotionSession:
         mujoco.mj_forward(self.model, data)
         self._measure(data.time, data.qvel[:3])
         return self.state
+
+    def install_layout(self, layout):
+        """Place kinematic furniture once at reset. Native collision and all cameras share MjData."""
+        if self.tick:
+            raise ValueError("furniture must be configured at reset")
+        state = self._sample
+        self.layout_origin_xy = np.asarray(state["base_xy"]).copy()
+        self.layout_yaw = state["heading_rad"]
+        self.layout_axes = heading_axes(self.layout_yaw)
+        quat = (math.cos(self.layout_yaw/2), 0., 0., math.sin(self.layout_yaw/2))
+        def place(mid, x, y, z):
+            self.data.mocap_pos[mid] = (*((self.layout_origin_xy + self.layout_axes @ [x,y])), z)
+            self.data.mocap_quat[mid] = quat
+        for gid, (i, side) in self.gate_geom_ids.items():
+            mid = self._gate_mocaps[gid]
+            if i >= len(layout.gates):
+                self.data.mocap_pos[mid] = (0., 0., -4.)
+                continue
+            gate = layout.gates[i]
+            y = (gate.edges[0] - PANEL_LENGTH/2 if side == "minus_y" else gate.edges[1] + PANEL_LENGTH/2)
+            place(mid, gate.forward_m, y, PANEL_HEIGHT/2)
+            self.model.geom_rgba[gid, :3] = gate.rgb
+        for mid, sign in zip(self._stripe_mocaps, (-1,1)):
+            place(mid, 4., sign * LANE_HALF_WIDTH, .0015)
+        mujoco.mj_forward(self.model, self.data)
+
+    def _obstacle_contact(self, time_s):
+        for contact in self.data.contact:
+            a, b = int(contact.geom1), int(contact.geom2)
+            if a in self.gate_geom_ids:
+                cabinet, robot = a, b
+            elif b in self.gate_geom_ids:
+                cabinet, robot = b, a
+            else:
+                continue
+            if robot not in self._robot_physical_geoms or contact.dist > 0. or contact.efc_address < 0:
+                continue
+            if self.first_obstacle_contact is None:
+                gate, piece = self.gate_geom_ids[cabinet]
+                body = int(self.model.geom_bodyid[robot])
+                self.first_obstacle_contact = dict(time_s=float(time_s), native_substep=int(round(time_s/PHYSICS_DT)),
+                    tick=int(math.ceil(time_s/(PHYSICS_DT*SUBSTEPS)-1e-8)), gate_index=gate,
+                    panel=piece, obstacle_geom=self.model.geom(cabinet).name, robot_body=self.model.body(body).name,
+                    robot_geom_id=robot, distance_m=float(contact.dist), world_xyz_m=contact.pos.tolist())
+            self.obstacle_contact_substeps += 1
+            return True
+        return False
 
     def _measure(self, time_s, velocity):
         d = self.data
@@ -112,8 +179,9 @@ class LocomotionSession:
         upright = bool(pos[2] > .45 and rotation[8] > .55)
         if not upright and self._fall_time is None:
             self._fall_time = float(time_s)
+        obstacle_contact = self._obstacle_contact(time_s)
         self._sample = dict(
-            time_s=float(time_s), elapsed_s=float(time_s), base_xy=pos[:2].tolist(),
+            obstacle_contact=obstacle_contact, time_s=float(time_s), elapsed_s=float(time_s), base_xy=pos[:2].tolist(),
             torso_xy=torso[:2].tolist(), velocity_xy=velocity[:2].tolist(), heading_rad=heading,
             torso_heading_rad=torso_heading, yaw_rate_rad_s=yaw_rate, pelvis_height_m=float(pos[2]),
             torso_height_m=float(torso[2]), torso_tilt_rad=math.acos(float(np.clip(torso_rotation[8], -1., 1.))),
@@ -225,7 +293,18 @@ class LocomotionSession:
             geom.segid = scene.ngeom
             scene.ngeom += 1
 
-    def egocentric(self, beacons, *, depth=True, probe=False):
+    def mirrored_camera(self, layout, beacons):
+        """Render the same physical pose with mirrored cabinet openings in a detached MjData."""
+        mirror = copy(self.data)
+        for gid, (index, _) in self.gate_geom_ids.items():
+            if index < len(layout.gates):
+                shift = -2. * layout.gates[index].left_m * self.layout_axes[:, 1]
+                mirror.mocap_pos[self._gate_mocaps[gid], :2] += shift
+        mujoco.mj_forward(self.model, mirror)
+        return self.egocentric(beacons, probe=True, view_data=mirror)
+
+    def egocentric(self, beacons, *, depth=True, probe=False, view_data=None):
+        data = self.data if view_data is None else view_data
         if probe:
             if self._probe_renderer is None:
                 self._probe_renderer = mujoco.Renderer(self.model, width=128, height=96)
@@ -239,8 +318,8 @@ class LocomotionSession:
         # twice per control query. This affects drawing only.
         cam = self._ego_camera
         meshes = self._visual_meshes
-        xyz = ((self.data.geom_xpos[meshes] - self.data.cam_xpos[cam])
-               @ self.data.cam_xmat[cam].reshape(3, 3))
+        xyz = ((data.geom_xpos[meshes] - data.cam_xpos[cam])
+               @ data.cam_xmat[cam].reshape(3, 3))
         radius = self.model.geom_rbound[meshes]
         forward = -xyz[:, 2]
         slope_y = math.tan(math.radians(37.5))
@@ -250,7 +329,7 @@ class LocomotionSession:
                         | (np.abs(xyz[:, 1]) - slope_y*forward > radius*math.hypot(1., slope_y))]
         self.model.geom_group[hidden] = 5
         try:
-            renderer.update_scene(self.data, camera="egocentric")
+            renderer.update_scene(data, camera="egocentric")
         finally:
             self.model.geom_group[hidden] = 2
         renderer.scene.flags[mujoco.mjtRndFlag.mjRND_SHADOW] = False

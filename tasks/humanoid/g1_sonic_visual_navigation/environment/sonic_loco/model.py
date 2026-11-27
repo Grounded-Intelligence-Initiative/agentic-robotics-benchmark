@@ -5,6 +5,7 @@ import mujoco
 import numpy as np
 
 from sonic_sim.decoder import EFFORT_LIMIT, KD, KP
+from .obstacles import MAX_GATES, PANEL_DEPTH, PANEL_HEIGHT, PANEL_LENGTH
 
 
 SIDES = ("left", "right")
@@ -37,6 +38,19 @@ def make_model(root):
                   rgb1=".18 .21 .24", rgb2=".30 .32 .34", width="256", height="256")
     ET.SubElement(asset, "material", name="floor_mat", texture="tiles", texrepeat="4 4", texuniform="true")
     ET.SubElement(xml.find("worldbody"), "geom", name="floor", type="plane", size="0 0 .05", material="floor_mat")
+    world = xml.find("worldbody")
+    for i in range(MAX_GATES):
+        for side in ("minus_y", "plus_y"):
+            name = f"gate_{i}_{side}"
+            body = ET.SubElement(world, "body", name=name, mocap="true", pos=f"{2+i*2} 0 .36")
+            ET.SubElement(body, "geom", name=name+"_cabinet", type="box", group="0",
+                          size=f"{PANEL_DEPTH/2} {PANEL_LENGTH/2} {PANEL_HEIGHT/2}",
+                          rgba=".09 .56 .62 1", contype="2", conaffinity="1")
+    for side in ("minus_y", "plus_y"):
+        body = ET.SubElement(world, "body", name="lane_"+side, mocap="true")
+        ET.SubElement(body, "geom", type="box", name="lane_"+side+"_stripe",
+                      size="4.25 .018 .001", rgba=".82 .86 .87 1",
+                      contype="0", conaffinity="0", group="0")
     pelvis = xml.find(".//body[@name='pelvis']")
     ET.SubElement(pelvis, "camera", name="egocentric", pos=".28 0 .33",
                   xyaxes="0 -1 0 0 0 1", fovy="75")

@@ -45,10 +45,11 @@ class FootTransitions:
 
 
 class PhysicalScore:
-    def __init__(self, route_name, distance_m, heading_delta_rad, initial_metrics, initial_dq, horizon):
+    def __init__(self, route_name, distance_m, heading_delta_rad, initial_metrics, initial_dq, horizon, *, corridor_m=STRAIGHT_CORRIDOR_M):
         if route_name not in ("straight_stop", "right_turn_stop"):
             raise ValueError("unknown locomotion route")
         self.route = route_name
+        self.corridor_m = float(corridor_m)
         self.distance = float(distance_m)
         self.turn = float(heading_delta_rad)
         self.horizon = int(horizon)
@@ -116,7 +117,7 @@ class PhysicalScore:
             self.reason = "fall"
             return
         if self.route == "straight_stop":
-            violated = self.peak_lateral > STRAIGHT_CORRIDOR_M
+            violated = self.peak_lateral > self.corridor_m
             disk = STRAIGHT_DISK_M
         else:
             violated = self.peak_pivot > TURN_EXCURSION_M or self.peak_wrong_yaw > WRONG_TURN_LIMIT_RAD
