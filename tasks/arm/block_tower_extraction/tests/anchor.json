@@ -1,0 +1,8 @@
+{
+ "metric": "block_score",
+ "direction": "higher",
+ "value": 0.45,
+ "full_at": 0.98,
+ "source": "oracle (solution/solve.sh) measured 0.45 on the four hidden towers (0.4 0.466667 0.5 0.433333: 12 14 15 13 blocks relocated, no collapse), in-process with the task's own cell code and numerics fingerprint 372ebf15 (identical in the task image)",
+ "note": "block_score = the mean over the four hidden towers of the tower score (0 when the tower collapsed at any time, else the blocks legally relocated to its top / N_cap, N_cap = 30). ratio = score / value, reward = clamp(ratio / full_at, 0, 1). The oracle is deterministic on the fixed hidden set; full_at 0.98 tolerates one block on one tower."
+}

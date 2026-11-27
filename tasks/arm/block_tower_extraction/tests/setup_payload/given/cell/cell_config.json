@@ -1,0 +1,193 @@
+{
+ "block": {
+  "height_m": 0.015,
+  "length_m": 0.075,
+  "mass_kg_nominal": 0.0165,
+  "width_m": 0.025
+ },
+ "budgets": {
+  "call_price_s": 0.005,
+  "episode_wall_cap_s": 2700.0,
+  "frame_price_s": 0.2,
+  "frames_per_episode": 1500,
+  "max_ticks_per_step": 1000,
+  "privileged_program_time_factor": 0.5,
+  "program_time_extra_s": 300.0,
+  "program_time_factor": 0.25,
+  "silence_s": 20.0,
+  "start_s": 120.0
+ },
+ "cameras": {
+  "depth_noise_m": 0.0005,
+  "left": {
+   "depth_range_m": [
+    0.2,
+    2.0
+   ],
+   "fovy_deg": 40.0,
+   "pos": [
+    0.38,
+    0.4,
+    0.62
+   ],
+   "size": [
+    480,
+    360
+   ],
+   "target": [
+    0.65,
+    0.0,
+    0.3
+   ]
+  },
+  "rgb_noise_sigma": 2.0,
+  "right": {
+   "depth_range_m": [
+    0.2,
+    2.0
+   ],
+   "fovy_deg": 40.0,
+   "pos": [
+    0.38,
+    -0.4,
+    0.62
+   ],
+   "size": [
+    480,
+    360
+   ],
+   "target": [
+    0.65,
+    0.0,
+    0.3
+   ]
+  },
+  "wrist": {
+   "depth_range_m": [
+    0.04,
+    1.0
+   ],
+   "fovy_deg": 60.0,
+   "hand_look_at": [
+    0.12,
+    0.0,
+    0.3
+   ],
+   "hand_pos": [
+    0.065,
+    0.0,
+    0.055
+   ],
+   "size": [
+    320,
+    240
+   ]
+  }
+ },
+ "episode": {
+  "duration_s": 2400.0
+ },
+ "physics_dt_s": 0.001,
+ "ranges": {
+  "block_axial_offset_m": [
+   -0.002,
+   0.002
+  ],
+  "block_friction": [
+   0.3,
+   0.5
+  ],
+  "block_height_bearing_m": [
+   0.0149,
+   0.0151
+  ],
+  "block_lateral_offset_m": [
+   -0.0003,
+   0.0003
+  ],
+  "block_mass_kg": [
+   0.0145,
+   0.0185
+  ],
+  "block_yaw_offset_deg": [
+   -0.6,
+   0.6
+  ],
+  "level_patterns": "per level, the blocks that carry the levels above: middle only, both sides, middle + one side, or all three; the others are shorter by the loose gap",
+  "loose_block_gap_m": [
+   0.00012,
+   0.0003
+  ],
+  "tower_offset_on_turntable_m": [
+   -0.003,
+   0.003
+  ],
+  "tower_yaw_offset_deg": [
+   -1.5,
+   1.5
+  ]
+ },
+ "robot": {
+  "ft_noise_N": 0.02,
+  "ft_torque_noise_Nm": 0.002,
+  "grip_force_max_N": 40.0,
+  "gripper_max_opening_m": 0.08,
+  "home_q": [
+   0.0,
+   -0.5,
+   0.0,
+   -2.3,
+   0.0,
+   1.8,
+   0.785
+  ],
+  "joint_speed_cap_rad_s": 1.5,
+  "max_rot_rad_s": 2.0,
+  "max_speed_m_s": 0.5,
+  "pusher": {
+   "dz_above_tcp_m": 0.014,
+   "length_m": 0.12,
+   "radius_m": 0.003,
+   "x0_m": 0.02
+  },
+  "tcp_offset_m": 0.1034
+ },
+ "score": {
+  "fall_dz_m": 0.005,
+  "fall_tilt_deg": 5.0,
+  "final_settle_s": 3.0,
+  "n_cap": 30,
+  "place_axial_tol_m": 0.006,
+  "place_lateral_tol_m": 0.004,
+  "place_yaw_tol_deg": 5.0,
+  "place_z_tol_m": 0.0015,
+  "removed_beyond_m": 0.04,
+  "rest_speed_m_s": 0.005
+ },
+ "staging_post": {
+  "half_xy": [
+   0.015,
+   0.012
+  ],
+  "top_z": 0.115,
+  "xy": [
+   0.42,
+   0.28
+  ]
+ },
+ "tick_s": 0.01,
+ "tower": {
+  "base_z": 0.115,
+  "level0_yaw_rad": 0.0,
+  "levels": 18,
+  "slot_order_note": "slot s of level k sits at (s - 1) * slot_pitch along the level's lateral axis (-sin(yaw), cos(yaw)); level k's blocks lie along yaw_k = level0_yaw + k * pi / 2 (at turntable angle 0)",
+  "slot_pitch_m": 0.0265,
+  "turntable_accel_rad_s2": 0.6,
+  "turntable_axis_xy": [
+   0.65,
+   0.0
+  ],
+  "turntable_speed_rad_s": 0.6,
+  "turntable_top_half_m": 0.03
+ }
+}

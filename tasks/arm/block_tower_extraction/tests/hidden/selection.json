@@ -1,0 +1,39 @@
+{
+ "salt_hex": "f54fc4a80d8134ca",
+ "rule": "selection_rule.txt",
+ "chosen": {
+  "standard": {
+   "seed": 13744115506665771008,
+   "overrides": {},
+   "sha256": "c6782ac3f2ab15d16fc972edba2dd5d5499afafa76d7bc53ea47b2f83465d02e"
+  },
+  "mid_tight": {
+   "seed": 8613777362385015239,
+   "overrides": {
+    "mid_tight": 0.35
+   },
+   "sha256": "cbeae0adf20937e9574e28a9ce89501e6ecd4a92405931aa272d1a84d2f23b7b"
+  },
+  "low_friction": {
+   "seed": 9395730546689018474,
+   "overrides": {
+    "mu": [
+     0.3,
+     0.36
+    ]
+   },
+   "sha256": "468a2caa1e41541ca1ce12fd603182deef7175961d4bfb2974ddda27f5754a23"
+  },
+  "tight_grippy": {
+   "seed": 10647932972690219942,
+   "overrides": {
+    "p_all": 0.25,
+    "mu": [
+     0.44,
+     0.5
+    ]
+   },
+   "sha256": "2e34ba5472345fe396900efb85a3b4730fa745679f504ae703cfc4f872743715"
+  }
+ }
+}

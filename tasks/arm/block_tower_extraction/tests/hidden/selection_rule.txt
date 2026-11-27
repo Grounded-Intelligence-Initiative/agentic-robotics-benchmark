@@ -1,0 +1,7 @@
+Writes the hidden set (tests/hidden/: seeds.json, towers/*.json, selection.json, selection_rule.txt) and the
+practice towers of the commissioning service (environment/commission_service/sites.json).
+
+Rule: each set has its own 64-bit OS salt (drawn once, recorded); seed i of a set = splitmix64(salt + i). The hidden set
+is four towers, one per variant (standard; mid_tight: levels 5-12 all-bearing with +35 % probability; low_friction:
+block friction 0.30-0.36; tight_grippy: all-bearing levels with probability 0.25 and friction 0.44-0.50), all inside
+the public ranges. The practice set is six standard towers. No practice seed equals a hidden seed.

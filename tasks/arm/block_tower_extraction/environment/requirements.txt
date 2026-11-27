@@ -1,0 +1,7 @@
+# block_tower_extraction: the ONE list of Python dependencies of the task image (/opt/venv, Python 3.12).
+# The pantry_jar_refilling pins (MuJoCo 3.16.0; numpy 2.5.4 with the numerics pin of environment/Dockerfile).
+mujoco==3.16.0
+numpy==2.5.4
+scipy==1.18.1
+opencv-python-headless==5.0.0.93
+pillow==13.0.0
