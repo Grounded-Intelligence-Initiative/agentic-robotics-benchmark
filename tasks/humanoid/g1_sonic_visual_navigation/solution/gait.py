@@ -19,6 +19,10 @@ class GaitPolicy:
         speed,
         yaw_speed,
         lateral_speed=0.0,
+        *,
+        posture_depth=0.0,
+        lowering_tick=None,
+        rising_tick=None,
     ):
         """Track a sensor-derived target in horizontal pelvis coordinates at 50 Hz."""
         # The encoder takes ten poses spaced five 50 Hz control ticks apart.
@@ -73,6 +77,14 @@ class GaitPolicy:
             gain = np.ones_like(samples)
             yaw_bias = np.clip(0.22 * heading_error, -0.18, 0.18)
             yaw_rate = np.clip(1.8 * heading_error - 0.08 * yaw_speed, -0.75, 0.75)
+        elif motion == "rack":
+            # Keep the torso facing along the rack as the feet translate laterally.
+            stride = 0.24 * np.clip(forward / 0.35, -0.5, 1.0)
+            stride *= np.clip(1.06 - abs(left) / 0.83, 0.22, 1.0)
+            sideways = np.clip(0.58 * left - 0.12 * lateral_speed, -0.24, 0.24)
+            gain = np.ones_like(samples)
+            yaw_bias = np.clip(0.22 * heading_error, -0.18, 0.18)
+            yaw_rate = np.clip(1.8 * heading_error - 0.08 * yaw_speed, -0.75, 0.75)
         elif motion == "pivot":
             sign = np.sign(heading_error)
             turning_speed = np.maximum(0.0, sign * yaw_speed)
@@ -92,11 +104,27 @@ class GaitPolicy:
 
         amplitude = gain * warmup
         q = np.broadcast_to(DEFAULT_Q, (*phase.shape, 29)).copy()
+        bend = np.zeros_like(samples)
+        low_fraction = np.zeros_like(samples)
+        if posture_depth:
+            if lowering_tick is None or not 0 < posture_depth <= 0.62:
+                raise ValueError(
+                    "a crouch requires a lowering tick and depth in (0, 0.62]"
+                )
+            onset = np.clip((tick + samples - lowering_tick) / 45, 0, 1)
+            low_fraction = onset**2 * (3 - 2 * onset)
+            if rising_tick is not None:
+                release = np.clip((tick + samples - rising_tick) / 45, 0, 1)
+                low_fraction *= 1 - release**2 * (3 - 2 * release)
+            bend = posture_depth * low_fraction
         # Hardware order: hip pitch/roll and knee/ankle pitch/roll on each leg;
         # contralateral shoulder swing follows the feet.
         for side, hip, shoulder in ((1, 0, 15), (-1, 6, 22)):
             foot = -side * stride * np.cos(phase)
-            knee = 0.40 * np.maximum(side * np.sin(phase), 0.0)
+            q[:, :, hip] -= bend
+            q[:, :, hip + 3] += 2 * bend
+            q[:, :, hip + 4] -= bend
+            knee = (0.40 - 0.06 * low_fraction) * np.maximum(side * np.sin(phase), 0.0)
             roll = 0.065 * np.sin(phase) - side * sideways * np.cos(phase)
             q[:, :, hip] += (-foot - knee / 2) * amplitude
             q[:, :, hip + 3] += knee * amplitude

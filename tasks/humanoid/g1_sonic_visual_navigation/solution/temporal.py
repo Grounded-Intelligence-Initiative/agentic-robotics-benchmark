@@ -7,6 +7,7 @@ import math
 import numpy as np
 
 from perception import shutters_from_rgbd
+from rack import RackPolicy
 from route import RoutePolicy, wrap
 from vision import beacons, camera_arrays, gate_openings
 
@@ -23,6 +24,7 @@ class TemporalPolicy:
         self.reset()
 
     def reset(self):
+        self.rack = RackPolicy()
         self.pose = None
         self.gate_x = None
         self.side = None
@@ -70,8 +72,20 @@ class TemporalPolicy:
             raise ValueError(
                 "expected the next physically committed public observation"
             )
-        if self.stage == "cleared":
+        if self.stage == "cleared" and self.pose.leg not in ("pivot", "departure"):
             s, action = self.after.compute(obs, self.pose)
+        elif self.stage == "cleared":
+            s = self.after.integrate(obs, self.pose)
+            sight = beacons(obs["camera"], obs["observation"]["gravity_body"])
+            if self.pose.leg == "departure" or (
+                self.pose.leg == "pivot" and "green" in sight
+            ):
+                if s.leg != "departure":
+                    s = replace(s, leg="departure", entered=s.tick)
+                action = self.rack.command(obs, s, sight.get("green"), self.gait)
+                self.debug = self.rack.debug
+            else:
+                s, action = self.after.compute(obs, self.pose)
         else:
             s = self.after.integrate(obs, self.pose)
             gravity = obs["observation"]["gravity_body"]

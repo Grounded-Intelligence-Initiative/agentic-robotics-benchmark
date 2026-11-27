@@ -128,7 +128,12 @@ def beacons(camera, gravity_body, *, arrays=None):
             rows, cols = np.nonzero(components == label)
             center, support = _center(rows, cols, depth)
             if support > best:
-                found[color] = level @ (center + CAMERA_IN_PELVIS)
+                horizontal = level @ (center + CAMERA_IN_PELVIS)
+                # The yellow pivot lamp lies six metres from the turning station.
+                # Reject the short, gold-painted edges of the outgoing roof.
+                if color == "yellow" and not 5.45 < np.linalg.norm(horizontal) < 6.55:
+                    continue
+                found[color] = horizontal
                 best = support
     return found
 
@@ -169,7 +174,7 @@ def gate_openings(rgb, depth, gravity_body, xy, yaw):
         points[:, 0] += 0.07
         points[:, 1] -= direction * 0.51
         # Outside ends of the long furniture lie beyond the public aisle.
-        samples.extend(points[np.abs(points[:, 1]) < 1.3])
+        samples.extend(points[np.abs(points[:, 1]) < 0.94])
     if not samples:
         return []
     values = np.asarray(samples)
