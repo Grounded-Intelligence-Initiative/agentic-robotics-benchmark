@@ -1,0 +1,14 @@
+{
+  "source_commit": "4ae07a0",
+  "sha256": {
+    "agent.py": "f7591f5ce586324f8bbab3c94763ea15b31f60ed6a3c4e009dbe004028a2346a",
+    "arcade_moves.py": "ebd618ef34ffc07c8e39d11f30a1885a5ea0b6edefc10193391758807a5e1a2d",
+    "fixed_motions.json": "bad81863f7c858cd4a4a31dc22b10129f5e5ef56df0377be192b783121d549d2",
+    "grips.py": "56c9ba84e18f73ac195c686829222f59d282f76b33960f06b0130e8da80a4c07",
+    "learned-games.json": "c53d8679d5cae354e5b15390dc0a3d609c7c3c03f42e1a6201e40d4ba4708a2e",
+    "learned-grips.json": "1891416f25937c723d217e62814959e44213d5ee8dc36b49ac40092150611945",
+    "manipulation.py": "d9cd29257aed1fc69c59e14f91a426eac445e348f31f00bd91de4cf09d7cbac9",
+    "solve.sh": "877b9b245002b9a3c0b89022c3191a4770ff52f33f5aaf09ccc2e2e0db554b8d",
+    "wood_reference.py": "49ed8457f29d02553768ee0bdf6b6c5cf0c20c0fef448fd087a5338628cff14b"
+  }
+}

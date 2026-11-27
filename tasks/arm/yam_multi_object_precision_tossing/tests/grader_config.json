@@ -1,0 +1,5 @@
+{
+  "episodes": 8,
+  "probe_pass_fraction": 0.5,
+  "step_timeout_s": 15
+}

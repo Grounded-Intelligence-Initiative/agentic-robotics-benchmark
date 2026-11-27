@@ -436,3 +436,9 @@ title = "Calibrate a warehouse robot's sensors from logs"
 summary = "Write a program that recovers a warehouse robot's camera and IMU mounts, sensor clocks and IMU biases from its driving logs, and flags faulty stretches, on robots it has never seen."
 platforms = ["ground"]
 stages = ["robot-description"]
+
+[yam_multi_object_precision_tossing]
+title = "Toss thirteen pieces with two YAM arms"
+summary = "Use calibrated RGB-D and robot state to control two YAM arms, sorting six pieces and tossing seven pieces into bins, onto posts and through slots."
+platforms = ["arm"]
+stages = ["control"]
