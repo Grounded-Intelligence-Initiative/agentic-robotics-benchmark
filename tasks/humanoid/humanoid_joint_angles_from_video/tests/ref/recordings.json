@@ -1,0 +1,165 @@
+{
+ "frames_per_second": 30,
+ "width": 640,
+ "height": 480,
+ "labelled": [
+  {
+   "id": "L01",
+   "frames": 300,
+   "video": "labelled/L01/video.mp4",
+   "joints": "labelled/L01/joints.csv"
+  },
+  {
+   "id": "L02",
+   "frames": 300,
+   "video": "labelled/L02/video.mp4",
+   "joints": "labelled/L02/joints.csv"
+  },
+  {
+   "id": "L03",
+   "frames": 300,
+   "video": "labelled/L03/video.mp4",
+   "joints": "labelled/L03/joints.csv"
+  },
+  {
+   "id": "L04",
+   "frames": 300,
+   "video": "labelled/L04/video.mp4",
+   "joints": "labelled/L04/joints.csv"
+  },
+  {
+   "id": "L05",
+   "frames": 300,
+   "video": "labelled/L05/video.mp4",
+   "joints": "labelled/L05/joints.csv"
+  },
+  {
+   "id": "L06",
+   "frames": 300,
+   "video": "labelled/L06/video.mp4",
+   "joints": "labelled/L06/joints.csv"
+  }
+ ],
+ "test": [
+  {
+   "id": "T01",
+   "frames": 300,
+   "video": "test/T01/video.mp4"
+  },
+  {
+   "id": "T02",
+   "frames": 300,
+   "video": "test/T02/video.mp4"
+  },
+  {
+   "id": "T03",
+   "frames": 300,
+   "video": "test/T03/video.mp4"
+  },
+  {
+   "id": "T04",
+   "frames": 300,
+   "video": "test/T04/video.mp4"
+  },
+  {
+   "id": "T05",
+   "frames": 300,
+   "video": "test/T05/video.mp4"
+  },
+  {
+   "id": "T06",
+   "frames": 300,
+   "video": "test/T06/video.mp4"
+  },
+  {
+   "id": "T07",
+   "frames": 300,
+   "video": "test/T07/video.mp4"
+  },
+  {
+   "id": "T08",
+   "frames": 300,
+   "video": "test/T08/video.mp4"
+  },
+  {
+   "id": "T09",
+   "frames": 300,
+   "video": "test/T09/video.mp4"
+  },
+  {
+   "id": "T10",
+   "frames": 300,
+   "video": "test/T10/video.mp4"
+  },
+  {
+   "id": "T11",
+   "frames": 300,
+   "video": "test/T11/video.mp4"
+  },
+  {
+   "id": "T12",
+   "frames": 300,
+   "video": "test/T12/video.mp4"
+  },
+  {
+   "id": "T13",
+   "frames": 300,
+   "video": "test/T13/video.mp4"
+  },
+  {
+   "id": "T14",
+   "frames": 300,
+   "video": "test/T14/video.mp4"
+  },
+  {
+   "id": "T15",
+   "frames": 300,
+   "video": "test/T15/video.mp4"
+  },
+  {
+   "id": "T16",
+   "frames": 300,
+   "video": "test/T16/video.mp4"
+  },
+  {
+   "id": "T17",
+   "frames": 300,
+   "video": "test/T17/video.mp4"
+  },
+  {
+   "id": "T18",
+   "frames": 300,
+   "video": "test/T18/video.mp4"
+  },
+  {
+   "id": "T19",
+   "frames": 300,
+   "video": "test/T19/video.mp4"
+  },
+  {
+   "id": "T20",
+   "frames": 300,
+   "video": "test/T20/video.mp4"
+  },
+  {
+   "id": "T21",
+   "frames": 300,
+   "video": "test/T21/video.mp4"
+  },
+  {
+   "id": "T22",
+   "frames": 300,
+   "video": "test/T22/video.mp4"
+  },
+  {
+   "id": "T23",
+   "frames": 300,
+   "video": "test/T23/video.mp4"
+  },
+  {
+   "id": "T24",
+   "frames": 300,
+   "video": "test/T24/video.mp4"
+  }
+ ]
+}
