@@ -1,0 +1,13 @@
+{
+  "metric": "quality_adjusted_success",
+  "direction": "higher",
+  "value": 0.924829204118194,
+  "full_at": 0.9796835713661057,
+  "source": "Packing-stop maintainer calibration on koa04: packaged RGB-only exploration, executable MJCF and eight independent clean transfers. Not official ALE validation. The absolute saturation point (value times full_at) is unchanged from the accepted dual-probe task.",
+  "measurements": [
+    0.924829204118194
+  ],
+  "evidence_episode_ids": [
+    "arm-fixture-regrip-koa04-packaged"
+  ]
+}
