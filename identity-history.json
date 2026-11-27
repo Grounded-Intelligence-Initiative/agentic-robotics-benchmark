@@ -726,6 +726,12 @@
     "spec_hash": "sha256:f0d4f456229c98f0bf8bfe0e44cba0c971eeaecf0bbfb6416a2fc7e4c90f7faa"
   },
   {
+    "content_digest": "sha256:794dd793a4cda1554cdb2c9324e7f58056a2a1f6ecb8d4f0828657a5c017397a",
+    "since": "2026-11-27T11:06:35Z",
+    "slug": "humanoid_robot_description_from_calibration_records",
+    "spec_hash": "sha256:0928f90983bce23de90735bb5a0bee39785232980f4933dfdf1cc8f7318ef5e2"
+  },
+  {
     "content_digest": "sha256:f28a4b6efd74e631c56afda3ddaa5508f40e8e1cdfb50b4bfd5ee2ccecc90187",
     "since": "2026-11-24T14:22:28Z",
     "slug": "keyed_nut_peg_assembly",
