@@ -264,8 +264,8 @@ platforms = ["humanoid"]
 stages = ["assembly"]
 
 [g1_sonic_visual_navigation]
-title = "Steer a G1 through moving warehouse gates"
-summary = "Use a pelvis-mounted RGB-D camera to choose a passable aisle, time a G1’s passage through a sliding gate, follow a turn cue, and stop at both waypoints without collisions."
+title = "Steer a G1 through moving gates and a low service rack"
+summary = "Drive a G1 through moving shutters, follow a turn cue, fit its whole body beneath an offset service rack, and stand at an inspection station using RGB-D and SONIC motion tokens."
 platforms = ["humanoid"]
 stages = ["control"]
 
