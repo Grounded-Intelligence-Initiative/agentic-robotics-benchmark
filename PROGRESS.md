@@ -7,8 +7,10 @@
 > before every hand-off. Where it disagrees with the code or `git log`, the code wins: fix
 > this file.
 >
-> Last updated: 2026-11-23 (the platform key `subsystems` is removed from
-> `tasks/platforms.json`: no task was filed under it; eleven platforms remain). Before that:
+> Last updated: 2026-11-27 (§18: the task cards have six stages; `robot-description` is retired,
+> and a robot's own model or calibration is filed under `control`). Before that:
+> 2026-11-23 (the platform key `subsystems` is removed from
+> `tasks/platforms.json`: no task was filed under it; eleven platforms remain);
 > 2026-11-17 (§14: one stage per task card; `driving` and `ground` become one
 > platform, `ground` "Ground vehicle"); 2026-11-16 (§13: task cards in
 > `tasks/cards.toml`, the `ground` platform, the merge gate and the GPU-model check); 2026-11-14 (§12: the grasp task pins OpenBLAS
@@ -814,6 +816,31 @@ order of §13 (§5's platform list predates both).
   change their own practice graders and probe copies in their own pull requests.
   `pantry_jar_refilling`'s probe copy keeps its first-order form. No task's `verify.py` arms
   `VerifierDeadline` yet, and no task sets `max_processes`.
+
+## 18. 2026-11-27 — six stages: a robot's own model or calibration is `control`
+
+Owner decision of 2026-11-27. §14's rule (one stage per task) stands; the list of stages loses
+one.
+
+- **Six stages.** `robot-description` leaves the cards' stage vocabulary. The stages are
+  `requirements`, `hardware-design`, `assembly`, `control`, `environment` and `behavior`, in
+  workflow order; `end-to-end` stays the category of a task that runs the whole chain (no task
+  uses it). A robot's own model or calibration (a URDF or MJCF written from photos, sensor
+  calibration from logs) is filed under `control`.
+- **Cards.** `robotic_arm_robot_description_from_photos` and
+  `multisensor_rig_calibration_from_logs` move from `robot-description` to `control`, which
+  now holds 7 of main's 70 cards.
+- **The rule, enforced.** `scripts/task_cards.py check` refuses a card filed `robot-description`
+  and names `control` (`RETIRED_STAGES`); `schemas/task-cards.schema.json` drops the key from
+  its enum; `tests/test_task_cards.py` checks both, and that the script and the schema list the
+  same stages. `docs/task-cards.md` has the rule.
+- **Unchanged.** Nothing under `tasks/<platform>/<slug>/` (slugs, `task.toml`, briefs), so no
+  `spec_hash` or `content_digest` moves and `identity-history.json` gets no record; the key
+  `hardware-design`; `tasks/platforms.json`; the title family `robot_description`
+  (`FAMILIES` in `scripts/task_cards.py`), which is a slug pattern, not a stage.
+- **Next.** The open task pull requests #212 (`dexterous_hand_robot_description_from_photos`)
+  and #215 (`humanoid_robot_description_from_calibration_records`) each carry a card filed
+  `robot-description`; each refiles it to `control` when its branch next takes `main` in.
 
 ## Open items
 
