@@ -1,6 +1,6 @@
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/ale-robotics-assets
-# revision: 0000000000000000000000000000000000000000
+# revision: 68656bf804d95d8eb36de1237f0bad6b1b40fea5
 # prefix: tasks/hand/dexterous_hand_robot_description_from_photos/payload
 dd8c3b5e3541b9cf752ba253ade692b39df1d5ede4073e63b674efb9a6d4780b  contract/pad_definition.png
 c09fc6b86e3c6cbe8ef4d6b9d79e607e67f1bd9af017b67d86e2a50f0d1a91fd  contract/zero_pose.png
