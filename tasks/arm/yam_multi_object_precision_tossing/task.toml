@@ -1,0 +1,26 @@
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/yam_multi_object_precision_tossing"
+
+[metadata]
+platform = "arm"
+
+[environment]
+cpus = 2
+memory_mb = 4096
+
+[agent]
+timeout_sec = 3600
+network_mode = "no-network"
+
+[verifier]
+env = { YAM_EVALUATION_PROFILE = "${YAM_EVALUATION_PROFILE:-full}" }
+timeout_sec = 7500
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 2
+memory_mb = 4096
+gpus = 0

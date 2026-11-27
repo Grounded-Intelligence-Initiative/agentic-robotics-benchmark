@@ -1,0 +1,8 @@
+{
+  "metric": "completion_fraction",
+  "direction": "higher",
+  "value": 0.6153846153846154,
+  "full_at": 0.9687499999999999,
+  "source": "Historical measured anchor reused from commit 4ae07a0. Pinned ALE bootstrap validate-3b1437aa measured 64 of 104. Four independent eight-layout rollouts in be595ae5 scored 64, 62, 68 and 67 of 104. The lowest observed ratio sets full_at. The current RGB-D observation, isolation, and numerical runtime differ from that historical evaluation. These values have not been remeasured under the current runtime; the pending single-set diagnostic does not establish a new anchor.",
+  "reference_commit": "fcb39a2ddb7c3dec81ae1016de483c4ffe384fca"
+}
