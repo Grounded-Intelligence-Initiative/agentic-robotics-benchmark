@@ -19,6 +19,6 @@
   ],
   "horizon": 1100,
   "step_timeout_s": 15,
-  "verifier_deadline_s": 5100,
+  "verifier_deadline_s": 6900,
   "probes_per_episode": 4
 }

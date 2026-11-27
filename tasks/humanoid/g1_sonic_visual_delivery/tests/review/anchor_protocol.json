@@ -1,6 +1,6 @@
 {
-  "metric": "paired_delivery_fraction",
-  "units": "strict successes on both opposite signals per layout",
+  "metric": "strict_layout_fraction",
+  "units": "fraction of layouts with all three strict deliveries, including both destinations",
   "bootstrap": {
     "value": null,
     "registered_layouts": [
@@ -9,7 +9,7 @@
       "far box",
       "far cylinder"
     ],
-    "repetitions_per_layout": 2
+    "repetitions_per_layout": 3
   },
   "full_credit": "physical delivery in all allocated episodes, including both destinations for every layout",
   "calibration": "Accept anchor=1 and full_at=1 only after an actual official measured 1. Preserve earlier failures and label any prequalified witness roster explicitly.",
@@ -20,5 +20,5 @@
     "two separately launched frozen-source confirmations",
     "fixed action and physically irrelevant camera-reactive action controls"
   ],
-  "hidden_randomness": "Schedule and order are independently sampled inside each verifier."
+  "hidden_randomness": "Choose uniformly among the six nonconstant ordered three-signal sequences for each layout. Independently shuffle episodes across layouts and preselect phase-neutral sensor probe ticks within each episode."
 }

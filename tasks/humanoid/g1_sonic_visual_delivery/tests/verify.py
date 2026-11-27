@@ -1,4 +1,4 @@
-"""Score uninterrupted, physically matched deliveries under opposite visible station signals."""
+"""Score complete deliveries across matched layouts with an independently randomized three-signal sequence."""
 from contextlib import contextmanager
 import json
 import math
@@ -18,14 +18,22 @@ from mobile_score import AuditedSession
 from offline_solver import OfflineSolver, check_numerics, episode_scratch, offline_command, solver_environment, submission_template
 
 
+SIGNALS = (("left", "left", "right"), ("left", "right", "left"), ("right", "left", "left"),
+           ("right", "right", "left"), ("right", "left", "right"), ("left", "right", "right"))
+
+
 def panel_jobs(config, rng):
-    """Both station signals in a pair share the physical layout, including the robot's initial state."""
+    """All three signal trials share the physical layout, including the robot's initial state."""
     jobs = []
     for pair, layout in enumerate(config["layouts"]):
         seed = layout.get("seed")
         if seed is None:
             seed = rng.seed(bits=64)
-        for side in ("left", "right"):
+        # Draw each nonconstant three-member sequence with probability 1/6.
+        index = rng.seed(bits=3)
+        while index >= len(SIGNALS):
+            index = rng.seed(bits=3)
+        for side in SIGNALS[index]:
             jobs.append((pair, layout["start"], layout["shape"], seed, side, rng.seed(bits=64)))
     for i in range(len(jobs)-1, 0, -1):
         j = rng.choice(range(i+1))
@@ -99,12 +107,14 @@ def summarize(rows):
         return sum(row[key] for row in rows)
     groups = {}
     for row in rows:
-        groups.setdefault(row["pair"], {})[row["side"]] = row["complete"]
-    if any(set(sides) != {"left", "right"} for sides in groups.values()) or n != 2*len(groups):
-        raise ValueError("each physical layout needs exactly one run for each target side")
-    pairs = sum(all(sides.values()) for sides in groups.values())
-    result = dict(episodes=n, layout_pairs=len(groups), both_targets_released=pairs,
-                  paired_delivery_fraction=pairs/len(groups), strict_deliveries=total("complete"),
+        groups.setdefault(row["pair"], []).append(row)
+    if any(len(group) != 3 or {r["side"] for r in group} != {"left", "right"} for group in groups.values()):
+        raise ValueError("each physical layout requires three deliveries covering both destinations")
+    complete = sum(all(r["complete"] for r in group) for group in groups.values())
+    both = sum({r["side"] for r in group if r["complete"]} == {"left", "right"} for group in groups.values())
+    result = dict(episodes=n, layouts=len(groups), all_signals_released=complete, both_targets_released=both,
+                  strict_layout_fraction=complete/len(groups), both_targets_fraction=both/len(groups),
+                  strict_deliveries=total("complete"),
                   strict_delivery_fraction=total("complete")/n, episodes_aborted=sum(r["outcome"] == "aborted" for r in rows),
                   time_limits=sum(r["outcome"] == "time_limit" for r in rows))
     for key in ("walked", "docked", "contacted", "lifted", "placed", "wrong_pad", "disqualified", "fell",
@@ -131,19 +141,19 @@ def run_panel(solver_factory, config, rng, assets=Path("/opt/sonic/assets")):
         except SolverAborted:
             row = episode(None, job, config, assets)
         rows.append(row)
-        print(f"[grader] completed {len(rows)}/{2*len(config['layouts'])}", file=sys.stderr, flush=True)
+        print(f"[grader] completed {len(rows)}/{3*len(config['layouts'])}", file=sys.stderr, flush=True)
     return summarize(rows), rows
 
 
 def verify():
     config = stage_config()
     anchor, calibration = read_anchor()
-    require(anchor is None or anchor == 1., "a numeric anchor requires a measured full paired delivery")
-    require(calibration["full_at"] == 1., "all paired deliveries are required for full credit")
+    require(anchor is None or anchor == 1., "a numeric anchor requires a measured full three-signal delivery")
+    require(calibration["full_at"] == 1., "all three deliveries per layout are required for full credit")
     def zero(reason):
         return write_verdict(dict(rewards={"reward": 0.}, metrics={
-            "episodes": 2*len(config["layouts"]), "episodes_aborted": 2*len(config["layouts"]),
-            "strict_deliveries": 0, "paired_delivery_fraction": 0., "both_targets_released": 0,
+            "episodes": 3*len(config["layouts"]), "episodes_aborted": 3*len(config["layouts"]),
+            "strict_deliveries": 0, "strict_layout_fraction": 0., "all_signals_released": 0, "both_targets_released": 0,
             "anchor_recorded": int(anchor is not None)}), diagnostic=reason)
     with VerifierDeadline(config["verifier_deadline_s"], lambda _: zero("verifier wall-time budget exhausted")):
         check_numerics()
@@ -166,11 +176,11 @@ def verify():
                 metrics, rows = run_panel(fresh_solver, config, seed_rng())
         except (SolverAborted, SolverMissing) as exc:
             return zero(str(exc))
-        score = metrics["paired_delivery_fraction"]
+        score = metrics["strict_layout_fraction"]
         metrics.update(numerics_ok=1, offline_launcher_ok=1)
         detail = Path("/logs/verifier/delivery-episodes.json")
         detail.write_text(json.dumps(rows, allow_nan=False, indent=2) + "\n")
-        write_verdict(ratio_rewards(score, anchor, metric_name="paired_delivery_fraction",
+        write_verdict(ratio_rewards(score, anchor, metric_name="strict_layout_fraction",
                                     full_at=calibration["full_at"], extra=metrics))
 
 
