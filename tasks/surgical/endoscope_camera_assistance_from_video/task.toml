@@ -15,7 +15,9 @@
 # surgeon take the camera back, and the rest of that procedure is not usable. The agent gets what the device's
 # engineer would have: the holder's manual and kinematic model, the scopes' intrinsics, ten development procedures as
 # video with an annotation team's 2D labels, and a commissioning service that plays ten procedures of its own for its
-# controller without ground truth or score (3 sessions, never refunded; a 2 h session). Version 0.3. Design notes, what is verified and what is
+# controller without ground truth or score (3 sessions, never refunded; a 2 h session). Since version 0.4 the holder
+# is one unit of a series that deviates from its datasheet (zero offsets, gains, the scope's direction of view), and
+# every kind of procedure has critical actions. Version 0.4. Design notes, what is verified and what is
 # not: tests/README.md. Needs one NVIDIA RTX GPU.
 
 schema_version = "1.4+ale.1"

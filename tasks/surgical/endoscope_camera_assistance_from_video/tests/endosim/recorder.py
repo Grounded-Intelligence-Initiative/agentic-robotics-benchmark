@@ -43,7 +43,7 @@ class Assistant(object):
         ep, scope = self.ep, self.ep.scope
         q = ep.holder.q
         k = model.SCOPES[scope]
-        roll_err = model.level_roll(q[0], q[1], scope, ep.head) - q[3]
+        roll_err = model.level_roll(q[0], q[1], scope, ep.head, ep.view_deg) - q[3]
         roll = float(np.clip(1.5 * roll_err, -model.RATE_MAX[3], model.RATE_MAX[3])) if abs(roll_err) > self.roll_band else 0.0
         # the lens: an accident (the scope driven at the tissue under the work), some time to notice it, the
         # withdrawal, the wait in the cannula
@@ -96,7 +96,7 @@ class Assistant(object):
         k = model.SCOPES[scope]
 
         def view(qq):
-            return model.project(target[None, :], model.camera_pose(np.array([qq[0], qq[1], qq[2], q[3]]), scope, ep.head), scope)[0]
+            return model.project(target[None, :], model.camera_pose(np.array([qq[0], qq[1], qq[2], q[3]]), scope, ep.head, ep.view_deg), scope)[0]
 
         now = view(q[:3])
         err = np.array([k["cx"] - now[0], k["cy"] - now[1], want_depth - now[2]])
@@ -148,9 +148,13 @@ def record(procedure, renderer, out_dir, name, every=2, operator_seed=0, touch=F
         "camera_head_deg": float(procedure.rig["head_deg"]),
         "camera_head_changes": [[int(a), float(b)] for a, b in procedure.rig.get("head_changes") or []],
         "video_latency_steps": int(procedure.latency),
+        "unit": {"joint_zero_offsets": list(procedure.unit["zero"]), "joint_gains": list(procedure.unit["gain"]),
+                 "view_deg": model.SCOPES[procedure.scope]["view_deg"] + float(procedure.unit["view_dev_deg"])},
         "rig": "measured in the lab for this recording: the camera head's angle on the eyepiece at the start, the steps at "
                "which it was knocked and the angle it was turned to (each turn takes 3 steps from that step), and the video "
-               "chain's latency (the frames here are as captured, without it)",
+               "chain's latency (the frames here are as captured, without it); and the holder unit it was recorded with "
+               "(`unit`: each joint's zero offset, reading minus true value, its gain, and the scope's actual direction of view; "
+               "the labels' joints are the unit's readings)",
         "camera": "held by a scripted assistant; its view was usable on {:.0%} of the steps".format(summary["useful_view_fraction"]),
         "labels": "labels.jsonl: one JSON object per recorded frame, for the state the frame shows (holder_manual.md, section 8)",
     }

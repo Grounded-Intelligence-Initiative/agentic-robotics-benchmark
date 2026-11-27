@@ -35,7 +35,7 @@ KINDS = ("dissection", "suturing", "exploration", "clip_and_cut")
 HANDS = ("left", "right")
 ROLES = ("left", "right", "assistant")
 JAWS = ("grasper", "scissors", "hook", "needle_driver", "clip_applier", "suction")
-GENERATOR_VERSION = "endosim-procedure/0.4"
+GENERATOR_VERSION = "endosim-procedure/0.5"
 
 
 class Rng(object):
@@ -139,6 +139,20 @@ def draw_rig(rng):
 
 
 NOMINAL_RIG = {"head_deg": 0.0, "latency_steps": 1, "shaft_mm": [5] * RIG_SHAFTS}   # a procedure whose set names none
+
+NOMINAL_UNIT = {"zero": [0.0, 0.0, 0.0, 0.0], "gain": [1.0, 1.0, 1.0, 1.0], "view_dev_deg": 0.0}
+
+
+def draw_unit(rng):
+    """Version 0.4: the unit of the holder series that a procedure is run on (holder_manual.md, section 2: the
+    datasheet's tolerances, model.ZERO_TOL, GAIN_RANGE, VIEW_TOL_DEG): each joint's reading is its true value plus a
+    zero offset uniform within +-ZERO_TOL; each joint moves at its command times a gain uniform in GAIN_RANGE; the
+    scope's actual direction of view is its nominal one plus a deviation uniform within +-VIEW_TOL_DEG."""
+    zero = [rng.uniform(-t, t) for t in model.ZERO_TOL]
+    gain = [rng.uniform(*model.GAIN_RANGE) for _ in range(4)]
+    view = rng.uniform(-model.VIEW_TOL_DEG, model.VIEW_TOL_DEG)
+    return {"zero": [round(float(z), 6) for z in zero], "gain": [round(float(g), 4) for g in gain], "view_dev_deg": round(float(view), 3)}
+
 
 HEAD_CHANGE_TURN_STEPS = 3    # a knocked camera head turns to its new angle over this many control steps
 HEAD_CHANGE_MIN_DEG = 15.0    # a change worth the name: at least this far from the angle before
@@ -507,16 +521,19 @@ def _assistant(rng, tissue, trocar, sites, site_of_step, hands_tip, total, wante
 
 CRITICAL_ENERGY_S = 1.0       # an energy activation's critical window: from the smoke's first rise, this long
 CRITICAL_AFTER_START_S = 10.0  # no critical action is judged in the first seconds of a procedure ...
-CRITICAL_AFTER_TRAVEL_S = 3.0  # ... nor in the first seconds at a new site ...
+CRITICAL_AFTER_TRAVEL_S = 2.0  # ... nor in the first seconds at a new site (version 0.4: 2 s, was 3; a window that
+                               # starts earlier begins then, if 0.5 s of it is left) ...
+CRITICAL_MIN_STEPS = 5
 CRITICAL_AFTER_HEAD_S = 4.0    # ... nor in the seconds after the camera head was knocked (the team's doing, not the holder's)
 
 
 def _critical_actions(b, total, head_changes=()):
     """Version 0.3: the critical actions of a procedure, the moments the surgeon must see (holder_manual.md, section
     6): a clip applier's jaws closed on its clip, the first half of a needle's bite, the first second of an energy
-    activation (when its smoke starts to rise). Those within CRITICAL_AFTER_START_S of the start, within
-    CRITICAL_AFTER_TRAVEL_S of the end of a travel between sites, or overlapping the CRITICAL_AFTER_HEAD_S from the start
-    of a camera head's change are not judged. [[start, end, kind], ...]."""
+    activation (when its smoke starts to rise), and since version 0.4 an inspection (an exploration's hold at a site).
+    Those within CRITICAL_AFTER_START_S of the start or overlapping the CRITICAL_AFTER_HEAD_S from the start of a
+    camera head's change are not judged; one that starts within CRITICAL_AFTER_TRAVEL_S of the end of a travel between
+    sites counts from then on, if CRITICAL_MIN_STEPS of it are left. [[start, end, kind], ...]."""
     out = [[at, at + _steps(CRITICAL_ENERGY_S), "energy"] for at, _, _ in b.smoke_events]
     out += b.critical
     keep = []
@@ -524,7 +541,10 @@ def _critical_actions(b, total, head_changes=()):
         start, end = int(start), int(end)
         if start < _steps(CRITICAL_AFTER_START_S) or end >= total or end <= start:
             continue
-        if any(t0 <= start < t1 + _steps(CRITICAL_AFTER_TRAVEL_S) for t0, t1 in b.travels):
+        for t0, t1 in b.travels:
+            if t0 <= start < t1 + _steps(CRITICAL_AFTER_TRAVEL_S):
+                start = t1 + _steps(CRITICAL_AFTER_TRAVEL_S)
+        if end - start < CRITICAL_MIN_STEPS:
             continue
         if any(start <= int(h) + _steps(CRITICAL_AFTER_HEAD_S) and end >= int(h) for h, _ in head_changes):
             continue
@@ -595,6 +615,7 @@ class Procedure(object):
                 "head_deg": float(self.rig["head_deg"]), "latency_steps": int(self.latency),
                 "head_changes": [list(c) for c in self.rig.get("head_changes") or []],
                 "critical_actions": len(self.critical),
+                "unit": dict(self.unit),
                 "breath_mm": round(1000.0 * float(np.max(self.tissue.breaths[:, 1])), 2),
                 "hidden_fraction": {h: round(float(self.sunk[h][1:].mean()), 3) for h in HANDS},
                 "shafts_mm": [int(k["shaft_mm"]) for k in self.looks], "generator": GENERATOR_VERSION}
@@ -668,7 +689,9 @@ def generate(seed, factors=None, steps=800, pool="all"):
             if g.chance(0.4):
                 b.hold(site, k, g.uniform(0.8, 1.6))
         elif kind == "exploration":
+            b.critical.append([b.n, b.n + _steps(0.0), "inspection"])     # placeholder, set below
             b.hold(site, k, g.uniform(1.2, 3.0))
+            b.critical[-1][1] = b.n                                          # the surgeon inspects the place
             if g.chance(0.5):
                 b.stretch(site, k)
         else:
@@ -718,4 +741,5 @@ def generate(seed, factors=None, steps=800, pool="all"):
                      tip=tip, jaw=jaw, active=active, present=present, look=look, smoke=smoke,
                      fine=_fine_flags(tip, active), site_of_step=site_of_step, sites_xy=[list(map(float, s.c[:2])) for s in sites],
                      path_m=path, gestures=b.gestures, rig=rig, head=math.radians(float(rig["head_deg"])),
-                     head_at=head_track(rig, total), latency=int(rig["latency_steps"]), grip=grip, sunk=sunk, critical=critical)
+                     head_at=head_track(rig, total), latency=int(rig["latency_steps"]), grip=grip, sunk=sunk, critical=critical,
+                     unit=dict(f.get("unit") or NOMINAL_UNIT))

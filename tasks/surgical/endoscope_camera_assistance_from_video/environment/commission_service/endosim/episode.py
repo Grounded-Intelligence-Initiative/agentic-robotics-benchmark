@@ -18,7 +18,7 @@ import math
 import numpy as np
 
 from . import model
-from .procedure import HANDS, ROLES
+from .procedure import HANDS, NOMINAL_UNIT, ROLES
 
 CRITERIA = ("lens", "zone", "zoom", "horizon", "motion", "takeover")
 TAKEOVERS = ("lens_injury", "second_contact", "critical_unseen")
@@ -47,7 +47,13 @@ class Episode(object):
         self.head_at = getattr(procedure, "head_at", None)      # the camera head's angle on the eyepiece per step (rad)
         if self.head_at is None:
             self.head_at = np.full(procedure.steps + 1, float(getattr(procedure, "head", 0.0)))
-        self.holder = model.Holder()
+        # the unit (version 0.4): its joints' zero offsets and gains and its scope's actual direction of view; the
+        # holder starts at the home pose its own readings show
+        unit = getattr(procedure, "unit", None) or NOMINAL_UNIT
+        self.zero = np.array(unit["zero"], dtype=float)
+        self.gain = np.array(unit["gain"], dtype=float)
+        self.view_deg = model.SCOPES[self.scope]["view_deg"] + float(unit["view_dev_deg"])
+        self.holder = model.Holder(np.asarray(model.Q_HOME, dtype=float) - self.zero)
         self.t = 0
         self.smeared = False
         self.clean_s = 0.0
@@ -65,7 +71,7 @@ class Episode(object):
         self.critical = list(getattr(procedure, "critical", None) or [])   # [start, end, kind] of each critical action
         self.critical_seen = []               # per critical action judged: the share of its steps with a usable view
         self.trace = []                       # per judged step: (usable, failed criteria bitmask)
-        self._pose = model.camera_pose(self.holder.q, self.scope, self.head)
+        self._pose = model.camera_pose(self.holder.q, self.scope, self.head, self.view_deg)
         self._prev_pose = self._pose
 
     # -- state ----------------------------------------------------------------------------------------------------
@@ -94,7 +100,8 @@ class Episode(object):
             self.takeover, self.takeover_step = why, self.t
 
     def joints(self):
-        return [round(float(v), 5) for v in self.holder.q]
+        """The joint readings: the true joints plus the unit's zero offsets, rounded to 1e-5."""
+        return [round(float(v), 5) for v in self.holder.q + self.zero]
 
     def pose(self):
         return self._pose
@@ -109,7 +116,7 @@ class Episode(object):
         clipped command (model.clip_command); returns whether the new step's view is usable."""
         if self.done:
             raise RuntimeError("the procedure is over")
-        command = np.asarray(action, dtype=float)
+        command = np.asarray(action, dtype=float) * self.gain       # the unit's servo: the clipped command times its gains
         h = model.DT / model.SUBSTEPS
         prev_pose = self._pose
         tissue = self.proc.tissue
@@ -153,7 +160,7 @@ class Episode(object):
                     self.cleanings += 1
             else:
                 self.clean_s = 0.0
-        self._pose = model.camera_pose(self.holder.q, self.scope, self.head)
+        self._pose = model.camera_pose(self.holder.q, self.scope, self.head, self.view_deg)
         self._prev_pose = prev_pose
         return self._judge(prev_pose)
 
@@ -182,7 +189,7 @@ class Episode(object):
                     fail.add("motion")
         else:
             fail.add("zone")
-        if abs(model.horizon_error(self.holder.q, scope, self.head)) > math.radians(model.HORIZON_LIMIT_DEG):
+        if abs(model.horizon_error(self.holder.q, scope, self.head, self.view_deg)) > math.radians(model.HORIZON_LIMIT_DEG):
             fail.add("horizon")
         ok = not fail
         self.judged += 1
@@ -240,7 +247,8 @@ class Episode(object):
             item = {"role": r, "present": bool(self.proc.present[r][t])}
             item.update(tip_view(self.proc.tip[r][t], self._pose, self.scope))
             items.append(item)
-        return {"scope": self.scope, "camera_head_deg": math.degrees(self.head), "lens_smeared": bool(self.smeared), "instruments": items}
+        return {"scope": self.scope, "camera_head_deg": math.degrees(self.head), "lens_smeared": bool(self.smeared), "instruments": items,
+                "unit": {"zero": [float(v) for v in self.zero], "gain": [float(v) for v in self.gain], "view_deg": float(self.view_deg)}}
 
     def visible(self, role, t=None):
         """Whether an annotator sees the tip of `role` in the frame of step t: the instrument in, its tip in front of

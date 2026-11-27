@@ -2,7 +2,8 @@
 
 It does not look at the picture. The grader recognises the reference submission by its token (.oracle_token) and adds
 `obs["privileged"]` to every observation: what a perfect perception system would have read from the same delayed
-frame (the scope fitted, the camera head's angle on the eyepiece, the video latency, whether the lens is smeared, each
+frame (the scope fitted, the camera head's angle on the eyepiece, the video latency, the holder unit's deviations from
+the datasheet (version 0.4), whether the lens is smeared, each
 instrument's tip in the camera frame). Everything else is
 what any submission has: the joint readings, the published holder model (holder_model.py) and the published view
 rules. It is not told which instruments count, when the surgeon does fine work, where the tissue is or what comes
@@ -75,7 +76,7 @@ def advance(state, q, priv):
     scope, head, lat = priv["scope"], math.radians(priv["camera_head_deg"]), int(priv["latency_steps"])
     q = np.asarray(q, dtype=float)
     q_frame = frame_joints(s.q_hist, q, lat)               # the frame is `lat` steps old: so is its camera pose
-    r_wc, p = model.camera_pose(q_frame, scope, head)
+    r_wc, p = _pose(q_frame, scope, head)
     items = {i["role"]: i for i in priv["instruments"]}
 
     # 1. the tips in the patient frame, their velocity
@@ -165,7 +166,7 @@ def advance(state, q, priv):
     # 5. resolved-rate aiming with the model's Jacobian (pan, tilt, insertion; the roll follows the horizon)
     def view(qq, point):
         qq = np.array([qq[0], qq[1], qq[2], q[3]])
-        return model.project(point[None, :], model.camera_pose(qq, scope, head), scope)[0]
+        return model.project(point[None, :], _pose(qq, scope, head), scope)[0]
 
     now = view(q[:3], centre)
     err = np.array([k["cx"] - now[0], k["cy"] - now[1], want_depth - now[2]])
@@ -177,7 +178,7 @@ def advance(state, q, priv):
     drift = (view(q[:3], centre + v_centre * 0.05) - view(q[:3], centre - v_centre * 0.05)) / 0.1   # the work's own image motion
     # how the counted tips sit in the view right now (their latest positions, not the aim)
     live = np.array([s.tips[h] if (not s.away[h] and h in s.tips) else s.work[h] for h in HANDS if (h in s.tips and not s.away[h]) or h in s.work])
-    tips_now = model.project(live, model.camera_pose(q, scope, head), scope)
+    tips_now = model.project(live, _pose(q, scope, head), scope)
     margin_u = model.SAFE_ZONE * model.IMAGE_W - np.abs(tips_now[:, 0] - k["cx"]).max()
     margin_v = model.SAFE_ZONE * model.IMAGE_H - np.abs(tips_now[:, 1] - k["cy"]).max()
     sizes = k["fx"] * model.SHAFT_DIAMETER / np.clip(tips_now[:, 2], 1e-3, None)
@@ -203,12 +204,20 @@ def advance(state, q, priv):
     if fine and usable:
         # fine work in a usable view: whatever the view does, the working point's image must move slowly
         work = live.mean(0)
-        a = model.project(work[None, :], model.camera_pose(q, scope, head), scope)[0]
-        b = model.project(work[None, :], model.camera_pose(q + rate * model.DT, scope, head), scope)[0]
+        a = model.project(work[None, :], _pose(q, scope, head), scope)[0]
+        b = model.project(work[None, :], _pose(q + rate * model.DT, scope, head), scope)[0]
         px_s = math.hypot(b[0] - a[0], b[1] - a[1]) / model.DT
         if px_s > CALM_IMAGE_SPEED:
             rate = rate * (CALM_IMAGE_SPEED / px_s)
     return s, rate
+
+
+UNIT = {"zero": np.zeros(4), "gain": np.ones(4), "view_deg": None}   # the unit this procedure runs on (version 0.4)
+
+
+def _pose(q, scope, head):
+    """The camera pose of true joints q on this unit (its scope's actual direction of view)."""
+    return model.camera_pose(q, scope, head, UNIT["view_deg"])
 
 
 def frame_joints(q_hist, q, lat):
@@ -219,7 +228,7 @@ def frame_joints(q_hist, q, lat):
 
 
 def _roll_rate(q, scope, head):
-    err = model.level_roll(q[0], q[1], scope, head) - q[3]
+    err = model.level_roll(q[0], q[1], scope, head, UNIT["view_deg"]) - q[3]
     return float(np.clip(4.0 * err, -model.RATE_MAX[3], model.RATE_MAX[3])) if abs(err) > math.radians(1.5) else 0.0
 
 
@@ -237,10 +246,13 @@ class Controller(object):
             self.state = self._continued(obs)
             self.before = {t: self.state}
             self.after = []
-        q = np.asarray(obs["joints"], dtype=float)
+        unit = obs["privileged"].get("unit")
+        if unit:                                  # version 0.4: told its unit, it works in true joints and true rates
+            UNIT.update(zero=np.asarray(unit["zero"], dtype=float), gain=np.asarray(unit["gain"], dtype=float), view_deg=float(unit["view_deg"]))
+        q = np.asarray(obs["joints"], dtype=float) - UNIT["zero"]
         new, rate = advance(self.before[t], q, obs["privileged"])
         self.after.append(new)
-        return [float(x) for x in rate]
+        return [float(x) for x in np.asarray(rate) / UNIT["gain"]]
 
     def _continued(self, obs):
         """Of the states the requests of the last step left, the one whose tips this step's frame continues best
@@ -254,7 +266,7 @@ class Controller(object):
         costs = []
         for s in self.after:
             lat = int(priv["latency_steps"])
-            r_wc, p = model.camera_pose(frame_joints(s.q_hist, None, lat), priv["scope"], math.radians(priv["camera_head_deg"]))
+            r_wc, p = _pose(frame_joints(s.q_hist, None, lat), priv["scope"], math.radians(priv["camera_head_deg"]))
             cost = 0.0
             for h in HANDS:
                 if h in s.tips and items[h]["present"]:

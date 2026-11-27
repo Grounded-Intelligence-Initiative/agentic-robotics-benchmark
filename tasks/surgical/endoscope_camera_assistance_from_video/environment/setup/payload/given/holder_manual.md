@@ -45,18 +45,35 @@ R_WC = R_WS . Rz(roll) . Rx(-d) . Rz(h)
 | insertion | 0.010 m | 0.200 m | 0.050 m/s | 0.30 m/s^2 |
 | roll | -2.80 rad | 2.80 rad | 0.80 rad/s | 4.0 rad/s^2 |
 
-Every procedure starts at the home pose `[0, 0.55, 0.020, 0]`: the scope withdrawn into its cannula, looking forward
-and down into the cavity.
+Every procedure starts at the home pose `[0, 0.55, 0.020, 0]` as the holder's own joint readings show it: the scope
+withdrawn into its cannula, looking forward and down into the cavity.
+
+**The series and the unit.** The numbers in this manual and `holder_model.py` describe the nominal holder. Every
+unit of the series deviates from it by fixed amounts of its own, within these tolerances (`holder_model.ZERO_TOL`,
+`GAIN_RANGE`, `VIEW_TOL_DEG`):
+
+* each joint's reading is its true value plus a zero offset of up to +-0.015 rad (pan, tilt), +-6 mm (insertion) and
+  +-0.07 rad (roll);
+* each joint moves at its (clipped) command times a gain between 0.8 and 1.2;
+* the scope looks within +-2.5 degrees of its nominal direction of view (d in `R_WC` above is the actual one).
+
+A unit's values are not reported. The graded procedures run on units of their own. Each development recording gives
+the values of the unit it was recorded with, as measured in the lab (`meta.json`); the commissioning procedures run on
+other units of the series, which show what the series is like, not what a graded unit's values are. The view rules
+(section 6) are judged on the true joints and the true direction of view, and a smeared lens is cleaned by the true
+insertion.
 
 ## 3. The servo
 
 The holder takes rate commands, `[pan_rate, tilt_rate, insertion_rate, roll_rate]` in rad/s, rad/s, m/s, rad/s, one
-per control step of 0.1 s. A command is clipped to the rate limits and held for the step. Inside the step the servo
+per control step of 0.1 s. A command is clipped to the rate limits, multiplied by the unit's gains (section 2) and
+held for the step. Inside the step the servo
 runs five ticks of 0.02 s; in each, every joint's rate moves towards the command with a first-order lag of 0.12 s,
 by at most the acceleration limit, and the joint integrates that rate. A joint that reaches a stop stays there with
 zero rate. `holder_model.Holder.tick` is this servo.
 
-The joint readings you receive are the joints at the moment the observation is sent, rounded to 1e-5.
+The joint readings you receive are the unit's readings (its true joints plus its zero offsets, section 2) at the
+moment the observation is sent, rounded to 1e-5.
 
 ## 4. The scopes and the picture
 
@@ -169,12 +186,14 @@ is not asked again until the next procedure begins. It happens when
 * **a critical action is not seen**: fewer than a quarter of the control steps of a critical action have a usable
   view (`CRITICAL_MIN_USABLE`). The critical actions are the moments the surgeon must see: a clip being applied (from
   the moment the clip applier, pushed into the tissue, closes its jaws until it opens them again, 1.2 to 2 s), a
-  needle bite (the first half of the needle driver's loop through the tissue, 0.8 to 1.2 s), and an energy activation
-  (its first second: when smoke starts to rise from the hook's or the scissors' tip). Each is announced by what the
-  instruments do just before (the clip applier advancing on the tissue, the needle driver settling for its bite, the
-  hook or scissors at the tissue during dissection). Critical actions in the first 10 s of a procedure, in the first
-  3 s after the work has moved to a new place, and those that overlap the 4 s from the moment the camera head is
-  knocked (section 4) are not held against the holder.
+  needle bite (the first half of the needle driver's loop through the tissue, 0.8 to 1.2 s), an energy activation
+  (its first second: when smoke starts to rise from the hook's or the scissors' tip), and an inspection (in an
+  exploration, the surgeon holding both instruments still at a place to look at it, until they move on). Each is
+  announced by what the instruments do just before (the clip applier advancing on the tissue, the needle driver
+  settling for its bite, the hook or scissors at the tissue during dissection, the instruments arriving at a new place
+  in an exploration). Critical actions in the first 10 s of a procedure and those that overlap the 4 s from the
+  moment the camera head is knocked (section 4) are not held against the holder; nor are the first 2 s after the work
+  has moved to a new place: a critical action that began earlier counts from then on, if half a second of it is left.
 
 **A procedure the surgeon took the camera back in counts 0.** A holder that had to be taken over did not assist that
 procedure: none of its steps counts as usable, the ones before the takeover included. Nothing else is subtracted, and

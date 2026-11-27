@@ -11,10 +11,12 @@ field, what the surgeon is doing or about to do, which of the two scopes (0 or 3
 the camera head is clamped on the scope (within +-40 degrees; it turns the picture), how old the frame is (1, 2 or 3
 control steps: the operating room's video chain), or which instruments are 5 mm and which 10 mm ones (a 10 mm one is
 the same instrument at twice the size). Each of these differs between procedures, and the camera head is knocked to
-another angle once or twice during a procedure. The tissue moves, and not as one piece: it breathes irregularly, more
+another angle once or twice during a procedure. The holder itself is one unit of a series: its joint readings, its
+servo and its scope deviate from the datasheet by fixed amounts within stated tolerances, and the unit is not
+reported. The tissue moves, and not as one piece: it breathes irregularly, more
 towards the head, and where an instrument holds it, it follows the instrument; instruments work in it, hidden but for
-their shafts, and energy devices hide their tips in smoke. `~/given/holder_manual.md`, sections 4 and 5, states all
-this as a datasheet would.
+their shafts, and energy devices hide their tips in smoke. `~/given/holder_manual.md`, sections 2, 4 and 5,
+states all this as a datasheet would.
 
 ## What a usable view is
 
@@ -32,8 +34,8 @@ A control step's view is usable when (`~/given/holder_manual.md`, section 6, has
 Some mistakes end a procedure for the holder: **the surgeon takes the camera back, and that procedure counts 0**, the
 steps before the takeover included (a holder that had to be taken over did not assist that procedure). That happens when the lens is driven into the tissue (it reaches the tissue closing faster than
 15 mm/s), when the lens touches the tissue a second time in a procedure, and when a critical action (a clip being
-applied, a needle bite, the first second of an energy activation) is seen with a usable view on fewer than a quarter
-of its steps (manual, section 6, has the exact rules and what announces a critical action).
+applied, a needle bite, the first second of an energy activation, an inspection of a place) is seen with a usable
+view on fewer than a quarter of its steps (manual, section 6, has the exact rules and what announces a critical action).
 
 An instrument that is being exchanged does not count while it is away (from the moment it starts to withdraw until it
 is back at its place); the assistant's third instrument, when there is one, never counts.

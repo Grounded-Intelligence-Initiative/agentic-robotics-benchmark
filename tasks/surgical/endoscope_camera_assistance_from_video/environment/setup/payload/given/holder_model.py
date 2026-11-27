@@ -13,7 +13,8 @@ Joints q = [pan, tilt, insertion, roll]:
                                         towards +x for pan > 0, towards +y for tilt > 0
     p    = insertion * a                the lens, `insertion` metres past the RCM along the scope
     R_WC = R_WS . Rz(roll) . Rx(-d) . Rz(h)
-                                        d = the scope's direction of view (0 or 30 degrees): a 30 degree scope looks
+                                        d = the scope's direction of view (nominally 0 or 30 degrees; a unit's actual
+                                        one is within VIEW_TOL_DEG of it, version 0.4): a 30 degree scope looks
                                         30 degrees below its own axis (towards -y of the rolled scope); h = the angle at
                                         which the camera head is clamped on the scope's eyepiece (set by hand for each
                                         procedure, not reported: it turns the picture about the view direction)
@@ -63,6 +64,12 @@ LENS_CLEARANCE = 0.004        # m from the tissue at which the lens touches it
 CLEAN_INSERTION = 0.025       # the lens is wiped while insertion <= this ...
 CLEAN_TIME_S = 10.0           # ... for this long, continuously
 
+# the series (version 0.4): every unit of the holder deviates from the nominal values in this file within these
+# tolerances, fixed for the unit; this file computes the nominal unit (holder_manual.md, section 2)
+ZERO_TOL = (0.015, 0.015, 0.006, 0.07)   # rad, rad, m, rad: a joint's reading = its true value + a fixed offset within +-this
+GAIN_RANGE = (0.8, 1.2)                  # each joint moves at its (clipped) command times a fixed gain within this range
+VIEW_TOL_DEG = 2.5                       # a scope's actual direction of view: its nominal one +- this
+
 # the surgeon takes the camera back (the holder's control of the procedure ends; every step after it is not usable)
 LENS_INJURY_SPEED = 0.015     # m/s: the lens reaching the tissue faster than this injures it
 LENS_CONTACTS_TOLERATED = 1   # a contact after this many in one procedure ends it
@@ -89,12 +96,13 @@ def scope_rotation(q):
     return ry(-float(q[0])) @ rx(float(q[1]))
 
 
-def camera_pose(q, scope, head=0.0):
-    """(R_WC, p): the camera's axes as columns in W, and the lens position. `head`: the camera head's angle on the
-    eyepiece, rad."""
+def camera_pose(q, scope, head=0.0, view_deg=None):
+    """(R_WC, p): the camera's axes as columns in W, and the lens position, for the true joints q. `head`: the camera
+    head's angle on the eyepiece, rad; `view_deg`: the scope's actual direction of view (its nominal one if None)."""
     r_ws = scope_rotation(q)
     p = float(q[2]) * (r_ws @ np.array([0.0, 0.0, -1.0]))
-    r_wc = r_ws @ rz(float(q[3])) @ rx(-math.radians(SCOPES[scope]["view_deg"])) @ rz(float(head))
+    d = SCOPES[scope]["view_deg"] if view_deg is None else float(view_deg)
+    r_wc = r_ws @ rz(float(q[3])) @ rx(-math.radians(d)) @ rz(float(head))
     return r_wc, p
 
 
@@ -124,25 +132,27 @@ def horizon_reference():
     return np.array([0.0, math.cos(a), math.sin(a)])
 
 
-def horizon_error(q, scope, head=0.0):
+def horizon_error(q, scope, head=0.0, view_deg=None):
     """Signed angle (rad) between the image's up direction and the projection of the display's up reference."""
-    r_wc, _ = camera_pose(q, scope, head)
+    r_wc, _ = camera_pose(q, scope, head, view_deg)
     r = horizon_reference()
     return math.atan2(float(r @ r_wc[:, 0]), float(r @ r_wc[:, 1]))
 
 
-def level_roll(pan, tilt, scope="0", head=0.0):
+def level_roll(pan, tilt, scope="0", head=0.0, view_deg=None):
     """The roll at which the horizon error is zero for this pan and tilt. With the camera head at 0 it is the same
     for both scopes (closed form); otherwise it is solved for (Newton's method from the 0 degree scope's answer)."""
     w = scope_rotation([pan, tilt, 0.0, 0.0]).T @ horizon_reference()
     roll = math.atan2(-w[0], w[1]) - float(head)
-    if float(head) == 0.0 or SCOPES[scope]["view_deg"] == 0.0:
+    d = SCOPES[scope]["view_deg"] if view_deg is None else float(view_deg)
+    if float(head) == 0.0 or d == 0.0:
         return math.atan2(math.sin(roll), math.cos(roll))
     for _ in range(20):
-        e = horizon_error([pan, tilt, 0.0, roll], scope, head)
+        e = horizon_error([pan, tilt, 0.0, roll], scope, head, view_deg)
         if abs(e) < 1e-12:
             break
-        de = (horizon_error([pan, tilt, 0.0, roll + 1e-6], scope, head) - horizon_error([pan, tilt, 0.0, roll - 1e-6], scope, head)) / 2e-6
+        de = (horizon_error([pan, tilt, 0.0, roll + 1e-6], scope, head, view_deg)
+              - horizon_error([pan, tilt, 0.0, roll - 1e-6], scope, head, view_deg)) / 2e-6
         roll -= e / (de if abs(de) > 1e-6 else 1.0)
     return math.atan2(math.sin(roll), math.cos(roll))
 
