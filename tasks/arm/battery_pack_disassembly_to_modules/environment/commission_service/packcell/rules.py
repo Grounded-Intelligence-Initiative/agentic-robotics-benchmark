@@ -143,7 +143,7 @@ class Rules(object):
         how = "loose" if self.bit == "EX" else S.BIT_ON_HEAD.get((self.bit, f["head"]))
         if how is None or lat > E[kind]["partial"] or tilt > E["tilt_partial_deg"]:
             return "none"
-        if how == "fit" and lat <= E[kind]["full"] and tilt <= E["tilt_full_deg"]:
+        if how == "fit" and lat <= E["full_by_head"].get(f["head"], E[kind]["full"]) and tilt <= E["tilt_full_deg"]:
             return "full"
         return "partial"
 

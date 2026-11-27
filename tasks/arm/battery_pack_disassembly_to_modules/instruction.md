@@ -13,7 +13,7 @@ see it:
 
 - the **variant** (4, 5 or 6 modules; another lid, another layout), which is not marked on the pack;
 - the pack's **placement** on the fixture (within 12 mm and 1.5 degrees) and every **fastener's position** (within
-  2 mm of the manual's nominal one), while a bit engages only within 0.5 to 0.8 mm, and a bit that is on a head
+  2 mm of the manual's nominal one), while a bit engages only within 0.5 to 1.2 mm, and a bit that is on a head
   without driving it strips the head the moment it is loaded (no reading warns first);
 - every fastener's **head type** (hexagon or Torx, per fastener);
 - **corroded** fasteners, which need more torque than a clean one's breakaway, and **missing** ones;

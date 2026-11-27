@@ -35,7 +35,7 @@ def main():
         # (what the instruction says, the code's value)
         ("within 12 mm and 1.5 degrees", round(1000 * 0.012) == 12 and S.Stream is not None),
         ("within\n  2 mm of the manual's nominal one", True),
-        ("a bit engages only within 0.5 to 0.8 mm", (S.ENGAGE["torx"]["full"], S.ENGAGE["hex"]["full"]) == (0.0005, 0.0008)),
+        ("a bit engages only within 0.5 to 1.2 mm", (S.ENGAGE["torx"]["full"], S.ENGAGE["hex"]["full"], S.ENGAGE["full_by_head"]["S13"]) == (0.0005, 0.0008, 0.0012)),
         ("(up to 15 mm and 1.5 degrees overhead, 4 mm and 1 degree on the wrist)",
          (T["overhead"]["mm"], T["overhead"]["deg"], T["wrist"]["mm"], T["wrist"]["deg"]) == (15.0, 1.5, 4.0, 1.0)),
         ("about\n2.5 mm at the fixture from the overhead camera, 0.3 mm from the wrist camera close up",

@@ -54,8 +54,8 @@ What a turning bit does on a head:
 The bit drives a fastener when all of this holds:
 
 - it is the head's own bit (table above);
-- the bit's axis is within 0.8 mm of the fastener's axis for a socket, 0.5 mm for a Torx bit, and the two axes are
-  within 2 degrees of each other;
+- the bit's axis is within 0.8 mm of the fastener's axis for the 10 mm socket, 1.2 mm for the 13 mm socket (its larger
+  lead-in chamfer), 0.5 mm for a Torx bit, and the two axes are within 2 degrees of each other;
 - the bit is pressed on the head with at least 8 N (the spindle's spring: stroke times the spring rate); a Torx bit
   in addition needs 10 N plus 1.5 N for every N m it holds, turning or stalled at its limit, or it cams out of the
   recess;

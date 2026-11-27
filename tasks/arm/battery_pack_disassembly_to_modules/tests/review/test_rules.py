@@ -687,6 +687,15 @@ def round3_rules():
     s10b = next(f for f in seated if f["head"] == "S10" and f["id"] != s10["id"] and f["status"] == "seated")
     turn(s10b["id"], -60, 5.0, 1, off=0.001)
     assert s10b["stripped"]
+    # ... while the 13 mm socket's lead-in takes a hexagon 1.0 mm off (amended rule 8), not 1.3 mm
+    s13 = [f for f in seated if f["head"] == "S13" and f["status"] == "seated" and not f["corroded"] and not f["seized"]][:2]
+    r.bit = "S13"
+    turn(s13[0]["id"], -300, 30.0, 40, off=0.0010)
+    assert s13[0]["status"] == "captured" and not s13[0]["stripped"]
+    r.captured = None
+    turn(s13[1]["id"], -60, 5.0, 1, off=0.0013)
+    assert s13[1]["stripped"]
+    r.bit = "S10"
     # 24. a weakened shank: elastic wind-up below its yield point, a set above it, sheared at its own shear torque
     r.bit = weak["head"]
     c = weak["compliance"]

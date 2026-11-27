@@ -99,7 +99,9 @@ each other, of the earlier keys and of every seed. For pack k of the set <set> a
 BLAKE2b("<name>|<set>|k", key = the rule's key) read little-endian. The rest follows from packcell/series.py
 (`DAMAGE`, `ENGAGE`, `SHANK`, `TRANSDUCER`, `WORK`, `CONSEQUENCE`, `SWOLLEN3`) and packcell/rules.py.
 
-- Rule 8, precision engagement (no draw). Full engagement within 0.8 mm (socket), 0.5 mm (Torx) and 2 degrees; a bit
+- Rule 8, precision engagement (no draw). Full engagement within 0.8 mm (the 10 mm socket), 1.2 mm (the 13 mm socket;
+  amended 2026-11-27 after the fresh-agent proxies' hidden runs: no value is drawn under this rule), 0.5 mm (Torx) and
+  2 degrees; a bit
   on a head that it does not drive, run with a torque limit of 1 N m or more, strips the head at once (amended before
   any run: the first text said "within 10 degrees of turning", which a slow test turn could still read cheaply); a
   reamed Torx recess takes no extractor.

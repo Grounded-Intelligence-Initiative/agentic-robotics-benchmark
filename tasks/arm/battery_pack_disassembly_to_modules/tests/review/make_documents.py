@@ -476,8 +476,8 @@ What a turning bit does on a head:
 The bit drives a fastener when all of this holds:
 
 - it is the head's own bit (table above);
-- the bit's axis is within %s mm of the fastener's axis for a socket, %s mm for a Torx bit, and the two axes are
-  within %g degrees of each other;
+- the bit's axis is within %s mm of the fastener's axis for the 10 mm socket, %s mm for the 13 mm socket (its larger
+  lead-in chamfer), %s mm for a Torx bit, and the two axes are within %g degrees of each other;
 - the bit is pressed on the head with at least %g N (the spindle's spring: stroke times the spring rate); a Torx bit
   in addition needs %g N plus %g N for every N m it holds, turning or stalled at its limit, or it cams out of the
   recess;
@@ -506,7 +506,7 @@ bit the nutrunner engages nothing else and the bit cannot be exchanged.
 
 A parallel gripper with two long fingers.
 
-""" % (mm(E["hex"]["full"]), mm(E["torx"]["full"]), E["tilt_full_deg"], E["seat_force"], E["torx_force_base"], E["torx_force_per_Nm"],
+""" % (mm(E["hex"]["full"]), mm(E["full_by_head"]["S13"]), mm(E["torx"]["full"]), E["tilt_full_deg"], E["seat_force"], E["torx_force_base"], E["torx_force_per_Nm"],
        mm(E["hex"]["partial"]), mm(E["torx"]["partial"]), E["tilt_partial_deg"], S.DAMAGE["torque"], E["free_torque"],
        mm(E["extractor"]["lateral"]), E["tilt_full_deg"], E["extractor"]["force"], E["extractor"]["torque_factor"]) + table(["", ""], [
         ["mass", "%g kg" % GR["mass"]],

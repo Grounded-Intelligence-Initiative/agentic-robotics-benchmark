@@ -182,7 +182,8 @@ BIT_ON_HEAD = {
 }
 ENGAGE = {
     # lateral offset of the bit's axis from the fastener's (m) and angle between the axes (degrees)
-    "hex": {"full": 0.0008, "partial": 0.0035},       # (rule 8, 2026-11-26: full was 0.0020)
+    "hex": {"full": 0.0008, "partial": 0.0035},       # (rule 8, 2026-11-26: full was 0.0020; S13 below)
+    "full_by_head": {"S13": 0.0012},                  # (rule 8, amended 2026-11-27: a 13 mm socket's lead-in)
     "torx": {"full": 0.0005, "partial": 0.0025},      # (rule 8: full was 0.0012)
     "tilt_full_deg": 2.0, "tilt_partial_deg": 8.0,    # (rule 8: full was 3.0)
     "seat_force": 8.0,                 # axial force (N) below which the bit is not seated
@@ -279,7 +280,8 @@ FOAM = {"dev": (1, 0, 1, 0), "hidden": (2, 1, 1, 2, 0, 1), "max": 2, "weights": 
 # still has to do well, and mistakes that cannot be undone.
 #
 # Rule 8, precision engagement (a rule; nothing drawn). ENGAGE's full tolerances are 0.8 mm for a socket, 0.5 mm for a
-# Torx bit and 2 degrees (they were 2.0 mm, 1.2 mm and 3 degrees). A bit that is on a head without driving it (outside
+# Torx bit and 2 degrees (they were 2.0 mm, 1.2 mm and 3 degrees); the 13 mm socket 1.2 mm (amended 2026-11-27, after
+# the fresh-agent proxies' runs: its larger lead-in chamfer; ENGAGE["full_by_head"]). A bit that is on a head without driving it (outside
 # the full tolerances, one size off, a Torx bit that cams out for want of force), run with a torque limit of
 # DAMAGE["torque"] or more, strips the head at once (amended 2026-11-26 21:00, before any run: it was "within 10 degrees
 # of turning", which a slow test turn could still read cheaply); below that limit the spindle stalls on the head and
