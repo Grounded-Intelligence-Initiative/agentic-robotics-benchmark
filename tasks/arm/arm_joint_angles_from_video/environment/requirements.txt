@@ -1,0 +1,10 @@
+# The task image's Python dependencies (installed into /opt/venv by environment/Dockerfile).
+mujoco==4.0.1
+numpy==2.5.4
+scipy==1.18.1
+opencv-python-headless==5.0.0.93
+pillow==13.0.0
+matplotlib==3.11.2
+scikit-image==0.26.0
+scikit-learn==1.9.1
+trimesh==5.2.1
