@@ -190,4 +190,39 @@ The anchor: `tests/anchor.json` (the status log gives the runs).
 
 ## 6. Status log
 
-(dated entries follow)
+**2026-11-27, 12:56 to 16:10 (the author's validate host; native Isaac Sim 6.2, RTX 3090, driver 535).** Built in
+one session, with the generic modules of `arm/battery_pack_disassembly_to_modules`.
+
+- *The cell.* A first design with a 0.20 m tool, a 28 mm mouth, three approach directions and stiff trusses did not
+  let even the privileged reference work reliably, and was changed before any hidden value was drawn: the UR20's wrist
+  under an upper truss (the tool is now 0.36 m long), a truss that jams between clamp and crate floor on stiff joints
+  (a truss is now a floppy chain that turns about its own axis), trusses sprawling into the next lane (crates now have
+  three bays), side approaches that swept the wrist through the neighbouring plant and flipped it over the crate (one
+  stated approach). Per control tick the cell takes 10 to 15 ms (the physics engine's write-back to the stage off).
+- *Rules before draws.* `review/select_set.py` with rules 1 to 4 was committed in `cd6cf609`; the four keys were
+  drawn and the sets written in `43aaafc9`. No row was drawn again.
+- *The reference on review rows* (cultivar Rossa, seeds 1 to 14, outside both sets; 71 ready trusses): every ready
+  truss delivered on twelve rows, one truss each lost on two (pressed onto a crate's floor with 27 and 31 N while
+  being laid down). The lay-down was changed (an arc about the truss's lowest fruit, followed by the wrench, 3 cm/s,
+  guarded at 2.5 N); the four rows re-run after it, those two among them: all delivered, the largest press 12.8 N, the
+  largest change of a fruit's velocity 0.83 m/s. Two review rows of the practice cultivar ran as well (below).
+- *The grader end to end, natively* (`tests/verify.py` as an ordinary account, the canary included): no submission
+  0 (no simulator started); the example program 0 on all six rows; the reference `mean_row_yield` 1.00000 (27 of 27
+  ready trusses; 218, 241, 270, 356, 251, 300 steps; 214 to 328 s simulated; probe lock 39 of 40, 5 idle; the whole
+  verify 599 s), twice, on the tree of `43aaafc9` and on the final tree; a blind replay of the reference's recorded
+  actions on hidden row 0: probe lock 0 of 4, reward 0 (it delivered one truss of four).
+- *The allowance.* 430 s of simulated time a row section, 1.31 times the reference's slowest hidden row (328 s).
+- *Tightened before the first frontier episode* (the reference's margins untouched): the mouth's depth 20 to 14 mm,
+  the crush ratio 1.6 to 1.4 (the reference cuts at 1.15 times a peduncle's cutting force), 400 frames a row (600).
+- *The commissioning path, natively*: the daemon as an ordinary account, `run_session.py` with the example program
+  on practice row 1 (Ambra, 5 ready trusses): the session opened in 33 s, the frame arrived, the count went 3 to 2.
+- *The camera-only check* (frames saved from two review rows with truth beside them; CPU only; first pass). The
+  wrist camera's mounting from six views of the plate with OpenCV's chessboard detector and `solvePnP` (the board's
+  labelling taken from the nominal mounting): a point 0.30 m in front of the camera is 9.6 mm off through the nominal
+  mounting (a test offset of 3.5, -4.2, 2.1 mm and 0.9, -1.2, 0.6 degrees) and 0.43 and 0.56 mm off through the
+  identified one. A peduncle from eight colour views 0.36 to 0.42 m away (no depth; a line fitted to the thin green
+  stalk that leaves the stem, the planes through the cameras intersected): on the first row all four cut points
+  within 1.7 mm across the mouth and 1.7 mm along the approach (medians 1.2 and 1.5 mm); on the second row two of
+  five within 1.2 mm and three wrong by 10 to 22 mm, where the quick detector took another stalk in some views. The
+  mouth takes about 5 mm across and 7 mm along. So the information is in the frames, and a detector has to be more
+  careful than this one among leaves; a full program without the privileged view is open work.
