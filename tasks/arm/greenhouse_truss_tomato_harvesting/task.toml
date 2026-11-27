@@ -15,7 +15,7 @@
 # leaves hang in front), the ripeness of every fruit (a truss is ready by its cultivar's rule, read off the colour
 # chart under a grow light whose brightness and colour are the row's own), the robot's camera mounting, each
 # peduncle's thickness and the row's toughness (a cut takes toughness times cross-section; the pad crushes a peduncle
-# pressed with more than 1.6 times its own cutting force), how stiffly the plants stand, and how much the cart's
+# pressed with more than 1.4 times its own cutting force), how stiffly the plants stand, and how much the cart's
 # wheels slip. A peduncle is a few millimetres thick and gives the depth sensor no reading; the mouth is 16 mm wide.
 # The cut and the hold are rules on what lies across the mouth (rowcell/rules.py); the plants (stems on support
 # strings, trusses and leaves on compliant joints), the trusses carried and laid in the crates, and every contact are

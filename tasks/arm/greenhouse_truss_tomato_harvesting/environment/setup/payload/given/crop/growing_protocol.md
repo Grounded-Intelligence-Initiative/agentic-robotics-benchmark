@@ -150,7 +150,7 @@ alike.
   and crates presses on one of its fruits or on its rachis with more than 25 N (the contact force, looked at once per
   control tick): a fruit pushed against a crate's wall, a truss pressed onto a crate's floor, an arm that leans on a
   truss on its plant.
-- **Crushed.** A peduncle that the clamp pad presses with more than 1.6 times that peduncle's own cutting force is
+- **Crushed.** A peduncle that the clamp pad presses with more than 1.4 times that peduncle's own cutting force is
   crushed, and its truss is waste (`../tool/cutter_gripper.md`, section 3).
 - **One layer.** A crate takes one layer of trusses. A truss that lies on another damages both: neither counts. A
   truss lies on another when one of its fruits rests on one of the other's (they touch, their centres closer than 1.1

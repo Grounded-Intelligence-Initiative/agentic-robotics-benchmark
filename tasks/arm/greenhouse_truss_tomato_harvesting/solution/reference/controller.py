@@ -9,7 +9,7 @@ program's. Without `truth` it ends the row at once.
 What it does for a ready truss: drives the cart until the plant is in front of the robot; picks, among the three
 stated approach directions, one along which the tool reaches the cut point without touching a stem, a fruit, another
 peduncle or a leaf; goes there in a straight line, following the peduncle as it moves; closes the jaws gently (the
-opening then reads the peduncle's diameter), then with 1.25 times the peduncle's cutting force; draws the truss out
+opening then reads the peduncle's diameter), then with 1.15 times the peduncle's cutting force; draws the truss out
 the way the tool came, swings it over a crate by the base joint with the tool as it was when it cut (the truss hangs
 as it hung on the plant), turns the tool upright with its x axis along a free lane, lowers the truss until its lowest
 fruit is just over the crate's floor, lays it down along the lane on an arc about that fruit, and opens the jaws.
@@ -302,10 +302,10 @@ class Reference(object):
         obs = yield from self.hold(14, grip=(0.0, 4.0))
         d_read = obs["gripper"]["opening"]
         need = obs["truth"]["trusses"][tid]["need"]
-        obs = yield from self.hold(10, grip=(0.0, 1.25 * need))
+        obs = yield from self.hold(10, grip=(0.0, 1.15 * need))
         truth = obs["truth"]
         self.log("%s: approach %+.0f (clear %.3f m), caliper %.2f mm, cut at %.0f N -> %s" % (
-            tid, alpha, clear, d_read * 1000, 1.25 * need, truth["trusses"][tid]["status"]))
+            tid, alpha, clear, d_read * 1000, 1.15 * need, truth["trusses"][tid]["status"]))
         T_now = T_of(truth["tcp_target"])
         T_out = mk(T_now[:3, :3], T_now[:3, 3] - BACK * T_now[:3, 2])
         T_back = mk(T_now[:3, :3], np.array([min(T_out[0, 3], 0.80), T_out[1, 3], T_out[2, 3]]))

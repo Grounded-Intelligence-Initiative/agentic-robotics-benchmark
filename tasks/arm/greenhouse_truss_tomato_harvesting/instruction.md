@@ -14,7 +14,7 @@ there, in a single layer. No two row sections are the same, and nothing on the r
 differs. You have to see it and measure it:
 
 - **where everything is**: stems lean, every truss hangs at a height and to a side of its own, and a peduncle is 45
-  to 75 mm long and 4.4 to 6.4 mm thick. The mouth that takes it is 16 mm wide and 20 mm deep, between jaws that
+  to 75 mm long and 4.4 to 6.4 mm thick. The mouth that takes it is 16 mm wide and 14 mm deep, between jaws that
   push aside whatever they do not take in;
 - the **leaves**, which hide trusses and peduncles from the cameras and stand in the tool's way (the grower takes
   off enough of them to leave every ready truss the one straight approach the growing protocol states, and no
@@ -27,7 +27,7 @@ differs. You have to see it and measure it:
   pictures;
 - each peduncle's **thickness** and the row's **toughness** (2.4 to 5.2 N per mm^2 of cross-section): a stalk is cut
   by a closing force of the toughness times its cross-section or more, and a peduncle is crushed by a pad that
-  presses it with more than 1.6 times its own cutting force;
+  presses it with more than 1.4 times its own cutting force;
 - how far the **stems and their strings** give way: a plant yields to what touches it and swings back;
 - the **rails**: the cart's wheels slip by 2 to 9 % (the row's own figure), so its odometer over-reads.
 
@@ -133,7 +133,7 @@ with.
 
 The grader runs your program on a fixed hidden set of **six row sections** of the cultivar Rossa, one after the
 other, each worked by a robot unit of its own (with its own camera mounting), with these limits per row section:
-900 s of simulated time, 600 camera frames, 20000 steps, and 1200 s of your program's own time (the time the grader
+430 s of simulated time, 400 camera frames, 20000 steps, and 1200 s of your program's own time (the time the grader
 waits for your answers, summed; simulation and rendering are not counted). The budget is checked before each
 request, so the answer that crosses it is still carried out.
 

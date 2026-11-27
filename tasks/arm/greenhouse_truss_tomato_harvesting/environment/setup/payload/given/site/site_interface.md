@@ -165,7 +165,7 @@ counting down); moves of the arm commanded meanwhile are ignored. The robot work
 protective stop of a row section the safety controller latches** and the row section ends there (`stops_latched`), as
 a robot that needs a person to reset it does; what was delivered by then counts.
 
-**What ends a row section**: `done`; the simulated time is used up (`sim_cap`, 900 s per row section); the protective
+**What ends a row section**: `done`; the simulated time is used up (`sim_cap`, 430 s per row section); the protective
 stops latch (`stops_latched`). After the end the arm holds its pose and everything is left to come to rest for 2 s
 before the row section is judged (section 8); the greenhouse's rules apply to what happens to a truss in that time
 too. A request after the end changes nothing. Nothing on the wire reports a cut, a fall, a bruise, a crushed peduncle
@@ -205,7 +205,7 @@ the side. The bit patterns (1: white) and the poses (4 x 4 matrices, row frame) 
 
 ## 6. Cameras
 
-Frames are rendered only when an action asks for them, at most 600 per row section in all (each camera of each request
+Frames are rendered only when an action asks for them, at most 400 per row section in all (each camera of each request
 counts one); a request that would pass the budget gets no frame and the event `cams: refused, the frame budget is used
 up`. `rgb` is a PNG (base64), `depth` a 16-bit PNG (base64) of the distance along the optical axis in units of
 `depth_unit_m` (0.1 mm), 0 where there is no reading. `rowcell_client.decode_rgb` and `rowcell_client.decode_depth`
@@ -309,7 +309,7 @@ section. The colour image shows all of it; the depth does not depend on it.
 
 ## 7. Budgets
 
-Per row section: 900 s of simulated time (`time_left`), 600 frames (`frames_left`), 20000 steps, and 1200 s of your
+Per row section: 430 s of simulated time (`time_left`), 400 frames (`frames_left`), 20000 steps, and 1200 s of your
 program's own time: the time the grader waits for your answers, summed (the cell's simulation and rendering are not
 counted). Every single answer within 30 s. The time budget and the step limit are checked before each request: the
 answer that crosses the budget is still carried out, and the row section ends before the next request.

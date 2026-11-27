@@ -155,7 +155,7 @@ TOOL = {
     "body": {"size": [0.060, 0.060], "z": [0.012, 0.100]},
     "neck": {"size": [0.026, 0.044], "z": [0.100, 0.340]},       # long and slender: the robot's wrist stays out of the canopy
     "jaw": {"x": [-0.013, 0.009], "t": 0.008, "z": [0.340, 0.370]},
-    "open_max": 0.016, "mouth_z": [0.348, 0.368],
+    "open_max": 0.016, "mouth_z": [0.353, 0.367],
     "blade_x": 0.005, "clamp_x": -0.008,
     "jaw_speed": 0.040,                  # m/s of opening
     "force_max": 600.0,                  # N
@@ -167,7 +167,7 @@ TOOL = {
 # The cut and the crush (rules, `rules.py`): a member of cross-section A (mm^2) is cut through by a closing force of
 # toughness x A newtons or more, where the toughness is the row's (N/mm^2; the season, the irrigation); the clamp
 # pad crushes a peduncle it presses with more than `crush` times that member's own cutting force.
-CUT = {"toughness": (2.4, 5.2), "crush": 1.6, "stem_factor": 1.0}
+CUT = {"toughness": (2.4, 5.2), "crush": 1.4, "stem_factor": 1.0}
 
 # What ends a truss's worth (rules, `rules.py`); stated in the growing protocol as the greenhouse's rules.
 DAMAGE = {

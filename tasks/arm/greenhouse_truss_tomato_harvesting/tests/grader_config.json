@@ -4,7 +4,7 @@
   "step_timeout_s": 30,
   "controller_budget_s": 1200,
   "max_steps": 20000,
-  "cell": {"sim_cap_s": 900.0, "frame_budget": 600},
+  "cell": {"sim_cap_s": 430.0, "frame_budget": 400},
   "cell_start_timeout_s": 900,
   "cell_reply_timeout_s": 600,
   "cell_account": "rowcell",

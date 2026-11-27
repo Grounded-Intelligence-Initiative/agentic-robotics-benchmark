@@ -67,7 +67,7 @@ write-back at every step cost four times the simulation).
 
 - *The cut is a rule on what lies across the mouth, not fracture mechanics.* Everything the blade can meet is a
   straight member with a radius (a stem segment, a peduncle, a rachis segment, a petiole). A member is in the mouth
-  at a plane when its axis crosses that plane between the jaws and between the throat and the tips (16 mm wide, 20 mm
+  at a plane when its axis crosses that plane between the jaws and between the throat and the tips (16 mm wide, 14 mm
   deep); closing jaws push what is between them to the middle, so a member that was in the mouth at any tick of a
   closing stays caught while it is there. The jaws meet the thickest caught member at the blade's plane when the
   opening equals its diameter: with a closing force of the row's toughness times the member's cross-section or more
@@ -76,7 +76,7 @@ write-back at every step cost four times the simulation).
 - *The hold is a rule.* The pad, 13 mm to one side of the blade, takes hold of every caught member at its own plane
   that the jaws have closed down to (a fixed joint to the tool carrier, created with the pose the body has: no
   snapping) and keeps it while the jaws stay closed on it with 3 N or more. A cut peduncle stays in the tool only when
-  the pad is on the truss's side of the cut. A peduncle the pad presses with more than 1.6 times its own cutting
+  the pad is on the truss's side of the cut. A peduncle the pad presses with more than 1.4 times its own cutting
   force is crushed.
 - *What bruises is two thresholds on the physics engine's state.* A rachis body (with its fruits) whose velocity
   changes by more than 1.5 m/s within one control tick (a fall of 11 cm, a blow, a plant that is yanked and snaps
@@ -98,7 +98,7 @@ leaf or a truss aside (which is what makes a target move), the wrench, the prote
 
 - *A target thinner than the sensor resolves, in a mouth just wider than careful perception is accurate.* A peduncle
   is 4.4 to 6.4 mm thick and gives the depth channel no reading at any distance; the mouth takes it within about
-  +-5 mm across and +-10 mm along the tool's axis, and the jaws' bodies push away what they do not take in (the
+  +-5 mm across and +-7 mm along the tool's axis, and the jaws' bodies push away what they do not take in (the
   truss then swings). Through the nominal camera mounting the tool centre point is 6 mm off in the typical robot and
   up to 14 mm (`MOUNT_TOL`), so the mounting has to be identified (the plate), and the peduncle located from colour
   views (section 5 gives the figure a careful triangulation reaches).
@@ -106,7 +106,7 @@ leaf or a truss aside (which is what makes a target move), the wrench, the prote
   ones often one fruit short of the rule.
 - *Irreversible facts*: the blade cuts whatever is caught once the force is enough (a stem takes four to eight times
   a peduncle's force: a closing at full force cuts it, a closing with a peduncle's force stalls on it and reads its
-  diameter); a force above 1.6 times a peduncle's own cutting force crushes it, and the row's toughness is not on
+  diameter); a force above 1.4 times a peduncle's own cutting force crushes it, and the row's toughness is not on
   the wire; the pad on the plant's side drops the truss; a truss dropped, struck or pressed is waste; a crate takes
   one layer.
 - *Conditions of the job* (the merged arm tasks' own: `kitchen_appliance_tending`, `lab_sample_handling`): a two-hour
@@ -147,7 +147,7 @@ grader's deadlines and repeated steps, and prints what the program saw).
 - The verdict's metrics count each ending, the trusses delivered, cut unready and damaged, plants lost, leaves cut,
   and the run's largest distance to each cliff (`margin_cut_y_mm`, `margin_cut_z_mm`: how far off the mouth's centre
   a cut member was; `margin_cut_force_ratio`, `margin_pad_ratio_max`: force over a peduncle's cutting force, against
-  the crush ratio 1.6; `margin_dv_max` against 1.5 m/s; `margin_press_max` against 25 N).
+  the crush ratio 1.4; `margin_dv_max` against 1.5 m/s; `margin_press_max` against 25 N).
 - A failure of the cell itself, more than 64 processes of the agent's account, and the grader's own deadline are
   handled as in `arm/battery_pack_disassembly_to_modules` (the code is that task's): the controller stopped and its
   account emptied before one retry; a second failure scored when the controller ran beside it; a verdict from the
@@ -160,7 +160,7 @@ the submission carries a 256-bit token, the grader then adds `truth` (every stem
 physics has it, which trusses are ready, each peduncle's cutting force, the cart's true place and slip, the exact
 commanded targets) to its observations. With that it skips perception and identification; every motion, cut and
 truss laid down goes through the public actions, rules and physics. For a ready truss: the cart to the plant; the
-stated approach, followed onto the peduncle as it moves; a gentle closing (the opening reads the diameter), then 1.25
+stated approach, followed onto the peduncle as it moves; a gentle closing (the opening reads the diameter), then 1.15
 times the peduncle's cutting force; out by the way that leaves the tool and the hanging truss clear; over a crate by
 the base joint with the tool as it was (the truss hangs as it hung); the tool upright over a free bay; the truss laid
 down by feel (the clamp goes along the bay and comes down only while the wrench shows the truss not pushing back);
@@ -185,7 +185,7 @@ The anchor: `tests/anchor.json` (the status log gives the runs).
 - **Reproducibility.** PhysX on the CPU repeats a run on one machine; across CPUs it is not expected to be
   bit-identical, and the renderer is not repeatable even on one GPU. The yield reads where bodies lie and what
   happened to them.
-- **The values of the thresholds** (1.5 m/s, 25 N, 1.6, the mouth's size) are the author's; they live in
+- **The values of the thresholds** (1.5 m/s, 25 N, 1.4, the mouth's size) are the author's; they live in
   `rowcell/farm.py` and the documents follow them (`review/make_documents.py`).
 
 ## 6. Status log

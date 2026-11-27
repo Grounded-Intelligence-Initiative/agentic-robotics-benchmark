@@ -131,8 +131,8 @@
   },
   "open_max": 0.016,
   "mouth_z": [
-   0.348,
-   0.368
+   0.353,
+   0.367
   ],
   "blade_x": 0.005,
   "clamp_x": -0.008,
@@ -590,7 +590,7 @@
    2.4,
    5.2
   ],
-  "crush": 1.6
+  "crush": 1.4
  },
  "damage": {
   "impact_dv": 1.5,
@@ -741,7 +741,7 @@
   "overload_torque": 45.0,
   "overload_joint_error": 0.12,
   "stop_lock_s": 3.0,
-  "sim_cap_s": 900.0,
-  "frame_budget": 600
+  "sim_cap_s": 430.0,
+  "frame_budget": 400
  }
 }

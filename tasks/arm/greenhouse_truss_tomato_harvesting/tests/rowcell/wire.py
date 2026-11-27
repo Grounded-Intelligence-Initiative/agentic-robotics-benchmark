@@ -25,7 +25,7 @@ from . import farm as F
 from . import kin
 
 DEFAULTS = {
-    "sim_cap_s": 900.0, "frame_budget": 600, "max_ticks": 40,
+    "sim_cap_s": 430.0, "frame_budget": 400, "max_ticks": 40,
     "tcp_speed_max": 0.5, "tcp_rot_speed_max": 1.6, "joint_speed_max": [1.2, 1.2, 1.6, 2.0, 2.0, 2.0],
     "overload_force": 140.0, "overload_torque": 45.0, "overload_joint_error": 0.12, "stop_lock_s": 3.0,
     "settle_s": 2.0, "start_settle_s": 2.5,

@@ -4,8 +4,8 @@
  "start_timeout_s": 900,
  "busy_wait_s": 120,
  "cell": {
-  "sim_cap_s": 900.0,
-  "frame_budget": 600
+  "sim_cap_s": 430.0,
+  "frame_budget": 400
  },
  "rows": [
   {

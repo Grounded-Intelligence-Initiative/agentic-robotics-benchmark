@@ -16,8 +16,8 @@ has the same axes and its origin at the tool centre point. Body and neck are box
 | body | 60 x 60 (x by y), from z = 12 to 100 |
 | neck | 26 x 44 (x by y), from z = 100 to 340 |
 | jaws | two bars, each from x = -13 to 9, 8 thick (along y), from z = 340 to 370; they close along y, symmetrically about the tool axis |
-| mouth | the gap between the jaws: 0 to 16 wide (along y), from z = 348 (the throat) to 368 (the tips) |
-| tool centre point | the mouth's centre: on the tool axis at z = 360, the throat 12 behind it and the tips 8 ahead of it |
+| mouth | the gap between the jaws: 0 to 16 wide (along y), from z = 353 (the throat) to 367 (the tips) |
+| tool centre point | the mouth's centre: on the tool axis at z = 360, the throat 7 behind it and the tips 7 ahead of it |
 | blade | in the plane x = 5 |
 | clamp pad | in the plane x = -8: on the -x side of the blade, 13 from it |
 | wrist camera | its housing a box of 36 x 44 x 40 (x, y, z) centred at [-79, 0, 186]: on the -x side of the tool |
@@ -43,8 +43,8 @@ rachis, a leaf's petiole (growing protocol, section 1). Fruits and leaf blades a
 nothing to them, and the tool's bodies push and press them like any body.
 
 - **In the mouth.** A stalk is in the mouth at a plane x = X when its axis crosses that plane between the jaws'
-  colliders (within half the open mouth's width of the tool axis, along y) and between the throat and the tips (from
-  12 mm behind to 8 mm ahead of the tool centre point, along z). The stalk's axis decides, not its thickness.
+  colliders (within half the open mouth's width of the tool axis, along y) and between the throat and the tips (from 7
+  mm behind to 7 mm ahead of the tool centre point, along z). The stalk's axis decides, not its thickness.
 - **Closing.** On their way to the target opening the jaws meet, at the blade's plane, the thickest uncut stalk that
   is in the mouth there, when the opening has come down to its diameter. With a closing force of that stalk's cutting
   force or more, the blade cuts it through at once and the jaws go on, to the next stalk or to the target. With less,
@@ -68,7 +68,7 @@ nothing to them, and the tool's bodies push and press them like any body.
   blade's plane. When it crosses the pad's plane nearer to the main stem than the cut, or not inside the mouth (beyond
   the throat or the tips), nothing holds the truss and it falls.
 - **Crushing.** The pad presses what it holds with the closing force. A peduncle the pad holds while the closing force
-  is above 1.6 times that peduncle's own cutting force is crushed, at the cut or at any time after it (growing
+  is above 1.4 times that peduncle's own cutting force is crushed, at the cut or at any time after it (growing
   protocol, section 5).
 
 What the blade can meet, over both cultivars and all rows, and what a cut does:
