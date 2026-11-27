@@ -1,8 +1,8 @@
-"""scripts/trajectories.py: inventory, curate, export, scan and upload on a synthetic runs directory.
+"""scripts/trajectories.py: inventory, curate, export, scan and tasklog on a synthetic runs directory.
 
 The episodes here are written by hand in the engine's record shapes (vendor/ale/docs/specs/trace.md): lock.json,
 result.json, verification.json, an ATIF trajectory.json with a picture in blobs/, the transport and execution traces,
-and a run-level resources.jsonl from the sampler. No engine, docker or network is needed; rclone is replaced by a fake.
+and a run-level resources.jsonl from the sampler. No engine, docker or network is needed.
 """
 
 from __future__ import annotations
@@ -279,44 +279,6 @@ def test_scan_reports_configured_secrets_and_token_patterns(tmp_path, capsys):
     assert TR.main(["scan", str(tree), "--secrets-from", str(env)]) == 0
 
 
-class FakeRclone:
-    """Records rclone calls; `lsf` lists what `listing` holds."""
-
-    def __init__(self, listing=""):
-        self.calls, self.listing = [], listing
-
-    def __call__(self, args, dry_run=False, check=True):
-        self.calls.append(list(args))
-
-        class Result:
-            returncode, stdout, stderr = 0, (self.listing if args[0] == "lsf" else ""), ""
-        return Result()
-
-
-def test_upload_refuses_a_secret_and_copies_checks_and_prunes(tmp_path, monkeypatch):
-    archive, folder, _ = export(tmp_path)
-    monkeypatch.setattr(TR.shutil, "which", lambda name: "/usr/bin/" + name)
-    rel = folder.relative_to(archive).as_posix()
-    stale = "demo_task/claude-code_claude-opus-5-5_effort-high/opus-r0__gii.demo_task-00000000/"
-    fake = FakeRclone(listing=f"demo_task/\ndemo_task/claude-code_claude-opus-5-5_effort-high/\n{rel}/\n{stale}\n"
-                              "index/\n")
-    monkeypatch.setattr(TR, "rclone", fake)
-    (folder / "artifacts").mkdir(exist_ok=True)
-    (folder / "artifacts" / "leak.txt").write_text(f"export KEY={FAKE_ANTHROPIC}\n")
-    args = ["upload", "--archive", str(archive), "--dest", "remote:trajectories"]
-    assert TR.main(args) == 1 and fake.calls == []                       # refused before any copy
-    assert TR.main(args + ["--accept", f"{rel}/artifacts/leak.txt"]) == 0
-    (folder / "artifacts" / "leak.txt").unlink()
-    fake.calls.clear()
-    assert TR.main(args + ["--prune"]) == 0
-    verbs = [(c[0], c[2] if len(c) > 2 and c[0] in ("copy", "copyto") else c[1]) for c in fake.calls]
-    assert ("copy", f"remote:trajectories/{rel}") in verbs
-    assert ("check", "--one-way") in verbs
-    assert ("copyto", "remote:trajectories/index.json") in verbs
-    purged = [c[1] for c in fake.calls if c[0] == "purge"]
-    assert purged == ["remote:trajectories/" + stale.rstrip("/")]        # only the folder index.csv no longer lists
-
-
 def test_index_csv_round_trip_and_unsafe_folders(tmp_path):
     rows = [{"task": "t", "agent": "a", "score": 0.5, "status": "completed", "run_date": "2026-11-01",
              "task_commit": "", "run": "r", "episode": "e", "regrade": "", "notes": "", "folder": "t/a/r__e"}]
@@ -338,10 +300,133 @@ def test_helpers():
     assert TR.cap("x" * 100, 40).count("characters left out") == 1
 
 
-def test_the_script_holds_no_machine_path_remote_or_key():
-    """Every machine path, remote and destination is a parameter: none is written into the script."""
+def test_the_script_holds_no_machine_path_or_key():
+    """Every machine path is a parameter: none is written into the script."""
     text = (ROOT / "scripts" / "trajectories.py").read_text(encoding="utf-8")
-    assert not re.search(r"/home/(?!user\b)|/data/|/mnt/|root_folder_id|\.config/rclone", text)
-    assert not re.search(r"\b[a-z0-9_]+_drive:|\bgdrive:", text)
+    assert not re.search(r"/home/(?!user\b)|/data/|/mnt/", text)
     for pattern in TR.TOKEN_RX.values():
         assert not pattern.search(text.encode())
+
+
+def test_the_script_records_locally_and_uploads_nothing():
+    """The script records, selects, exports and scans on the local disk; it has no command that sends anything."""
+    sub = next(a for a in TR.build_parser()._actions if a.dest == "cmd")
+    assert set(sub.choices) == {"inventory", "curate", "export", "scan", "sample", "tasklog"}
+
+
+# ------------------------------------------------------------------------------------------------ task logs
+def tasklog_setup(tmp_path: Path) -> tuple[Path, Path]:
+    """A checkout whose task.toml names its platform, and a runs directory: an earlier scored episode, the latest
+    scored one (with a local path and a gateway URL in its records and an over-large artifact) and a newer one
+    lost to the infrastructure without a score."""
+    repo = make_repo(tmp_path)
+    toml = repo / "tasks" / "arm" / "demo_task" / "task.toml"
+    toml.write_text(toml.read_text() + '\n[metadata]\nplatform = "swarm"\n')
+    runs = tmp_path / "runs"
+    make_episode(runs, "r1", "gii.demo_task-00000001", reward=0.1, start=0)
+    ep = make_episode(runs, "r2", "gii.demo_task-00000002", reward=0.4, start=100)
+    make_episode(runs, "r3", "gii.demo_task-00000003", reward=None, start=200, status="env_error")
+    lock = json.loads((ep / "lock.json").read_text())
+    lock["task"]["source"] = {"kind": "local", "path": str(tmp_path / "private" / "copies" / "demo_task")}
+    lock["gateway"] = {"base_url": "http://127.0.0.1:4010/v1"}
+    (ep / "lock.json").write_text(json.dumps(lock))
+    execution = [
+        {"kind": "command_started", "execution_id": "setup-1", "phase": "setup", "argv": ["bash", "setup.sh"],
+         "timestamp": ts(101)},
+        {"kind": "command_finished", "execution_id": "setup-1", "phase": "setup", "exit_code": 0,
+         "stdout": {"inline": "set up"}, "stderr": {"inline": ""}, "duration_ms": 1000},
+        {"kind": "command_started", "execution_id": "verify-2", "phase": "verify", "argv": ["bash", "test.sh"],
+         "timestamp": ts(406)},
+        {"kind": "command_finished", "execution_id": "verify-2", "phase": "verify", "exit_code": 0,
+         "stdout": {"inline": "verifier out"}, "stderr": {"path": "verify-2.stderr.txt"}, "duration_ms": 5000},
+    ]
+    (ep / "trace.execution.jsonl").write_text("".join(json.dumps(e) + "\n" for e in execution))
+    (ep / "verify-2.stderr.txt").write_text("grader: 24 missions scored\n")
+    (ep / "artifacts" / "submission").mkdir(parents=True)
+    (ep / "artifacts" / "submission" / "solve.py").write_text("print('solve')\n")
+    (ep / "artifacts" / "submission" / "big.bin").write_bytes(b"\0" * 3000)
+    return repo, runs
+
+
+def run_tasklog(tmp_path: Path, repo: Path, runs: Path, *extra: str) -> int:
+    return TR.main(["tasklog", "--runs-dir", str(runs), "--out", str(tmp_path / "dataset"), "--repo", str(repo),
+                    "--tasks-dir", str(repo / "tasks"), "--max-file-mb", "0.002",
+                    "--scrub-path", str(tmp_path / "private"), "--title", "Demo task logs", *extra])
+
+
+def test_tasklog_names_and_selection(tmp_path):
+    assert TR.model_short("claude-opus-5-5") == "claude_opus55" and TR.model_short("claude-opus-5") == "claude_opus5"
+    assert TR.model_short("claude-fable-5-1") == "claude_fable51" and TR.model_short("gpt-5.1-codex") == "gpt_5_1_codex"
+    assert TR.tasklog_agent("claude-sonnet-5-5", "claude-code", None) == "claude_sonnet55-claude_code-default"
+    assert TR.tasklog_agent("x-model", "codex", "max", {"x-model": "xm"}) == "xm-codex-max"
+    runs = tmp_path / "runs"
+    old, new = "sha256:" + "a" * 64, "sha256:" + "b" * 64
+    make_episode(runs, "r1", "demo_task-00000001", reward=0.9, start=0, digest=new)
+    make_episode(runs, "r2", "demo_task-00000002", reward=0.2, start=100, digest=new)        # the latest scored
+    make_episode(runs, "r3", "demo_task-00000003", reward=None, start=200, digest=new, status="env_error")
+    make_episode(runs, "f1", "demo_task-00000004", model="claude-fable-5-1", reward=0.5, start=50, digest=old)
+    kept, left = TR.select_task_logs(inventory(runs), {"demo_task"})
+    assert [(k["agent_name"], k["episode"]) for k in kept] == [("claude_opus55-claude_code-high", "demo_task-00000002")]
+    assert [(x["agent"], x["why"][:40]) for x in left] == [
+        ("claude_fable51-claude_code-high", "measured only on an earlier version of t")]
+    assert TR.select_task_logs(inventory(runs), {"another_task"}) == ([], [])
+
+
+def test_tasklog_writes_the_layout_scrubs_our_records_and_the_index(tmp_path):
+    repo, runs = tasklog_setup(tmp_path)
+    assert run_tasklog(tmp_path, repo, runs) == 0
+    root = tmp_path / "dataset"
+    folder = root / "swarm" / "demo_task" / "claude_opus55-claude_code-high"
+    for name in ("run.json", "README.md", "trajectory.json", "trajectory.jsonl.gz", "steps.bin", "results/result.json",
+                 "results/verification.json", "results/lock.json", "results/resources.jsonl", "verifier/stdout.txt",
+                 "verifier/stderr.txt", "verifier/diagnostic.txt", "stages/setup-1.stdout.txt", "stages/commands.json",
+                 "traces/trace.execution.jsonl", "traces/trace.transport.jsonl", "artifacts/submission/solve.py"):
+        assert (folder / name).is_file(), name
+    assert next((folder / "blobs" / "image").iterdir()).suffix == ".png"
+    assert not (folder / "artifacts" / "submission" / "big.bin").exists()         # over --max-file-mb
+    assert (folder / "verifier" / "stderr.txt").read_text() == "grader: 24 missions scored\n"
+    assert (folder / "verifier" / "diagnostic.txt").read_text() == "demo diagnostic"
+    lock = (folder / "results" / "lock.json").read_text()
+    assert str(tmp_path) not in lock and "127.0.0.1" not in lock
+    assert '"<local>/demo_task"' in lock and '"<gateway>"' in lock
+    assert (folder / "trajectory.json").read_bytes() == (runs / "r2" / "gii.demo_task-00000002" / "trajectory.json").read_bytes()
+    doc = json.loads((folder / "run.json").read_text())
+    assert (doc["format"], doc["bench"], doc["task"]) == (3, "swarm", "demo_task")
+    assert doc["tasklog"]["path"] == "swarm/demo_task/claude_opus55-claude_code-high/"
+    assert doc["tasklog"]["verifier"]["stderr"] == ["verifier/stderr.txt"]
+    assert doc["tasklog"]["left_out"][0]["file"] == "artifacts/submission/big.bin"
+    assert doc["task_info"]["location"]["where"] == "working tree" and "folder" not in doc
+    assert str(tmp_path) not in json.dumps({k: v for k, v in doc.items() if k not in TR.TASKLOG_AGENT_FIELDS})
+    rows = [json.loads(line) for line in (root / "index.jsonl").read_text().splitlines()]
+    assert len(rows) == 1 and list(rows[0]) == TR.TASKLOG_INDEX_FIELDS
+    r = rows[0]
+    assert (r["platform"], r["task"], r["agent"], r["run_id"], r["status"], r["reward"]) == (
+        "swarm", "demo_task", "claude_opus55-claude_code-high", "r2", "completed", 0.4)
+    assert (r["metric"], r["cost_usd"], r["agent_time_s"], r["path"]) == (
+        "demo_metric", 4.05, 300, "swarm/demo_task/claude_opus55-claude_code-high/")
+    card = (root / "README.md").read_text()
+    assert card.startswith("# Demo task logs") and "`claude_opus55-claude_code-high`" in card
+
+
+def test_tasklog_blocks_a_secret_or_a_forbidden_word_and_keeps_other_rows(tmp_path):
+    repo, runs = tasklog_setup(tmp_path)
+    assert run_tasklog(tmp_path, repo, runs) == 0
+    root = tmp_path / "dataset"
+    folder = root / "swarm" / "demo_task" / "claude_opus55-claude_code-high"
+    other = {"platform": "arm", "task": "other_task", "agent": "a-b-c", "path": "arm/other_task/a-b-c/"}
+    with open(root / "index.jsonl", "a") as f:
+        f.write(json.dumps(other) + "\n")
+    ep = runs / "r2" / "gii.demo_task-00000002"
+    (ep / "artifacts" / "submission" / "leak.txt").write_text(f"KEY={FAKE_ANTHROPIC}\n")
+    assert run_tasklog(tmp_path, repo, runs, "--episode", "r2") == 1
+    assert not (folder / "artifacts" / "submission" / "leak.txt").exists()   # blocked: the folder is as it was
+    assert (folder / "run.json").is_file() and not (root / ".staging").exists()
+    assert sorted(json.loads(x)["task"] for x in (root / "index.jsonl").read_text().splitlines()) == [
+        "demo_task", "other_task"]
+    (ep / "artifacts" / "submission" / "leak.txt").unlink()
+    assert run_tasklog(tmp_path, repo, runs, "--episode", "r2", "--forbid", "demo diagnostic") == 1
+    assert run_tasklog(tmp_path, repo, runs, "--episode", "r2/gii.demo_task-00000002", "--forbid", "Stepping") == 0
+    tasks = sorted(json.loads(x)["task"] for x in (root / "index.jsonl").read_text().splitlines())
+    assert tasks == ["demo_task", "other_task"]                         # the agent's own text is only reported
+    assert run_tasklog(tmp_path, repo, runs, "--episode", "r1") == 0     # not the latest: nothing changes
+    assert json.loads((folder / "run.json").read_text())["ale"]["run_id"] == "r2"

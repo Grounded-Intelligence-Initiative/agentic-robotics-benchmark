@@ -1,6 +1,6 @@
 ---
 name: agent-trajectory-archiving
-description: Record, select, export, secret-scan and upload the trajectories of model runs (`ale run` with a real agent) on this benchmark's tasks with scripts/trajectories.py. One trajectory per task and agent (the task's latest version, its lowest-scoring episode); each kept folder holds the episode as the engine wrote it plus run.json (summary, score, tokens and cost, the task text, a per-step digest), trajectory.jsonl.gz, steps.bin (the pictures the agent saw), a poster and optional replays, under a root index. Every path, remote and run directory is a parameter. Use it right after every model run.
+description: Record, select, export and secret-scan the trajectories of model runs (`ale run` with a real agent) on this benchmark's tasks with scripts/trajectories.py, on the local disk, as task logs (trajectory + results + verifier log, the latest scored episode per task and agent, in the recommended local layout <platform>/<task>/<model>-<harness>-<effort>/), or as an archive, one trajectory per task and agent (the task's latest version, its lowest-scoring episode), in which each kept folder holds the episode as the engine wrote it plus run.json (summary, score, tokens and cost, the task text, a per-step digest), trajectory.jsonl.gz, steps.bin (the pictures the agent saw), a poster and optional replays, under a root index. Every path and run directory is a parameter. Use it right after every model run.
 ---
 
 # Agent trajectory archiving
@@ -9,7 +9,9 @@ A model run of a task (`ale run` with a real agent, the difficulty test of
 `docs/contributing-a-task.md` §7) leaves one folder per episode under the run's `--runs-dir`. This
 skill turns those folders into an **archive**: one trajectory per task and agent, each readable
 without the engine, with a root index. Everything goes through one script,
-`scripts/trajectories.py` (stdlib only; Pillow, ffmpeg and rclone are used when present):
+`scripts/trajectories.py` (stdlib only; Pillow and ffmpeg are used when present). Everything it
+writes stays on the local disk. The **task log** (section 12) is the compact record of a run; the
+archive (sections 3 to 9) is the fuller working copy.
 
 | subcommand | does |
 |---|---|
@@ -17,8 +19,8 @@ without the engine, with a root index. Everything goes through one script,
 | `curate` | one trajectory per task and agent, written to `index.csv` |
 | `export` | the kept episodes into the archive, plus `run.json` and the derived files and the root index |
 | `scan` | configured secrets and token patterns; exit status 1 on a hit |
-| `upload` | rclone copy of the archive to any destination, scanned first, checked after |
 | `sample` | resource samples of one run's own episode containers, started beside `ale run` |
+| `tasklog` | one **task log** per task and agent that counts (the latest scored episode) into a local task-log folder (section 12) |
 
 `python3 scripts/trajectories.py <subcommand> --help` lists every option.
 
@@ -28,16 +30,15 @@ without the engine, with a root index. Everything goes through one script,
 |---|---|---|
 | the runs directory (`ale run --runs-dir`) | `--runs-dir` | `ARB_RUNS_DIR` |
 | the archive (a local folder) | `--archive` | `ARB_TRAJECTORIES` |
-| the upload destination: any rclone destination, `remote:path` or a local path | `--dest` | `ARB_TRAJECTORIES_DEST` |
-| files whose secret values the scan looks for (the engine's `vendor/ale/.env`, an `rclone.conf`) | `--secrets-from` | `ARB_SECRET_FILES` (separated by `:`) |
+| files whose secret values the scan looks for (the engine's `vendor/ale/.env`, another dotenv or ini file) | `--secrets-from` | `ARB_SECRET_FILES` (separated by `:`) |
 | environment variables whose values the scan looks for | `--secret-env` | |
 | the benchmark checkout that resolves task commits, anchors and platforms | `--repo` | (this checkout) |
 | list prices, USD per million tokens | `--prices` | (built-in table) |
 | replays, stills and robot rules | `--extras` | |
+| the task-log folder (a local folder) | `tasklog --out` | `ARB_TASK_LOGS` |
 
-The rclone remote (a cloud drive, a bucket, a server) is set up with `rclone config` on the
-machine that uploads; its credentials stay in that machine's `rclone.conf`. Never commit an
-archive, a run or a credential to this repository: `runs/` and `*.mp4` are ignored, and a
+The archive, the task logs and the runs stay on the machine that recorded them. Never commit an
+archive, a task log, a run or a credential to this repository: `runs/` and `*.mp4` are ignored, and a
 trajectory carries the agent's whole session.
 
 ## 2. Before the run
@@ -72,13 +73,11 @@ python3 scripts/trajectories.py inventory --runs-dir "$RUNS" --out inventory.jso
 python3 scripts/trajectories.py curate inventory.jsonl --out index.csv         # --task, --overrides: section 4
 python3 scripts/trajectories.py export --runs-dir "$RUNS" --index index.csv --archive "$ARCHIVE"
 python3 scripts/trajectories.py scan "$ARCHIVE" --secrets-from vendor/ale/.env --context 60
-python3 scripts/trajectories.py upload --archive "$ARCHIVE" --dest "$DEST" --secrets-from vendor/ale/.env
 ```
 
-`export --only <task> ...` and `upload --only <task> ...` redo some tasks; `export` always rebuilds
-the root index from every exported folder, `upload --only` leaves the destination's index alone.
-`upload --prune` then removes destination folders `index.csv` no longer lists (a task's older
-version); `--dry-run` shows what it would copy and remove. Tell whoever ran the task the folder,
+`export --only <task> ...` redoes some tasks; `export` always rebuilds the root index from every
+exported folder, and `export --prune` removes archive folders `index.csv` no longer lists (a
+task's older version). Tell whoever ran the task the folder,
 the reward, the agent's time and the cost.
 
 The export reads files and writes only inside the archive; it starts no container and uses no GPU.
@@ -135,7 +134,7 @@ notes, folder`.
 ```
 
 `export --derived-only` writes only the derived files (when the episode's own records are
-uploaded another way); `--link` hard-links the episode's files instead of copying them;
+kept another way); `--link` hard-links the episode's files instead of copying them;
 `--prune` removes archive folders `index.csv` no longer lists. The archive and the runs
 directory must not contain each other.
 
@@ -267,26 +266,99 @@ The engine redacts the credentials it knows before anything reaches disk and kee
 credential out of the sandbox (`lock.json` `credential_exposed_to_agent: false`); the scan is the
 second line. It searches every file (inside `.gz` too) for:
 
-- **configured secrets**: in each `--secrets-from` file (dotenv, ini, `rclone.conf`), every value
+- **configured secrets**: in each `--secrets-from` file (dotenv or ini), every value
   of 16 characters or more whose key names a key, token, secret, password or credential, and the
   string values of such keys inside a JSON value; and the value of each `--secret-env` variable;
 - **token patterns**: AWS access keys and `aws_secret_access_key`, Anthropic and OpenAI keys,
-  GitHub and Hugging Face tokens, Google API keys and OAuth tokens, Slack tokens, private key
+  GitHub tokens, `hf_` access tokens, Google API keys and OAuth tokens, Slack tokens, private key
   blocks.
 
 Pictures, videos and `steps.bin` are skipped (`--include-media` scans them too): compressed bytes
 match patterns by chance. A hit prints the file, the kind and the byte offset, never the secret;
-`--context N` prints N bytes around it with every secret redacted. `upload` refuses to start on
-any hit. A hit that is not a secret (a pattern inside unrelated text) is passed with
-`--accept <path relative to the archive>` after you looked at it. A real secret is never
-uploaded: drop the episode from the selection (`--exclude-run`), have the secret rotated, and say
+`--context N` prints N bytes around it with every secret redacted. `scan` exits with status 1 on
+any hit, and `tasklog` does not keep a task log with a hit (section 12). A hit that is not a
+secret (a pattern inside unrelated text) is fine once you looked at it. A real secret is never
+kept: drop the episode from the selection (`--exclude-run`), have the secret rotated, and say
 so.
 
 ## 11. After every model run
 
-1. When the episode finishes: `inventory`, `curate`, `export`, `scan`, `upload` (section 3), with
-   `--prune` once a task's newer version replaced an older one.
+1. When the episode finishes: `inventory`, `curate`, `export`, `scan` (section 3), with
+   `export --prune` once a task's newer version replaced an older one.
 2. Launch runs with the sampler beside them (section 2); a launcher of your own does the same.
 3. GUI tasks: check that the screenshots are in `blobs/` and referenced by `trajectory.json`.
-4. Delete a run folder only after its upload was checked (`upload` runs `rclone check` per
-   folder).
+4. Update the task log (section 12): `tasklog --episode <run id>`.
+5. Delete a run folder only after `export` and `tasklog` wrote its episodes and the scan found
+   nothing (both copy the records, so neither needs the run folder afterwards).
+
+## 12. Task logs
+
+A **task log** is one episode of one agent on one task: the trajectory, the results and the
+verifier's log, with the submission. The task-log folder (`tasklog --out`, a local folder) keeps
+**one per task and agent, the latest scored episode**; a newer scored episode of the same agent on
+the same task replaces it. The recommended local layout, which `tasklog` writes, is
+`<platform>/<task>/<model>-<harness>-<effort>/`:
+
+- `platform`: the task's `[metadata].platform` (`task.toml`), else its platform folder;
+- `task`: its current name (`--rename OLD=NEW` for a task measured under an earlier name;
+  `measured_as` keeps the old one);
+- `agent`: `<model>-<harness>-<effort>`, short: `claude-opus-5-5` -> `claude_opus55`,
+  `claude-fable-5-1` -> `claude_fable51`, `claude-code` -> `claude_code`, the effort as run
+  (`default` when none was set), e.g. `claude_opus55-claude_code-high`; `--model-name MODEL=SHORT`
+  for a model the rule does not shorten well.
+
+**Which episode**: only the tasks that count: `--tasks-dir` (a checkout's `tasks/`) and `--ref
+REF[=LABEL]` (tasks on a git ref of `--repo`: `origin/main=main`, the head of each open task pull
+request, e.g. `git fetch origin +pull/53/head:refs/remotes/origin-pull/53` then `--ref
+refs/remotes/origin-pull/53="pull request #53"`), `--task NAME`. Per task, the version (content
+digest) of its newest scored episode; per agent, the newest scored episode of that version.
+Scored = a numeric reward and not `env_error`: an episode lost to the infrastructure without a
+score never replaces a scored one. An agent measured only on an earlier version is left out and
+listed. `--exclude-run` drops a run another run superseded; `--overrides` takes the same JSON as
+`curate` (plus `model_names`).
+
+**Layout** of a task log (`README.md` at the root of the folder describes every field; the
+root `index.jsonl` has one row per task log: platform, task, agent, model, harness, effort, run
+and episode id, date, task commit and content digest, where the task lives (`task_location`), status,
+reward, reward_exact, success, the task metric and its value, anchor, full_at, cost at list
+price, tokens, model calls, agent time, steps, pictures, replay, path, notes):
+
+| file | holds |
+|---|---|
+| `run.json` | the run summary of section 7, plus `tasklog` (layout version, path, file map, verifier files, files left out, the index row) and `task_info.location` |
+| `README.md` | the task log in brief |
+| `trajectory.json` | the ATIF trajectory as the engine wrote it |
+| `trajectory.jsonl.gz` | the same, one JSON object per line; the native session log, verbatim, when the conversion failed |
+| `steps.bin`, `pics/`, `poster.jpg` | as in the archive |
+| `results/` | `result.json`, `verification.json`, `lock.json`, `resources.jsonl` when sampled, `regrade/` when one replaced the score |
+| `verifier/` | `stdout.txt`, `stderr.txt` (the grader's log) of the verify stage, `diagnostic.txt` from `verification.json` |
+| `stages/` | stdout and stderr of every other stage command (setup, harness install and launch), `commands.json` (what ran, exit codes, times) |
+| `traces/` | `trace.execution.jsonl`, `trace.transport.jsonl` |
+| `blobs/`, `artifacts/` | the pictures and large texts, and the submission; a single file over `--max-file-mb` (100) stays out and is listed in `run.json` `tasklog.left_out` |
+| `replay.mp4` | a replay from `--extras`, where one exists |
+
+The harness's other native logs are not part of a task log.
+
+**Scrubbing and checks**: in the files the script writes from the engine's records (`run.json`
+except the agent's text, `results/`, `verifier/`, `stages/`, `traces/`), local paths (the home
+folder, the runs directory, the checkout, each `--scrub-path`) become `<local>/<last component>`,
+loopback and private-network URLs `<gateway>`, GPU UUIDs `GPU-<uuid>`, this host's name `<host>`,
+plus each `--scrub REGEX=REPLACEMENT`. The agents' own logs (the trajectory, blobs, artifacts) stay
+as recorded. Each task log is built in `<task-log folder>/.staging/`, secret-scanned (section 10,
+media included) and checked against each `--forbid REGEX` in the files the script writes; a hit
+blocks it and its existing folder stays as it was; a `--forbid` hit in the agents' own logs is printed,
+not blocked.
+
+```bash
+python3 scripts/trajectories.py tasklog --runs-dir "$RUNS" --out "$TASK_LOGS" --ref origin/main=main \
+    --ref refs/remotes/origin-pull/53="pull request #53" --secrets-from vendor/ale/.env --select-only
+python3 scripts/trajectories.py tasklog --runs-dir "$RUNS" --out "$TASK_LOGS" --ref origin/main=main ... \
+    --secrets-from vendor/ale/.env --title "<title>"                       # every task log, the index, README.md
+# after a new episode: only its task log, and only when it is now the latest scored one
+python3 scripts/trajectories.py tasklog --runs-dir "$RUNS" --out "$TASK_LOGS" --ref ... --episode <run id>
+```
+
+`--select-only` prints the selection and what is left out, and writes nothing. `--only <task> ...`
+and `--episode` rebuild those task logs and keep the other index rows; a full run lists folders
+no longer selected as stale, and `--prune` removes them. The task logs stay on the local disk:
+this repository holds none of them.
