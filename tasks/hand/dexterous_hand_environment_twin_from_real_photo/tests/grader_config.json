@@ -1,0 +1,44 @@
+{
+ "format": "hand-twin-grader/1",
+ "note": "The grader's knobs (hidden with the tests). The pick rules and the instrument are the public files setup_payload/hand_instrument.py and instrument_config.json (envelope: true would also plan and execute with setup_payload/hand_envelope.json, which the payload then ships; false = no envelope and no such file); the gate and the standard simulation are setup_payload/twin_gate.py, twin_sim.py and twin_sim_config.json. thing_cap is the floor of the per-thing cap: a thing carries at most max(thing_cap, 1 / n) of the use, n = the things with a credit unit. request_set is the build's stop line, checked by the self-test (below it: a task error, never a score). Lengths in mm, times in s, memory in MB. internal_leaves lists the leaves no document states.",
+ "c": 2,
+ "thing_cap": 0.15,
+ "request_set": {"min_credit_things": 6, "min_credit_units": 10},
+ "dynamic_lifts": false,
+ "envelope": false,
+ "things": ["wine_glass", "teapot", "cup", "tin", "toy_remote", "tube", "candy_box", "fork", "small_bottle", "clog"],
+ "registration": {
+  "min_things": 4,
+  "within_mm": 25,
+  "scale_range": [0.80, 1.25],
+  "raster_mm": 1,
+  "method": "footprint",
+  "max_footprint_cells": 4000000
+ },
+ "lift_variants": [[0.5, 0.3], [2, 0.3], [2, 1.0]],
+ "lift_workers": 2,
+ "lift_max_directions_per_unit": null,
+ "selftest": {
+  "geometric_placements": 1,
+  "lift_samples_per_unit": 1,
+  "lift_variant": [2, 0.3]
+ },
+ "metrics_whitelist": ["twin_score", "g1_integrity", "g0_validity", "use", "registered", "done_share", "stop_share", "declined_share"],
+ "caps": {
+  "max_entries": 5000,
+  "max_bytes": 314572800
+ },
+ "gt": {"dir": "gt"},
+ "runtime": {
+  "default_budget_s": 3500,
+  "reserve_s": 30,
+  "min_worker_s": 30,
+  "max_worker_s": 3600,
+  "worker_margin_s": 10,
+  "worker_account": "nobody",
+  "worker_address_space_mb": 6144,
+  "stage_caps_s": {"selftest": 900, "gate": 300, "settle": 300, "registration": 120, "requests": 1800, "lifts": 2400, "use": 60},
+  "timeout_is_task_error": ["requests", "lifts", "use"]
+ },
+ "internal_leaves": ["format", "note", "things", "envelope", "request_set", "registration.method", "registration.max_footprint_cells", "lift_workers", "lift_max_directions_per_unit", "selftest", "metrics_whitelist", "gt", "runtime", "internal_leaves"]
+}

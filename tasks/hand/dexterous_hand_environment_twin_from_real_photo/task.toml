@@ -1,0 +1,57 @@
+# dexterous_hand_environment_twin_from_real_photo: one real colour photo of ten household things on a wooden board,
+# taken by a calibrated survey camera (intrinsics given, pose and depth not). The agent builds the MuJoCo twin a
+# four-digit robot hand's picks are rehearsed on: one static support (the board's top) and ten named free bodies with
+# convex collision geometry, mass and friction. It delivers submission/scene.xml + assets/ + objects.json. CPU only.
+#
+# Grading (tests/verify.py; knobs in tests/grader_config.json; static, no agent code runs, CPU only, nothing rendered):
+# G1 submission integrity (verify-start lockdown) x G0 twin validity (the public gate twin_gate.py, the same code as
+# the agent's check_twin.py, and no blow-up in the standard settle) x Use: the twin is settled and registered on the
+# true board (yaw, shift, one scale), every scored request of the pick sheet is planned on the registered twin with
+# the public instrument and executed in the hidden true scene at nine placements; done counts on credited requests;
+# a stop is charged on every scored request. twin_score = that product; reward = twin_score (tests/anchor.json).
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/dexterous_hand_environment_twin_from_real_photo"
+
+[metadata]
+platform = "hand"
+
+# The whole sandbox: the agent's own MuJoCo, geometry and image work on CPUs; no GPU.
+[environment]
+cpus = 8
+memory_mb = 32768
+
+# setup: stage the givens (< 5 s; no warm-up). agent: one photo to a twin, 6 h. verify: see below.
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+# Separate verification: after the agent phase the engine releases the agent's sandbox and scores in a fresh verifier
+# sandbox started from this task's image, into which it restores only the declared artifact /home/user/submission
+# (regular files and directories; links are never copied). The verifier has everything the grader reads: tests/ (gt/,
+# grader_config.json, anchor.json, the grading modules, setup_payload/ with the public gate, simulation and
+# instrument, the kit), the image's /opt/venv and the restored submission. environment/setup/setup.sh does not run
+# there. The grader renders nothing and needs no GPU. As root it only locks, measures, snapshots and copies the
+# submission; the gate, the compile and every simulation run in worker processes as the unprivileged account `nobody`
+# under address-space limits and a hard timeout planned from the verify deadline.
+# Its sizing, measured in a container of this image with the verifier's 2 CPUs and 8 GB (two runs at different host
+# loads, the slower of each row): the reference twin's verify t_ref = 54.2 s; the heaviest legal twin's
+# t_heavy = 165.5 s, which leaves 259 scored requests unplanned at t_req = 0.3056 s each (the heaviest twin's largest
+# planned request, timed on the host and scaled to the slower run's requests stage);
+# timeout_sec = max(1800, 3 x max(t_ref, t_heavy + n_unplanned x t_req))
+# = max(1800, 3 x max(54.2, 165.5 + 259 x 0.3056)) = max(1800, 3 x 244.7) = 1800 s. The slowest other twin measured (a
+# hostile twin of ten things at one place, ended at G0 by the settle) took 117.2 s.
+# Memory: the grader's worker runs under an address-space limit of 6144 MB; its VmPeak measured at most 4186.9 MB
+# (<= 6144 - 1024), the root process's at most 175.7 MB, so memory_mb = 8192 >= 6144 + 175.7 + 1024; a worker beyond
+# its limit ends with the grader's own out-of-memory verdict, never the sandbox's kill.
+[verifier]
+timeout_sec = 1800
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 2
+memory_mb = 8192
+gpus = 0

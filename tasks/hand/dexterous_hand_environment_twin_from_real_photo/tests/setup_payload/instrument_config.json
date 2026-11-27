@@ -1,0 +1,189 @@
+{
+ "format": "hand-instrument/1",
+ "units": "mm",
+ "finger_pad_mm": [
+  20,
+  25,
+  21
+ ],
+ "thumb_pad_mm": [
+  23,
+  36,
+  28
+ ],
+ "hook_bar_mm": [
+  20,
+  25
+ ],
+ "hook_behind_mm": 60,
+ "hook_beyond_mm": 15,
+ "column_mm": 60,
+ "start_gap_mm": 10,
+ "start_gap_inside_mm": 6,
+ "over_travel_mm": 15,
+ "max_width_mm": 80,
+ "margin_mm": 4,
+ "target_margin_mm": 1,
+ "exec_tol_mm": 0.5,
+ "placements_mm": [
+  [
+   0,
+   0,
+   0
+  ],
+  [
+   -1.5,
+   -1.5,
+   -1.5
+  ],
+  [
+   -1.5,
+   -1.5,
+   1.5
+  ],
+  [
+   -1.5,
+   1.5,
+   -1.5
+  ],
+  [
+   -1.5,
+   1.5,
+   1.5
+  ],
+  [
+   1.5,
+   -1.5,
+   -1.5
+  ],
+  [
+   1.5,
+   -1.5,
+   1.5
+  ],
+  [
+   1.5,
+   1.5,
+   -1.5
+  ],
+  [
+   1.5,
+   1.5,
+   1.5
+  ]
+ ],
+ "directions_deg": [
+  0,
+  30,
+  60,
+  90,
+  120,
+  150,
+  180,
+  210,
+  240,
+  270,
+  300,
+  330
+ ],
+ "hook_sides": [
+  -1,
+  1
+ ],
+ "rule_order": [
+  "body",
+  "top",
+  "rim",
+  "hook"
+ ],
+ "rim": {
+  "finger_depth_mm": 8,
+  "thumb_depth_mm": 11.5,
+  "max_wall_mm": 25
+ },
+ "hook_raster_mm": 1,
+ "hook_step_deg": 10,
+ "approach": {
+  "pinch_axis": "vertical",
+  "pinch_length_mm": 250,
+  "hook_length_mm": 60
+ },
+ "lift": {
+  "force_N": 5,
+  "t_settle_s": 0.5,
+  "t_close_s": 0.7,
+  "rise_mm": 30,
+  "rise_s": 1.0,
+  "hold_s": 1.0,
+  "lifted_min_mm": 27,
+  "lift_armature": 1000000.0,
+  "pad_travel_mm": [
+   0,
+   25
+  ],
+  "pad_damping": 30,
+  "pad_armature": 0.001,
+  "motor_ctrlrange_N": [
+   0,
+   20
+  ],
+  "finger_tip_mm": {
+   "thickness": 24.7,
+   "width": 19.8,
+   "length": 49.4,
+   "field": [
+    15,
+    21
+   ]
+  },
+  "thumb_tip_mm": {
+   "thickness": 22.9,
+   "width": 35.7,
+   "length": 54.8,
+   "field": [
+    26,
+    28
+   ]
+  },
+  "field_proud_mm": 1,
+  "column_above_field_mm": 60,
+  "tip_masses_kg": {
+   "link": 0.02,
+   "field": 0.001,
+   "column": 0.001
+  },
+  "grip_base": {
+   "radius_mm": 3,
+   "mass_kg": 0.1
+  },
+  "pad_priority": 1,
+  "pad_friction": "variant",
+  "pad_torsional": 0.005,
+  "pad_rolling": 0.0001,
+  "held_things": "welded",
+  "rehearse_friction": 0.3
+ },
+ "rule_constants": {
+  "floor_clear_mm": 2.5,
+  "pinch_min_samples": 4,
+  "min_width_mm": 2.0,
+  "top_below_mm": 12.0,
+  "top_min_band_samples": 5,
+  "rim_slab_mm": [
+   3.0,
+   9.0
+  ],
+  "rim_min_slab_samples": 30,
+  "rim_min_samples": 3,
+  "rim_min_inner_mm": 2.0,
+  "hook_border_mm": 5.0,
+  "hook_closing_steps": 2,
+  "hook_ring_mm": 12.0,
+  "hook_min_ring_samples": 5,
+  "hook_floor_clear_mm": 1.0,
+  "hook_check_beyond_ring_mm": 2.0,
+  "hook_check_height_mm": 30.0,
+  "hook_min_check_samples": 5,
+  "twin_sample_mm": 1.0
+ }
+}

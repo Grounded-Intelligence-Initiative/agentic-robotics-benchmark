@@ -47,6 +47,12 @@ summary = "Two fixed Franka Pandas replace a cabinet door on loose-pin hinges: a
 platforms = ["arm"]
 stages = ["behavior"]
 
+[pipe_spool_push_fit_assembly]
+title = "Build a push-fit pipe spool with two Pandas"
+summary = "Two Pandas build a copper pipe spool in free space from loose pipes and push-fit elbows: one hand holds while the other pushes each joint home past a hidden O-ring, from cameras and wrist force."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [cloth_material_id_from_video]
 title = "Identify fabric materials from video"
 summary = "Choose the simulator material of ten fabrics from multi-view video of a robot arm handling them, so that a planner using it hits its targets on new slide and overhang handling of the real fabrics."
@@ -226,6 +232,12 @@ title = "Model a four-digit robot hand in CAD"
 summary = "Rebuild the lost CAD of a four-digit robot hand's 52 printed parts in FreeCAD from photos of its staged teardown, and assemble them with its 53 bought parts."
 platforms = ["hand"]
 stages = ["hardware-design"]
+
+[dexterous_hand_environment_twin_from_real_photo]
+title = "Build a sim twin of a pick board from one photo"
+summary = "Build a MuJoCo digital twin of ten household things on a wooden board from one calibrated photograph, for a four-digit robot hand to rehearse its picks on."
+platforms = ["hand"]
+stages = ["environment"]
 
 [dexterous_hand_full_assembly_16dof_panda]
 title = "Assemble a four-digit robot hand with a Panda"

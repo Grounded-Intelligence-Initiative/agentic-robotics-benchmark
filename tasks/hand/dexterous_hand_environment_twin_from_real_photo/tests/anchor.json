@@ -1,0 +1,7 @@
+{
+ "direction": "higher",
+ "full_at": 1.0,
+ "metric": "twin_score",
+ "source": "the reference twin's own verify on the assembled task before the freeze (raw twin_score; the privileged reference twin scores the full value)",
+ "value": 1.0
+}

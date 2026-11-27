@@ -1,0 +1,33 @@
+{
+ "files": {
+  "camera_sheet.json": "0986afab305cbf71b9db0755934ea089556e7fcb1b22fdcbd8a092ccf19bbd63",
+  "check_twin.py": "f7376dcd32621af61c3c7fd272460c19d5b5fc5681bb661d22b0b1c0bdba86b2",
+  "hand_card.md": "0bc6cf3983b51eecfa0fe83aee7966c2c51158619e57320f65521a65ab5914b8",
+  "hand_instrument.py": "e45cec6094e94c5b4a9d1f1bf77c7a7beb686cd4c1015a45bcba10d6f79e34e8",
+  "instrument_config.json": "c2fa90f792d340bf247c39da16e3b0c947738f8ca5c1ced201b9f5bfbab454de",
+  "photo.png": "7a4532d91f272adbc14045ac3e18a4515dd4aa181c8df6f7d5a03140991914bd",
+  "pick_sheet.json": "3dcc1fa69c31df749b21ba57ce4048341d76ae2d46b990f22ad1d66024c828b5",
+  "site_brief.md": "cc57f9214246f739dd80278a6d449d3b3abf614508cf1d214bae092d84d02e50",
+  "twin_camera.py": "a53de0ab50fb8755fff417c13d30afbac06eb570ff40eda931f7628bb5585baf",
+  "twin_contract.md": "4b7194682f5d4f7791c7aefe227f28995c982644b5f788b8de00d1cae14b448d",
+  "twin_gate.py": "05b8590b77790c952a659b36f0347e85a44bb6f8a28c83641c5830cee7b39bc5",
+  "twin_sim.py": "02b4a0db8b8c07d333a2f720d4c0e7bbd7228be3d1f11b450f84dbdecfaab7af",
+  "twin_sim_config.json": "cb47722ff9c5e4d5b16698e4658e67445089138a0207a71556dcc69c6967bf13"
+ },
+ "format": "given-hashes/2",
+ "sizes": {
+  "camera_sheet.json": 618,
+  "check_twin.py": 22987,
+  "hand_card.md": 4664,
+  "hand_instrument.py": 54975,
+  "instrument_config.json": 2535,
+  "photo.png": 1447080,
+  "pick_sheet.json": 29958,
+  "site_brief.md": 4522,
+  "twin_camera.py": 11661,
+  "twin_contract.md": 29844,
+  "twin_gate.py": 96774,
+  "twin_sim.py": 28555,
+  "twin_sim_config.json": 2103
+ }
+}

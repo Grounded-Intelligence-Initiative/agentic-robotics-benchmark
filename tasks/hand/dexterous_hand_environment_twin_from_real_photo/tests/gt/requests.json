@@ -1,0 +1,4879 @@
+{
+ "dropped": [
+  {
+   "id": "R0002",
+   "why": "mixed"
+  },
+  {
+   "id": "R0007",
+   "why": "mixed"
+  },
+  {
+   "id": "R0008",
+   "why": "mixed"
+  },
+  {
+   "id": "R0009",
+   "why": "mixed"
+  },
+  {
+   "id": "R0081",
+   "why": "mixed"
+  },
+  {
+   "id": "R0088",
+   "why": "mixed"
+  },
+  {
+   "id": "R0094",
+   "why": "mixed"
+  },
+  {
+   "id": "R0100",
+   "why": "mixed"
+  },
+  {
+   "id": "R0106",
+   "why": "mixed"
+  },
+  {
+   "id": "R0112",
+   "why": "mixed"
+  },
+  {
+   "id": "R0132",
+   "why": "not_visible"
+  },
+  {
+   "id": "R0135",
+   "why": "mixed"
+  },
+  {
+   "id": "R0136",
+   "why": "not_visible"
+  },
+  {
+   "id": "R0156",
+   "why": "not_visible"
+  },
+  {
+   "id": "R0168",
+   "why": "not_visible"
+  },
+  {
+   "id": "R0191",
+   "why": "not_visible"
+  },
+  {
+   "id": "R0198",
+   "why": "mixed"
+  },
+  {
+   "id": "R0278",
+   "why": "mixed"
+  },
+  {
+   "id": "R0287",
+   "why": "mixed"
+  },
+  {
+   "id": "R0288",
+   "why": "not_visible"
+  },
+  {
+   "id": "R0306",
+   "why": "not_visible"
+  },
+  {
+   "id": "R0312",
+   "why": "not_visible"
+  },
+  {
+   "id": "R0318",
+   "why": "not_visible"
+  },
+  {
+   "id": "R0324",
+   "why": "not_visible"
+  }
+ ],
+ "dynamic_lifts": false,
+ "format": "hand-twin-requests/1",
+ "jitter_seed_sha256": "39290d9928c6e31669b75dfc366910584f1a7dd6a48875d4f36da4e5e1ee064c",
+ "k_copies": 6,
+ "requests": [
+  {
+   "class": "creditable",
+   "dir_deg": 0,
+   "id": "R0001",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "wine_glass": 11154
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 60,
+   "id": "R0003",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "wine_glass": 7057
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 90,
+   "id": "R0004",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 940,
+     "wine_glass": 4634
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 120,
+   "id": "R0005",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 637,
+     "wine_glass": 5380
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 150,
+   "id": "R0006",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "wine_glass": 8515
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 270,
+   "id": "R0010",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 631,
+     "wine_glass": 4607
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 300,
+   "id": "R0011",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 303,
+     "wine_glass": 5453
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 330,
+   "id": "R0012",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "wine_glass": 8639
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0013",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0014",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0015",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0016",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0017",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0018",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0019",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0020",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0021",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0022",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0023",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0024",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 0,
+   "id": "R0025",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 14155,
+    "px": {
+     "wine_glass": 5201
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 30,
+   "id": "R0026",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 13953,
+    "px": {
+     "wine_glass": 5112
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 60,
+   "id": "R0027",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 13953,
+    "px": {
+     "wine_glass": 4563
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 90,
+   "id": "R0028",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 14028,
+    "px": {
+     "wine_glass": 4329
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 120,
+   "id": "R0029",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 14095,
+    "px": {
+     "wine_glass": 4704
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 150,
+   "id": "R0030",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 14109,
+    "px": {
+     "wine_glass": 5404
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 180,
+   "id": "R0031",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 14205,
+    "px": {
+     "wine_glass": 5839
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 210,
+   "id": "R0032",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 14066,
+    "px": {
+     "wine_glass": 5614
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 240,
+   "id": "R0033",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 13636,
+    "px": {
+     "wine_glass": 4961
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 270,
+   "id": "R0034",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 13734,
+    "px": {
+     "teapot": 505,
+     "wine_glass": 4322
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 300,
+   "id": "R0035",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 13940,
+    "px": {
+     "teapot": 405,
+     "wine_glass": 4293
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 330,
+   "id": "R0036",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 14076,
+    "px": {
+     "wine_glass": 4790
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0037",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": -1,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0038",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": 1,
+   "thing": "wine_glass"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0039",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0040",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0041",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0042",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0043",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0044",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0045",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0046",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0047",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0048",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0049",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0050",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0051",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 6539
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0052",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 8633
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0053",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 7666
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0054",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 6000
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 120,
+   "id": "R0055",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 7154
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 150,
+   "id": "R0056",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 7009
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0057",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 6439
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0058",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0059",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 7901
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0060",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 5912
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 300,
+   "id": "R0061",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 7425
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 330,
+   "id": "R0062",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "teapot": 7328
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0063",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0064",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0065",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0066",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0067",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0068",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0069",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0070",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0071",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0072",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0073",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0074",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "teapot"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": null,
+   "id": "R0075",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 3435,
+    "px": {
+     "teapot": 7634
+    }
+   },
+   "rule": "hook",
+   "side": -1,
+   "thing": "teapot"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": null,
+   "id": "R0076",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 3435,
+    "px": {
+     "teapot": 7634
+    }
+   },
+   "rule": "hook",
+   "side": 1,
+   "thing": "teapot"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0077",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "clog": 2459,
+     "cup": 5660
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0078",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "clog": 2801,
+     "cup": 4669,
+     "teapot": 389
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0079",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0080",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 150,
+   "id": "R0082",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "clog": 372,
+     "cup": 6434,
+     "tin": 5014
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0083",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "clog": 1763,
+     "cup": 5670
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0084",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "clog": 2048,
+     "cup": 4635,
+     "teapot": 673
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0085",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0086",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0087",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 1789,
+     "cup": 5665,
+     "teapot": 655,
+     "tin": 4671
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0089",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "clog": 2491,
+     "cup": 4907
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0090",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "clog": 2749,
+     "cup": 4241,
+     "teapot": 519
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0091",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0092",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0093",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0095",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "clog": 1810,
+     "cup": 4961
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0096",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "clog": 1984,
+     "cup": 4233,
+     "teapot": 897
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0097",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0098",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0099",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 0,
+   "id": "R0101",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 4827,
+    "px": {
+     "cup": 4854
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 30,
+   "id": "R0102",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 4821,
+    "px": {
+     "cup": 4875,
+     "teapot": 1050
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0103",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 4818,
+    "px": {
+     "candy_box": 84,
+     "cup": 4884,
+     "teapot": 5421
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0104",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 4894,
+    "px": {
+     "candy_box": 1393,
+     "cup": 4713,
+     "teapot": 4318
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 120,
+   "id": "R0105",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 4772,
+    "px": {
+     "candy_box": 1613,
+     "cup": 4489,
+     "teapot": 1204
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0107",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 4526,
+    "px": {
+     "clog": 2314,
+     "cup": 4741
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0108",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 4533,
+    "px": {
+     "clog": 2797,
+     "cup": 5572
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0109",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0110",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0111",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": 4676,
+    "px": {
+     "cup": 5468,
+     "tin": 5769
+    }
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0113",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": -1,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0114",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": 1,
+   "thing": "cup"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0115",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0116",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0117",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0118",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 120,
+   "id": "R0119",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "cup": 1494,
+     "tin": 7052
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 150,
+   "id": "R0120",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "cup": 1107,
+     "tin": 8006
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0121",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0122",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0123",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0124",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 300,
+   "id": "R0125",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "cup": 2332,
+     "tin": 7494
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 330,
+   "id": "R0126",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "cup": 2006,
+     "tin": 8448
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 0,
+   "id": "R0127",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "tin": 3753
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0128",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0129",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 90,
+   "id": "R0130",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "tin": 3018
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 120,
+   "id": "R0131",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "cup": 254,
+     "tin": 5035
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 180,
+   "id": "R0133",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "tin": 3520
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0134",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 300,
+   "id": "R0137",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "cup": 690,
+     "tin": 5438
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 330,
+   "id": "R0138",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "cup": 567,
+     "tin": 5989
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0139",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0140",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0141",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0142",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0143",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0144",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0145",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0146",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0147",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0148",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0149",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0150",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0151",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": -1,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0152",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": 1,
+   "thing": "tin"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0153",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0154",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0155",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0157",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 133,
+     "fork": 618,
+     "toy_remote": 2371,
+     "tube": 6448
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0158",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0159",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0160",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0161",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0162",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 293,
+     "toy_remote": 1930,
+     "tube": 6912
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0163",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "fork": 225,
+     "toy_remote": 2467,
+     "tube": 6856
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0164",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0165",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0166",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0167",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0169",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 136,
+     "fork": 611,
+     "toy_remote": 2415,
+     "tube": 6427
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0170",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0171",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0172",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0173",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0174",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 298,
+     "toy_remote": 1936,
+     "tube": 6928
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0175",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "fork": 215,
+     "toy_remote": 2479,
+     "tube": 6858
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0176",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0177",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0178",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0179",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0180",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0181",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0182",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0183",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0184",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0185",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0186",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0187",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0188",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0189",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": -1,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0190",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": 1,
+   "thing": "toy_remote"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 30,
+   "id": "R0192",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 202,
+     "tube": 4900
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0193",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0194",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0195",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0196",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 180,
+   "id": "R0197",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 226,
+     "tube": 3914
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0199",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0200",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0201",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0202",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 0,
+   "id": "R0203",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 1430,
+     "tube": 5186
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 30,
+   "id": "R0204",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 2548,
+     "tube": 3627
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 60,
+   "id": "R0205",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 5139,
+     "tube": 3268
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 90,
+   "id": "R0206",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 5671,
+     "tube": 5444
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 120,
+   "id": "R0207",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 5493,
+     "tube": 5677
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 150,
+   "id": "R0208",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 4333,
+     "tube": 4818
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 180,
+   "id": "R0209",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 2149,
+     "tube": 4884
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 210,
+   "id": "R0210",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 1520,
+     "tube": 3396
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 240,
+   "id": "R0211",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 3287,
+     "tube": 3355
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 270,
+   "id": "R0212",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 3662,
+     "tube": 5833
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 300,
+   "id": "R0213",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 3808,
+     "tube": 5719
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 330,
+   "id": "R0214",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "toy_remote": 3246,
+     "tube": 4836
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0215",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0216",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0217",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0218",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0219",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0220",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0221",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0222",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0223",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0224",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0225",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0226",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0227",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": -1,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0228",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": 1,
+   "thing": "tube"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0229",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0230",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0231",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0232",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0233",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0234",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0235",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0236",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0237",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0238",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0239",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0240",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0241",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0242",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0243",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0244",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0245",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0246",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0247",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0248",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0249",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0250",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0251",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0252",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0253",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0254",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0255",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0256",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0257",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0258",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0259",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0260",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0261",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0262",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0263",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0264",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0265",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": -1,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0266",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": 1,
+   "thing": "candy_box"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0267",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 2324,
+     "fork": 1475,
+     "teapot": 896,
+     "toy_remote": 242
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0268",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0269",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0270",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 3452,
+     "fork": 1402,
+     "teapot": 5336,
+     "toy_remote": 1400
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0271",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 1386,
+     "fork": 1133,
+     "teapot": 2657,
+     "toy_remote": 656
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0272",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 807,
+     "fork": 1056,
+     "teapot": 3100,
+     "toy_remote": 250
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0273",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 1170,
+     "fork": 1589,
+     "teapot": 2188
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0274",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0275",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0276",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 1997,
+     "fork": 1597,
+     "teapot": 1836,
+     "toy_remote": 2293
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0277",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 1095,
+     "fork": 1065,
+     "teapot": 701,
+     "toy_remote": 1256
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0279",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 11400,
+     "fork": 1184,
+     "teapot": 3262
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0280",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 11840,
+     "fork": 1399
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0281",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 11045,
+     "fork": 1368
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0282",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 10222,
+     "fork": 1226
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0283",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 9608,
+     "fork": 1057,
+     "teapot": 2606
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0284",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 9734,
+     "fork": 1076,
+     "teapot": 4916
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0285",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 10037,
+     "fork": 1041,
+     "teapot": 5901
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0286",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 8652,
+     "fork": 1006,
+     "teapot": 1581
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0289",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 9220,
+     "fork": 1105,
+     "teapot": 1161
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0290",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "candy_box": 10168,
+     "fork": 1023,
+     "teapot": 3185
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0291",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0292",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0293",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0294",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0295",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0296",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0297",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0298",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0299",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0300",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0301",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0302",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0303",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": -1,
+   "thing": "fork"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0304",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": 1,
+   "thing": "fork"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 0,
+   "id": "R0305",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "small_bottle": 2827
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 60,
+   "id": "R0307",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "small_bottle": 1688,
+     "toy_remote": 591
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0308",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0309",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0310",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 180,
+   "id": "R0311",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "small_bottle": 2660
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 240,
+   "id": "R0313",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "small_bottle": 1811,
+     "toy_remote": 281
+    }
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0314",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0315",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0316",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "body",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 0,
+   "id": "R0317",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "small_bottle": 2716
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 60,
+   "id": "R0319",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "small_bottle": 1735,
+     "toy_remote": 604
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0320",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0321",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0322",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 180,
+   "id": "R0323",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "small_bottle": 2656
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "creditable",
+   "dir_deg": 240,
+   "id": "R0325",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": true,
+    "opening_px": null,
+    "px": {
+     "small_bottle": 1801,
+     "toy_remote": 291
+    }
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0326",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0327",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0328",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "top",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 0,
+   "id": "R0329",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 30,
+   "id": "R0330",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 60,
+   "id": "R0331",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 90,
+   "id": "R0332",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 120,
+   "id": "R0333",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 150,
+   "id": "R0334",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 180,
+   "id": "R0335",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 210,
+   "id": "R0336",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 240,
+   "id": "R0337",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 270,
+   "id": "R0338",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 300,
+   "id": "R0339",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": 330,
+   "id": "R0340",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "rim",
+   "side": null,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0341",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": -1,
+   "thing": "small_bottle"
+  },
+  {
+   "class": "stop_only",
+   "dir_deg": null,
+   "id": "R0342",
+   "lift": false,
+   "photo_visibility": {
+    "nominal_site": false,
+    "opening_px": null,
+    "px": {}
+   },
+   "rule": "hook",
+   "side": 1,
+   "thing": "small_bottle"
+  }
+ ]
+}
