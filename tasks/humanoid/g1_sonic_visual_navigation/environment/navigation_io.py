@@ -102,6 +102,8 @@ class NavigationEpisode:
         self._completed = []
         self.reason = None
         self.last_observation_id = None
+        self._camera_tick = None
+        self._camera_frame = None
         self._previous_codes = None
         self._code_changes = 0
         self._accel_sum = 0.
@@ -157,7 +159,15 @@ class NavigationEpisode:
             raise ValueError("navigation episode has ended")
         session = self.session
         pro = session.state["observation"]
-        rgb, depth = session.egocentric(self.landmarks(alternative, brightness))
+        if alternative is None and brightness == 1.:
+            if self._camera_tick != session.tick:
+                rgb, depth = session.egocentric(self.landmarks())
+                self._camera_frame = {"rgb_png": _png(rgb), "depth_mm_png": _png(depth)}
+                self._camera_tick = session.tick
+            camera = self._camera_frame.copy()
+        else:
+            rgb, depth = session.egocentric(self.landmarks(alternative, brightness), probe=True)
+            camera = {"rgb_png": _png(rgb), "depth_mm_png": _png(depth)}
         public = {k: np.asarray(pro[k]).tolist() for k in (
             "q", "dq", "base_gyro", "gravity_body", "yaw_rate_rad_s",
             "left_foot_contact", "right_foot_contact")}
@@ -166,9 +176,17 @@ class NavigationEpisode:
         return stamp_observation({
             "protocol": PROTOCOL, "tick": session.tick, "horizon": session.horizon,
             "observation": public, "decoder_history": session.decoder_history().tolist(),
-            "camera": {"rgb_png": _png(rgb), "depth_mm_png": _png(depth)},
+            "camera": camera,
             "last_observation_id": self.last_observation_id,
         })
+
+    def relight(self, live, brightness):
+        """Render a different lamp exposure using exactly the live depth acquisition."""
+        if live["tick"] != self.session.tick or live["last_observation_id"] != self.last_observation_id:
+            raise ValueError("brightness intervention requires the current public frame")
+        rgb, _ = self.session.egocentric(self.landmarks(brightness=brightness), depth=False, probe=True)
+        camera = dict(live["camera"], rgb_png=_png(rgb))
+        return stamp_observation(dict(live, camera=camera))
 
     def _record_cost(self, codes, dq):
         if self._previous_codes is not None:

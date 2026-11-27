@@ -67,7 +67,7 @@ def _different(first, other):
 def visual_probes(solver, episode, live, alternative, rng):
     """Random-order visual intervention, content-preserving lighting control and exact repeat."""
     other = episode.observe(alternative)
-    relit = episode.observe(brightness=rng.uniform(.74, .90))
+    relit = episode.relight(live, rng.uniform(.74, .90))
     for packet in (other, relit):
         require(all(live[k] == packet[k] for k in live if k not in ("camera", "observation_id")),
                 "visual probe changed robot sensors or timing")

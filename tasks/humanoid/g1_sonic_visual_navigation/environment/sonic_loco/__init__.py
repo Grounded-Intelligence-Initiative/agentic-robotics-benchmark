@@ -56,6 +56,7 @@ class LocomotionSession:
         self._renderer = None
         self._render_size = None
         self._ego_renderer = None
+        self._probe_renderer = None
         self._ego_camera = model.camera("egocentric").id
         self._visual_meshes = np.flatnonzero(model.geom_group == 2)
         self.beacons = ()
@@ -224,10 +225,15 @@ class LocomotionSession:
             geom.segid = scene.ngeom
             scene.ngeom += 1
 
-    def egocentric(self, beacons):
-        if self._ego_renderer is None:
-            self._ego_renderer = mujoco.Renderer(self.model, width=128, height=96)
-        renderer = self._ego_renderer
+    def egocentric(self, beacons, *, depth=True, probe=False):
+        if probe:
+            if self._probe_renderer is None:
+                self._probe_renderer = mujoco.Renderer(self.model, width=128, height=96)
+            renderer = self._probe_renderer
+        else:
+            if self._ego_renderer is None:
+                self._ego_renderer = mujoco.Renderer(self.model, width=128, height=96)
+            renderer = self._ego_renderer
         # Cull only full bounding spheres outside the camera frustum. llvmpipe
         # would otherwise transform the detailed meshes behind the robot camera
         # twice per control query. This affects drawing only.
@@ -251,6 +257,8 @@ class LocomotionSession:
         renderer.scene.flags[mujoco.mjtRndFlag.mjRND_REFLECTION] = False
         self._draw_beacons(renderer, beacons)
         rgb = renderer.render().copy()
+        if not depth:
+            return rgb, None
         renderer.enable_depth_rendering()
         try:
             metres = renderer.render()
@@ -280,6 +288,9 @@ class LocomotionSession:
         return self._renderer.render().copy()
 
     def close(self):
+        if self._probe_renderer is not None:
+            self._probe_renderer.close()
+            self._probe_renderer = None
         if self._ego_renderer is not None:
             self._ego_renderer.close()
             self._ego_renderer = None
