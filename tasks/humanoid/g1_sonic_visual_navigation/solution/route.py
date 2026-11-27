@@ -34,6 +34,7 @@ class Estimate:
     goal: np.ndarray | None = None
     marker: np.ndarray | None = None
     turn_sign: int = 0
+    staged_gate_x: float | None = None
     quiet_ticks: int = 0
     aligning: bool = False
     parked: bool = False
@@ -169,6 +170,21 @@ class RoutePolicy:
                 forward, left = target - s.xy
                 yaw_error = wrap(s.entry_yaw - s.yaw)
                 motion = "gate"
+                new_gate = (
+                    s.staged_gate_x is None or abs(target[0] - s.staged_gate_x) >= 0.45
+                )
+                if pending and new_gate:
+                    if (
+                        forward < 1.12
+                        and abs(left) < 0.105
+                        and abs(s.velocity[1]) < 0.22
+                    ):
+                        s = replace(s, staged_gate_x=float(target[0]))
+                    else:
+                        # Align before the foremost hand and swing foot can
+                        # encounter the cabinet's front face.
+                        forward -= 0.82
+                        motion = "stage"
             else:
                 # Wait for several measured quiet samples before committing
                 # the static reference. It then persists until the cue changes,
@@ -183,7 +199,21 @@ class RoutePolicy:
                     and np.linalg.norm(s.velocity) < 0.13
                     and abs(s.yaw_rate) < 0.19
                 )
-                n = s.quiet_ticks + 1 if quiet else 0
+                # A quiet two-foot stance can already be eligible for the
+                # physical stop before reaching the nominal parking radius.
+                # Keep that stance when its measured coasting endpoint stays
+                # inside the stop disk with room for odometric error.
+                coast_distance = np.linalg.norm(s.goal - s.xy - 0.25 * s.velocity)
+                stable_stance = (
+                    distance < 0.205
+                    and coast_distance < 0.195
+                    and abs(yaw_error) < 0.085
+                    and np.linalg.norm(s.velocity) < 0.09
+                    and abs(s.yaw_rate) < 0.12
+                    and pro["left_foot_contact"]
+                    and pro["right_foot_contact"]
+                )
+                n = s.quiet_ticks + 1 if quiet or stable_stance else 0
                 parked = held or n >= 3
                 s = replace(s, aligning=False, quiet_ticks=n, parked=parked)
                 motion = "stand" if parked else "dock"

@@ -105,7 +105,14 @@ class GaitPolicy:
             q[:, :, hip + 5] -= roll * amplitude
             q[:, :, shoulder] += 0.55 * foot * amplitude
 
-        yaw = (yaw_bias + yaw_rate * future_ticks / 50) * amplitude[:, 1]
+        yaw_amplitude = amplitude[:, 1]
+        if motion == "dock":
+            # A small translation error scales the stepping cycle toward zero.
+            # Keep the encoder's heading reference active until optical heading
+            # is also settled; the stopping disk does not grant a yaw allowance.
+            turn_gain = np.clip((abs(heading_error) - 0.065) / 0.13, 0.0, 0.85)
+            yaw_amplitude = np.maximum(yaw_amplitude, turn_gain * warmup[:, 1])
+        yaw = (yaw_bias + yaw_rate * future_ticks / 50) * yaw_amplitude
         cs, sn = np.cos(yaw), np.sin(yaw)
         zeros = np.zeros_like(cs)
         anchor = np.stack((cs, -sn, sn, cs, zeros, zeros), axis=1)
