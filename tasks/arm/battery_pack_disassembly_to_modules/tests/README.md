@@ -1569,6 +1569,52 @@ affected: it takes every pack apart, and its credit is 1.0 under either rule.
 0.075 above is a recomputation, not a measurement: the instruction told the agent that an unfinished pack counts 0,
 and it no longer does, so only a new episode gives the number for the pull request.
 
+**2026-11-27, 05:00 to 06:27. The tree without the gate through `ale validate` (tree `d6bf1925`), then its
+frontier episode: reward 0.06.** The host, its two deviations and the engine of the entry "2026-11-27, from 03:04";
+the image rebuilt from its cache (the commissioning service's copy of `packcell/rules.py` changed).
+
+*Run* `validate-858ccd71` (05:00 to 05:21), first try:
+
+    ok    grounded-intelligence-initiative/battery_pack_disassembly_to_modules: untouched={'reward': 0.0}, oracle={'reward': 1.0}
+
+The untouched verdict: "no usable submission", verify 7 s. The oracle, step for step as `validate-59506641`:
+`mean_pack_credit` 1.00000, every pack 1.0 (49, 48, 59, 58, 67 and 69 items placed) in 1126, 1094, 1352, 1297,
+1401 and 1499 steps; no protective stop, nothing stripped, sheared, dropped from the bit or loaded past its yield
+point, no module vented, no pack condemned, latched or incomplete; the margins as before (the tip within 0.026 mm,
+0.97 of a yield point, 1.45 m/s^2); the probe lock 99 of 99 (67 idle pairs not counted); the canary passed (the
+cell up in 126.2 s, a pack built and rendered in 13.2 s); the controller's own time 5.5 s; verify 1144 s.
+`tests/anchor.json` keeps 1.0, its source now this run; `full_at` stays 0.95. The commit of this entry changes only
+`tests/anchor.json` and this file, so the `ok` line above stands for it.
+
+*The episode* (`ale run` `c9e00031` on `d6bf1925`, started by a script on the validate's `ok` line; the RTX 3090
+host, Claude Opus 5.5 through claude-code 2.1.309, effort high, no web tools, the task's 2 h): reward 0.06 (unrounded
+0.058), `mean_pack_credit` 0.05505, ratio 0.055. The agent ended by itself after 49 min with its three sessions used;
+131 model calls, none stopped at `max_tokens`, the slowest 107 s, no stream cut off, so the score is the model's.
+
+| Pack | Variant | Items placed | Credit | Ended |
+| --- | --- | --- | --- | --- |
+| 0 | P4 | 2 of 49 | 0.020 | at the 1500 s cap |
+| 1 | P4 | 8 of 48 | 0.054 | `done` |
+| 2 | P5 | 13 of 59 | 0.124 | a malformed action |
+| 3 | P5 | 2 of 58 | 0.017 | at the 1500 s cap |
+| 4 | P6 | 11 of 67 | 0.053 | `done` |
+| 5 | P6 | 13 of 69 | 0.063 | a malformed action |
+
+One lid came off, pack 2's: its credit, 11 of 89, is its 12 lid fasteners and the lid, and no 13 items are worth 11
+while the lid is on. The other packs kept their lids: a harness remnant and lid fasteners at most. Two packs ended
+when the program sent a `move` whose `ticks` was outside 1 to 40, a range the instruction and the cell interface
+(section 3) state; the commissioning service refuses such an action the same way (`packcell/wire.py`, identical in
+both copies), and the pack keeps what was sorted before it (the cell interface, section 2). One protective stop, two
+heads stripped, 11 shanks loaded past their yield point, nothing sheared, dropped or vented, no pack condemned or
+latched; the probe lock 71 of 72, within the kit's tolerance. Its closing summary: the first session was lost to a
+latched cell (a straight move into the pack), the second to a detector bug that sent `done` at once, and the third
+engaged the bits and read clean break-aways and yield points; everything from the lid lift on was tested only
+against its own mocks and renders.
+
+*Where this leaves the task.* 0.06 is below the guidelines' 0.3, and without the gate the score is no longer 0: the
+one pack whose lid came off scored highest. Not exercised in the engine: any cloud GPU model, a host with a CPU
+quota.
+
 ## 7. Final report (2026-11-24, 16:30 EST)
 
 **Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00"),
@@ -1620,6 +1666,8 @@ untouched 0.0, oracle 1.0, the reference's packs in ref5's native steps; the anc
 Then (the entry "2026-11-27, from 05:00") the frontier episode on that version scored 0.0, every pack short of module
 level, and the completion gate was removed: the credit is additive again, and everything else of the third round
 stays.
+Then (the entry "2026-11-27, 05:00 to 06:27") the tree without the gate through `ale validate`: untouched 0.0,
+oracle 1.0 in the same steps; the anchor's source is that run; the frontier episode on it scored 0.06.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
