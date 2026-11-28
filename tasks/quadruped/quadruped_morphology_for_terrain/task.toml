@@ -1,0 +1,32 @@
+# quadruped_morphology_for_terrain: design, from a parts catalog, a quadruped that a fixed gait carries across a
+# stepped, rubble-strewn walkway with low overhead pipes.
+schema_version = "1.4+ale.1"
+
+# The robot description (robot.xml) the agent leaves; restored into the separate verifier.
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/quadruped_morphology_for_terrain"
+
+[metadata]
+platform = "quadruped"
+
+# The agent's machine: CPU only. No simulator for the agent; the practice walkway (4 runs) is its own account.
+[environment]
+cpus = 4
+memory_mb = 8192
+
+# 3 h for the whole job; no network.
+[agent]
+timeout_sec = 10800
+network_mode = "no-network"
+
+# 100 hidden walkway sections of up to 60 s simulated each, on 4 CPUs: about a minute for the reference.
+[verifier]
+timeout_sec = 3600
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 4
+memory_mb = 8192
+gpus = 0
