@@ -1,0 +1,77 @@
+# endoscope_camera_assistance_from_video (surgical; the Task Name registered in the coordination sheet on 2026-11-25).
+#
+# A four-joint camera holder (pan, tilt, insertion, roll about the trocar's remote centre of motion) carries a
+# laparoscope and has to keep the surgeon's two working instruments in a usable view while a recorded procedure plays.
+# The agent writes the holder's controller, /home/user/submission/run.sh. The grader drives it step by step
+# (closed_loop: robotics_grader.Solver and the probe lock) through a fixed hidden set of 12 procedures, 800 control
+# steps each, and gives it at every step only the endoscope's RGB frame (1 to 3 steps old, drawn by Isaac Sim's RTX
+# renderer in the grader's own process tree) and the holder's four joint readings: never instrument poses, never the
+# procedure's phase, never which scope (0 or 30 degrees) is fitted, the camera head's angle on it (knocked to another
+# angle during the procedure), the latency or which instruments are 10 mm ones; the tissue moves (irregular breathing,
+# traction by the instruments), tips work inside it and in smoke. Score: useful_view_fraction, the fraction of
+# control steps whose view is usable (both counting tips in the central safe zone, the instruments' apparent size in
+# the zoom band, the horizon level, the picture steady during fine work, the lens clean), judged from the simulator's
+# state, never from pixels; a lens driven into tissue, a second lens contact or an unseen critical action makes the
+# surgeon take the camera back, and the rest of that procedure is not usable. The agent gets what the device's
+# engineer would have: the holder's manual and kinematic model, the scopes' intrinsics, ten development procedures as
+# video with an annotation team's 2D labels, and a commissioning service that plays ten procedures of its own for its
+# controller without ground truth or score (3 sessions, never refunded; a 2 h session). Since version 0.4 the holder
+# is one unit of a series that deviates from its datasheet (zero offsets, gains, the scope's direction of view), and
+# every kind of procedure has critical actions. Version 0.4. Design notes, what is verified and what is
+# not: tests/README.md. Needs one NVIDIA RTX GPU.
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/endoscope_camera_assistance_from_video"
+
+[metadata]
+platform = "surgical"
+
+# gpu_types: the cloud models on which the benchmark has validated this same Isaac Sim 6.2 RTX stack
+# (tasks/swarm/hazard_bay_build), cheapest first, then RTX-3090, the model of the author's validate run (driver 535,
+# below Omniverse's R550 floor: the renderer's driver check is off, tests/endosim/render_server.py). THIS TASK HAS NOT
+# RUN ON ANY CLOUD MODEL YET: it was developed and measured natively on an RTX 6000 Ada. The cloud list is the conservative
+# starting point for the first `ale validate`: it keeps the task off the H100 and H200, where RTX rendering of this
+# stack is unproven (hazard_bay_build's missions did not run on a loaded H100 host; other Isaac tasks crash or render
+# darker there). A maintainer confirms or corrects the list with the render canary and a validate per model
+# (tests/README.md, status log).
+[environment]
+cpus = 8
+memory_mb = 32768
+gpus = 1
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-3090"]
+
+# Setup (environment/setup/setup.sh) has no field: the engine bounds it at a fixed 1800 s. It stages the givens and
+# starts the commissioning service, waiting for its renderer (Isaac Sim's start; on a cold cache the RTX pipelines
+# compile, measured for this stack by hazard_bay_build at about 7 minutes in a fresh container; 20 s here, warm).
+# [agent] timeout_sec: 2 h since version 0.3 (4 h before; the owner's choice of 2026-11-26, as merged tasks with scarce
+# practice have it: arm/kitchen_appliance_tending, arm/lab_sample_handling). The development set records in the
+# background during the first minutes (ten procedures, 401 frames each: 8.5 to 16 min natively here beside other jobs;
+# in the version 0.2 episode on the RTX 3090 host it was complete 11.5 min into the agent's session); a commissioning
+# session takes 2 to 4 minutes of wall clock, and there are 3 of them.
+# [verifier] timeout_sec: the renderer's start (cold, up to renderer_start_timeout_s = 2400 s), the canary (seconds),
+# then 12 procedures x 800 steps: each step one frame, plus a probe copy on about one step in sixteen (about 10,200
+# frames; 0.07 s a frame on a quiet GPU, 0.12 s in the RTX 3090 validate, 0.17 to 0.26 s beside other jobs here; in
+# version 0.3, whose floor mesh moves every frame, 0.10 to 0.13 s here beside other jobs, and a takeover ends the
+# rendering of its procedure) plus
+# the controller's reply, whose total is capped at 2400 s (0.25 s a step), plus the scenes' loading (about 7 s each):
+# 2400 + 10200 x 0.26 + 2400 + 12 x 7 = about 7550 s at the bounds on a busy GPU. The grader's VerifierDeadline
+# (tests/grader_config.json, 8400 s) writes a verdict from the steps judged so far before this limit is reached.
+[agent]
+timeout_sec = 7200
+network_mode = "no-network"
+
+[verifier]
+timeout_sec = 9000
+# Separate verification: a fresh verifier sandbox from the same image, which the agent never touched; only the
+# declared artifact (/home/user/submission) is restored into it. In a shared sandbox, a program the agent left on
+# root's PATH (the base image's /usr/local/bin is the agent's) would run as root at verify.
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 8
+memory_mb = 32768
+gpus = 1
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-3090"]

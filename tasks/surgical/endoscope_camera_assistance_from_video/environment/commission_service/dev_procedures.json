@@ -1,0 +1,495 @@
+{
+ "steps": 800,
+ "sessions": 12,
+ "record_every": 2,
+ "procedures": [
+  {
+   "name": "dev01",
+   "seed": 8907710286807293362,
+   "factors": {
+    "kind": "dissection",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": 23.875,
+     "latency_steps": 2,
+     "shaft_mm": [
+      10,
+      5,
+      5,
+      5,
+      10,
+      10
+     ],
+     "head_changes": [
+      [
+       139,
+       -31.348
+      ],
+      [
+       553,
+       33.336
+      ]
+     ]
+    },
+    "salt": 3718819889222534,
+    "unit": {
+     "zero": [
+      -0.012686,
+      0.000537,
+      0.005367,
+      0.043075
+     ],
+     "gain": [
+      0.984,
+      1.1488,
+      1.0411,
+      0.9127
+     ],
+     "view_dev_deg": -0.323
+    }
+   },
+   "touch": false
+  },
+  {
+   "name": "dev02",
+   "seed": 2167591856198951776,
+   "factors": {
+    "kind": "dissection",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": false,
+    "smoke": true,
+    "rig": {
+     "head_deg": -35.624,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      10,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       338,
+       5.349
+      ]
+     ]
+    },
+    "salt": 8160338560184046,
+    "unit": {
+     "zero": [
+      -0.013873,
+      -0.003831,
+      0.004628,
+      -0.061814
+     ],
+     "gain": [
+      0.8122,
+      0.9383,
+      1.0005,
+      1.076
+     ],
+     "view_dev_deg": -0.304
+    }
+   },
+   "touch": true
+  },
+  {
+   "name": "dev03",
+   "seed": 5649290150132198067,
+   "factors": {
+    "kind": "suturing",
+    "scope": "0",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": 22.617,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       100,
+       -37.478
+      ]
+     ]
+    },
+    "salt": 7823369582814192,
+    "unit": {
+     "zero": [
+      7e-06,
+      0.009124,
+      0.000659,
+      0.069727
+     ],
+     "gain": [
+      0.8217,
+      1.1458,
+      1.1687,
+      0.9203
+     ],
+     "view_dev_deg": -0.812
+    }
+   },
+   "touch": false
+  },
+  {
+   "name": "dev04",
+   "seed": 767897244675440509,
+   "factors": {
+    "kind": "suturing",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "rig": {
+     "head_deg": 34.625,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      10,
+      5,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       189,
+       -11.136
+      ]
+     ]
+    },
+    "salt": 8257514531779940,
+    "unit": {
+     "zero": [
+      -0.008452,
+      0.000458,
+      -0.004186,
+      0.01708
+     ],
+     "gain": [
+      0.8951,
+      1.0578,
+      1.1895,
+      0.9821
+     ],
+     "view_dev_deg": -1.321
+    }
+   },
+   "touch": true
+  },
+  {
+   "name": "dev05",
+   "seed": 3830936350364840469,
+   "factors": {
+    "kind": "exploration",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": -20.211,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      5,
+      10,
+      10
+     ],
+     "head_changes": [
+      [
+       349,
+       -4.404
+      ]
+     ]
+    },
+    "salt": 1019862639887032,
+    "unit": {
+     "zero": [
+      0.005171,
+      0.008096,
+      -0.002574,
+      0.050474
+     ],
+     "gain": [
+      0.8189,
+      1.1495,
+      1.1195,
+      1.1853
+     ],
+     "view_dev_deg": -0.443
+    }
+   },
+   "touch": false
+  },
+  {
+   "name": "dev06",
+   "seed": 7880595029608344007,
+   "factors": {
+    "kind": "exploration",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "rig": {
+     "head_deg": 20.87,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       221,
+       -11.395
+      ]
+     ]
+    },
+    "salt": 9002188206555546,
+    "unit": {
+     "zero": [
+      0.012673,
+      0.00424,
+      -0.000408,
+      -0.033337
+     ],
+     "gain": [
+      0.9356,
+      1.1724,
+      0.8431,
+      1.1281
+     ],
+     "view_dev_deg": -0.67
+    }
+   },
+   "touch": false
+  },
+  {
+   "name": "dev07",
+   "seed": 107629019024087489,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "0",
+    "exchanges": 2,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": -34.586,
+     "latency_steps": 2,
+     "shaft_mm": [
+      10,
+      5,
+      5,
+      5,
+      10,
+      10
+     ],
+     "head_changes": [
+      [
+       347,
+       9.63
+      ]
+     ]
+    },
+    "salt": 2300338794433244,
+    "unit": {
+     "zero": [
+      0.014443,
+      -0.009765,
+      -0.003971,
+      -0.061517
+     ],
+     "gain": [
+      0.9748,
+      1.0022,
+      0.9167,
+      0.8609
+     ],
+     "view_dev_deg": -1.236
+    }
+   },
+   "touch": true
+  },
+  {
+   "name": "dev08",
+   "seed": 6948252800760808566,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "rig": {
+     "head_deg": 14.481,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      5,
+      10,
+      5
+     ],
+     "head_changes": [
+      [
+       346,
+       -34.403
+      ],
+      [
+       746,
+       -8.21
+      ]
+     ]
+    },
+    "salt": 2940755841105003,
+    "unit": {
+     "zero": [
+      0.006431,
+      -0.011444,
+      0.003531,
+      -0.027636
+     ],
+     "gain": [
+      0.984,
+      0.8765,
+      1.0706,
+      1.1973
+     ],
+     "view_dev_deg": 1.358
+    }
+   },
+   "touch": false
+  },
+  {
+   "name": "dev09",
+   "seed": 154927457081376394,
+   "factors": {
+    "kind": "dissection",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": 5.522,
+     "latency_steps": 2,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      5,
+      10,
+      5
+     ],
+     "head_changes": [
+      [
+       322,
+       -29.559
+      ],
+      [
+       750,
+       18.035
+      ]
+     ]
+    },
+    "salt": 7813137238838602,
+    "unit": {
+     "zero": [
+      0.006043,
+      -0.009852,
+      -0.0053,
+      -0.057793
+     ],
+     "gain": [
+      1.172,
+      1.0605,
+      0.9118,
+      0.995
+     ],
+     "view_dev_deg": 0.754
+    }
+   },
+   "touch": false
+  },
+  {
+   "name": "dev10",
+   "seed": 5878921590009016022,
+   "factors": {
+    "kind": "suturing",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": -24.166,
+     "latency_steps": 2,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      5,
+      5,
+      10
+     ],
+     "head_changes": [
+      [
+       301,
+       21.422
+      ]
+     ]
+    },
+    "salt": 4357514665553026,
+    "unit": {
+     "zero": [
+      0.012904,
+      -0.006597,
+      -4.4e-05,
+      -0.069083
+     ],
+     "gain": [
+      1.0426,
+      0.9331,
+      0.9854,
+      0.9909
+     ],
+     "view_dev_deg": -2.268
+    }
+   },
+   "touch": false
+  }
+ ],
+ "note": "the development procedures, drawn once by the task's make_sets tool on 2026-11-24 with the same rule as the graded set (a balanced table of factors, one os.urandom seed per row, no draw rejected); none of them is graded",
+ "rig_draw": {
+  "drawn": "2026-11-26",
+  "key": 16933116259670986098,
+  "rule": "endosim/procedure.py draw_rig; procedure i: draw_rig(Rng(key, 'rig-<i>')); tests/review/draw_rigs.py"
+ },
+ "v3_draw": {
+  "drawn": "2026-11-26",
+  "key": 16688242537185592512,
+  "rule": "tests/review/draw_v3.py (its docstring); endosim/procedure.py draw_head_changes, draw_rig"
+ },
+ "v4_draw": {
+  "drawn": "2026-11-26",
+  "key": 11486367590968804959,
+  "rule": "tests/review/draw_v4.py (its docstring); endosim/procedure.py draw_unit; endosim/model.py ZERO_TOL, GAIN_RANGE, VIEW_TOL_DEG"
+ }
+}

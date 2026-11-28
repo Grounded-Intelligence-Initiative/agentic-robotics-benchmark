@@ -1,0 +1,914 @@
+{
+ "drawn": "2026-11-24",
+ "rule": "A set is a balanced design: a table of factor rows (procedure kind, scope, number of instrument exchanges, assistant instrument, smoke), fixed below. Each row gets one 63-bit seed from os.urandom, in table order; the hidden set's rows are then put in an order drawn from os.urandom as well. No draw is ever rejected or repeated: nothing about a drawn procedure (how the reference or anything else scores on it) decides whether it is kept. Everything the factors do not pin (the cavity, the sites and the path, the gestures and their timing, when an exchange happens, every look) follows from the seed (endosim/procedure.py). The file records, for every procedure, the generator's facts and two render-free measurements made after the draw: what a holder that never moves scores, and what the reference scores (tests/review/fast_eval.py's loop). They are a record, not a filter.",
+ "design_rows_in_table_order": [
+  {
+   "kind": "dissection",
+   "scope": "0",
+   "exchanges": 0,
+   "assistant": true,
+   "smoke": true
+  },
+  {
+   "kind": "dissection",
+   "scope": "30",
+   "exchanges": 1,
+   "assistant": true,
+   "smoke": true
+  },
+  {
+   "kind": "dissection",
+   "scope": "0",
+   "exchanges": 1,
+   "assistant": false,
+   "smoke": true
+  },
+  {
+   "kind": "suturing",
+   "scope": "30",
+   "exchanges": 0,
+   "assistant": true,
+   "smoke": false
+  },
+  {
+   "kind": "suturing",
+   "scope": "0",
+   "exchanges": 1,
+   "assistant": false,
+   "smoke": false
+  },
+  {
+   "kind": "suturing",
+   "scope": "30",
+   "exchanges": 0,
+   "assistant": true,
+   "smoke": false
+  },
+  {
+   "kind": "exploration",
+   "scope": "0",
+   "exchanges": 0,
+   "assistant": false,
+   "smoke": false
+  },
+  {
+   "kind": "exploration",
+   "scope": "30",
+   "exchanges": 0,
+   "assistant": true,
+   "smoke": false
+  },
+  {
+   "kind": "exploration",
+   "scope": "0",
+   "exchanges": 1,
+   "assistant": true,
+   "smoke": false
+  },
+  {
+   "kind": "clip_and_cut",
+   "scope": "30",
+   "exchanges": 2,
+   "assistant": true,
+   "smoke": true
+  },
+  {
+   "kind": "clip_and_cut",
+   "scope": "0",
+   "exchanges": 1,
+   "assistant": false,
+   "smoke": false
+  },
+  {
+   "kind": "clip_and_cut",
+   "scope": "30",
+   "exchanges": 2,
+   "assistant": true,
+   "smoke": true
+  }
+ ],
+ "order_drawn": [
+  2,
+  7,
+  1,
+  3,
+  4,
+  0,
+  5,
+  9,
+  8,
+  10,
+  11,
+  6
+ ],
+ "rejected_draws": 0,
+ "record": [
+  {
+   "index": 0,
+   "seed": 8877293235906980051,
+   "facts": {
+    "seed": 8877293235906980051,
+    "kind": "dissection",
+    "scope": "0",
+    "steps": 800,
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": true,
+    "sites": 7,
+    "path_m": 0.268,
+    "pool": "all",
+    "palette": "pink",
+    "shafts": [
+     "graphite",
+     "black",
+     "white",
+     "maroon"
+    ],
+    "clutter": 0,
+    "fine_fraction": 0.8,
+    "both_active_fraction": 0.924,
+    "head_deg": -18.35,
+    "latency_steps": 3,
+    "head_changes": [
+     [
+      392,
+      22.329
+     ],
+     [
+      621,
+      -25.091
+     ]
+    ],
+    "critical_actions": 14,
+    "unit": {
+     "zero": [
+      -0.0142,
+      0.005182,
+      -0.004876,
+      -0.067333
+     ],
+     "gain": [
+      1.0957,
+      0.8557,
+      0.8944,
+      1.0339
+     ],
+     "view_dev_deg": -1.846
+    },
+    "breath_mm": 6.35,
+    "hidden_fraction": {
+     "left": 0.268,
+     "right": 0.181
+    },
+    "shafts_mm": [
+     5,
+     5,
+     5,
+     5
+    ],
+    "generator": "endosim-procedure/0.5"
+   },
+   "never_moves": 0.0,
+   "reference_render_free": 0.8438,
+   "reference_lens_contacts": 0
+  },
+  {
+   "index": 1,
+   "seed": 400074138918612267,
+   "facts": {
+    "seed": 400074138918612267,
+    "kind": "exploration",
+    "scope": "30",
+    "steps": 800,
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false,
+    "sites": 12,
+    "path_m": 0.737,
+    "pool": "all",
+    "palette": "fatty",
+    "shafts": [
+     "teal",
+     "graphite",
+     "graphite"
+    ],
+    "clutter": 6,
+    "fine_fraction": 0.575,
+    "both_active_fraction": 1.0,
+    "head_deg": -20.906,
+    "latency_steps": 1,
+    "head_changes": [
+     [
+      129,
+      -1.668
+     ]
+    ],
+    "critical_actions": 1,
+    "unit": {
+     "zero": [
+      0.001474,
+      0.008626,
+      0.004926,
+      -0.056945
+     ],
+     "gain": [
+      1.1651,
+      0.8517,
+      1.042,
+      0.8524
+     ],
+     "view_dev_deg": -1.675
+    },
+    "breath_mm": 6.44,
+    "hidden_fraction": {
+     "left": 0.177,
+     "right": 0.319
+    },
+    "shafts_mm": [
+     5,
+     10,
+     10
+    ],
+    "generator": "endosim-procedure/0.5"
+   },
+   "never_moves": 0.0,
+   "reference_render_free": 0.8,
+   "reference_lens_contacts": 0
+  },
+  {
+   "index": 2,
+   "seed": 864822573943602624,
+   "facts": {
+    "seed": 864822573943602624,
+    "kind": "dissection",
+    "scope": "30",
+    "steps": 800,
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": true,
+    "sites": 7,
+    "path_m": 0.268,
+    "pool": "all",
+    "palette": "pink",
+    "shafts": [
+     "steel",
+     "white",
+     "blue",
+     "maroon"
+    ],
+    "clutter": 6,
+    "fine_fraction": 0.769,
+    "both_active_fraction": 0.84,
+    "head_deg": 30.294,
+    "latency_steps": 2,
+    "head_changes": [
+     [
+      156,
+      -1.757
+     ]
+    ],
+    "critical_actions": 8,
+    "unit": {
+     "zero": [
+      0.010194,
+      0.00999,
+      0.002368,
+      -0.05403
+     ],
+     "gain": [
+      1.1117,
+      0.981,
+      1.0918,
+      0.8963
+     ],
+     "view_dev_deg": -0.923
+    },
+    "breath_mm": 6.26,
+    "hidden_fraction": {
+     "left": 0.128,
+     "right": 0.375
+    },
+    "shafts_mm": [
+     10,
+     5,
+     5,
+     10
+    ],
+    "generator": "endosim-procedure/0.5"
+   },
+   "never_moves": 0.0,
+   "reference_render_free": 0.8875,
+   "reference_lens_contacts": 0
+  },
+  {
+   "index": 3,
+   "seed": 6166477890003432265,
+   "facts": {
+    "seed": 6166477890003432265,
+    "kind": "suturing",
+    "scope": "30",
+    "steps": 800,
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false,
+    "sites": 9,
+    "path_m": 0.482,
+    "pool": "all",
+    "palette": "dusky",
+    "shafts": [
+     "yellow",
+     "gold",
+     "satin"
+    ],
+    "clutter": 1,
+    "fine_fraction": 0.54,
+    "both_active_fraction": 1.0,
+    "head_deg": 37.422,
+    "latency_steps": 1,
+    "head_changes": [
+     [
+      377,
+      8.406
+     ],
+     [
+      735,
+      26.936
+     ]
+    ],
+    "critical_actions": 3,
+    "unit": {
+     "zero": [
+      0.000729,
+      0.010678,
+      0.003924,
+      0.059753
+     ],
+     "gain": [
+      0.9447,
+      0.9776,
+      0.8295,
+      0.8549
+     ],
+     "view_dev_deg": -0.527
+    },
+    "breath_mm": 4.1,
+    "hidden_fraction": {
+     "left": 0.166,
+     "right": 0.324
+    },
+    "shafts_mm": [
+     10,
+     5,
+     5
+    ],
+    "generator": "endosim-procedure/0.5"
+   },
+   "never_moves": 0.0,
+   "reference_render_free": 0.7025,
+   "reference_lens_contacts": 0
+  },
+  {
+   "index": 4,
+   "seed": 935531142032414302,
+   "facts": {
+    "seed": 935531142032414302,
+    "kind": "suturing",
+    "scope": "0",
+    "steps": 800,
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "sites": 8,
+    "path_m": 0.314,
+    "pool": "all",
+    "palette": "pink",
+    "shafts": [
+     "black",
+     "white",
+     "graphite",
+     "satin"
+    ],
+    "clutter": 8,
+    "fine_fraction": 0.611,
+    "both_active_fraction": 0.823,
+    "head_deg": -31.421,
+    "latency_steps": 3,
+    "head_changes": [
+     [
+      123,
+      -11.157
+     ],
+     [
+      733,
+      15.793
+     ]
+    ],
+    "critical_actions": 2,
+    "unit": {
+     "zero": [
+      -0.008775,
+      0.007173,
+      -0.003315,
+      0.00214
+     ],
+     "gain": [
+      0.844,
+      1.0103,
+      1.1475,
+      1.0951
+     ],
+     "view_dev_deg": 0.708
+    },
+    "breath_mm": 9.52,
+    "hidden_fraction": {
+     "left": 0.119,
+     "right": 0.107
+    },
+    "shafts_mm": [
+     10,
+     10,
+     10,
+     5
+    ],
+    "generator": "endosim-procedure/0.5"
+   },
+   "never_moves": 0.0,
+   "reference_render_free": 0.775,
+   "reference_lens_contacts": 0
+  },
+  {
+   "index": 5,
+   "seed": 8385952325679332116,
+   "facts": {
+    "seed": 8385952325679332116,
+    "kind": "dissection",
+    "scope": "0",
+    "steps": 800,
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": true,
+    "sites": 7,
+    "path_m": 0.317,
+    "pool": "all",
+    "palette": "pink",
+    "shafts": [
+     "satin",
+     "black",
+     "steel"
+    ],
+    "clutter": 6,
+    "fine_fraction": 0.799,
+    "both_active_fraction": 1.0,
+    "head_deg": -4.636,
+    "latency_steps": 3,
+    "head_changes": [
+     [
+      375,
+      -27.086
+     ],
+     [
+      664,
+      21.82
+     ]
+    ],
+    "critical_actions": 12,
+    "unit": {
+     "zero": [
+      -0.006091,
+      -0.009203,
+      -0.005136,
+      0.023961
+     ],
+     "gain": [
+      0.8253,
+      1.0636,
+      1.1288,
+      0.9188
+     ],
+     "view_dev_deg": -0.746
+    },
+    "breath_mm": 9.07,
+    "hidden_fraction": {
+     "left": 0.299,
+     "right": 0.314
+    },
+    "shafts_mm": [
+     5,
+     5,
+     5
+    ],
+    "generator": "endosim-procedure/0.5"
+   },
+   "never_moves": 0.0,
+   "reference_render_free": 0.8213,
+   "reference_lens_contacts": 0
+  },
+  {
+   "index": 6,
+   "seed": 8753995334648852267,
+   "facts": {
+    "seed": 8753995334648852267,
+    "kind": "suturing",
+    "scope": "30",
+    "steps": 800,
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false,
+    "sites": 10,
+    "path_m": 0.489,
+    "pool": "all",
+    "palette": "dusky",
+    "shafts": [
+     "yellow",
+     "maroon",
+     "satin"
+    ],
+    "clutter": 2,
+    "fine_fraction": 0.477,
+    "both_active_fraction": 1.0,
+    "head_deg": -20.148,
+    "latency_steps": 2,
+    "head_changes": [
+     [
+      193,
+      30.752
+     ],
+     [
+      644,
+      -18.764
+     ]
+    ],
+    "critical_actions": 1,
+    "unit": {
+     "zero": [
+      -0.011121,
+      0.005693,
+      -0.001766,
+      -0.002836
+     ],
+     "gain": [
+      1.0042,
+      0.9722,
+      1.0469,
+      0.8924
+     ],
+     "view_dev_deg": -0.361
+    },
+    "breath_mm": 8.35,
+    "hidden_fraction": {
+     "left": 0.278,
+     "right": 0.214
+    },
+    "shafts_mm": [
+     5,
+     5,
+     10
+    ],
+    "generator": "endosim-procedure/0.5"
+   },
+   "never_moves": 0.0,
+   "reference_render_free": 0.725,
+   "reference_lens_contacts": 0
+  },
+  {
+   "index": 7,
+   "seed": 193914488821008829,
+   "facts": {
+    "seed": 193914488821008829,
+    "kind": "clip_and_cut",
+    "scope": "30",
+    "steps": 800,
+    "exchanges": 2,
+    "assistant": true,
+    "smoke": true,
+    "sites": 8,
+    "path_m": 0.436,
+    "pool": "all",
+    "palette": "fatty",
+    "shafts": [
+     "black",
+     "satin",
+     "steel",
+     "white",
+     "maroon"
+    ],
+    "clutter": 6,
+    "fine_fraction": 0.811,
+    "both_active_fraction": 0.755,
+    "head_deg": 31.441,
+    "latency_steps": 1,
+    "head_changes": [
+     [
+      158,
+      0.187
+     ]
+    ],
+    "critical_actions": 10,
+    "unit": {
+     "zero": [
+      -0.001086,
+      -0.008583,
+      -0.005515,
+      -0.062451
+     ],
+     "gain": [
+      1.1749,
+      1.1071,
+      1.0826,
+      0.8547
+     ],
+     "view_dev_deg": -1.129
+    },
+    "breath_mm": 6.18,
+    "hidden_fraction": {
+     "left": 0.184,
+     "right": 0.059
+    },
+    "shafts_mm": [
+     10,
+     5,
+     10,
+     10,
+     5
+    ],
+    "generator": "endosim-procedure/0.5"
+   },
+   "never_moves": 0.0,
+   "reference_render_free": 0.8562,
+   "reference_lens_contacts": 0
+  },
+  {
+   "index": 8,
+   "seed": 1751314099948688522,
+   "facts": {
+    "seed": 1751314099948688522,
+    "kind": "exploration",
+    "scope": "0",
+    "steps": 800,
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": false,
+    "sites": 12,
+    "path_m": 0.662,
+    "pool": "all",
+    "palette": "pink",
+    "shafts": [
+     "white",
+     "steel",
+     "gold",
+     "gold"
+    ],
+    "clutter": 7,
+    "fine_fraction": 0.647,
+    "both_active_fraction": 0.84,
+    "head_deg": 11.634,
+    "latency_steps": 1,
+    "head_changes": [
+     [
+      206,
+      -16.666
+     ],
+     [
+      704,
+      4.514
+     ]
+    ],
+    "critical_actions": 4,
+    "unit": {
+     "zero": [
+      -0.009032,
+      0.003173,
+      -0.001584,
+      -0.014944
+     ],
+     "gain": [
+      1.1388,
+      1.0422,
+      1.1581,
+      0.8773
+     ],
+     "view_dev_deg": 1.84
+    },
+    "breath_mm": 5.39,
+    "hidden_fraction": {
+     "left": 0.122,
+     "right": 0.266
+    },
+    "shafts_mm": [
+     10,
+     5,
+     5,
+     5
+    ],
+    "generator": "endosim-procedure/0.5"
+   },
+   "never_moves": 0.0,
+   "reference_render_free": 0.8625,
+   "reference_lens_contacts": 0
+  },
+  {
+   "index": 9,
+   "seed": 893602452644095910,
+   "facts": {
+    "seed": 893602452644095910,
+    "kind": "clip_and_cut",
+    "scope": "0",
+    "steps": 800,
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "sites": 8,
+    "path_m": 0.475,
+    "pool": "all",
+    "palette": "red",
+    "shafts": [
+     "satin",
+     "white",
+     "maroon",
+     "satin"
+    ],
+    "clutter": 7,
+    "fine_fraction": 0.802,
+    "both_active_fraction": 0.829,
+    "head_deg": 5.48,
+    "latency_steps": 1,
+    "head_changes": [
+     [
+      335,
+      34.213
+     ],
+     [
+      660,
+      9.267
+     ]
+    ],
+    "critical_actions": 5,
+    "unit": {
+     "zero": [
+      -0.004692,
+      0.002689,
+      -0.002603,
+      -0.059798
+     ],
+     "gain": [
+      0.9354,
+      1.1816,
+      0.8298,
+      0.8121
+     ],
+     "view_dev_deg": -2.087
+    },
+    "breath_mm": 4.19,
+    "hidden_fraction": {
+     "left": 0.0,
+     "right": 0.154
+    },
+    "shafts_mm": [
+     5,
+     5,
+     5,
+     5
+    ],
+    "generator": "endosim-procedure/0.5"
+   },
+   "never_moves": 0.0,
+   "reference_render_free": 0.9087,
+   "reference_lens_contacts": 0
+  },
+  {
+   "index": 10,
+   "seed": 1768593358093277859,
+   "facts": {
+    "seed": 1768593358093277859,
+    "kind": "clip_and_cut",
+    "scope": "30",
+    "steps": 800,
+    "exchanges": 2,
+    "assistant": true,
+    "smoke": true,
+    "sites": 8,
+    "path_m": 0.364,
+    "pool": "all",
+    "palette": "pink",
+    "shafts": [
+     "maroon",
+     "teal",
+     "steel",
+     "teal",
+     "satin"
+    ],
+    "clutter": 8,
+    "fine_fraction": 0.819,
+    "both_active_fraction": 0.695,
+    "head_deg": 32.637,
+    "latency_steps": 1,
+    "head_changes": [
+     [
+      365,
+      -33.113
+     ]
+    ],
+    "critical_actions": 7,
+    "unit": {
+     "zero": [
+      0.006829,
+      0.000884,
+      -0.005986,
+      -0.055719
+     ],
+     "gain": [
+      0.8877,
+      1.0596,
+      1.0906,
+      1.0856
+     ],
+     "view_dev_deg": 2.234
+    },
+    "breath_mm": 8.37,
+    "hidden_fraction": {
+     "left": 0.41,
+     "right": 0.34
+    },
+    "shafts_mm": [
+     5,
+     10,
+     5,
+     5,
+     10
+    ],
+    "generator": "endosim-procedure/0.5"
+   },
+   "never_moves": 0.0,
+   "reference_render_free": 0.8163,
+   "reference_lens_contacts": 0
+  },
+  {
+   "index": 11,
+   "seed": 1587353831828850233,
+   "facts": {
+    "seed": 1587353831828850233,
+    "kind": "exploration",
+    "scope": "0",
+    "steps": 800,
+    "exchanges": 0,
+    "assistant": false,
+    "smoke": false,
+    "sites": 12,
+    "path_m": 0.772,
+    "pool": "all",
+    "palette": "liver",
+    "shafts": [
+     "maroon",
+     "gold",
+     "gold"
+    ],
+    "clutter": 7,
+    "fine_fraction": 0.564,
+    "both_active_fraction": 1.0,
+    "head_deg": 17.483,
+    "latency_steps": 1,
+    "head_changes": [
+     [
+      160,
+      -30.488
+     ],
+     [
+      691,
+      20.907
+     ]
+    ],
+    "critical_actions": 4,
+    "unit": {
+     "zero": [
+      -0.011952,
+      -0.014761,
+      -0.001235,
+      0.008007
+     ],
+     "gain": [
+      0.9165,
+      1.0608,
+      1.1514,
+      1.0862
+     ],
+     "view_dev_deg": -1.872
+    },
+    "breath_mm": 8.94,
+    "hidden_fraction": {
+     "left": 0.03,
+     "right": 0.27
+    },
+    "shafts_mm": [
+     5,
+     5,
+     10
+    ],
+    "generator": "endosim-procedure/0.5"
+   },
+   "never_moves": 0.0,
+   "reference_render_free": 0.735,
+   "reference_lens_contacts": 0
+  }
+ ],
+ "record_measured": "2026-11-26"
+}

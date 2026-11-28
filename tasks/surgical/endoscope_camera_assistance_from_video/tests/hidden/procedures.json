@@ -1,0 +1,582 @@
+{
+ "steps": 800,
+ "generator": "endosim-procedure/0.5",
+ "procedures": [
+  {
+   "seed": 8877293235906980051,
+   "factors": {
+    "kind": "dissection",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": true,
+    "rig": {
+     "head_deg": -18.35,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      5,
+      10,
+      5
+     ],
+     "head_changes": [
+      [
+       392,
+       22.329
+      ],
+      [
+       621,
+       -25.091
+      ]
+     ]
+    },
+    "salt": 7301016358195378,
+    "unit": {
+     "zero": [
+      -0.0142,
+      0.005182,
+      -0.004876,
+      -0.067333
+     ],
+     "gain": [
+      1.0957,
+      0.8557,
+      0.8944,
+      1.0339
+     ],
+     "view_dev_deg": -1.846
+    }
+   }
+  },
+  {
+   "seed": 400074138918612267,
+   "factors": {
+    "kind": "exploration",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": -20.906,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      10,
+      10,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       129,
+       -1.668
+      ]
+     ]
+    },
+    "salt": 699989118535993,
+    "unit": {
+     "zero": [
+      0.001474,
+      0.008626,
+      0.004926,
+      -0.056945
+     ],
+     "gain": [
+      1.1651,
+      0.8517,
+      1.042,
+      0.8524
+     ],
+     "view_dev_deg": -1.675
+    }
+   }
+  },
+  {
+   "seed": 864822573943602624,
+   "factors": {
+    "kind": "dissection",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": 30.294,
+     "latency_steps": 2,
+     "shaft_mm": [
+      10,
+      5,
+      5,
+      10,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       156,
+       -1.757
+      ]
+     ]
+    },
+    "salt": 7370085641532114,
+    "unit": {
+     "zero": [
+      0.010194,
+      0.00999,
+      0.002368,
+      -0.05403
+     ],
+     "gain": [
+      1.1117,
+      0.981,
+      1.0918,
+      0.8963
+     ],
+     "view_dev_deg": -0.923
+    }
+   }
+  },
+  {
+   "seed": 6166477890003432265,
+   "factors": {
+    "kind": "suturing",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": 37.422,
+     "latency_steps": 1,
+     "shaft_mm": [
+      10,
+      5,
+      5,
+      5,
+      10,
+      10
+     ],
+     "head_changes": [
+      [
+       377,
+       8.406
+      ],
+      [
+       735,
+       26.936
+      ]
+     ]
+    },
+    "salt": 3649602967544536,
+    "unit": {
+     "zero": [
+      0.000729,
+      0.010678,
+      0.003924,
+      0.059753
+     ],
+     "gain": [
+      0.9447,
+      0.9776,
+      0.8295,
+      0.8549
+     ],
+     "view_dev_deg": -0.527
+    }
+   }
+  },
+  {
+   "seed": 935531142032414302,
+   "factors": {
+    "kind": "suturing",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "rig": {
+     "head_deg": -31.421,
+     "latency_steps": 3,
+     "shaft_mm": [
+      10,
+      10,
+      10,
+      5,
+      10,
+      5
+     ],
+     "head_changes": [
+      [
+       123,
+       -11.157
+      ],
+      [
+       733,
+       15.793
+      ]
+     ]
+    },
+    "salt": 1540175130422515,
+    "unit": {
+     "zero": [
+      -0.008775,
+      0.007173,
+      -0.003315,
+      0.00214
+     ],
+     "gain": [
+      0.844,
+      1.0103,
+      1.1475,
+      1.0951
+     ],
+     "view_dev_deg": 0.708
+    }
+   }
+  },
+  {
+   "seed": 8385952325679332116,
+   "factors": {
+    "kind": "dissection",
+    "scope": "0",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": -4.636,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      10,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       375,
+       -27.086
+      ],
+      [
+       664,
+       21.82
+      ]
+     ]
+    },
+    "salt": 6746331903220999,
+    "unit": {
+     "zero": [
+      -0.006091,
+      -0.009203,
+      -0.005136,
+      0.023961
+     ],
+     "gain": [
+      0.8253,
+      1.0636,
+      1.1288,
+      0.9188
+     ],
+     "view_dev_deg": -0.746
+    }
+   }
+  },
+  {
+   "seed": 8753995334648852267,
+   "factors": {
+    "kind": "suturing",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": -20.148,
+     "latency_steps": 2,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       193,
+       30.752
+      ],
+      [
+       644,
+       -18.764
+      ]
+     ]
+    },
+    "salt": 5250080564186070,
+    "unit": {
+     "zero": [
+      -0.011121,
+      0.005693,
+      -0.001766,
+      -0.002836
+     ],
+     "gain": [
+      1.0042,
+      0.9722,
+      1.0469,
+      0.8924
+     ],
+     "view_dev_deg": -0.361
+    }
+   }
+  },
+  {
+   "seed": 193914488821008829,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "30",
+    "exchanges": 2,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": 31.441,
+     "latency_steps": 1,
+     "shaft_mm": [
+      10,
+      5,
+      10,
+      10,
+      5,
+      10
+     ],
+     "head_changes": [
+      [
+       158,
+       0.187
+      ]
+     ]
+    },
+    "salt": 7596502213360727,
+    "unit": {
+     "zero": [
+      -0.001086,
+      -0.008583,
+      -0.005515,
+      -0.062451
+     ],
+     "gain": [
+      1.1749,
+      1.1071,
+      1.0826,
+      0.8547
+     ],
+     "view_dev_deg": -1.129
+    }
+   }
+  },
+  {
+   "seed": 1751314099948688522,
+   "factors": {
+    "kind": "exploration",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": 11.634,
+     "latency_steps": 1,
+     "shaft_mm": [
+      10,
+      5,
+      5,
+      5,
+      10,
+      5
+     ],
+     "head_changes": [
+      [
+       206,
+       -16.666
+      ],
+      [
+       704,
+       4.514
+      ]
+     ]
+    },
+    "salt": 372767420053169,
+    "unit": {
+     "zero": [
+      -0.009032,
+      0.003173,
+      -0.001584,
+      -0.014944
+     ],
+     "gain": [
+      1.1388,
+      1.0422,
+      1.1581,
+      0.8773
+     ],
+     "view_dev_deg": 1.84
+    }
+   }
+  },
+  {
+   "seed": 893602452644095910,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "rig": {
+     "head_deg": 5.48,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       335,
+       34.213
+      ],
+      [
+       660,
+       9.267
+      ]
+     ]
+    },
+    "salt": 2523046897948274,
+    "unit": {
+     "zero": [
+      -0.004692,
+      0.002689,
+      -0.002603,
+      -0.059798
+     ],
+     "gain": [
+      0.9354,
+      1.1816,
+      0.8298,
+      0.8121
+     ],
+     "view_dev_deg": -2.087
+    }
+   }
+  },
+  {
+   "seed": 1768593358093277859,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "30",
+    "exchanges": 2,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": 32.637,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      10,
+      5,
+      5,
+      10,
+      5
+     ],
+     "head_changes": [
+      [
+       365,
+       -33.113
+      ]
+     ]
+    },
+    "salt": 6392560629872766,
+    "unit": {
+     "zero": [
+      0.006829,
+      0.000884,
+      -0.005986,
+      -0.055719
+     ],
+     "gain": [
+      0.8877,
+      1.0596,
+      1.0906,
+      1.0856
+     ],
+     "view_dev_deg": 2.234
+    }
+   }
+  },
+  {
+   "seed": 1587353831828850233,
+   "factors": {
+    "kind": "exploration",
+    "scope": "0",
+    "exchanges": 0,
+    "assistant": false,
+    "smoke": false,
+    "rig": {
+     "head_deg": 17.483,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       160,
+       -30.488
+      ],
+      [
+       691,
+       20.907
+      ]
+     ]
+    },
+    "salt": 8660157533154765,
+    "unit": {
+     "zero": [
+      -0.011952,
+      -0.014761,
+      -0.001235,
+      0.008007
+     ],
+     "gain": [
+      0.9165,
+      1.0608,
+      1.1514,
+      1.0862
+     ],
+     "view_dev_deg": -1.872
+    }
+   }
+  }
+ ],
+ "note": "the fixed hidden set: 12 procedures drawn once by tests/review/make_sets.py on 2026-11-24 (rule and record: selection.json); the same procedures for every submission",
+ "rig_draw": {
+  "drawn": "2026-11-26",
+  "key": 10556249565426065709,
+  "rule": "endosim/procedure.py draw_rig; procedure i: draw_rig(Rng(key, 'rig-<i>')); tests/review/draw_rigs.py"
+ },
+ "v3_draw": {
+  "drawn": "2026-11-26",
+  "key": 12757619781714779651,
+  "rule": "tests/review/draw_v3.py (its docstring); endosim/procedure.py draw_head_changes, draw_rig"
+ },
+ "v4_draw": {
+  "drawn": "2026-11-26",
+  "key": 13615089563888208410,
+  "rule": "tests/review/draw_v4.py (its docstring); endosim/procedure.py draw_unit; endosim/model.py ZERO_TOL, GAIN_RANGE, VIEW_TOL_DEG"
+ }
+}

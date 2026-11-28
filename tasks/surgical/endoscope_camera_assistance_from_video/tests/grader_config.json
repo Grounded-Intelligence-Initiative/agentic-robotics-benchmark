@@ -1,0 +1,13 @@
+{
+ "step_timeout_s": 10,
+ "controller_budget_s_per_step": 0.25,
+ "probe_rate": 0.06,
+ "probe_pass_fraction": 0.1,
+ "scoring_cap": 1.5,
+ "renderer_start_timeout_s": 2400,
+ "render_timeout_s": 120,
+ "renderer_restarts": 3,
+ "canary_max_error_px": 2.5,
+ "verifier_deadline_s": 8400,
+ "note": "Grader knobs (tests/verify.py). The hidden set and its length are in hidden/procedures.json. The video latency is each procedure's own (its rig, in hidden/procedures.json; the manual states the range). step_timeout_s: one request's deadline (READY within 4 of them); controller_budget_s_per_step x steps x procedures = the controller's reply time for the whole evaluation (2400 s for 12 x 800 steps; probe copies count). The probe: on probe_rate of the steps the step is asked twice, the copy rendered with the instruments moved over the frame's last step as over another step of the procedure (endosim/session.py `probe_copy`; a step with no instrument in, or with no such step, has no probe); probe_pass_fraction of the pairs must differ in the action. The renderer: its start may compile the RTX pipelines on a cold cache (renderer_start_timeout_s), a frame is drawn again after a renderer failure (renderer_restarts restarts in all), and the canary requires a marker within canary_max_error_px of where the public camera model puts it. verifier_deadline_s: when grading has run this long (task.toml's [verifier] timeout_sec is 9000) the grader writes its verdict from the steps judged so far, every step not reached counting as unusable."
+}

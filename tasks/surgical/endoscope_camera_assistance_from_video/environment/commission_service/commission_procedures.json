@@ -1,0 +1,491 @@
+{
+ "steps": 800,
+ "sessions": 3,
+ "note": "What the commissioning sessions play (version 0.3): drawn like the graded procedures (their look pool), rigs of their own; not recorded; the agent's documents name them and nothing else. Three sessions in all (version 0.3, the owner's choice of 2026-11-26), counted when they start, never given back.",
+ "procedures": [
+  {
+   "name": "c01",
+   "seed": 5262725068491470848,
+   "factors": {
+    "kind": "dissection",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": -8.86,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      10,
+      5,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       183,
+       32.421
+      ],
+      [
+       589,
+       -6.464
+      ]
+     ]
+    },
+    "salt": 430331291865890,
+    "unit": {
+     "zero": [
+      0.000651,
+      0.003893,
+      0.001872,
+      0.024871
+     ],
+     "gain": [
+      0.9435,
+      1.0978,
+      0.8278,
+      1.0601
+     ],
+     "view_dev_deg": 2.249
+    }
+   }
+  },
+  {
+   "name": "c02",
+   "seed": 5558168657227717632,
+   "factors": {
+    "kind": "dissection",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": false,
+    "smoke": true,
+    "rig": {
+     "head_deg": 13.12,
+     "latency_steps": 2,
+     "shaft_mm": [
+      10,
+      5,
+      10,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       249,
+       -38.066
+      ],
+      [
+       622,
+       9.983
+      ]
+     ]
+    },
+    "salt": 83346712485975,
+    "unit": {
+     "zero": [
+      0.006398,
+      -0.002608,
+      0.003794,
+      -0.043478
+     ],
+     "gain": [
+      0.9433,
+      0.8447,
+      1.0217,
+      0.8845
+     ],
+     "view_dev_deg": -0.955
+    }
+   }
+  },
+  {
+   "name": "c03",
+   "seed": 4316587286307961856,
+   "factors": {
+    "kind": "suturing",
+    "scope": "0",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": 8.112,
+     "latency_steps": 2,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      5,
+      5,
+      10
+     ],
+     "head_changes": [
+      [
+       96,
+       39.705
+      ]
+     ]
+    },
+    "salt": 3165956412175374,
+    "unit": {
+     "zero": [
+      0.005225,
+      0.000929,
+      -0.002144,
+      0.004811
+     ],
+     "gain": [
+      0.8119,
+      1.164,
+      0.8488,
+      0.9261
+     ],
+     "view_dev_deg": -0.081
+    }
+   }
+  },
+  {
+   "name": "c04",
+   "seed": 3584577310339087360,
+   "factors": {
+    "kind": "suturing",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "rig": {
+     "head_deg": 34.49,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      10,
+      5,
+      5,
+      10,
+      5
+     ],
+     "head_changes": [
+      [
+       202,
+       -21.63
+      ],
+      [
+       501,
+       35.067
+      ]
+     ]
+    },
+    "salt": 3935051917281321,
+    "unit": {
+     "zero": [
+      -0.008539,
+      -0.008198,
+      -0.003609,
+      -0.049784
+     ],
+     "gain": [
+      0.8785,
+      0.9507,
+      1.0425,
+      1.1185
+     ],
+     "view_dev_deg": -0.556
+    }
+   }
+  },
+  {
+   "name": "c05",
+   "seed": 9222938588186723328,
+   "factors": {
+    "kind": "exploration",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": -37.79,
+     "latency_steps": 2,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      10,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       335,
+       14.596
+      ]
+     ]
+    },
+    "salt": 3866081853034113,
+    "unit": {
+     "zero": [
+      -0.008133,
+      -0.005533,
+      0.001733,
+      -0.019813
+     ],
+     "gain": [
+      0.8368,
+      1.0972,
+      1.151,
+      1.0327
+     ],
+     "view_dev_deg": -2.08
+    }
+   }
+  },
+  {
+   "name": "c06",
+   "seed": 8040472542110014464,
+   "factors": {
+    "kind": "exploration",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "rig": {
+     "head_deg": -31.921,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      10,
+      10,
+      5,
+      5,
+      10
+     ],
+     "head_changes": [
+      [
+       141,
+       26.076
+      ],
+      [
+       569,
+       -33.815
+      ]
+     ]
+    },
+    "salt": 6766812649736762,
+    "unit": {
+     "zero": [
+      -0.010642,
+      0.009892,
+      -0.000192,
+      -0.002418
+     ],
+     "gain": [
+      1.0593,
+      1.0629,
+      1.0491,
+      0.933
+     ],
+     "view_dev_deg": 0.503
+    }
+   }
+  },
+  {
+   "name": "c07",
+   "seed": 6359266094182906880,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "0",
+    "exchanges": 2,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": 33.017,
+     "latency_steps": 2,
+     "shaft_mm": [
+      10,
+      5,
+      10,
+      5,
+      10,
+      5
+     ],
+     "head_changes": [
+      [
+       203,
+       -5.009
+      ],
+      [
+       549,
+       36.649
+      ]
+     ]
+    },
+    "salt": 7564738532811570,
+    "unit": {
+     "zero": [
+      0.006307,
+      0.013745,
+      0.000411,
+      -0.00696
+     ],
+     "gain": [
+      0.891,
+      0.9233,
+      0.8381,
+      0.8841
+     ],
+     "view_dev_deg": -1.567
+    }
+   }
+  },
+  {
+   "name": "c08",
+   "seed": 8970036818142879744,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "rig": {
+     "head_deg": -37.32,
+     "latency_steps": 2,
+     "shaft_mm": [
+      5,
+      10,
+      10,
+      5,
+      5,
+      10
+     ],
+     "head_changes": [
+      [
+       394,
+       -20.95
+      ]
+     ]
+    },
+    "salt": 5536822220433951,
+    "unit": {
+     "zero": [
+      -0.006196,
+      -0.009427,
+      0.005417,
+      -0.006123
+     ],
+     "gain": [
+      1.1889,
+      1.1362,
+      0.91,
+      0.8386
+     ],
+     "view_dev_deg": 2.025
+    }
+   }
+  },
+  {
+   "name": "c09",
+   "seed": 1674664125144286208,
+   "factors": {
+    "kind": "dissection",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": -20.881,
+     "latency_steps": 1,
+     "shaft_mm": [
+      10,
+      5,
+      10,
+      5,
+      10,
+      10
+     ],
+     "head_changes": [
+      [
+       88,
+       -3.56
+      ]
+     ]
+    },
+    "salt": 488805925041467,
+    "unit": {
+     "zero": [
+      -0.002673,
+      -0.013381,
+      0.005113,
+      -0.004996
+     ],
+     "gain": [
+      1.1827,
+      0.8611,
+      0.9042,
+      1.0037
+     ],
+     "view_dev_deg": 2.253
+    }
+   }
+  },
+  {
+   "name": "c10",
+   "seed": 6738162855514326016,
+   "factors": {
+    "kind": "suturing",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": 26.719,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       261,
+       -31.976
+      ],
+      [
+       754,
+       -7.245
+      ]
+     ]
+    },
+    "salt": 6296405748079417,
+    "unit": {
+     "zero": [
+      0.002085,
+      -0.014475,
+      0.005047,
+      -0.008962
+     ],
+     "gain": [
+      1.0563,
+      0.9809,
+      0.9624,
+      1.1787
+     ],
+     "view_dev_deg": -2.22
+    }
+   }
+  }
+ ],
+ "v3_draw": {
+  "drawn": "2026-11-26",
+  "key": 3379130351603837604,
+  "rule": "tests/review/draw_v3.py (its docstring); endosim/procedure.py draw_head_changes, draw_rig"
+ },
+ "v4_draw": {
+  "drawn": "2026-11-26",
+  "key": 3929384717746489771,
+  "rule": "tests/review/draw_v4.py (its docstring); endosim/procedure.py draw_unit; endosim/model.py ZERO_TOL, GAIN_RANGE, VIEW_TOL_DEG"
+ }
+}
