@@ -1,0 +1,24 @@
+{
+  "model": "example car 3",
+  "chassis": {
+    "length": 0.121,
+    "width": 0.05,
+    "base_t": 0.008,
+    "block_h": 0.01,
+    "notch_x": 0.037,
+    "notch_w": 0.011
+  },
+  "axle": {
+    "length": 0.078,
+    "dia": 0.01
+  },
+  "wheel": {
+    "dia": 0.042,
+    "thick": 0.012
+  },
+  "cabin": {
+    "length": 0.049,
+    "width": 0.035,
+    "height": 0.036
+  }
+}
