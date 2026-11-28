@@ -1,0 +1,392 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="mobile_fr3_duo">
+  <link name="base_link" />
+  <link name="franka_spine" />
+  <joint name="franka_spine_fixed" type="fixed">
+    <parent link="base_link" />
+    <child link="franka_spine" />
+    <origin xyz="0.138289 0 0.35" rpy="0 0 0" />
+  </joint>
+  <link name="franka_spine_mounting_point" />
+  <joint name="franka_spine_vertical_joint" type="prismatic">
+    <parent link="franka_spine" />
+    <child link="franka_spine_mounting_point" />
+    <origin xyz="0.266710996628 0 0.10000000149" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="0.0" upper="0.827" effort="900.0" velocity="0.28" />
+  </joint>
+  <link name="left_fr3v2_1_link0" />
+  <joint name="left_fr3v2_1_link0_fixed" type="fixed">
+    <parent link="franka_spine_mounting_point" />
+    <child link="left_fr3v2_1_link0" />
+    <origin xyz="0.037 0.05018 0.05" rpy="-0.893347997935 -0.174560704819 -0.463345033051" />
+  </joint>
+  <link name="left_fr3v2_1_link1" />
+  <joint name="left_fr3v2_1_joint1" type="revolute">
+    <parent link="left_fr3v2_1_link0" />
+    <child link="left_fr3v2_1_link1" />
+    <origin xyz="0 0 0.333000004292" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-2.900740093028553" upper="2.900740093028553" effort="87.0" velocity="2.619999885559082" />
+  </joint>
+  <link name="left_fr3v2_1_link2" />
+  <joint name="left_fr3v2_1_joint2" type="revolute">
+    <parent link="left_fr3v2_1_link1" />
+    <child link="left_fr3v2_1_link2" />
+    <origin xyz="0 0 1.11022302463e-16" rpy="-1.57079632679 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.836090048260339" upper="1.836090048260339" effort="87.0" velocity="2.619999885559082" />
+  </joint>
+  <link name="left_fr3v2_1_link3" />
+  <joint name="left_fr3v2_1_joint3" type="revolute">
+    <parent link="left_fr3v2_1_link2" />
+    <child link="left_fr3v2_1_link3" />
+    <origin xyz="0 -0.316000014544 2.77555756156e-17" rpy="1.57079632679 2.22044604925e-16 1.11022302463e-16" />
+    <axis xyz="0 0 1" />
+    <limit lower="-2.900740093028553" upper="2.900740093028553" effort="87.0" velocity="2.619999885559082" />
+  </joint>
+  <link name="left_fr3v2_1_link4" />
+  <joint name="left_fr3v2_1_joint4" type="revolute">
+    <parent link="left_fr3v2_1_link3" />
+    <child link="left_fr3v2_1_link4" />
+    <origin xyz="0.0825000032783 2.77555756156e-17 0" rpy="1.57079632679 -2.22044604925e-16 3.33066907388e-16" />
+    <axis xyz="0 0 1" />
+    <limit lower="-3.077020051903078" upper="-0.11693708152180393" effort="87.0" velocity="2.619999885559082" />
+  </joint>
+  <link name="left_fr3v2_1_link5" />
+  <joint name="left_fr3v2_1_joint5" type="revolute">
+    <parent link="left_fr3v2_1_link4" />
+    <child link="left_fr3v2_1_link5" />
+    <origin xyz="-0.0825000032783 0.384000003338 -5.55111512313e-17" rpy="-1.57079632679 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-2.876303459498204" upper="2.876303459498204" effort="12.0" velocity="5.260000228881836" />
+  </joint>
+  <link name="left_fr3v2_1_link6" />
+  <joint name="left_fr3v2_1_joint6" type="revolute">
+    <parent link="left_fr3v2_1_link5" />
+    <child link="left_fr3v2_1_link6" />
+    <origin xyz="0 -5.55111512313e-17 -2.22044604925e-16" rpy="1.57079632679 0 1.11022302463e-16" />
+    <axis xyz="0 0 1" />
+    <limit lower="0.4398226519232402" upper="4.621633244124752" effort="12.0" velocity="4.179999828338623" />
+  </joint>
+  <link name="left_fr3v2_1_link7" />
+  <joint name="left_fr3v2_1_joint7" type="revolute">
+    <parent link="left_fr3v2_1_link6" />
+    <child link="left_fr3v2_1_link7" />
+    <origin xyz="0.0879999995232 -2.22044604925e-16 -5.55111512313e-17" rpy="1.57079632679 2.22044604925e-16 -1.11022302463e-16" />
+    <axis xyz="0 0 1" />
+    <limit lower="-3.0508334552204377" upper="3.0508334552204377" effort="12.0" velocity="5.260000228881836" />
+  </joint>
+  <link name="left_fr3v2_1_link8" />
+  <joint name="left_fr3v2_1_link8_fixed" type="fixed">
+    <parent link="left_fr3v2_1_link7" />
+    <child link="left_fr3v2_1_link8" />
+    <origin xyz="-1.11022302463e-16 1.11022302463e-16 0.107" rpy="2.14267083134e-17 0 -1.11791047006e-17" />
+  </joint>
+  <link name="left_robotiq_85_base_link" />
+  <joint name="left_robotiq_85_base_link_fixed" type="fixed">
+    <parent link="left_fr3v2_1_link8" />
+    <child link="left_robotiq_85_base_link" />
+    <origin xyz="-1.11022302463e-16 -5.55111512313e-17 0.011" rpy="0 0 -1.57079636102" />
+  </joint>
+  <link name="left_robotiq_85_left_knuckle_link" />
+  <joint name="left_robotiq_85_left_knuckle_joint" type="revolute">
+    <parent link="left_robotiq_85_base_link" />
+    <child link="left_robotiq_85_left_knuckle_link" />
+    <origin xyz="0.0306011401117 -1.11022302463e-16 0.0549045205116" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="0.0" upper="0.8000000093382438" effort="50.0" velocity="0.5" />
+  </joint>
+  <link name="left_robotiq_85_left_inner_knuckle_link" />
+  <joint name="left_robotiq_85_left_inner_knuckle_joint" type="revolute">
+    <parent link="left_robotiq_85_base_link" />
+    <child link="left_robotiq_85_left_inner_knuckle_link" />
+    <origin xyz="0.0126999998465 -1.11022302463e-16 0.0614200010896" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="0.0" upper="0.8000000093382438" effort="50.0" velocity="0.5" />
+    <mimic joint="left_robotiq_85_left_knuckle_joint" multiplier="1.0" />
+  </joint>
+  <link name="left_robotiq_85_left_finger_link" />
+  <joint name="left_robotiq_85_left_finger_link_fixed" type="fixed">
+    <parent link="left_robotiq_85_left_knuckle_link" />
+    <child link="left_robotiq_85_left_finger_link" />
+    <origin xyz="0.03152616 0 -0.00376347" rpy="2.24153563207e-17 0 -6.74932316779e-17" />
+  </joint>
+  <link name="left_robotiq_85_left_finger_tip_link" />
+  <joint name="left_robotiq_85_left_finger_tip_joint" type="revolute">
+    <parent link="left_robotiq_85_left_finger_link" />
+    <child link="left_robotiq_85_left_finger_tip_link" />
+    <origin xyz="0.00563134020194 0 0.0471851490438" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-0.8000000093382438" upper="0.0" effort="50.0" velocity="0.5" />
+    <mimic joint="left_robotiq_85_left_knuckle_joint" multiplier="-1.0" />
+  </joint>
+  <link name="left_robotiq_85_right_knuckle_link" />
+  <joint name="left_robotiq_85_right_knuckle_joint" type="revolute">
+    <parent link="left_robotiq_85_base_link" />
+    <child link="left_robotiq_85_right_knuckle_link" />
+    <origin xyz="-0.0306011401117 -1.11022302463e-16 0.0549045205116" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-0.8000000093382438" upper="0.0" effort="50.0" velocity="0.5" />
+    <mimic joint="left_robotiq_85_left_knuckle_joint" multiplier="-1.0" />
+  </joint>
+  <link name="left_robotiq_85_right_inner_knuckle_link" />
+  <joint name="left_robotiq_85_right_inner_knuckle_joint" type="revolute">
+    <parent link="left_robotiq_85_base_link" />
+    <child link="left_robotiq_85_right_inner_knuckle_link" />
+    <origin xyz="-0.0126999998465 -1.11022302463e-16 0.0614200010896" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-0.8000000093382438" upper="0.0" effort="50.0" velocity="0.5" />
+    <mimic joint="left_robotiq_85_left_knuckle_joint" multiplier="-1.0" />
+  </joint>
+  <link name="left_robotiq_85_right_finger_link" />
+  <joint name="left_robotiq_85_right_finger_link_fixed" type="fixed">
+    <parent link="left_robotiq_85_right_knuckle_link" />
+    <child link="left_robotiq_85_right_finger_link" />
+    <origin xyz="-0.03152616 -1.11022302463e-16 -0.00376347" rpy="2.24153563207e-17 0 -6.74932316779e-17" />
+  </joint>
+  <link name="left_robotiq_85_right_finger_tip_link" />
+  <joint name="left_robotiq_85_right_finger_tip_joint" type="revolute">
+    <parent link="left_robotiq_85_right_finger_link" />
+    <child link="left_robotiq_85_right_finger_tip_link" />
+    <origin xyz="-0.00563134020194 -1.11022302463e-16 0.0471851490438" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="0.0" upper="0.8000000093382438" effort="50.0" velocity="0.5" />
+    <mimic joint="left_robotiq_85_left_knuckle_joint" multiplier="1.0" />
+  </joint>
+  <link name="left_tcp" />
+  <joint name="left_tcp_fixed" type="fixed">
+    <parent link="left_robotiq_85_base_link" />
+    <child link="left_tcp" />
+    <origin xyz="2.77555756156e-17 1.27959136561e-16 0.1133262" rpy="0 -1.33226762955e-15 -1.57079632679" />
+  </joint>
+  <link name="right_fr3v2_1_link0" />
+  <joint name="right_fr3v2_1_link0_fixed" type="fixed">
+    <parent link="franka_spine_mounting_point" />
+    <child link="right_fr3v2_1_link0" />
+    <origin xyz="0.037 -0.05018 0.05" rpy="0.893347997935 -0.174560704819 0.463345033051" />
+  </joint>
+  <link name="right_fr3v2_1_link1" />
+  <joint name="right_fr3v2_1_joint1" type="revolute">
+    <parent link="right_fr3v2_1_link0" />
+    <child link="right_fr3v2_1_link1" />
+    <origin xyz="0 0 0.333000004292" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-2.900740093028553" upper="2.900740093028553" effort="87.0" velocity="2.619999885559082" />
+  </joint>
+  <link name="right_fr3v2_1_link2" />
+  <joint name="right_fr3v2_1_joint2" type="revolute">
+    <parent link="right_fr3v2_1_link1" />
+    <child link="right_fr3v2_1_link2" />
+    <origin xyz="0 0 1.11022302463e-16" rpy="-1.57079632679 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.836090048260339" upper="1.836090048260339" effort="87.0" velocity="2.619999885559082" />
+  </joint>
+  <link name="right_fr3v2_1_link3" />
+  <joint name="right_fr3v2_1_joint3" type="revolute">
+    <parent link="right_fr3v2_1_link2" />
+    <child link="right_fr3v2_1_link3" />
+    <origin xyz="-5.55111512313e-17 -0.316000014544 -2.77555756156e-17" rpy="1.57079632679 2.22044604925e-16 1.11022302463e-16" />
+    <axis xyz="0 0 1" />
+    <limit lower="-2.900740093028553" upper="2.900740093028553" effort="87.0" velocity="2.619999885559082" />
+  </joint>
+  <link name="right_fr3v2_1_link4" />
+  <joint name="right_fr3v2_1_joint4" type="revolute">
+    <parent link="right_fr3v2_1_link3" />
+    <child link="right_fr3v2_1_link4" />
+    <origin xyz="0.0825000032783 -8.32667268469e-17 2.22044604925e-16" rpy="1.57079632679 0 1.11022302463e-16" />
+    <axis xyz="0 0 1" />
+    <limit lower="-3.077020051903078" upper="-0.11693708152180393" effort="87.0" velocity="2.619999885559082" />
+  </joint>
+  <link name="right_fr3v2_1_link5" />
+  <joint name="right_fr3v2_1_joint5" type="revolute">
+    <parent link="right_fr3v2_1_link4" />
+    <child link="right_fr3v2_1_link5" />
+    <origin xyz="-0.0825000032783 0.384000003338 -1.11022302463e-16" rpy="-1.57079632679 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-2.876303459498204" upper="2.876303459498204" effort="12.0" velocity="5.260000228881836" />
+  </joint>
+  <link name="right_fr3v2_1_link6" />
+  <joint name="right_fr3v2_1_joint6" type="revolute">
+    <parent link="right_fr3v2_1_link5" />
+    <child link="right_fr3v2_1_link6" />
+    <origin xyz="5.55111512313e-17 1.11022302463e-16 2.22044604925e-16" rpy="1.57079632679 0 3.33066907388e-16" />
+    <axis xyz="0 0 1" />
+    <limit lower="0.4398226519232402" upper="4.621633244124752" effort="12.0" velocity="4.179999828338623" />
+  </joint>
+  <link name="right_fr3v2_1_link7" />
+  <joint name="right_fr3v2_1_joint7" type="revolute">
+    <parent link="right_fr3v2_1_link6" />
+    <child link="right_fr3v2_1_link7" />
+    <origin xyz="0.0879999995232 -2.22044604925e-16 -8.32667268469e-17" rpy="1.57079632679 0 1.11022302463e-16" />
+    <axis xyz="0 0 1" />
+    <limit lower="-3.0508334552204377" upper="3.0508334552204377" effort="12.0" velocity="5.260000228881836" />
+  </joint>
+  <link name="right_fr3v2_1_link8" />
+  <joint name="right_fr3v2_1_link8_fixed" type="fixed">
+    <parent link="right_fr3v2_1_link7" />
+    <child link="right_fr3v2_1_link8" />
+    <origin xyz="1.11022302463e-16 -2.77555756156e-17 0.107" rpy="-9.82881518723e-17 0 3.44470614065e-17" />
+  </joint>
+  <link name="right_robotiq_85_base_link" />
+  <joint name="right_robotiq_85_base_link_fixed" type="fixed">
+    <parent link="right_fr3v2_1_link8" />
+    <child link="right_robotiq_85_base_link" />
+    <origin xyz="0 -2.77555756156e-17 0.011" rpy="0 -2.22044604925e-16 -1.57079636102" />
+  </joint>
+  <link name="right_robotiq_85_left_knuckle_link" />
+  <joint name="right_robotiq_85_left_knuckle_joint" type="revolute">
+    <parent link="right_robotiq_85_base_link" />
+    <child link="right_robotiq_85_left_knuckle_link" />
+    <origin xyz="0.0306011401117 -1.11022302463e-16 0.0549045205116" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="0.0" upper="0.8000000093382438" effort="50.0" velocity="0.5" />
+  </joint>
+  <link name="right_robotiq_85_left_inner_knuckle_link" />
+  <joint name="right_robotiq_85_left_inner_knuckle_joint" type="revolute">
+    <parent link="right_robotiq_85_base_link" />
+    <child link="right_robotiq_85_left_inner_knuckle_link" />
+    <origin xyz="0.0126999998465 0 0.0614200010896" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="0.0" upper="0.8000000093382438" effort="50.0" velocity="0.5" />
+    <mimic joint="right_robotiq_85_left_knuckle_joint" multiplier="1.0" />
+  </joint>
+  <link name="right_robotiq_85_left_finger_link" />
+  <joint name="right_robotiq_85_left_finger_link_fixed" type="fixed">
+    <parent link="right_robotiq_85_left_knuckle_link" />
+    <child link="right_robotiq_85_left_finger_link" />
+    <origin xyz="0.03152616 0 -0.00376347" rpy="1.42773012028e-17 0 -2.69869660908e-18" />
+  </joint>
+  <link name="right_robotiq_85_left_finger_tip_link" />
+  <joint name="right_robotiq_85_left_finger_tip_joint" type="revolute">
+    <parent link="right_robotiq_85_left_finger_link" />
+    <child link="right_robotiq_85_left_finger_tip_link" />
+    <origin xyz="0.00563134020194 -2.22044604925e-16 0.0471851490438" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-0.8000000093382438" upper="0.0" effort="50.0" velocity="0.5" />
+    <mimic joint="right_robotiq_85_left_knuckle_joint" multiplier="-1.0" />
+  </joint>
+  <link name="right_robotiq_85_right_knuckle_link" />
+  <joint name="right_robotiq_85_right_knuckle_joint" type="revolute">
+    <parent link="right_robotiq_85_base_link" />
+    <child link="right_robotiq_85_right_knuckle_link" />
+    <origin xyz="-0.0306011401117 0 0.0549045205116" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-0.8000000093382438" upper="0.0" effort="50.0" velocity="0.5" />
+    <mimic joint="right_robotiq_85_left_knuckle_joint" multiplier="-1.0" />
+  </joint>
+  <link name="right_robotiq_85_right_inner_knuckle_link" />
+  <joint name="right_robotiq_85_right_inner_knuckle_joint" type="revolute">
+    <parent link="right_robotiq_85_base_link" />
+    <child link="right_robotiq_85_right_inner_knuckle_link" />
+    <origin xyz="-0.0126999998465 -1.11022302463e-16 0.0614200010896" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-0.8000000093382438" upper="0.0" effort="50.0" velocity="0.5" />
+    <mimic joint="right_robotiq_85_left_knuckle_joint" multiplier="-1.0" />
+  </joint>
+  <link name="right_robotiq_85_right_finger_link" />
+  <joint name="right_robotiq_85_right_finger_link_fixed" type="fixed">
+    <parent link="right_robotiq_85_right_knuckle_link" />
+    <child link="right_robotiq_85_right_finger_link" />
+    <origin xyz="-0.03152616 1.11022302463e-16 -0.00376347" rpy="1.42773012028e-17 0 -2.69869660908e-18" />
+  </joint>
+  <link name="right_robotiq_85_right_finger_tip_link" />
+  <joint name="right_robotiq_85_right_finger_tip_joint" type="revolute">
+    <parent link="right_robotiq_85_right_finger_link" />
+    <child link="right_robotiq_85_right_finger_tip_link" />
+    <origin xyz="-0.00563134020194 -1.11022302463e-16 0.0471851490438" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="0.0" upper="0.8000000093382438" effort="50.0" velocity="0.5" />
+    <mimic joint="right_robotiq_85_left_knuckle_joint" multiplier="1.0" />
+  </joint>
+  <link name="right_tcp" />
+  <joint name="right_tcp_fixed" type="fixed">
+    <parent link="right_robotiq_85_base_link" />
+    <child link="right_tcp" />
+    <origin xyz="1.11022302463e-16 6.39795682805e-17 0.1133262" rpy="0 -6.66133814775e-16 -1.57079632679" />
+  </joint>
+  <link name="head_left_camera_frame_optical" />
+  <joint name="head_left_camera_frame_optical_fixed" type="fixed">
+    <parent link="franka_spine_mounting_point" />
+    <child link="head_left_camera_frame_optical" />
+    <origin xyz="0.0511567196161 0.017387 0.400525673603" rpy="-2.28639617493 2.22044604925e-16 -1.57079632679" />
+  </joint>
+  <link name="head_right_camera_frame_optical" />
+  <joint name="head_right_camera_frame_optical_fixed" type="fixed">
+    <parent link="franka_spine_mounting_point" />
+    <child link="head_right_camera_frame_optical" />
+    <origin xyz="0.0511567196161 -0.045613 0.400525673603" rpy="-2.28639617493 2.22044604925e-16 -1.57079632679" />
+  </joint>
+  <link name="left__wrist_camera_color_optical_frame" />
+  <joint name="left__wrist_camera_color_optical_frame_fixed" type="fixed">
+    <parent link="left_fr3v2_1_link8" />
+    <child link="left__wrist_camera_color_optical_frame" />
+    <origin xyz="0.0616226251238 -0.00900000206354 0.0726780889367" rpy="-0.349065916935 -8.30491542203e-09 1.57079630443" />
+  </joint>
+  <link name="left__wrist_camera_depth_optical_frame" />
+  <joint name="left__wrist_camera_depth_optical_frame_fixed" type="fixed">
+    <parent link="left_fr3v2_1_link8" />
+    <child link="left__wrist_camera_depth_optical_frame" />
+    <origin xyz="0.0616226251238 -0.00900000206354 0.0726780889367" rpy="-0.349065916935 -8.30491542203e-09 1.57079630443" />
+  </joint>
+  <link name="right__wrist_camera_color_optical_frame" />
+  <joint name="right__wrist_camera_color_optical_frame_fixed" type="fixed">
+    <parent link="right_fr3v2_1_link8" />
+    <child link="right__wrist_camera_color_optical_frame" />
+    <origin xyz="0.0616226251238 -0.00900000206354 0.0726780889367" rpy="-0.349065916935 -8.30491542203e-09 1.57079630443" />
+  </joint>
+  <link name="right__wrist_camera_depth_optical_frame" />
+  <joint name="right__wrist_camera_depth_optical_frame_fixed" type="fixed">
+    <parent link="right_fr3v2_1_link8" />
+    <child link="right__wrist_camera_depth_optical_frame" />
+    <origin xyz="0.0616226251238 -0.00900000206354 0.0726780889367" rpy="-0.349065916935 -8.30491542203e-09 1.57079630443" />
+  </joint>
+  <link name="camera_front_color_optical_frame" />
+  <joint name="camera_front_color_optical_frame_fixed" type="fixed">
+    <parent link="base_link" />
+    <child link="camera_front_color_optical_frame" />
+    <origin xyz="0.391855 0.0115 0.22" rpy="1.57079632679 0 1.57079632679" />
+  </joint>
+  <link name="camera_front_depth_optical_frame" />
+  <joint name="camera_front_depth_optical_frame_fixed" type="fixed">
+    <parent link="base_link" />
+    <child link="camera_front_depth_optical_frame" />
+    <origin xyz="0.391855 -0.0475 0.22" rpy="1.57079632679 0 1.57079632679" />
+  </joint>
+  <link name="camera_rear_color_optical_frame" />
+  <joint name="camera_rear_color_optical_frame_fixed" type="fixed">
+    <parent link="base_link" />
+    <child link="camera_rear_color_optical_frame" />
+    <origin xyz="-0.391855 -0.0115 0.22" rpy="1.57079632679 0 -1.57079632679" />
+  </joint>
+  <link name="camera_rear_depth_optical_frame" />
+  <joint name="camera_rear_depth_optical_frame_fixed" type="fixed">
+    <parent link="base_link" />
+    <child link="camera_rear_depth_optical_frame" />
+    <origin xyz="-0.391855 0.0475 0.22" rpy="1.57079632679 0 -1.57079632679" />
+  </joint>
+  <link name="camera_left_color_optical_frame" />
+  <joint name="camera_left_color_optical_frame_fixed" type="fixed">
+    <parent link="base_link" />
+    <child link="camera_left_color_optical_frame" />
+    <origin xyz="-0.0115 0.283862 0.1" rpy="1.57079632679 0 3.14159265359" />
+  </joint>
+  <link name="camera_left_depth_optical_frame" />
+  <joint name="camera_left_depth_optical_frame_fixed" type="fixed">
+    <parent link="base_link" />
+    <child link="camera_left_depth_optical_frame" />
+    <origin xyz="0.0475 0.283862 0.1" rpy="1.57079632679 0 3.14159265359" />
+  </joint>
+  <link name="camera_right_color_optical_frame" />
+  <joint name="camera_right_color_optical_frame_fixed" type="fixed">
+    <parent link="base_link" />
+    <child link="camera_right_color_optical_frame" />
+    <origin xyz="0.0115 -0.283862 0.1" rpy="1.57079632679 4.4408920985e-16 0" />
+  </joint>
+  <link name="camera_right_depth_optical_frame" />
+  <joint name="camera_right_depth_optical_frame_fixed" type="fixed">
+    <parent link="base_link" />
+    <child link="camera_right_depth_optical_frame" />
+    <origin xyz="-0.0475 -0.283862 0.1" rpy="1.57079632679 4.4408920985e-16 0" />
+  </joint>
+</robot>

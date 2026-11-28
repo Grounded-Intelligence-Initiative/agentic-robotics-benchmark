@@ -1,0 +1,6 @@
+{
+  "max_steps": 3600,
+  "step_timeout_s": 8,
+  "probe_rate": 0.025,
+  "probe_pass_fraction": 0.1
+}

@@ -1,0 +1,28 @@
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/grommet_curtain_threading_and_installation"
+
+[metadata]
+platform = "arm"
+
+[environment]
+cpus = 8
+memory_mb = 32768
+gpus = 1
+gpu_types = ["RTX-5090"]
+
+[agent]
+timeout_sec = 3600
+network_mode = "no-network"
+
+[verifier]
+environment_mode = "separate"
+timeout_sec = 7200
+
+[verifier.environment]
+cpus = 8
+memory_mb = 32768
+gpus = 1
+gpu_types = ["RTX-5090"]

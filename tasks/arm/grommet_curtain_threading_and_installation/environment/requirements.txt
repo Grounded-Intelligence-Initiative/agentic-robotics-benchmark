@@ -1,0 +1,9 @@
+--extra-index-url https://pypi.nvidia.com
+--extra-index-url https://download.pytorch.org/whl/cu128
+isaaclab[isaacsim]==3.0.0
+torch==2.11.0
+torchvision==0.26.0
+tinyobjloader==2.0.0rc13
+numpy==2.3.1
+scipy==1.17.0
+Pillow==12.3.0
