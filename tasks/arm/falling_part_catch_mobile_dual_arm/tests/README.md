@@ -101,4 +101,23 @@ Two open problems follow, neither resolved in this folder:
   when the commanded lean exceeds the commanded fold of the second joint, after which the arm stayed out of reach for
   the rest of a shift (hidden shift 1256: 0.45, nine rods placed, then none). The guard caps the lean; that shift is
   1.00 since. Anchor re-measured after both changes: 0.975 (`anchor.json`).
-- A frontier-model measurement of this version is in progress; the table above is the earlier version's.
+
+## Frontier-model measurement of the 2026-11-28 version
+
+Same model and conditions as above (gpt-6-astra, codex CLI, high effort, no network; 1 h 33 min of 3 h used), graded
+through `verify.py` on the six hidden shifts on an idle host:
+
+| shift seed | raw score | placed / 20 | held only | probes passed (reported only) |
+|---|---|---|---|---|
+| 4418 | 0.825 | 15 | 3 | 6 / 39 |
+| 7093 | 0.800 | 15 | 2 | 3 / 27 |
+| 1256 | 0.775 | 15 | 1 | 8 / 34 |
+| 8830 | 0.825 | 15 | 3 | 4 / 39 |
+| 3607 | 0.750 | 12 | 6 | 5 / 40 |
+| 5971 | 0.725 | 13 | 3 | 6 / 32 |
+
+Mean raw score 0.783 (the model's own estimate on five practice shifts: 0.925); reward 0.783 / 0.975 / 0.90 = 0.89.
+Equal-chance places did not make the task harder: the controller does not guess the place, it sees which rod starts
+to fall and has the time to bring the hand under it (about half a second from release to the floor, at most 0.2 m to
+travel). The task is still easier than the benchmark's guide asks; what would tighten it is the time between seeing
+and catching (rack height, camera latency, rack width), not the choice of place.
