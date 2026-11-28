@@ -1,0 +1,3991 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "computed public numbers",
+ "description": "The numbers the documents generator takes from the grading side.",
+ "type": "object",
+ "required": [
+  "format",
+  "ceilings_n",
+  "soft_travel_limit_mm",
+  "kinematics",
+  "taught",
+  "example_record",
+  "example_shift",
+  "meshes",
+  "nests"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "format": {
+   "const": "grip-public/1"
+  },
+  "ceilings_n": {
+   "type": "object",
+   "required": [
+    "SH-1",
+    "SH-2",
+    "SH-3"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "SH-1": {
+     "type": "number",
+     "minimum": 0
+    },
+    "SH-2": {
+     "type": "number",
+     "minimum": 0
+    },
+    "SH-3": {
+     "type": "number",
+     "minimum": 0
+    }
+   }
+  },
+  "soft_travel_limit_mm": {
+   "type": "number",
+   "minimum": 0
+  },
+  "kinematics": {
+   "type": "object",
+   "required": [
+    "format",
+    "frame",
+    "joints",
+    "fourbar",
+    "pads",
+    "links"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "format": {
+     "const": "grip-kinematics/1"
+    },
+    "frame": {
+     "const": "H"
+    },
+    "joints": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "name",
+       "servo",
+       "parent",
+       "child",
+       "axis",
+       "origin_m",
+       "limits_deg"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "name": {
+        "enum": [
+         "thumb ip",
+         "thumb mp",
+         "thumb side",
+         "thumb roll",
+         "index pip",
+         "index mcp",
+         "index abad",
+         "middle pip",
+         "middle mcp",
+         "middle abad",
+         "ring pip",
+         "ring mcp",
+         "ring abad",
+         "index dip",
+         "index rocker",
+         "middle dip",
+         "middle rocker",
+         "ring dip",
+         "ring rocker"
+        ]
+       },
+       "servo": {
+        "oneOf": [
+         {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "parent": {
+        "enum": [
+         "palm",
+         "index_abad",
+         "index_pitch",
+         "index_pip",
+         "index_dip",
+         "index_rocker",
+         "middle_abad",
+         "middle_pitch",
+         "middle_pip",
+         "middle_dip",
+         "middle_rocker",
+         "ring_abad",
+         "ring_pitch",
+         "ring_pip",
+         "ring_dip",
+         "ring_rocker",
+         "thumb_roll",
+         "thumb_side",
+         "thumb_mp",
+         "thumb_ip"
+        ]
+       },
+       "child": {
+        "enum": [
+         "palm",
+         "index_abad",
+         "index_pitch",
+         "index_pip",
+         "index_dip",
+         "index_rocker",
+         "middle_abad",
+         "middle_pitch",
+         "middle_pip",
+         "middle_dip",
+         "middle_rocker",
+         "ring_abad",
+         "ring_pitch",
+         "ring_pip",
+         "ring_dip",
+         "ring_rocker",
+         "thumb_roll",
+         "thumb_side",
+         "thumb_mp",
+         "thumb_ip"
+        ]
+       },
+       "axis": {
+        "type": "array",
+        "items": {
+         "type": "number"
+        },
+        "minItems": 3,
+        "maxItems": 3
+       },
+       "origin_m": {
+        "type": "array",
+        "items": {
+         "type": "number"
+        },
+        "minItems": 3,
+        "maxItems": 3
+       },
+       "limits_deg": {
+        "oneOf": [
+         {
+          "type": "array",
+          "items": {
+           "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+         },
+         {
+          "type": "null"
+         }
+        ]
+       }
+      }
+     },
+     "minItems": 19,
+     "maxItems": 19
+    },
+    "fourbar": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "digit",
+       "lengths_mm",
+       "law"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "digit": {
+        "enum": [
+         "index",
+         "middle",
+         "ring"
+        ]
+       },
+       "lengths_mm": {
+        "type": "object",
+        "required": [
+         "pitch",
+         "pip",
+         "dip",
+         "rocker"
+        ],
+        "additionalProperties": false,
+        "properties": {
+         "pitch": {
+          "type": "number",
+          "minimum": 0
+         },
+         "pip": {
+          "type": "number",
+          "minimum": 0
+         },
+         "dip": {
+          "type": "number",
+          "minimum": 0
+         },
+         "rocker": {
+          "type": "number",
+          "minimum": 0
+         }
+        }
+       },
+       "law": {
+        "type": "array",
+        "items": {
+         "type": "array",
+         "items": {
+          "type": "number"
+         },
+         "minItems": 2,
+         "maxItems": 2
+        },
+        "minItems": 2
+       }
+      }
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "pads": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "module",
+       "link",
+       "origin_m",
+       "normal",
+       "x_axis"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "module": {
+        "type": "string",
+        "enum": [
+         "thumb",
+         "index",
+         "middle",
+         "ring"
+        ]
+       },
+       "link": {
+        "enum": [
+         "thumb_ip",
+         "index_dip",
+         "middle_dip",
+         "ring_dip"
+        ]
+       },
+       "origin_m": {
+        "type": "array",
+        "items": {
+         "type": "number"
+        },
+        "minItems": 3,
+        "maxItems": 3
+       },
+       "normal": {
+        "type": "array",
+        "items": {
+         "type": "number"
+        },
+        "minItems": 3,
+        "maxItems": 3
+       },
+       "x_axis": {
+        "type": "array",
+        "items": {
+         "type": "number"
+        },
+        "minItems": 3,
+        "maxItems": 3
+       }
+      }
+     },
+     "minItems": 4,
+     "maxItems": 4
+    },
+    "links": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "name",
+       "mass_kg",
+       "com_m",
+       "inertia_kg_m2",
+       "mesh"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "name": {
+        "enum": [
+         "palm",
+         "index_abad",
+         "index_pitch",
+         "index_pip",
+         "index_dip",
+         "index_rocker",
+         "middle_abad",
+         "middle_pitch",
+         "middle_pip",
+         "middle_dip",
+         "middle_rocker",
+         "ring_abad",
+         "ring_pitch",
+         "ring_pip",
+         "ring_dip",
+         "ring_rocker",
+         "thumb_roll",
+         "thumb_side",
+         "thumb_mp",
+         "thumb_ip"
+        ]
+       },
+       "mass_kg": {
+        "type": "number",
+        "minimum": 0
+       },
+       "com_m": {
+        "type": "array",
+        "items": {
+         "type": "number"
+        },
+        "minItems": 3,
+        "maxItems": 3
+       },
+       "inertia_kg_m2": {
+        "type": "array",
+        "items": {
+         "type": "number"
+        },
+        "minItems": 6,
+        "maxItems": 6
+       },
+       "mesh": {
+        "enum": [
+         "index_abad.stl",
+         "index_dip.stl",
+         "index_pip.stl",
+         "index_pitch.stl",
+         "index_rocker.stl",
+         "middle_abad.stl",
+         "middle_dip.stl",
+         "middle_pip.stl",
+         "middle_pitch.stl",
+         "middle_rocker.stl",
+         "palm.stl",
+         "ring_abad.stl",
+         "ring_dip.stl",
+         "ring_pip.stl",
+         "ring_pitch.stl",
+         "ring_rocker.stl",
+         "thumb_ip.stl",
+         "thumb_mp.stl",
+         "thumb_roll.stl",
+         "thumb_side.stl"
+        ]
+       }
+      }
+     },
+     "minItems": 20,
+     "maxItems": 20
+    }
+   }
+  },
+  "taught": {
+   "type": "object",
+   "required": [
+    "open",
+    "contact",
+    "ring_park"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "open": {
+     "type": "object",
+     "required": [
+      "thumb ip",
+      "thumb mp",
+      "thumb side",
+      "thumb roll",
+      "index pip",
+      "index mcp",
+      "index abad",
+      "middle pip",
+      "middle mcp",
+      "middle abad",
+      "ring pip",
+      "ring mcp",
+      "ring abad"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "thumb ip": {
+       "type": "number"
+      },
+      "thumb mp": {
+       "type": "number"
+      },
+      "thumb side": {
+       "type": "number"
+      },
+      "thumb roll": {
+       "type": "number"
+      },
+      "index pip": {
+       "type": "number"
+      },
+      "index mcp": {
+       "type": "number"
+      },
+      "index abad": {
+       "type": "number"
+      },
+      "middle pip": {
+       "type": "number"
+      },
+      "middle mcp": {
+       "type": "number"
+      },
+      "middle abad": {
+       "type": "number"
+      },
+      "ring pip": {
+       "type": "number"
+      },
+      "ring mcp": {
+       "type": "number"
+      },
+      "ring abad": {
+       "type": "number"
+      }
+     }
+    },
+    "contact": {
+     "type": "object",
+     "required": [
+      "35",
+      "40",
+      "45"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "35": {
+       "type": "object",
+       "required": [
+        "thumb ip",
+        "thumb mp",
+        "thumb side",
+        "thumb roll",
+        "index pip",
+        "index mcp",
+        "index abad",
+        "middle pip",
+        "middle mcp",
+        "middle abad",
+        "ring pip",
+        "ring mcp",
+        "ring abad"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "thumb ip": {
+         "type": "number"
+        },
+        "thumb mp": {
+         "type": "number"
+        },
+        "thumb side": {
+         "type": "number"
+        },
+        "thumb roll": {
+         "type": "number"
+        },
+        "index pip": {
+         "type": "number"
+        },
+        "index mcp": {
+         "type": "number"
+        },
+        "index abad": {
+         "type": "number"
+        },
+        "middle pip": {
+         "type": "number"
+        },
+        "middle mcp": {
+         "type": "number"
+        },
+        "middle abad": {
+         "type": "number"
+        },
+        "ring pip": {
+         "type": "number"
+        },
+        "ring mcp": {
+         "type": "number"
+        },
+        "ring abad": {
+         "type": "number"
+        }
+       }
+      },
+      "40": {
+       "type": "object",
+       "required": [
+        "thumb ip",
+        "thumb mp",
+        "thumb side",
+        "thumb roll",
+        "index pip",
+        "index mcp",
+        "index abad",
+        "middle pip",
+        "middle mcp",
+        "middle abad",
+        "ring pip",
+        "ring mcp",
+        "ring abad"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "thumb ip": {
+         "type": "number"
+        },
+        "thumb mp": {
+         "type": "number"
+        },
+        "thumb side": {
+         "type": "number"
+        },
+        "thumb roll": {
+         "type": "number"
+        },
+        "index pip": {
+         "type": "number"
+        },
+        "index mcp": {
+         "type": "number"
+        },
+        "index abad": {
+         "type": "number"
+        },
+        "middle pip": {
+         "type": "number"
+        },
+        "middle mcp": {
+         "type": "number"
+        },
+        "middle abad": {
+         "type": "number"
+        },
+        "ring pip": {
+         "type": "number"
+        },
+        "ring mcp": {
+         "type": "number"
+        },
+        "ring abad": {
+         "type": "number"
+        }
+       }
+      },
+      "45": {
+       "type": "object",
+       "required": [
+        "thumb ip",
+        "thumb mp",
+        "thumb side",
+        "thumb roll",
+        "index pip",
+        "index mcp",
+        "index abad",
+        "middle pip",
+        "middle mcp",
+        "middle abad",
+        "ring pip",
+        "ring mcp",
+        "ring abad"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "thumb ip": {
+         "type": "number"
+        },
+        "thumb mp": {
+         "type": "number"
+        },
+        "thumb side": {
+         "type": "number"
+        },
+        "thumb roll": {
+         "type": "number"
+        },
+        "index pip": {
+         "type": "number"
+        },
+        "index mcp": {
+         "type": "number"
+        },
+        "index abad": {
+         "type": "number"
+        },
+        "middle pip": {
+         "type": "number"
+        },
+        "middle mcp": {
+         "type": "number"
+        },
+        "middle abad": {
+         "type": "number"
+        },
+        "ring pip": {
+         "type": "number"
+        },
+        "ring mcp": {
+         "type": "number"
+        },
+        "ring abad": {
+         "type": "number"
+        }
+       }
+      }
+     }
+    },
+    "ring_park": {
+     "type": "object",
+     "required": [
+      "ring abad",
+      "ring mcp",
+      "ring pip"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "ring abad": {
+       "type": "number"
+      },
+      "ring mcp": {
+       "type": "number"
+      },
+      "ring pip": {
+       "type": "number"
+      }
+     }
+    }
+   }
+  },
+  "example_record": {
+   "type": "object",
+   "required": [
+    "format",
+    "serial",
+    "servos",
+    "homing_spread_deg",
+    "supply_v_at_delivery",
+    "tactile"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "format": {
+     "const": "unit-record/1"
+    },
+    "serial": {
+     "type": "string",
+     "pattern": "^HU-[0-9A-HJ-NP-Z]{5}$"
+    },
+    "servos": {
+     "type": "array",
+     "prefixItems": [
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 0
+        },
+        "joint": {
+         "const": "thumb ip"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 1
+        },
+        "joint": {
+         "const": "thumb mp"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 2
+        },
+        "joint": {
+         "const": "thumb side"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 3
+        },
+        "joint": {
+         "const": "thumb roll"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 4
+        },
+        "joint": {
+         "const": "index pip"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 5
+        },
+        "joint": {
+         "const": "index mcp"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 6
+        },
+        "joint": {
+         "const": "index abad"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 7
+        },
+        "joint": {
+         "const": "middle pip"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 8
+        },
+        "joint": {
+         "const": "middle mcp"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 9
+        },
+        "joint": {
+         "const": "middle abad"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 10
+        },
+        "joint": {
+         "const": "ring pip"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 11
+        },
+        "joint": {
+         "const": "ring mcp"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 12
+        },
+        "joint": {
+         "const": "ring abad"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      }
+     ],
+     "items": false,
+     "minItems": 13
+    },
+    "homing_spread_deg": {
+     "type": "number",
+     "minimum": 0
+    },
+    "supply_v_at_delivery": {
+     "type": "number",
+     "minimum": 0
+    },
+    "tactile": {
+     "type": "object",
+     "required": [
+      "frame_hz",
+      "zero_residual_steps"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "frame_hz": {
+       "type": "number",
+       "minimum": 0
+      },
+      "zero_residual_steps": {
+       "type": "object",
+       "required": [
+        "thumb",
+        "index",
+        "middle",
+        "ring"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "thumb": {
+         "type": "array",
+         "items": {
+          "type": "integer",
+          "minimum": -1,
+          "maximum": 1
+         },
+         "minItems": 127,
+         "maxItems": 127
+        },
+        "index": {
+         "type": "array",
+         "items": {
+          "type": "integer",
+          "minimum": -1,
+          "maximum": 1
+         },
+         "minItems": 52,
+         "maxItems": 52
+        },
+        "middle": {
+         "type": "array",
+         "items": {
+          "type": "integer",
+          "minimum": -1,
+          "maximum": 1
+         },
+         "minItems": 52,
+         "maxItems": 52
+        },
+        "ring": {
+         "type": "array",
+         "items": {
+          "type": "integer",
+          "minimum": -1,
+          "maximum": 1
+         },
+         "minItems": 52,
+         "maxItems": 52
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "example_shift": {
+   "type": "object",
+   "required": [
+    "format",
+    "serial",
+    "shift",
+    "jobs"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "format": {
+     "const": "shift-sheet/1"
+    },
+    "serial": {
+     "type": "string",
+     "pattern": "^HU-[0-9A-HJ-NP-Z]{5}$"
+    },
+    "shift": {
+     "type": "integer",
+     "enum": [
+      1,
+      2
+     ]
+    },
+    "jobs": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "job",
+       "ticket",
+       "phases"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "job": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10
+       },
+       "ticket": {
+        "type": "object",
+        "required": [
+         "job",
+         "class",
+         "code",
+         "finish",
+         "profile"
+        ],
+        "additionalProperties": false,
+        "properties": {
+         "job": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+         },
+         "class": {
+          "enum": [
+           "brittle",
+           "soft",
+           "full_load"
+          ]
+         },
+         "code": {
+          "enum": [
+           "SH-1",
+           "SH-2",
+           "SH-3",
+           "SP",
+           "FL"
+          ]
+         },
+         "finish": {
+          "enum": [
+           "matte",
+           "rough"
+          ]
+         },
+         "profile": {
+          "enum": [
+           "T0",
+           "R30",
+           "P30"
+          ]
+         }
+        },
+        "oneOf": [
+         {
+          "properties": {
+           "class": {
+            "const": "brittle"
+           },
+           "code": {
+            "enum": [
+             "SH-1",
+             "SH-2",
+             "SH-3"
+            ]
+           }
+          }
+         },
+         {
+          "properties": {
+           "class": {
+            "const": "soft"
+           },
+           "code": {
+            "enum": [
+             "SP"
+            ]
+           }
+          }
+         },
+         {
+          "properties": {
+           "class": {
+            "const": "full_load"
+           },
+           "code": {
+            "enum": [
+             "FL"
+            ]
+           }
+          }
+         }
+        ]
+       },
+       "phases": {
+        "type": "array",
+        "items": {
+         "type": "array",
+         "prefixItems": [
+          {
+           "type": "string",
+           "enum": [
+            "handover",
+            "rest",
+            "await_clear",
+            "present",
+            "test_lift",
+            "lower",
+            "transfer",
+            "set_down",
+            "release",
+            "pause",
+            "end"
+           ]
+          },
+          {
+           "type": "integer",
+           "minimum": 0
+          },
+          {
+           "type": "integer",
+           "minimum": 0
+          }
+         ],
+         "items": false,
+         "minItems": 3
+        },
+        "minItems": 1
+       }
+      }
+     },
+     "minItems": 10,
+     "maxItems": 10
+    }
+   }
+  },
+  "meshes": {
+   "type": "object",
+   "required": [
+    "index_abad.stl",
+    "index_dip.stl",
+    "index_pip.stl",
+    "index_pitch.stl",
+    "index_rocker.stl",
+    "middle_abad.stl",
+    "middle_dip.stl",
+    "middle_pip.stl",
+    "middle_pitch.stl",
+    "middle_rocker.stl",
+    "palm.stl",
+    "ring_abad.stl",
+    "ring_dip.stl",
+    "ring_pip.stl",
+    "ring_pitch.stl",
+    "ring_rocker.stl",
+    "thumb_ip.stl",
+    "thumb_mp.stl",
+    "thumb_roll.stl",
+    "thumb_side.stl"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "index_abad.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "index_dip.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "index_pip.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "index_pitch.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "index_rocker.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "middle_abad.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "middle_dip.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "middle_pip.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "middle_pitch.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "middle_rocker.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "palm.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "ring_abad.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "ring_dip.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "ring_pip.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "ring_pitch.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "ring_rocker.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "thumb_ip.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "thumb_mp.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "thumb_roll.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "thumb_side.stl": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    }
+   }
+  },
+  "nests": {
+   "type": "object",
+   "required": [
+    "pick",
+    "place"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "pick": {
+     "type": "object",
+     "required": [
+      "pos_m",
+      "quat_wxyz"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "pos_m": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "quat_wxyz": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 4,
+       "maxItems": 4
+      }
+     }
+    },
+    "place": {
+     "type": "object",
+     "required": [
+      "pos_m",
+      "quat_wxyz"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "pos_m": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "quat_wxyz": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 4,
+       "maxItems": 4
+      }
+     }
+    }
+   }
+  }
+ },
+ "examples": [
+  {
+   "format": "grip-public/1",
+   "ceilings_n": {
+    "SH-1": 5.0,
+    "SH-2": 8.0,
+    "SH-3": 12.0
+   },
+   "soft_travel_limit_mm": 3.0,
+   "kinematics": {
+    "format": "grip-kinematics/1",
+    "frame": "H",
+    "joints": [
+     {
+      "name": "thumb ip",
+      "servo": 0,
+      "parent": "thumb_mp",
+      "child": "thumb_ip",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "thumb mp",
+      "servo": 1,
+      "parent": "thumb_side",
+      "child": "thumb_mp",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "thumb side",
+      "servo": 2,
+      "parent": "thumb_roll",
+      "child": "thumb_side",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "thumb roll",
+      "servo": 3,
+      "parent": "palm",
+      "child": "thumb_roll",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "index pip",
+      "servo": 4,
+      "parent": "index_pitch",
+      "child": "index_pip",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "index mcp",
+      "servo": 5,
+      "parent": "index_abad",
+      "child": "index_pitch",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "index abad",
+      "servo": 6,
+      "parent": "palm",
+      "child": "index_abad",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "middle pip",
+      "servo": 7,
+      "parent": "middle_pitch",
+      "child": "middle_pip",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "middle mcp",
+      "servo": 8,
+      "parent": "middle_abad",
+      "child": "middle_pitch",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "middle abad",
+      "servo": 9,
+      "parent": "palm",
+      "child": "middle_abad",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "ring pip",
+      "servo": 10,
+      "parent": "ring_pitch",
+      "child": "ring_pip",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "ring mcp",
+      "servo": 11,
+      "parent": "ring_abad",
+      "child": "ring_pitch",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "ring abad",
+      "servo": 12,
+      "parent": "palm",
+      "child": "ring_abad",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": [
+       -90.0,
+       0.0
+      ]
+     },
+     {
+      "name": "index dip",
+      "servo": null,
+      "parent": "index_pip",
+      "child": "index_dip",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": null
+     },
+     {
+      "name": "index rocker",
+      "servo": null,
+      "parent": "index_pitch",
+      "child": "index_rocker",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": null
+     },
+     {
+      "name": "middle dip",
+      "servo": null,
+      "parent": "middle_pip",
+      "child": "middle_dip",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": null
+     },
+     {
+      "name": "middle rocker",
+      "servo": null,
+      "parent": "middle_pitch",
+      "child": "middle_rocker",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": null
+     },
+     {
+      "name": "ring dip",
+      "servo": null,
+      "parent": "ring_pip",
+      "child": "ring_dip",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": null
+     },
+     {
+      "name": "ring rocker",
+      "servo": null,
+      "parent": "ring_pitch",
+      "child": "ring_rocker",
+      "axis": [
+       1.0,
+       0.0,
+       0.0
+      ],
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "limits_deg": null
+     }
+    ],
+    "fourbar": [
+     {
+      "digit": "index",
+      "lengths_mm": {
+       "pitch": 10.0,
+       "pip": 10.0,
+       "dip": 10.0,
+       "rocker": 10.0
+      },
+      "law": [
+       [
+        0.0,
+        0.0
+       ],
+       [
+        -40.0,
+        -30.0
+       ],
+       [
+        -80.0,
+        -60.0
+       ]
+      ]
+     },
+     {
+      "digit": "middle",
+      "lengths_mm": {
+       "pitch": 10.0,
+       "pip": 10.0,
+       "dip": 10.0,
+       "rocker": 10.0
+      },
+      "law": [
+       [
+        0.0,
+        0.0
+       ],
+       [
+        -40.0,
+        -30.0
+       ],
+       [
+        -80.0,
+        -60.0
+       ]
+      ]
+     },
+     {
+      "digit": "ring",
+      "lengths_mm": {
+       "pitch": 10.0,
+       "pip": 10.0,
+       "dip": 10.0,
+       "rocker": 10.0
+      },
+      "law": [
+       [
+        0.0,
+        0.0
+       ],
+       [
+        -40.0,
+        -30.0
+       ],
+       [
+        -80.0,
+        -60.0
+       ]
+      ]
+     }
+    ],
+    "pads": [
+     {
+      "module": "thumb",
+      "link": "thumb_ip",
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "normal": [
+       0.0,
+       0.0,
+       -1.0
+      ],
+      "x_axis": [
+       1.0,
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "module": "index",
+      "link": "index_dip",
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "normal": [
+       0.0,
+       0.0,
+       -1.0
+      ],
+      "x_axis": [
+       1.0,
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "module": "middle",
+      "link": "middle_dip",
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "normal": [
+       0.0,
+       0.0,
+       -1.0
+      ],
+      "x_axis": [
+       1.0,
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "module": "ring",
+      "link": "ring_dip",
+      "origin_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "normal": [
+       0.0,
+       0.0,
+       -1.0
+      ],
+      "x_axis": [
+       1.0,
+       0.0,
+       0.0
+      ]
+     }
+    ],
+    "links": [
+     {
+      "name": "palm",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "palm.stl"
+     },
+     {
+      "name": "index_abad",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "index_abad.stl"
+     },
+     {
+      "name": "index_pitch",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "index_pitch.stl"
+     },
+     {
+      "name": "index_pip",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "index_pip.stl"
+     },
+     {
+      "name": "index_dip",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "index_dip.stl"
+     },
+     {
+      "name": "index_rocker",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "index_rocker.stl"
+     },
+     {
+      "name": "middle_abad",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "middle_abad.stl"
+     },
+     {
+      "name": "middle_pitch",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "middle_pitch.stl"
+     },
+     {
+      "name": "middle_pip",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "middle_pip.stl"
+     },
+     {
+      "name": "middle_dip",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "middle_dip.stl"
+     },
+     {
+      "name": "middle_rocker",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "middle_rocker.stl"
+     },
+     {
+      "name": "ring_abad",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "ring_abad.stl"
+     },
+     {
+      "name": "ring_pitch",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "ring_pitch.stl"
+     },
+     {
+      "name": "ring_pip",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "ring_pip.stl"
+     },
+     {
+      "name": "ring_dip",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "ring_dip.stl"
+     },
+     {
+      "name": "ring_rocker",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "ring_rocker.stl"
+     },
+     {
+      "name": "thumb_roll",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "thumb_roll.stl"
+     },
+     {
+      "name": "thumb_side",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "thumb_side.stl"
+     },
+     {
+      "name": "thumb_mp",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "thumb_mp.stl"
+     },
+     {
+      "name": "thumb_ip",
+      "mass_kg": 0.01,
+      "com_m": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "inertia_kg_m2": [
+       1e-06,
+       1e-06,
+       1e-06,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "mesh": "thumb_ip.stl"
+     }
+    ]
+   },
+   "taught": {
+    "open": {
+     "thumb ip": 0.0,
+     "thumb mp": 0.0,
+     "thumb side": 0.0,
+     "thumb roll": 0.0,
+     "index pip": 0.0,
+     "index mcp": 0.0,
+     "index abad": 0.0,
+     "middle pip": 0.0,
+     "middle mcp": 0.0,
+     "middle abad": 0.0,
+     "ring pip": 0.0,
+     "ring mcp": 0.0,
+     "ring abad": 0.0
+    },
+    "contact": {
+     "35": {
+      "thumb ip": -10.0,
+      "thumb mp": -10.0,
+      "thumb side": -10.0,
+      "thumb roll": -10.0,
+      "index pip": -10.0,
+      "index mcp": -10.0,
+      "index abad": -10.0,
+      "middle pip": -10.0,
+      "middle mcp": -10.0,
+      "middle abad": -10.0,
+      "ring pip": -10.0,
+      "ring mcp": -10.0,
+      "ring abad": -10.0
+     },
+     "40": {
+      "thumb ip": -10.0,
+      "thumb mp": -10.0,
+      "thumb side": -10.0,
+      "thumb roll": -10.0,
+      "index pip": -10.0,
+      "index mcp": -10.0,
+      "index abad": -10.0,
+      "middle pip": -10.0,
+      "middle mcp": -10.0,
+      "middle abad": -10.0,
+      "ring pip": -10.0,
+      "ring mcp": -10.0,
+      "ring abad": -10.0
+     },
+     "45": {
+      "thumb ip": -10.0,
+      "thumb mp": -10.0,
+      "thumb side": -10.0,
+      "thumb roll": -10.0,
+      "index pip": -10.0,
+      "index mcp": -10.0,
+      "index abad": -10.0,
+      "middle pip": -10.0,
+      "middle mcp": -10.0,
+      "middle abad": -10.0,
+      "ring pip": -10.0,
+      "ring mcp": -10.0,
+      "ring abad": -10.0
+     }
+    },
+    "ring_park": {
+     "ring abad": 0.0,
+     "ring mcp": -60.0,
+     "ring pip": -60.0
+    }
+   },
+   "example_record": {
+    "format": "unit-record/1",
+    "serial": "HU-7Q2KD",
+    "servos": [
+     {
+      "id": 0,
+      "joint": "thumb ip",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 1,
+      "joint": "thumb mp",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 2,
+      "joint": "thumb side",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 3,
+      "joint": "thumb roll",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 4,
+      "joint": "index pip",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 5,
+      "joint": "index mcp",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 6,
+      "joint": "index abad",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 7,
+      "joint": "middle pip",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 8,
+      "joint": "middle mcp",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 9,
+      "joint": "middle abad",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 10,
+      "joint": "ring pip",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 11,
+      "joint": "ring mcp",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 12,
+      "joint": "ring abad",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     }
+    ],
+    "homing_spread_deg": 0.7,
+    "supply_v_at_delivery": 12.3,
+    "tactile": {
+     "frame_hz": 88.0,
+     "zero_residual_steps": {
+      "thumb": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "index": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "middle": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "ring": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     }
+    }
+   },
+   "example_shift": {
+    "format": "shift-sheet/1",
+    "serial": "HU-7Q2KD",
+    "shift": 1,
+    "jobs": [
+     {
+      "job": 1,
+      "ticket": {
+       "job": 1,
+       "class": "brittle",
+       "code": "SH-2",
+       "finish": "rough",
+       "profile": "R30"
+      },
+      "phases": [
+       [
+        "await_clear",
+        4000,
+        4100
+       ],
+       [
+        "present",
+        4100,
+        5300
+       ],
+       [
+        "test_lift",
+        5300,
+        8300
+       ],
+       [
+        "transfer",
+        8300,
+        15500
+       ],
+       [
+        "set_down",
+        15500,
+        16000
+       ],
+       [
+        "release",
+        16000,
+        17000
+       ],
+       [
+        "rest",
+        17000,
+        19000
+       ]
+      ]
+     },
+     {
+      "job": 2,
+      "ticket": {
+       "job": 2,
+       "class": "soft",
+       "code": "SP",
+       "finish": "matte",
+       "profile": "P30"
+      },
+      "phases": [
+       [
+        "await_clear",
+        4000,
+        4100
+       ],
+       [
+        "present",
+        4100,
+        5300
+       ],
+       [
+        "test_lift",
+        5300,
+        8300
+       ],
+       [
+        "transfer",
+        8300,
+        15500
+       ],
+       [
+        "set_down",
+        15500,
+        16000
+       ],
+       [
+        "release",
+        16000,
+        17000
+       ],
+       [
+        "rest",
+        17000,
+        19000
+       ]
+      ]
+     },
+     {
+      "job": 3,
+      "ticket": {
+       "job": 3,
+       "class": "full_load",
+       "code": "FL",
+       "finish": "rough",
+       "profile": "T0"
+      },
+      "phases": [
+       [
+        "await_clear",
+        4000,
+        4100
+       ],
+       [
+        "present",
+        4100,
+        5300
+       ],
+       [
+        "test_lift",
+        5300,
+        8300
+       ],
+       [
+        "transfer",
+        8300,
+        15500
+       ],
+       [
+        "set_down",
+        15500,
+        16000
+       ],
+       [
+        "release",
+        16000,
+        17000
+       ],
+       [
+        "rest",
+        17000,
+        19000
+       ]
+      ]
+     },
+     {
+      "job": 4,
+      "ticket": {
+       "job": 4,
+       "class": "brittle",
+       "code": "SH-2",
+       "finish": "matte",
+       "profile": "R30"
+      },
+      "phases": [
+       [
+        "await_clear",
+        4000,
+        4100
+       ],
+       [
+        "present",
+        4100,
+        5300
+       ],
+       [
+        "test_lift",
+        5300,
+        8300
+       ],
+       [
+        "transfer",
+        8300,
+        15500
+       ],
+       [
+        "set_down",
+        15500,
+        16000
+       ],
+       [
+        "release",
+        16000,
+        17000
+       ],
+       [
+        "rest",
+        17000,
+        19000
+       ]
+      ]
+     },
+     {
+      "job": 5,
+      "ticket": {
+       "job": 5,
+       "class": "brittle",
+       "code": "SH-3",
+       "finish": "rough",
+       "profile": "P30"
+      },
+      "phases": [
+       [
+        "await_clear",
+        4000,
+        4100
+       ],
+       [
+        "present",
+        4100,
+        5300
+       ],
+       [
+        "test_lift",
+        5300,
+        8300
+       ],
+       [
+        "transfer",
+        8300,
+        15500
+       ],
+       [
+        "set_down",
+        15500,
+        16000
+       ],
+       [
+        "release",
+        16000,
+        17000
+       ],
+       [
+        "rest",
+        17000,
+        19000
+       ]
+      ]
+     },
+     {
+      "job": 6,
+      "ticket": {
+       "job": 6,
+       "class": "soft",
+       "code": "SP",
+       "finish": "matte",
+       "profile": "T0"
+      },
+      "phases": [
+       [
+        "await_clear",
+        4000,
+        4100
+       ],
+       [
+        "present",
+        4100,
+        5300
+       ],
+       [
+        "test_lift",
+        5300,
+        8300
+       ],
+       [
+        "transfer",
+        8300,
+        15500
+       ],
+       [
+        "set_down",
+        15500,
+        16000
+       ],
+       [
+        "release",
+        16000,
+        17000
+       ],
+       [
+        "rest",
+        17000,
+        19000
+       ]
+      ]
+     },
+     {
+      "job": 7,
+      "ticket": {
+       "job": 7,
+       "class": "full_load",
+       "code": "FL",
+       "finish": "rough",
+       "profile": "R30"
+      },
+      "phases": [
+       [
+        "await_clear",
+        4000,
+        4100
+       ],
+       [
+        "present",
+        4100,
+        5300
+       ],
+       [
+        "test_lift",
+        5300,
+        8300
+       ],
+       [
+        "transfer",
+        8300,
+        15500
+       ],
+       [
+        "set_down",
+        15500,
+        16000
+       ],
+       [
+        "release",
+        16000,
+        17000
+       ],
+       [
+        "rest",
+        17000,
+        19000
+       ]
+      ]
+     },
+     {
+      "job": 8,
+      "ticket": {
+       "job": 8,
+       "class": "brittle",
+       "code": "SH-3",
+       "finish": "matte",
+       "profile": "P30"
+      },
+      "phases": [
+       [
+        "await_clear",
+        4000,
+        4100
+       ],
+       [
+        "present",
+        4100,
+        5300
+       ],
+       [
+        "test_lift",
+        5300,
+        8300
+       ],
+       [
+        "transfer",
+        8300,
+        15500
+       ],
+       [
+        "set_down",
+        15500,
+        16000
+       ],
+       [
+        "release",
+        16000,
+        17000
+       ],
+       [
+        "rest",
+        17000,
+        19000
+       ]
+      ]
+     },
+     {
+      "job": 9,
+      "ticket": {
+       "job": 9,
+       "class": "soft",
+       "code": "SP",
+       "finish": "rough",
+       "profile": "T0"
+      },
+      "phases": [
+       [
+        "await_clear",
+        4000,
+        4100
+       ],
+       [
+        "present",
+        4100,
+        5300
+       ],
+       [
+        "test_lift",
+        5300,
+        8300
+       ],
+       [
+        "transfer",
+        8300,
+        15500
+       ],
+       [
+        "set_down",
+        15500,
+        16000
+       ],
+       [
+        "release",
+        16000,
+        17000
+       ],
+       [
+        "rest",
+        17000,
+        19000
+       ]
+      ]
+     },
+     {
+      "job": 10,
+      "ticket": {
+       "job": 10,
+       "class": "full_load",
+       "code": "FL",
+       "finish": "matte",
+       "profile": "R30"
+      },
+      "phases": [
+       [
+        "await_clear",
+        4000,
+        4100
+       ],
+       [
+        "present",
+        4100,
+        5300
+       ],
+       [
+        "test_lift",
+        5300,
+        8300
+       ],
+       [
+        "transfer",
+        8300,
+        15500
+       ],
+       [
+        "set_down",
+        15500,
+        16000
+       ],
+       [
+        "release",
+        16000,
+        17000
+       ],
+       [
+        "rest",
+        17000,
+        19000
+       ]
+      ]
+     }
+    ]
+   },
+   "meshes": {
+    "palm.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "index_abad.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "index_pitch.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "index_pip.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "index_dip.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "index_rocker.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "middle_abad.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "middle_pitch.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "middle_pip.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "middle_dip.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "middle_rocker.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "ring_abad.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "ring_pitch.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "ring_pip.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "ring_dip.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "ring_rocker.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "thumb_roll.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "thumb_side.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "thumb_mp.stl": "4444444444444444444444444444444444444444444444444444444444444444",
+    "thumb_ip.stl": "4444444444444444444444444444444444444444444444444444444444444444"
+   },
+   "nests": {
+    "pick": {
+     "pos_m": [
+      0.0,
+      0.1,
+      -0.05
+     ],
+     "quat_wxyz": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "place": {
+     "pos_m": [
+      0.0,
+      0.1,
+      -0.05
+     ],
+     "quat_wxyz": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   }
+  }
+ ]
+}

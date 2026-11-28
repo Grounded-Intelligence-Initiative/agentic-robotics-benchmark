@@ -1,0 +1,267 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "plant measurement",
+ "description": "Session.measure(): what the grader measures (grader only).",
+ "type": "object",
+ "required": [
+  "t_ms",
+  "specimen",
+  "servos"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "t_ms": {
+   "type": "integer",
+   "minimum": 0
+  },
+  "specimen": {
+   "oneOf": [
+    {
+     "type": "null"
+    },
+    {
+     "type": "object",
+     "required": [
+      "nest",
+      "pos_m",
+      "quat_wxyz",
+      "spring_force_n",
+      "spring_travel_m",
+      "nest_contact",
+      "lowest_above_nest_m",
+      "pad_contact",
+      "other_hand_contact"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "nest": {
+       "enum": [
+        "pick",
+        "place",
+        null
+       ]
+      },
+      "pos_m": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "quat_wxyz": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 4,
+       "maxItems": 4
+      },
+      "spring_force_n": {
+       "type": "number"
+      },
+      "spring_travel_m": {
+       "type": "number"
+      },
+      "nest_contact": {
+       "type": "boolean"
+      },
+      "lowest_above_nest_m": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "pad_contact": {
+       "type": "object",
+       "required": [
+        "thumb",
+        "index",
+        "middle",
+        "ring"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "thumb": {
+         "type": "boolean"
+        },
+        "index": {
+         "type": "boolean"
+        },
+        "middle": {
+         "type": "boolean"
+        },
+        "ring": {
+         "type": "boolean"
+        }
+       }
+      },
+      "other_hand_contact": {
+       "type": "boolean"
+      }
+     }
+    }
+   ]
+  },
+  "servos": {
+   "type": "object",
+   "required": [
+    "present_temperature_c",
+    "winding_c",
+    "hardware_error",
+    "torque_on",
+    "duty"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "present_temperature_c": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "winding_c": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "hardware_error": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "torque_on": {
+     "type": "array",
+     "items": {
+      "type": "boolean"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "duty": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    }
+   }
+  }
+ },
+ "examples": [
+  {
+   "t_ms": 6172,
+   "specimen": {
+    "nest": "pick",
+    "pos_m": [
+     0.0,
+     0.1,
+     -0.05
+    ],
+    "quat_wxyz": [
+     1.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "spring_force_n": 2.0,
+    "spring_travel_m": 0.0004,
+    "nest_contact": true,
+    "lowest_above_nest_m": 0.0,
+    "pad_contact": {
+     "thumb": true,
+     "index": true,
+     "middle": true,
+     "ring": false
+    },
+    "other_hand_contact": false
+   },
+   "servos": {
+    "present_temperature_c": [
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44
+    ],
+    "winding_c": [
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0
+    ],
+    "hardware_error": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "torque_on": [
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true
+    ],
+    "duty": [
+     0.1,
+     0.1,
+     0.1,
+     0.1,
+     0.1,
+     0.1,
+     0.1,
+     0.1,
+     0.1,
+     0.1,
+     0.1,
+     0.1,
+     0.1
+    ]
+   }
+  }
+ ]
+}

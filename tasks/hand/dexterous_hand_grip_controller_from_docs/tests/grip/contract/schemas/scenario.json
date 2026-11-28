@@ -1,0 +1,2920 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "scenario",
+ "description": "One hidden unit with its two shifts (grader only; JSON text in an .scenario file).",
+ "type": "object",
+ "required": [
+  "format",
+  "code_digest",
+  "rule_sha256",
+  "registration_sha256",
+  "candidate_index",
+  "ceilings",
+  "unit",
+  "record",
+  "shifts"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "format": {
+   "const": "grip-scenario/1"
+  },
+  "code_digest": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "rule_sha256": {
+   "oneOf": [
+    {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    {
+     "type": "null"
+    }
+   ]
+  },
+  "registration_sha256": {
+   "oneOf": [
+    {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    {
+     "type": "null"
+    }
+   ]
+  },
+  "candidate_index": {
+   "oneOf": [
+    {
+     "type": "integer",
+     "minimum": 0
+    },
+    {
+     "type": "null"
+    }
+   ]
+  },
+  "ceilings": {
+   "type": "object",
+   "required": [
+    "SH-1",
+    "SH-2",
+    "SH-3",
+    "SP_travel_mm"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "SH-1": {
+     "type": "number",
+     "minimum": 0
+    },
+    "SH-2": {
+     "type": "number",
+     "minimum": 0
+    },
+    "SH-3": {
+     "type": "number",
+     "minimum": 0
+    },
+    "SP_travel_mm": {
+     "type": "number",
+     "minimum": 0
+    }
+   }
+  },
+  "unit": {
+   "type": "object",
+   "required": [
+    "serial",
+    "vs",
+    "t_start_c",
+    "frame_hz",
+    "frame_phase_ms",
+    "servos",
+    "tactile",
+    "residuals",
+    "seeds"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "serial": {
+     "type": "string",
+     "pattern": "^HU-[0-9A-HJ-NP-Z]{5}$"
+    },
+    "vs": {
+     "type": "number",
+     "minimum": 0
+    },
+    "t_start_c": {
+     "type": "number"
+    },
+    "frame_hz": {
+     "type": "number",
+     "minimum": 0
+    },
+    "frame_phase_ms": {
+     "type": "number",
+     "minimum": 0
+    },
+    "servos": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "id",
+       "home_true",
+       "record_error_counts",
+       "friction_nm",
+       "armature",
+       "dev",
+       "i0_ma"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "id": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 12
+       },
+       "home_true": {
+        "type": "integer"
+       },
+       "record_error_counts": {
+        "type": "integer"
+       },
+       "friction_nm": {
+        "type": "number",
+        "minimum": 0
+       },
+       "armature": {
+        "type": "number",
+        "minimum": 0
+       },
+       "dev": {
+        "type": "number"
+       },
+       "i0_ma": {
+        "type": "number",
+        "minimum": 0
+       }
+      }
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "tactile": {
+     "type": "object",
+     "required": [
+      "thumb",
+      "index",
+      "middle",
+      "ring"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "thumb": {
+       "type": "object",
+       "required": [
+        "gain"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "gain": {
+         "type": "number",
+         "minimum": 0
+        }
+       }
+      },
+      "index": {
+       "type": "object",
+       "required": [
+        "gain"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "gain": {
+         "type": "number",
+         "minimum": 0
+        }
+       }
+      },
+      "middle": {
+       "type": "object",
+       "required": [
+        "gain"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "gain": {
+         "type": "number",
+         "minimum": 0
+        }
+       }
+      },
+      "ring": {
+       "type": "object",
+       "required": [
+        "gain"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "gain": {
+         "type": "number",
+         "minimum": 0
+        }
+       }
+      }
+     }
+    },
+    "residuals": {
+     "type": "object",
+     "required": [
+      "thumb",
+      "index",
+      "middle",
+      "ring"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "thumb": {
+       "type": "array",
+       "items": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "minItems": 127,
+       "maxItems": 127
+      },
+      "index": {
+       "type": "array",
+       "items": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "minItems": 52,
+       "maxItems": 52
+      },
+      "middle": {
+       "type": "array",
+       "items": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "minItems": 52,
+       "maxItems": 52
+      },
+      "ring": {
+       "type": "array",
+       "items": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "minItems": 52,
+       "maxItems": 52
+      }
+     }
+    },
+    "seeds": {
+     "type": "object",
+     "required": [
+      "encoder",
+      "drift"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "encoder": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 18446744073709551615
+      },
+      "drift": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 18446744073709551615
+      }
+     }
+    }
+   }
+  },
+  "record": {
+   "type": "object",
+   "required": [
+    "format",
+    "serial",
+    "servos",
+    "homing_spread_deg",
+    "supply_v_at_delivery",
+    "tactile"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "format": {
+     "const": "unit-record/1"
+    },
+    "serial": {
+     "type": "string",
+     "pattern": "^HU-[0-9A-HJ-NP-Z]{5}$"
+    },
+    "servos": {
+     "type": "array",
+     "prefixItems": [
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 0
+        },
+        "joint": {
+         "const": "thumb ip"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 1
+        },
+        "joint": {
+         "const": "thumb mp"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 2
+        },
+        "joint": {
+         "const": "thumb side"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 3
+        },
+        "joint": {
+         "const": "thumb roll"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 4
+        },
+        "joint": {
+         "const": "index pip"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 5
+        },
+        "joint": {
+         "const": "index mcp"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 6
+        },
+        "joint": {
+         "const": "index abad"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 7
+        },
+        "joint": {
+         "const": "middle pip"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 8
+        },
+        "joint": {
+         "const": "middle mcp"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 9
+        },
+        "joint": {
+         "const": "middle abad"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 10
+        },
+        "joint": {
+         "const": "ring pip"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 11
+        },
+        "joint": {
+         "const": "ring mcp"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "id",
+        "joint",
+        "direction",
+        "home_offset",
+        "eeprom"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "const": 12
+        },
+        "joint": {
+         "const": "ring abad"
+        },
+        "direction": {
+         "enum": [
+          1,
+          -1
+         ]
+        },
+        "home_offset": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 4095
+        },
+        "eeprom": {
+         "type": "object",
+         "required": [
+          "operating_mode",
+          "current_limit",
+          "temperature_limit",
+          "shutdown",
+          "return_delay",
+          "pwm_limit"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "operating_mode": {
+           "type": "integer",
+           "const": 5
+          },
+          "current_limit": {
+           "type": "integer",
+           "const": 910
+          },
+          "temperature_limit": {
+           "type": "integer",
+           "const": 70
+          },
+          "shutdown": {
+           "type": "integer",
+           "const": 52
+          },
+          "return_delay": {
+           "type": "integer",
+           "const": 0
+          },
+          "pwm_limit": {
+           "type": "integer",
+           "const": 885
+          }
+         }
+        }
+       }
+      }
+     ],
+     "items": false,
+     "minItems": 13
+    },
+    "homing_spread_deg": {
+     "type": "number",
+     "minimum": 0
+    },
+    "supply_v_at_delivery": {
+     "type": "number",
+     "minimum": 0
+    },
+    "tactile": {
+     "type": "object",
+     "required": [
+      "frame_hz",
+      "zero_residual_steps"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "frame_hz": {
+       "type": "number",
+       "minimum": 0
+      },
+      "zero_residual_steps": {
+       "type": "object",
+       "required": [
+        "thumb",
+        "index",
+        "middle",
+        "ring"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "thumb": {
+         "type": "array",
+         "items": {
+          "type": "integer",
+          "minimum": -1,
+          "maximum": 1
+         },
+         "minItems": 127,
+         "maxItems": 127
+        },
+        "index": {
+         "type": "array",
+         "items": {
+          "type": "integer",
+          "minimum": -1,
+          "maximum": 1
+         },
+         "minItems": 52,
+         "maxItems": 52
+        },
+        "middle": {
+         "type": "array",
+         "items": {
+          "type": "integer",
+          "minimum": -1,
+          "maximum": 1
+         },
+         "minItems": 52,
+         "maxItems": 52
+        },
+        "ring": {
+         "type": "array",
+         "items": {
+          "type": "integer",
+          "minimum": -1,
+          "maximum": 1
+         },
+         "minItems": 52,
+         "maxItems": 52
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "shifts": {
+   "type": "array",
+   "items": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "required": [
+      "id",
+      "ticket",
+      "label",
+      "spec",
+      "track_scale"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "type": "string",
+       "pattern": "^s[12]j(0[1-9]|10)$"
+      },
+      "ticket": {
+       "type": "object",
+       "required": [
+        "job",
+        "class",
+        "code",
+        "finish",
+        "profile"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "job": {
+         "type": "integer",
+         "minimum": 1,
+         "maximum": 10
+        },
+        "class": {
+         "enum": [
+          "brittle",
+          "soft",
+          "full_load"
+         ]
+        },
+        "code": {
+         "enum": [
+          "SH-1",
+          "SH-2",
+          "SH-3",
+          "SP",
+          "FL"
+         ]
+        },
+        "finish": {
+         "enum": [
+          "matte",
+          "rough"
+         ]
+        },
+        "profile": {
+         "enum": [
+          "T0",
+          "R30",
+          "P30"
+         ]
+        }
+       },
+       "oneOf": [
+        {
+         "properties": {
+          "class": {
+           "const": "brittle"
+          },
+          "code": {
+           "enum": [
+            "SH-1",
+            "SH-2",
+            "SH-3"
+           ]
+          }
+         }
+        },
+        {
+         "properties": {
+          "class": {
+           "const": "soft"
+          },
+          "code": {
+           "enum": [
+            "SP"
+           ]
+          }
+         }
+        },
+        {
+         "properties": {
+          "class": {
+           "const": "full_load"
+          },
+          "code": {
+           "enum": [
+            "FL"
+           ]
+          }
+         }
+        }
+       ]
+      },
+      "label": {
+       "enum": [
+        "carry",
+        "decline"
+       ]
+      },
+      "spec": {
+       "type": "object",
+       "required": [
+        "class",
+        "code",
+        "mass_kg",
+        "mu",
+        "k_n_per_mm",
+        "w_mm",
+        "dx_mm",
+        "dy_mm",
+        "yaw_deg"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "class": {
+         "enum": [
+          "brittle",
+          "soft",
+          "full_load"
+         ]
+        },
+        "code": {
+         "enum": [
+          "SH-1",
+          "SH-2",
+          "SH-3",
+          "SP",
+          "FL"
+         ]
+        },
+        "mass_kg": {
+         "type": "number",
+         "minimum": 0
+        },
+        "mu": {
+         "type": "number",
+         "minimum": 0
+        },
+        "k_n_per_mm": {
+         "type": "number",
+         "minimum": 0
+        },
+        "w_mm": {
+         "type": "number",
+         "minimum": 0
+        },
+        "dx_mm": {
+         "type": "number"
+        },
+        "dy_mm": {
+         "type": "number"
+        },
+        "yaw_deg": {
+         "type": "number"
+        }
+       }
+      },
+      "track_scale": {
+       "type": "number",
+       "minimum": 0
+      }
+     }
+    },
+    "minItems": 10,
+    "maxItems": 10
+   },
+   "minItems": 2,
+   "maxItems": 2
+  },
+  "reference": {
+   "type": "object",
+   "required": [
+    "raw",
+    "per_job"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "raw": {
+     "type": "number"
+    },
+    "per_job": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "id"
+      ],
+      "properties": {
+       "id": {
+        "type": "string",
+        "pattern": "^s[12]j(0[1-9]|10)$"
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "examples": [
+  {
+   "format": "grip-scenario/1",
+   "code_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+   "rule_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+   "registration_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+   "candidate_index": 0,
+   "ceilings": {
+    "SH-1": 5.0,
+    "SH-2": 8.0,
+    "SH-3": 12.0,
+    "SP_travel_mm": 3.0
+   },
+   "unit": {
+    "serial": "HU-7Q2KD",
+    "vs": 12.0,
+    "t_start_c": 44.0,
+    "frame_hz": 88.0,
+    "frame_phase_ms": 3.0,
+    "servos": [
+     {
+      "id": 0,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 1,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 2,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 3,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 4,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 5,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 6,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 7,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 8,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 9,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 10,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 11,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 12,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     }
+    ],
+    "tactile": {
+     "thumb": {
+      "gain": 2.0
+     },
+     "index": {
+      "gain": 2.0
+     },
+     "middle": {
+      "gain": 2.0
+     },
+     "ring": {
+      "gain": 2.0
+     }
+    },
+    "residuals": {
+     "thumb": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "index": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "middle": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "ring": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "seeds": {
+     "encoder": 1,
+     "drift": 2
+    }
+   },
+   "record": {
+    "format": "unit-record/1",
+    "serial": "HU-7Q2KD",
+    "servos": [
+     {
+      "id": 0,
+      "joint": "thumb ip",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 1,
+      "joint": "thumb mp",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 2,
+      "joint": "thumb side",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 3,
+      "joint": "thumb roll",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 4,
+      "joint": "index pip",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 5,
+      "joint": "index mcp",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 6,
+      "joint": "index abad",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 7,
+      "joint": "middle pip",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 8,
+      "joint": "middle mcp",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 9,
+      "joint": "middle abad",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 10,
+      "joint": "ring pip",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 11,
+      "joint": "ring mcp",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     },
+     {
+      "id": 12,
+      "joint": "ring abad",
+      "direction": 1,
+      "home_offset": 2047,
+      "eeprom": {
+       "operating_mode": 5,
+       "current_limit": 910,
+       "temperature_limit": 70,
+       "shutdown": 52,
+       "return_delay": 0,
+       "pwm_limit": 885
+      }
+     }
+    ],
+    "homing_spread_deg": 0.7,
+    "supply_v_at_delivery": 12.3,
+    "tactile": {
+     "frame_hz": 88.0,
+     "zero_residual_steps": {
+      "thumb": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "index": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "middle": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "ring": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     }
+    }
+   },
+   "shifts": [
+    [
+     {
+      "id": "s1j01",
+      "ticket": {
+       "job": 1,
+       "class": "brittle",
+       "code": "SH-2",
+       "finish": "rough",
+       "profile": "R30"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "brittle",
+       "code": "SH-2",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s1j02",
+      "ticket": {
+       "job": 2,
+       "class": "soft",
+       "code": "SP",
+       "finish": "matte",
+       "profile": "P30"
+      },
+      "label": "decline",
+      "spec": {
+       "class": "soft",
+       "code": "SP",
+       "mass_kg": 0.6,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s1j03",
+      "ticket": {
+       "job": 3,
+       "class": "full_load",
+       "code": "FL",
+       "finish": "rough",
+       "profile": "T0"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "full_load",
+       "code": "FL",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s1j04",
+      "ticket": {
+       "job": 4,
+       "class": "brittle",
+       "code": "SH-2",
+       "finish": "matte",
+       "profile": "R30"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "brittle",
+       "code": "SH-2",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s1j05",
+      "ticket": {
+       "job": 5,
+       "class": "brittle",
+       "code": "SH-3",
+       "finish": "rough",
+       "profile": "P30"
+      },
+      "label": "decline",
+      "spec": {
+       "class": "brittle",
+       "code": "SH-3",
+       "mass_kg": 0.6,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s1j06",
+      "ticket": {
+       "job": 6,
+       "class": "soft",
+       "code": "SP",
+       "finish": "matte",
+       "profile": "T0"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "soft",
+       "code": "SP",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s1j07",
+      "ticket": {
+       "job": 7,
+       "class": "full_load",
+       "code": "FL",
+       "finish": "rough",
+       "profile": "R30"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "full_load",
+       "code": "FL",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s1j08",
+      "ticket": {
+       "job": 8,
+       "class": "brittle",
+       "code": "SH-3",
+       "finish": "matte",
+       "profile": "P30"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "brittle",
+       "code": "SH-3",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s1j09",
+      "ticket": {
+       "job": 9,
+       "class": "soft",
+       "code": "SP",
+       "finish": "rough",
+       "profile": "T0"
+      },
+      "label": "decline",
+      "spec": {
+       "class": "soft",
+       "code": "SP",
+       "mass_kg": 0.6,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s1j10",
+      "ticket": {
+       "job": 10,
+       "class": "full_load",
+       "code": "FL",
+       "finish": "matte",
+       "profile": "R30"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "full_load",
+       "code": "FL",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     }
+    ],
+    [
+     {
+      "id": "s2j01",
+      "ticket": {
+       "job": 1,
+       "class": "brittle",
+       "code": "SH-2",
+       "finish": "rough",
+       "profile": "R30"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "brittle",
+       "code": "SH-2",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s2j02",
+      "ticket": {
+       "job": 2,
+       "class": "soft",
+       "code": "SP",
+       "finish": "matte",
+       "profile": "P30"
+      },
+      "label": "decline",
+      "spec": {
+       "class": "soft",
+       "code": "SP",
+       "mass_kg": 0.6,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s2j03",
+      "ticket": {
+       "job": 3,
+       "class": "full_load",
+       "code": "FL",
+       "finish": "rough",
+       "profile": "T0"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "full_load",
+       "code": "FL",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s2j04",
+      "ticket": {
+       "job": 4,
+       "class": "brittle",
+       "code": "SH-2",
+       "finish": "matte",
+       "profile": "R30"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "brittle",
+       "code": "SH-2",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s2j05",
+      "ticket": {
+       "job": 5,
+       "class": "brittle",
+       "code": "SH-3",
+       "finish": "rough",
+       "profile": "P30"
+      },
+      "label": "decline",
+      "spec": {
+       "class": "brittle",
+       "code": "SH-3",
+       "mass_kg": 0.6,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s2j06",
+      "ticket": {
+       "job": 6,
+       "class": "soft",
+       "code": "SP",
+       "finish": "matte",
+       "profile": "T0"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "soft",
+       "code": "SP",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s2j07",
+      "ticket": {
+       "job": 7,
+       "class": "full_load",
+       "code": "FL",
+       "finish": "rough",
+       "profile": "R30"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "full_load",
+       "code": "FL",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s2j08",
+      "ticket": {
+       "job": 8,
+       "class": "brittle",
+       "code": "SH-3",
+       "finish": "matte",
+       "profile": "P30"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "brittle",
+       "code": "SH-3",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s2j09",
+      "ticket": {
+       "job": 9,
+       "class": "soft",
+       "code": "SP",
+       "finish": "rough",
+       "profile": "T0"
+      },
+      "label": "decline",
+      "spec": {
+       "class": "soft",
+       "code": "SP",
+       "mass_kg": 0.6,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     },
+     {
+      "id": "s2j10",
+      "ticket": {
+       "job": 10,
+       "class": "full_load",
+       "code": "FL",
+       "finish": "matte",
+       "profile": "R30"
+      },
+      "label": "carry",
+      "spec": {
+       "class": "full_load",
+       "code": "FL",
+       "mass_kg": 0.1,
+       "mu": 0.5,
+       "k_n_per_mm": 5.0,
+       "w_mm": 40.0,
+       "dx_mm": 0.5,
+       "dy_mm": -0.5,
+       "yaw_deg": 1.0
+      },
+      "track_scale": 1.0
+     }
+    ]
+   ],
+   "reference": {
+    "raw": 1.0,
+    "per_job": [
+     {
+      "id": "s1j01",
+      "q": 1.0,
+      "declined": false,
+      "slip_mm": 0.2,
+      "rot_deg": 0.3,
+      "peak_squeeze_n": 3.0,
+      "peak_travel_mm": null
+     }
+    ]
+   }
+  }
+ ]
+}

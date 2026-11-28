@@ -1,0 +1,69 @@
+{
+ "contact": {
+  "35": {
+   "index abad": 11.762,
+   "index mcp": -4.31,
+   "index pip": -25.977,
+   "middle abad": 12.475,
+   "middle mcp": -24.069,
+   "middle pip": -18.979,
+   "ring abad": 25.0,
+   "ring mcp": -80.0,
+   "ring pip": -60.0,
+   "thumb ip": 73.436,
+   "thumb mp": -41.021,
+   "thumb roll": 114.679,
+   "thumb side": 10.613
+  },
+  "40": {
+   "index abad": 11.889,
+   "index mcp": -3.615,
+   "index pip": -25.107,
+   "middle abad": 12.594,
+   "middle mcp": -22.91,
+   "middle pip": -18.559,
+   "ring abad": 25.0,
+   "ring mcp": -80.0,
+   "ring pip": -60.0,
+   "thumb ip": 77.785,
+   "thumb mp": -42.818,
+   "thumb roll": 114.294,
+   "thumb side": 11.044
+  },
+  "45": {
+   "index abad": 12.009,
+   "index mcp": -3.019,
+   "index pip": -24.194,
+   "middle abad": 12.706,
+   "middle mcp": -21.842,
+   "middle pip": -18.085,
+   "ring abad": 25.0,
+   "ring mcp": -80.0,
+   "ring pip": -60.0,
+   "thumb ip": 79.019,
+   "thumb mp": -46.576,
+   "thumb roll": 111.304,
+   "thumb side": 12.248
+  }
+ },
+ "open": {
+  "index abad": 12.336,
+  "index mcp": -1.795,
+  "index pip": -11.238,
+  "middle abad": 13.009,
+  "middle mcp": -19.153,
+  "middle pip": -6.396,
+  "ring abad": 25.0,
+  "ring mcp": -80.0,
+  "ring pip": -60.0,
+  "thumb ip": 79.019,
+  "thumb mp": -56.987,
+  "thumb roll": 90.016,
+  "thumb side": 16.162
+ },
+ "ring_park": {
+  "ring abad": 25.0,
+  "ring mcp": -80.0,
+  "ring pip": -60.0
+ }
+}

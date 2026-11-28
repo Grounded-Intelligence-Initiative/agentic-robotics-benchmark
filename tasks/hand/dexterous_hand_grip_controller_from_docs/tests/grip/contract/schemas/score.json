@@ -1,0 +1,198 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "score",
+ "description": "The deterministic score of a run (timing and host data go to stats.json).",
+ "type": "object",
+ "required": [
+  "reward",
+  "raw",
+  "gates",
+  "shifts"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "reward": {
+   "type": "number",
+   "minimum": 0,
+   "maximum": 1
+  },
+  "raw": {
+   "type": "number",
+   "minimum": 0
+  },
+  "gates": {
+   "type": "object",
+   "required": [
+    "controller_file",
+    "size",
+    "import_audit",
+    "setup",
+    "on_time",
+    "no_late_write",
+    "clean",
+    "network"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "controller_file": {
+     "type": "boolean"
+    },
+    "size": {
+     "type": "boolean"
+    },
+    "import_audit": {
+     "type": "boolean"
+    },
+    "setup": {
+     "type": "boolean"
+    },
+    "on_time": {
+     "type": "boolean"
+    },
+    "no_late_write": {
+     "type": "boolean"
+    },
+    "clean": {
+     "type": "boolean"
+    },
+    "network": {
+     "type": "boolean"
+    }
+   }
+  },
+  "shifts": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "unit",
+     "shift",
+     "S",
+     "J",
+     "carry_mean",
+     "events"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "unit": {
+      "type": "integer",
+      "enum": [
+       1,
+       2
+      ]
+     },
+     "shift": {
+      "type": "integer",
+      "enum": [
+       1,
+       2
+      ]
+     },
+     "S": {
+      "type": "number",
+      "minimum": 0
+     },
+     "J": {
+      "type": "number",
+      "minimum": 0
+     },
+     "carry_mean": {
+      "type": "number",
+      "minimum": 0
+     },
+     "events": {
+      "type": "object",
+      "required": [
+       "crush",
+       "drop",
+       "shutdown"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "crush": {
+        "type": "integer",
+        "minimum": 0
+       },
+       "drop": {
+        "type": "integer",
+        "minimum": 0
+       },
+       "shutdown": {
+        "type": "integer",
+        "minimum": 0
+       }
+      }
+     }
+    }
+   },
+   "minItems": 1,
+   "maxItems": 4
+  }
+ },
+ "examples": [
+  {
+   "reward": 1.0,
+   "raw": 1.0,
+   "gates": {
+    "controller_file": true,
+    "size": true,
+    "import_audit": true,
+    "setup": true,
+    "on_time": true,
+    "no_late_write": true,
+    "clean": true,
+    "network": true
+   },
+   "shifts": [
+    {
+     "unit": 1,
+     "shift": 1,
+     "S": 1.0,
+     "J": 1.0,
+     "carry_mean": 1.0,
+     "events": {
+      "crush": 0,
+      "drop": 0,
+      "shutdown": 0
+     }
+    },
+    {
+     "unit": 1,
+     "shift": 2,
+     "S": 1.0,
+     "J": 1.0,
+     "carry_mean": 1.0,
+     "events": {
+      "crush": 0,
+      "drop": 0,
+      "shutdown": 0
+     }
+    },
+    {
+     "unit": 2,
+     "shift": 1,
+     "S": 1.0,
+     "J": 1.0,
+     "carry_mean": 1.0,
+     "events": {
+      "crush": 0,
+      "drop": 0,
+      "shutdown": 0
+     }
+    },
+    {
+     "unit": 2,
+     "shift": 2,
+     "S": 1.0,
+     "J": 1.0,
+     "carry_mean": 1.0,
+     "events": {
+      "crush": 0,
+      "drop": 0,
+      "shutdown": 0
+     }
+    }
+   ]
+  }
+ ]
+}

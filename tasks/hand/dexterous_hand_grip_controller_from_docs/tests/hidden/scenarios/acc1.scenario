@@ -1,0 +1,2591 @@
+{
+ "candidate_index": 0,
+ "ceilings": {
+  "SH-1": 4.0,
+  "SH-2": 6.4,
+  "SH-3": 10.6,
+  "SP_travel_mm": 6.4
+ },
+ "code_digest": "34e37b4072f4bdf4ddc7bd5ed7a462a9f741e1653c6810d40af219fdc154a30a",
+ "format": "grip-scenario/1",
+ "record": {
+  "format": "unit-record/1",
+  "homing_spread_deg": 0.7,
+  "serial": "HU-GA8JW",
+  "servos": [
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 2528,
+    "id": 0,
+    "joint": "thumb ip"
+   },
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 2578,
+    "id": 1,
+    "joint": "thumb mp"
+   },
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 1949,
+    "id": 2,
+    "joint": "thumb side"
+   },
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 2389,
+    "id": 3,
+    "joint": "thumb roll"
+   },
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 1508,
+    "id": 4,
+    "joint": "index pip"
+   },
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 2145,
+    "id": 5,
+    "joint": "index mcp"
+   },
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 2462,
+    "id": 6,
+    "joint": "index abad"
+   },
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 1620,
+    "id": 7,
+    "joint": "middle pip"
+   },
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 1980,
+    "id": 8,
+    "joint": "middle mcp"
+   },
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 1731,
+    "id": 9,
+    "joint": "middle abad"
+   },
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 1566,
+    "id": 10,
+    "joint": "ring pip"
+   },
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 2241,
+    "id": 11,
+    "joint": "ring mcp"
+   },
+   {
+    "direction": 1,
+    "eeprom": {
+     "current_limit": 910,
+     "operating_mode": 5,
+     "pwm_limit": 885,
+     "return_delay": 0,
+     "shutdown": 52,
+     "temperature_limit": 70
+    },
+    "home_offset": 1869,
+    "id": 12,
+    "joint": "ring abad"
+   }
+  ],
+  "supply_v_at_delivery": 11.3,
+  "tactile": {
+   "frame_hz": 90.6,
+   "zero_residual_steps": {
+    "index": [
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "middle": [
+     0,
+     0,
+     -1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     -1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "ring": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "thumb": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     -1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  }
+ },
+ "reference": {
+  "per_job": [
+   {
+    "carried": false,
+    "declined": true,
+    "events": [],
+    "id": "s1j01",
+    "job": 1,
+    "label": "decline",
+    "losses": [],
+    "peak_squeeze_n": 5.49052724050668e-09,
+    "peak_travel_mm": null,
+    "q": null,
+    "released": false,
+    "rot_deg": null,
+    "shift": 1,
+    "slip_mm": null
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s1j02",
+    "job": 2,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 3.0351581257138647,
+    "peak_travel_mm": null,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.504701,
+    "shift": 1,
+    "slip_mm": 0.278719,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 2470
+      },
+      "cap_n": 3.2,
+      "command_cap_n": null,
+      "cycles": 2470,
+      "duty_cap": 0.9,
+      "f_ref_n": 2.47,
+      "ls_n": 1.9,
+      "terms_min_n": {
+       "ceiling": 3.2,
+       "duty": 12.412,
+       "ls": 2.47
+      },
+      "wanted_max_n": 2.47,
+      "wanted_min_n": 2.47
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 2.6186,
+       "cycles": 81,
+       "spring_last_n": 2.5403,
+       "spring_max_n": 2.5569,
+       "spring_min_n": 0.3031,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 2.596,
+       "cycles": 100,
+       "spring_last_n": 3.0326,
+       "spring_max_n": 3.0326,
+       "spring_min_n": 2.4122,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      },
+      "test_lift": {
+       "command_max_n": 2.6026,
+       "cycles": 600,
+       "spring_last_n": 2.4604,
+       "spring_max_n": 2.5402,
+       "spring_min_n": 2.4335,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      },
+      "transfer": {
+       "command_max_n": 2.6423,
+       "cycles": 1688,
+       "spring_last_n": 2.4849,
+       "spring_max_n": 2.5294,
+       "spring_min_n": 2.4092,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      }
+     }
+    }
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s1j03",
+    "job": 3,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 7.770973998908972,
+    "peak_travel_mm": null,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.172011,
+    "shift": 1,
+    "slip_mm": 0.102129,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 2470
+      },
+      "cap_n": null,
+      "command_cap_n": null,
+      "cycles": 2470,
+      "duty_cap": 0.9,
+      "f_ref_n": 7.02,
+      "ls_n": 5.4,
+      "terms_min_n": {
+       "duty": 11.5668,
+       "ls": 7.02
+      },
+      "wanted_max_n": 7.02,
+      "wanted_min_n": 7.02
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 7.4896,
+       "cycles": 81,
+       "spring_last_n": 7.4584,
+       "spring_max_n": 7.586,
+       "spring_min_n": 0.3753,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 6.9732,
+       "cycles": 100,
+       "spring_last_n": 7.7687,
+       "spring_max_n": 7.7687,
+       "spring_min_n": 6.9771,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 7.02
+      },
+      "test_lift": {
+       "command_max_n": 7.2613,
+       "cycles": 600,
+       "spring_last_n": 7.0351,
+       "spring_max_n": 7.4579,
+       "spring_min_n": 7.0213,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 7.02
+      },
+      "transfer": {
+       "command_max_n": 7.1816,
+       "cycles": 1688,
+       "spring_last_n": 6.9652,
+       "spring_max_n": 7.2073,
+       "spring_min_n": 6.896,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 7.02
+      }
+     }
+    }
+   },
+   {
+    "carried": false,
+    "declined": true,
+    "events": [],
+    "id": "s1j04",
+    "job": 4,
+    "label": "decline",
+    "losses": [],
+    "peak_squeeze_n": 1.8562810143904544e-07,
+    "peak_travel_mm": null,
+    "q": null,
+    "released": false,
+    "rot_deg": null,
+    "shift": 1,
+    "slip_mm": null
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s1j05",
+    "job": 5,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 4.293217863909289,
+    "peak_travel_mm": null,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.20668,
+    "shift": 1,
+    "slip_mm": 0.083526,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 1190
+      },
+      "cap_n": 5.12,
+      "command_cap_n": null,
+      "cycles": 1190,
+      "duty_cap": 0.9,
+      "f_ref_n": 4.16,
+      "ls_n": 3.2,
+      "terms_min_n": {
+       "ceiling": 5.12,
+       "duty": 11.882,
+       "ls": 4.16
+      },
+      "wanted_max_n": 4.16,
+      "wanted_min_n": 4.16
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 4.0863,
+       "cycles": 81,
+       "spring_last_n": 4.2817,
+       "spring_max_n": 4.2817,
+       "spring_min_n": 0.508,
+       "wanted_last_n": 4.16,
+       "wanted_max_n": 4.16,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 3.8779,
+       "cycles": 100,
+       "spring_last_n": 4.2837,
+       "spring_max_n": 4.2837,
+       "spring_min_n": 4.164,
+       "wanted_last_n": 4.16,
+       "wanted_max_n": 4.16,
+       "wanted_min_n": 4.16
+      },
+      "test_lift": {
+       "command_max_n": 4.0454,
+       "cycles": 600,
+       "spring_last_n": 4.1653,
+       "spring_max_n": 4.2873,
+       "spring_min_n": 4.1135,
+       "wanted_last_n": 4.16,
+       "wanted_max_n": 4.16,
+       "wanted_min_n": 4.16
+      },
+      "transfer": {
+       "command_max_n": 3.8798,
+       "cycles": 408,
+       "spring_last_n": 4.1727,
+       "spring_max_n": 4.2334,
+       "spring_min_n": 4.1021,
+       "wanted_last_n": 4.16,
+       "wanted_max_n": 4.16,
+       "wanted_min_n": 4.16
+      }
+     }
+    }
+   },
+   {
+    "carried": false,
+    "declined": true,
+    "events": [],
+    "id": "s1j06",
+    "job": 6,
+    "label": "decline",
+    "losses": [],
+    "peak_squeeze_n": 4.0602376132184145e-10,
+    "peak_travel_mm": 1.9610992136723095e-10,
+    "q": null,
+    "released": false,
+    "rot_deg": null,
+    "shift": 1,
+    "slip_mm": null
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s1j07",
+    "job": 7,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 2.545262481402137,
+    "peak_travel_mm": null,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.28931,
+    "shift": 1,
+    "slip_mm": 0.092464,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 2470
+      },
+      "cap_n": 3.2,
+      "command_cap_n": null,
+      "cycles": 2470,
+      "duty_cap": 0.9,
+      "f_ref_n": 2.47,
+      "ls_n": 1.9,
+      "terms_min_n": {
+       "ceiling": 3.2,
+       "duty": 10.9325,
+       "ls": 2.47
+      },
+      "wanted_max_n": 2.47,
+      "wanted_min_n": 2.47
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 2.7089,
+       "cycles": 81,
+       "spring_last_n": 2.4049,
+       "spring_max_n": 2.4322,
+       "spring_min_n": 0.4377,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 2.7361,
+       "cycles": 100,
+       "spring_last_n": 2.4946,
+       "spring_max_n": 2.4946,
+       "spring_min_n": 2.429,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      },
+      "test_lift": {
+       "command_max_n": 2.817,
+       "cycles": 600,
+       "spring_last_n": 2.4775,
+       "spring_max_n": 2.4934,
+       "spring_min_n": 2.4003,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      },
+      "transfer": {
+       "command_max_n": 2.8062,
+       "cycles": 1688,
+       "spring_last_n": 2.4923,
+       "spring_max_n": 2.5448,
+       "spring_min_n": 2.4224,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      }
+     }
+    }
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s1j08",
+    "job": 8,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 4.277471258788145,
+    "peak_travel_mm": 1.5670489139640682,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.503744,
+    "shift": 1,
+    "slip_mm": 0.235309,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 1190
+      },
+      "cap_n": 13.9757,
+      "command_cap_n": null,
+      "cycles": 1190,
+      "duty_cap": 0.9,
+      "f_ref_n": 4.16,
+      "ls_n": 3.2,
+      "terms_min_n": {
+       "duty": 11.8349,
+       "ls": 4.16,
+       "travel": 13.9757
+      },
+      "wanted_max_n": 4.16,
+      "wanted_min_n": 4.16
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 4.4683,
+       "cycles": 81,
+       "spring_last_n": 4.1718,
+       "spring_max_n": 4.1718,
+       "spring_min_n": 0.3181,
+       "wanted_last_n": 4.16,
+       "wanted_max_n": 4.16,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 4.097,
+       "cycles": 100,
+       "spring_last_n": 4.1473,
+       "spring_max_n": 4.1473,
+       "spring_min_n": 4.1181,
+       "wanted_last_n": 4.16,
+       "wanted_max_n": 4.16,
+       "wanted_min_n": 4.16
+      },
+      "test_lift": {
+       "command_max_n": 4.4669,
+       "cycles": 600,
+       "spring_last_n": 4.1552,
+       "spring_max_n": 4.2774,
+       "spring_min_n": 4.1209,
+       "wanted_last_n": 4.16,
+       "wanted_max_n": 4.16,
+       "wanted_min_n": 4.16
+      },
+      "transfer": {
+       "command_max_n": 4.2336,
+       "cycles": 408,
+       "spring_last_n": 4.1184,
+       "spring_max_n": 4.2613,
+       "spring_min_n": 4.0979,
+       "wanted_last_n": 4.16,
+       "wanted_max_n": 4.16,
+       "wanted_min_n": 4.16
+      }
+     }
+    }
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s1j09",
+    "job": 9,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 2.6031933403979206,
+    "peak_travel_mm": null,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.202713,
+    "shift": 1,
+    "slip_mm": 0.073958,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 2470
+      },
+      "cap_n": 3.2,
+      "command_cap_n": null,
+      "cycles": 2470,
+      "duty_cap": 0.9,
+      "f_ref_n": 2.47,
+      "ls_n": 1.9,
+      "terms_min_n": {
+       "ceiling": 3.2,
+       "duty": 11.8179,
+       "ls": 2.47
+      },
+      "wanted_max_n": 2.47,
+      "wanted_min_n": 2.47
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 2.0959,
+       "cycles": 81,
+       "spring_last_n": 2.4416,
+       "spring_max_n": 2.4542,
+       "spring_min_n": 0.3176,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 2.3003,
+       "cycles": 100,
+       "spring_last_n": 2.5109,
+       "spring_max_n": 2.5109,
+       "spring_min_n": 2.483,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      },
+      "test_lift": {
+       "command_max_n": 2.4666,
+       "cycles": 600,
+       "spring_last_n": 2.4854,
+       "spring_max_n": 2.4933,
+       "spring_min_n": 2.3873,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      },
+      "transfer": {
+       "command_max_n": 2.3951,
+       "cycles": 1688,
+       "spring_last_n": 2.4987,
+       "spring_max_n": 2.6027,
+       "spring_min_n": 2.4337,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      }
+     }
+    }
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s1j10",
+    "job": 10,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 7.465543218661878,
+    "peak_travel_mm": null,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.450351,
+    "shift": 1,
+    "slip_mm": 0.418943,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 2470
+      },
+      "cap_n": 8.48,
+      "command_cap_n": null,
+      "cycles": 2470,
+      "duty_cap": 0.9,
+      "f_ref_n": 6.89,
+      "ls_n": 5.3,
+      "terms_min_n": {
+       "ceiling": 8.48,
+       "duty": 11.4724,
+       "ls": 6.89
+      },
+      "wanted_max_n": 6.89,
+      "wanted_min_n": 6.89
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 8.4893,
+       "cycles": 81,
+       "spring_last_n": 7.4634,
+       "spring_max_n": 7.4634,
+       "spring_min_n": 0.8577,
+       "wanted_last_n": 6.89,
+       "wanted_max_n": 6.89,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 7.8256,
+       "cycles": 100,
+       "spring_last_n": 6.902,
+       "spring_max_n": 6.902,
+       "spring_min_n": 6.8344,
+       "wanted_last_n": 6.89,
+       "wanted_max_n": 6.89,
+       "wanted_min_n": 6.89
+      },
+      "test_lift": {
+       "command_max_n": 8.2641,
+       "cycles": 600,
+       "spring_last_n": 6.8793,
+       "spring_max_n": 7.4655,
+       "spring_min_n": 6.858,
+       "wanted_last_n": 6.89,
+       "wanted_max_n": 6.89,
+       "wanted_min_n": 6.89
+      },
+      "transfer": {
+       "command_max_n": 7.8473,
+       "cycles": 1688,
+       "spring_last_n": 6.8252,
+       "spring_max_n": 6.9602,
+       "spring_min_n": 6.4943,
+       "wanted_last_n": 6.89,
+       "wanted_max_n": 6.89,
+       "wanted_min_n": 6.89
+      }
+     }
+    }
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s2j01",
+    "job": 1,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 8.043318538711844,
+    "peak_travel_mm": null,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.152679,
+    "shift": 2,
+    "slip_mm": 0.202768,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 2470
+      },
+      "cap_n": null,
+      "command_cap_n": null,
+      "cycles": 2470,
+      "duty_cap": 0.9,
+      "f_ref_n": 7.02,
+      "ls_n": 5.4,
+      "terms_min_n": {
+       "duty": 11.4576,
+       "ls": 7.02
+      },
+      "wanted_max_n": 7.02,
+      "wanted_min_n": 7.02
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 7.5413,
+       "cycles": 81,
+       "spring_last_n": 7.892,
+       "spring_max_n": 8.0422,
+       "spring_min_n": 1.1252,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 6.5078,
+       "cycles": 100,
+       "spring_last_n": 7.3581,
+       "spring_max_n": 7.3581,
+       "spring_min_n": 6.9446,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 7.02
+      },
+      "test_lift": {
+       "command_max_n": 7.1557,
+       "cycles": 600,
+       "spring_last_n": 7.0299,
+       "spring_max_n": 7.8977,
+       "spring_min_n": 7.0033,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 7.02
+      },
+      "transfer": {
+       "command_max_n": 6.7227,
+       "cycles": 1688,
+       "spring_last_n": 6.932,
+       "spring_max_n": 7.2816,
+       "spring_min_n": 6.8568,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 7.02
+      }
+     }
+    }
+   },
+   {
+    "carried": false,
+    "declined": true,
+    "events": [],
+    "id": "s2j02",
+    "job": 2,
+    "label": "decline",
+    "losses": [],
+    "peak_squeeze_n": 4.3916754767352085e-08,
+    "peak_travel_mm": null,
+    "q": null,
+    "released": false,
+    "rot_deg": null,
+    "shift": 2,
+    "slip_mm": null
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s2j03",
+    "job": 3,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 8.152615065802676,
+    "peak_travel_mm": null,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.12946,
+    "shift": 2,
+    "slip_mm": 0.091153,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 1190
+      },
+      "cap_n": null,
+      "command_cap_n": null,
+      "cycles": 1190,
+      "duty_cap": 0.9,
+      "f_ref_n": 7.02,
+      "ls_n": 5.4,
+      "terms_min_n": {
+       "duty": 10.1478,
+       "ls": 7.02
+      },
+      "wanted_max_n": 7.02,
+      "wanted_min_n": 7.02
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 7.4639,
+       "cycles": 81,
+       "spring_last_n": 7.6449,
+       "spring_max_n": 7.8184,
+       "spring_min_n": 1.048,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 7.0806,
+       "cycles": 100,
+       "spring_last_n": 8.0676,
+       "spring_max_n": 8.1517,
+       "spring_min_n": 6.9951,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 7.02
+      },
+      "test_lift": {
+       "command_max_n": 7.1663,
+       "cycles": 600,
+       "spring_last_n": 7.0126,
+       "spring_max_n": 7.6403,
+       "spring_min_n": 6.6553,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 7.02
+      },
+      "transfer": {
+       "command_max_n": 7.1257,
+       "cycles": 408,
+       "spring_last_n": 6.9813,
+       "spring_max_n": 7.2615,
+       "spring_min_n": 6.8252,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 7.02
+      }
+     }
+    }
+   },
+   {
+    "carried": false,
+    "declined": true,
+    "events": [],
+    "id": "s2j04",
+    "job": 4,
+    "label": "decline",
+    "losses": [],
+    "peak_squeeze_n": 1.4912067256559162e-09,
+    "peak_travel_mm": 1.3896953813672017e-09,
+    "q": null,
+    "released": false,
+    "rot_deg": null,
+    "shift": 2,
+    "slip_mm": null
+   },
+   {
+    "carried": false,
+    "declined": true,
+    "events": [],
+    "id": "s2j05",
+    "job": 5,
+    "label": "decline",
+    "losses": [],
+    "peak_squeeze_n": 3.590979305969771e-09,
+    "peak_travel_mm": null,
+    "q": null,
+    "released": false,
+    "rot_deg": null,
+    "shift": 2,
+    "slip_mm": null
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s2j06",
+    "job": 6,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 4.634789463625182,
+    "peak_travel_mm": 0.5204622751243916,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.104245,
+    "shift": 2,
+    "slip_mm": 0.063459,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 2470
+      },
+      "cap_n": 45.5943,
+      "command_cap_n": null,
+      "cycles": 2470,
+      "duty_cap": 0.9,
+      "f_ref_n": 4.16,
+      "ls_n": 3.2,
+      "terms_min_n": {
+       "duty": 11.9969,
+       "ls": 4.16,
+       "travel": 45.5943
+      },
+      "wanted_max_n": 4.16,
+      "wanted_min_n": 4.16
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 4.4536,
+       "cycles": 81,
+       "spring_last_n": 4.4201,
+       "spring_max_n": 4.4205,
+       "spring_min_n": 0.6528,
+       "wanted_last_n": 4.16,
+       "wanted_max_n": 4.16,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 4.1602,
+       "cycles": 100,
+       "spring_last_n": 4.5908,
+       "spring_max_n": 4.5908,
+       "spring_min_n": 4.0628,
+       "wanted_last_n": 4.16,
+       "wanted_max_n": 4.16,
+       "wanted_min_n": 4.16
+      },
+      "test_lift": {
+       "command_max_n": 4.3519,
+       "cycles": 600,
+       "spring_last_n": 4.18,
+       "spring_max_n": 4.4291,
+       "spring_min_n": 4.1242,
+       "wanted_last_n": 4.16,
+       "wanted_max_n": 4.16,
+       "wanted_min_n": 4.16
+      },
+      "transfer": {
+       "command_max_n": 4.2056,
+       "cycles": 1688,
+       "spring_last_n": 4.0597,
+       "spring_max_n": 4.2032,
+       "spring_min_n": 4.0293,
+       "wanted_last_n": 4.16,
+       "wanted_max_n": 4.16,
+       "wanted_min_n": 4.16
+      }
+     }
+    }
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s2j07",
+    "job": 7,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 2.589952458421715,
+    "peak_travel_mm": null,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.124855,
+    "shift": 2,
+    "slip_mm": 0.038227,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 2470
+      },
+      "cap_n": 3.2,
+      "command_cap_n": null,
+      "cycles": 2470,
+      "duty_cap": 0.9,
+      "f_ref_n": 2.47,
+      "ls_n": 1.9,
+      "terms_min_n": {
+       "ceiling": 3.2,
+       "duty": 11.5361,
+       "ls": 2.47
+      },
+      "wanted_max_n": 2.47,
+      "wanted_min_n": 2.47
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 2.0569,
+       "cycles": 81,
+       "spring_last_n": 2.4846,
+       "spring_max_n": 2.4863,
+       "spring_min_n": 0.3129,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 2.1688,
+       "cycles": 100,
+       "spring_last_n": 2.5821,
+       "spring_max_n": 2.5821,
+       "spring_min_n": 2.4734,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      },
+      "test_lift": {
+       "command_max_n": 2.1987,
+       "cycles": 600,
+       "spring_last_n": 2.4652,
+       "spring_max_n": 2.5004,
+       "spring_min_n": 2.3643,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      },
+      "transfer": {
+       "command_max_n": 2.2189,
+       "cycles": 1688,
+       "spring_last_n": 2.5372,
+       "spring_max_n": 2.5379,
+       "spring_min_n": 2.4074,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      }
+     }
+    }
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s2j08",
+    "job": 8,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 2.5961580033466967,
+    "peak_travel_mm": null,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.209708,
+    "shift": 2,
+    "slip_mm": 0.061115,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 2470
+      },
+      "cap_n": 3.2,
+      "command_cap_n": null,
+      "cycles": 2470,
+      "duty_cap": 0.9,
+      "f_ref_n": 2.47,
+      "ls_n": 1.9,
+      "terms_min_n": {
+       "ceiling": 3.2,
+       "duty": 12.1456,
+       "ls": 2.47
+      },
+      "wanted_max_n": 2.47,
+      "wanted_min_n": 2.47
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 1.8799,
+       "cycles": 81,
+       "spring_last_n": 2.5275,
+       "spring_max_n": 2.5393,
+       "spring_min_n": 0.3294,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 1.7043,
+       "cycles": 100,
+       "spring_last_n": 2.5915,
+       "spring_max_n": 2.5915,
+       "spring_min_n": 2.5074,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      },
+      "test_lift": {
+       "command_max_n": 1.8682,
+       "cycles": 600,
+       "spring_last_n": 2.48,
+       "spring_max_n": 2.5424,
+       "spring_min_n": 2.4039,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      },
+      "transfer": {
+       "command_max_n": 1.903,
+       "cycles": 1688,
+       "spring_last_n": 2.508,
+       "spring_max_n": 2.5425,
+       "spring_min_n": 2.3709,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      }
+     }
+    }
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s2j09",
+    "job": 9,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 2.6745166905456954,
+    "peak_travel_mm": null,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.073204,
+    "shift": 2,
+    "slip_mm": 0.044194,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 2470
+      },
+      "cap_n": 3.2,
+      "command_cap_n": null,
+      "cycles": 2470,
+      "duty_cap": 0.9,
+      "f_ref_n": 2.47,
+      "ls_n": 1.9,
+      "terms_min_n": {
+       "ceiling": 3.2,
+       "duty": 11.8616,
+       "ls": 2.47
+      },
+      "wanted_max_n": 2.47,
+      "wanted_min_n": 2.47
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 2.7068,
+       "cycles": 81,
+       "spring_last_n": 2.6711,
+       "spring_max_n": 2.6745,
+       "spring_min_n": 0.441,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 2.461,
+       "cycles": 100,
+       "spring_last_n": 2.453,
+       "spring_max_n": 2.5343,
+       "spring_min_n": 2.391,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      },
+      "test_lift": {
+       "command_max_n": 2.634,
+       "cycles": 600,
+       "spring_last_n": 2.4638,
+       "spring_max_n": 2.672,
+       "spring_min_n": 2.3961,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      },
+      "transfer": {
+       "command_max_n": 2.478,
+       "cycles": 1688,
+       "spring_last_n": 2.39,
+       "spring_max_n": 2.5417,
+       "spring_min_n": 2.2887,
+       "wanted_last_n": 2.47,
+       "wanted_max_n": 2.47,
+       "wanted_min_n": 2.47
+      }
+     }
+    }
+   },
+   {
+    "carried": true,
+    "declined": false,
+    "events": [],
+    "id": "s2j10",
+    "job": 10,
+    "label": "carry",
+    "losses": [],
+    "peak_squeeze_n": 8.07667658738714,
+    "peak_travel_mm": null,
+    "q": 1.0,
+    "released": true,
+    "rot_deg": 0.39486,
+    "shift": 2,
+    "slip_mm": 0.325044,
+    "squeeze": {
+     "class_squeeze": {
+      "bound_cycles": {
+       "ls": 2470
+      },
+      "cap_n": null,
+      "command_cap_n": null,
+      "cycles": 2470,
+      "duty_cap": 0.9,
+      "f_ref_n": 7.02,
+      "ls_n": 5.4,
+      "terms_min_n": {
+       "duty": 9.9438,
+       "ls": 7.02
+      },
+      "wanted_max_n": 7.02,
+      "wanted_min_n": 7.02
+     },
+     "phases": {
+      "present": {
+       "command_max_n": 8.7998,
+       "cycles": 81,
+       "spring_last_n": 7.6999,
+       "spring_max_n": 8.0746,
+       "spring_min_n": 2.5028,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 0.3
+      },
+      "set_down": {
+       "command_max_n": 7.9256,
+       "cycles": 100,
+       "spring_last_n": 7.8134,
+       "spring_max_n": 7.8134,
+       "spring_min_n": 6.9101,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 7.02
+      },
+      "test_lift": {
+       "command_max_n": 8.431,
+       "cycles": 600,
+       "spring_last_n": 7.0277,
+       "spring_max_n": 7.6999,
+       "spring_min_n": 6.9775,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 7.02
+      },
+      "transfer": {
+       "command_max_n": 7.8354,
+       "cycles": 1688,
+       "spring_last_n": 6.9185,
+       "spring_max_n": 7.1582,
+       "spring_min_n": 6.8554,
+       "wanted_last_n": 7.02,
+       "wanted_max_n": 7.02,
+       "wanted_min_n": 7.02
+      }
+     }
+    }
+   }
+  ],
+  "raw": 1.0
+ },
+ "registration_sha256": "4fde2fca201948e6dbf20985f9145d199e3ea7763477937452fbbfd625bcdba4",
+ "rule_sha256": "64a246c54f7d4667ef35bd0b20999f08c2f18ec9c515028d1b85ae814a84bcd4",
+ "shifts": [
+  [
+   {
+    "id": "s1j01",
+    "label": "decline",
+    "spec": {
+     "class": "brittle",
+     "code": "SH-1",
+     "dx_mm": 1.008346927632291,
+     "dy_mm": 1.2919296314301179,
+     "k_n_per_mm": 5.0,
+     "mass_kg": 0.6160755196085312,
+     "mu": 0.6225866859002415,
+     "w_mm": 36.812393470835204,
+     "yaw_deg": -2.9322970291345323
+    },
+    "ticket": {
+     "class": "brittle",
+     "code": "SH-1",
+     "finish": "rough",
+     "job": 1,
+     "profile": "R30"
+    },
+    "track_scale": 1.0722655116115274
+   },
+   {
+    "id": "s1j02",
+    "label": "carry",
+    "spec": {
+     "class": "brittle",
+     "code": "SH-1",
+     "dx_mm": 0.3730742036615727,
+     "dy_mm": -1.53460908170814,
+     "k_n_per_mm": 5.0,
+     "mass_kg": 0.06457059278794719,
+     "mu": 0.45261736748492837,
+     "w_mm": 40.42874977641647,
+     "yaw_deg": -0.8161824538333238
+    },
+    "ticket": {
+     "class": "brittle",
+     "code": "SH-1",
+     "finish": "matte",
+     "job": 2,
+     "profile": "P30"
+    },
+    "track_scale": 1.0184901724742503
+   },
+   {
+    "id": "s1j03",
+    "label": "carry",
+    "spec": {
+     "class": "full_load",
+     "code": "FL",
+     "dx_mm": 0.6098582940683648,
+     "dy_mm": 1.235563731975724,
+     "k_n_per_mm": 20.0,
+     "mass_kg": 0.16330768536161158,
+     "mu": 0.4892033180240481,
+     "w_mm": 39.8990090309363,
+     "yaw_deg": 0.05082057734098644
+    },
+    "ticket": {
+     "class": "full_load",
+     "code": "FL",
+     "finish": "matte",
+     "job": 3,
+     "profile": "P30"
+    },
+    "track_scale": 1.08298753752143
+   },
+   {
+    "id": "s1j04",
+    "label": "decline",
+    "spec": {
+     "class": "full_load",
+     "code": "FL",
+     "dx_mm": 0.42382091352078455,
+     "dy_mm": -1.939082192577608,
+     "k_n_per_mm": 20.0,
+     "mass_kg": 0.6699899639493366,
+     "mu": 0.6553415572425635,
+     "w_mm": 44.89590366111946,
+     "yaw_deg": 2.8315602448400874
+    },
+    "ticket": {
+     "class": "full_load",
+     "code": "FL",
+     "finish": "rough",
+     "job": 4,
+     "profile": "P30"
+    },
+    "track_scale": 1.0394058407319988
+   },
+   {
+    "id": "s1j05",
+    "label": "carry",
+    "spec": {
+     "class": "brittle",
+     "code": "SH-2",
+     "dx_mm": 0.7320989103784403,
+     "dy_mm": -1.7196061200676669,
+     "k_n_per_mm": 5.0,
+     "mass_kg": 0.07286945032369858,
+     "mu": 0.6780979180436848,
+     "w_mm": 38.91543948341691,
+     "yaw_deg": 0.43801101059668035
+    },
+    "ticket": {
+     "class": "brittle",
+     "code": "SH-2",
+     "finish": "rough",
+     "job": 5,
+     "profile": "T0"
+    },
+    "track_scale": 1.0536210142860725
+   },
+   {
+    "id": "s1j06",
+    "label": "decline",
+    "spec": {
+     "class": "soft",
+     "code": "SP",
+     "dx_mm": -0.3446515124047133,
+     "dy_mm": 0.6817069415596696,
+     "k_n_per_mm": 2.070388680445854,
+     "mass_kg": 0.6039498095391213,
+     "mu": 0.4192503293321059,
+     "w_mm": 39.683576739618644,
+     "yaw_deg": 2.9350954327271284
+    },
+    "ticket": {
+     "class": "soft",
+     "code": "SP",
+     "finish": "matte",
+     "job": 6,
+     "profile": "T0"
+    },
+    "track_scale": 1.0325112457670742
+   },
+   {
+    "id": "s1j07",
+    "label": "carry",
+    "spec": {
+     "class": "brittle",
+     "code": "SH-1",
+     "dx_mm": -0.20766109933252216,
+     "dy_mm": -1.7260939826924888,
+     "k_n_per_mm": 5.0,
+     "mass_kg": 0.06543127627985373,
+     "mu": 0.5166946247186412,
+     "w_mm": 44.19208899670421,
+     "yaw_deg": 0.9048778117996177
+    },
+    "ticket": {
+     "class": "brittle",
+     "code": "SH-1",
+     "finish": "matte",
+     "job": 7,
+     "profile": "R30"
+    },
+    "track_scale": 0.9740800260506701
+   },
+   {
+    "id": "s1j08",
+    "label": "carry",
+    "spec": {
+     "class": "soft",
+     "code": "SP",
+     "dx_mm": 0.9431195503097706,
+     "dy_mm": 0.07613731636506745,
+     "k_n_per_mm": 2.729634806336508,
+     "mass_kg": 0.03661233121950423,
+     "mu": 0.6705151059164957,
+     "w_mm": 38.30738375014931,
+     "yaw_deg": 1.8725195460500004
+    },
+    "ticket": {
+     "class": "soft",
+     "code": "SP",
+     "finish": "rough",
+     "job": 8,
+     "profile": "T0"
+    },
+    "track_scale": 0.9297810232364204
+   },
+   {
+    "id": "s1j09",
+    "label": "carry",
+    "spec": {
+     "class": "brittle",
+     "code": "SH-1",
+     "dx_mm": 0.6792965102781954,
+     "dy_mm": 0.6443025332042949,
+     "k_n_per_mm": 5.0,
+     "mass_kg": 0.0472830849711632,
+     "mu": 0.48507967419488857,
+     "w_mm": 38.42367232381146,
+     "yaw_deg": -1.0789758918744206
+    },
+    "ticket": {
+     "class": "brittle",
+     "code": "SH-1",
+     "finish": "matte",
+     "job": 9,
+     "profile": "R30"
+    },
+    "track_scale": 1.0139815659008338
+   },
+   {
+    "id": "s1j10",
+    "label": "carry",
+    "spec": {
+     "class": "brittle",
+     "code": "SH-3",
+     "dx_mm": -0.5833320501358331,
+     "dy_mm": -0.2804636169057296,
+     "k_n_per_mm": 5.0,
+     "mass_kg": 0.12518757760383245,
+     "mu": 0.4944093760456866,
+     "w_mm": 42.35389623423206,
+     "yaw_deg": -2.628894962176604
+    },
+    "ticket": {
+     "class": "brittle",
+     "code": "SH-3",
+     "finish": "matte",
+     "job": 10,
+     "profile": "P30"
+    },
+    "track_scale": 0.9538230819253288
+   }
+  ],
+  [
+   {
+    "id": "s2j01",
+    "label": "carry",
+    "spec": {
+     "class": "full_load",
+     "code": "FL",
+     "dx_mm": 0.7507708276210043,
+     "dy_mm": -1.525102346896905,
+     "k_n_per_mm": 20.0,
+     "mass_kg": 0.18427289258186383,
+     "mu": 0.5992084676811631,
+     "w_mm": 38.42090821145058,
+     "yaw_deg": 2.6787000753122294
+    },
+    "ticket": {
+     "class": "full_load",
+     "code": "FL",
+     "finish": "rough",
+     "job": 1,
+     "profile": "P30"
+    },
+    "track_scale": 0.9608678863577639
+   },
+   {
+    "id": "s2j02",
+    "label": "decline",
+    "spec": {
+     "class": "brittle",
+     "code": "SH-1",
+     "dx_mm": -1.0449762147904227,
+     "dy_mm": 0.6549257202577118,
+     "k_n_per_mm": 5.0,
+     "mass_kg": 0.5737723982844962,
+     "mu": 0.5443329398497386,
+     "w_mm": 39.43127376086018,
+     "yaw_deg": 0.4983377779862783
+    },
+    "ticket": {
+     "class": "brittle",
+     "code": "SH-1",
+     "finish": "matte",
+     "job": 2,
+     "profile": "P30"
+    },
+    "track_scale": 0.9954260205711787
+   },
+   {
+    "id": "s2j03",
+    "label": "carry",
+    "spec": {
+     "class": "full_load",
+     "code": "FL",
+     "dx_mm": 0.8922314803072434,
+     "dy_mm": -1.0860007548583375,
+     "k_n_per_mm": 20.0,
+     "mass_kg": 0.19512601879532668,
+     "mu": 0.5520490832242403,
+     "w_mm": 44.18340877692822,
+     "yaw_deg": 2.8482161207826353
+    },
+    "ticket": {
+     "class": "full_load",
+     "code": "FL",
+     "finish": "rough",
+     "job": 3,
+     "profile": "T0"
+    },
+    "track_scale": 0.9645082253591447
+   },
+   {
+    "id": "s2j04",
+    "label": "decline",
+    "spec": {
+     "class": "soft",
+     "code": "SP",
+     "dx_mm": 0.6418024875428421,
+     "dy_mm": 0.578612819813961,
+     "k_n_per_mm": 1.0730457520761465,
+     "mass_kg": 0.5876186189362608,
+     "mu": 0.5108879970625541,
+     "w_mm": 42.31976787416741,
+     "yaw_deg": 0.5639941167626166
+    },
+    "ticket": {
+     "class": "soft",
+     "code": "SP",
+     "finish": "matte",
+     "job": 4,
+     "profile": "P30"
+    },
+    "track_scale": 1.0218798621189387
+   },
+   {
+    "id": "s2j05",
+    "label": "decline",
+    "spec": {
+     "class": "full_load",
+     "code": "FL",
+     "dx_mm": -1.107618307013694,
+     "dy_mm": 0.5410515903131612,
+     "k_n_per_mm": 20.0,
+     "mass_kg": 0.5028393260733449,
+     "mu": 0.4642689040543997,
+     "w_mm": 39.12723198233539,
+     "yaw_deg": 1.504743840272206
+    },
+    "ticket": {
+     "class": "full_load",
+     "code": "FL",
+     "finish": "matte",
+     "job": 5,
+     "profile": "R30"
+    },
+    "track_scale": 0.9956015776264862
+   },
+   {
+    "id": "s2j06",
+    "label": "carry",
+    "spec": {
+     "class": "soft",
+     "code": "SP",
+     "dx_mm": 0.24053422424446685,
+     "dy_mm": 0.3522369460195349,
+     "k_n_per_mm": 8.905140074787282,
+     "mass_kg": 0.11242213043827785,
+     "mu": 0.6843428159919822,
+     "w_mm": 40.24860331073184,
+     "yaw_deg": -0.3587873938443593
+    },
+    "ticket": {
+     "class": "soft",
+     "code": "SP",
+     "finish": "rough",
+     "job": 6,
+     "profile": "P30"
+    },
+    "track_scale": 0.9081468178364419
+   },
+   {
+    "id": "s2j07",
+    "label": "carry",
+    "spec": {
+     "class": "brittle",
+     "code": "SH-1",
+     "dx_mm": 0.2702699287368084,
+     "dy_mm": 1.7152372208137179,
+     "k_n_per_mm": 5.0,
+     "mass_kg": 0.057871978681862724,
+     "mu": 0.6662745366411814,
+     "w_mm": 36.95666516176549,
+     "yaw_deg": 0.2529499967675273
+    },
+    "ticket": {
+     "class": "brittle",
+     "code": "SH-1",
+     "finish": "rough",
+     "job": 7,
+     "profile": "R30"
+    },
+    "track_scale": 1.0156179142747255
+   },
+   {
+    "id": "s2j08",
+    "label": "carry",
+    "spec": {
+     "class": "brittle",
+     "code": "SH-1",
+     "dx_mm": -0.707192761829712,
+     "dy_mm": -0.3949507119982507,
+     "k_n_per_mm": 5.0,
+     "mass_kg": 0.06798695451125247,
+     "mu": 0.4743391967546955,
+     "w_mm": 40.68125326078277,
+     "yaw_deg": 1.3800455953098636
+    },
+    "ticket": {
+     "class": "brittle",
+     "code": "SH-1",
+     "finish": "matte",
+     "job": 8,
+     "profile": "P30"
+    },
+    "track_scale": 1.0899846527367159
+   },
+   {
+    "id": "s2j09",
+    "label": "carry",
+    "spec": {
+     "class": "brittle",
+     "code": "SH-1",
+     "dx_mm": -0.5560270919762756,
+     "dy_mm": 0.5277822513215942,
+     "k_n_per_mm": 5.0,
+     "mass_kg": 0.05810351791255572,
+     "mu": 0.6667295685629251,
+     "w_mm": 40.756019046412064,
+     "yaw_deg": 0.3588944058401311
+    },
+    "ticket": {
+     "class": "brittle",
+     "code": "SH-1",
+     "finish": "rough",
+     "job": 9,
+     "profile": "P30"
+    },
+    "track_scale": 1.0808718946443938
+   },
+   {
+    "id": "s2j10",
+    "label": "carry",
+    "spec": {
+     "class": "full_load",
+     "code": "FL",
+     "dx_mm": 0.7284330615512792,
+     "dy_mm": 1.360875961471292,
+     "k_n_per_mm": 20.0,
+     "mass_kg": 0.1844870390873703,
+     "mu": 0.6791807813072139,
+     "w_mm": 43.88028289584444,
+     "yaw_deg": -2.3008162713968376
+    },
+    "ticket": {
+     "class": "full_load",
+     "code": "FL",
+     "finish": "rough",
+     "job": 10,
+     "profile": "R30"
+    },
+    "track_scale": 1.0403982432208756
+   }
+  ]
+ ],
+ "unit": {
+  "frame_hz": 90.6,
+  "frame_phase_ms": 5.027176829702207,
+  "residuals": {
+   "index": [
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "middle": [
+    0,
+    0,
+    -1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    -1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "ring": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "thumb": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    -1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "seeds": {
+   "drift": 11198835876332761348,
+   "encoder": 2251993578221552546
+  },
+  "serial": "HU-GA8JW",
+  "servos": [
+   {
+    "armature": 0.0039077197282570576,
+    "dev": 0.04949304558268659,
+    "friction_nm": 0.02833068097876086,
+    "home_true": 2521,
+    "i0_ma": 13.605630451368317,
+    "id": 0,
+    "record_error_counts": -7
+   },
+   {
+    "armature": 0.004318417894006443,
+    "dev": -0.02395682339749449,
+    "friction_nm": 0.035562113504467356,
+    "home_true": 2582,
+    "i0_ma": 14.943328210469488,
+    "id": 1,
+    "record_error_counts": 4
+   },
+   {
+    "armature": 0.0036604145518596013,
+    "dev": 0.0635094889156931,
+    "friction_nm": 0.0258419126960553,
+    "home_true": 1955,
+    "i0_ma": 16.042523491503495,
+    "id": 2,
+    "record_error_counts": 6
+   },
+   {
+    "armature": 0.003282948789150433,
+    "dev": 0.02683537160149395,
+    "friction_nm": 0.03246859595792609,
+    "home_true": 2392,
+    "i0_ma": 14.28871136054176,
+    "id": 3,
+    "record_error_counts": 3
+   },
+   {
+    "armature": 0.0041326215047662,
+    "dev": 0.06269040218862641,
+    "friction_nm": 0.039458659634573,
+    "home_true": 1507,
+    "i0_ma": 14.657421487414195,
+    "id": 4,
+    "record_error_counts": -1
+   },
+   {
+    "armature": 0.00426026576712491,
+    "dev": 0.04009673005852166,
+    "friction_nm": 0.02775422922605585,
+    "home_true": 2148,
+    "i0_ma": 14.973572878350138,
+    "id": 5,
+    "record_error_counts": 3
+   },
+   {
+    "armature": 0.003013694653575137,
+    "dev": -0.04526009163575189,
+    "friction_nm": 0.019380796406423186,
+    "home_true": 2456,
+    "i0_ma": 16.33891366358712,
+    "id": 6,
+    "record_error_counts": -6
+   },
+   {
+    "armature": 0.0030621554915431963,
+    "dev": 0.0036390248026939714,
+    "friction_nm": 0.027030254600019864,
+    "home_true": 1619,
+    "i0_ma": 16.212368109779565,
+    "id": 7,
+    "record_error_counts": -1
+   },
+   {
+    "armature": 0.0031833857727504035,
+    "dev": 0.07617446589899744,
+    "friction_nm": 0.026235808150066403,
+    "home_true": 1982,
+    "i0_ma": 13.21321986292383,
+    "id": 8,
+    "record_error_counts": 2
+   },
+   {
+    "armature": 0.004307276214094873,
+    "dev": 0.027603957246081598,
+    "friction_nm": 0.017784559600715413,
+    "home_true": 1737,
+    "i0_ma": 15.620000943968707,
+    "id": 9,
+    "record_error_counts": 6
+   },
+   {
+    "armature": 0.003041986007606121,
+    "dev": -0.01834277383342478,
+    "friction_nm": 0.025591706765672385,
+    "home_true": 1561,
+    "i0_ma": 14.242969878045997,
+    "id": 10,
+    "record_error_counts": -5
+   },
+   {
+    "armature": 0.004126183845960214,
+    "dev": -0.014953717336416525,
+    "friction_nm": 0.03253132504578469,
+    "home_true": 2248,
+    "i0_ma": 16.332808167542744,
+    "id": 11,
+    "record_error_counts": 7
+   },
+   {
+    "armature": 0.004162522386215182,
+    "dev": 0.07463775152603795,
+    "friction_nm": 0.035291589114708824,
+    "home_true": 1876,
+    "i0_ma": 12.635206795097675,
+    "id": 12,
+    "record_error_counts": 7
+   }
+  ],
+  "t_start_c": 41.48449453267748,
+  "tactile": {
+   "index": {
+    "gain": 5.6262433219217725
+   },
+   "middle": {
+    "gain": 6.70979901606019
+   },
+   "ring": {
+    "gain": 6.861724753823704
+   },
+   "thumb": {
+    "gain": 3.6657103777265383
+   }
+  },
+  "vs": 11.340762419111764
+ }
+}

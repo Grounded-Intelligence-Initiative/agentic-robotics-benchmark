@@ -1,0 +1,401 @@
+{
+ "format": "cell/1",
+ "nests": {
+  "pick": {
+   "pos_m": [
+    -0.013538,
+    0.153728,
+    -0.079374
+   ],
+   "quat_wxyz": [
+    0.73992,
+    0.300038,
+    0.04519,
+    0.600378
+   ]
+  },
+  "place": {
+   "pos_m": [
+    -0.160122,
+    0.407385,
+    0.118543
+   ],
+   "quat_wxyz": [
+    0.73992,
+    0.300038,
+    0.04519,
+    0.600378
+   ]
+  }
+ },
+ "nest_geometry": {
+  "wall_height_mm": 3.5
+ },
+ "taught": {
+  "contact": {
+   "35": {
+    "index abad": 11.762,
+    "index mcp": -4.31,
+    "index pip": -25.977,
+    "middle abad": 12.475,
+    "middle mcp": -24.069,
+    "middle pip": -18.979,
+    "ring abad": 25.0,
+    "ring mcp": -80.0,
+    "ring pip": -60.0,
+    "thumb ip": 73.436,
+    "thumb mp": -41.021,
+    "thumb roll": 114.679,
+    "thumb side": 10.613
+   },
+   "40": {
+    "index abad": 11.889,
+    "index mcp": -3.615,
+    "index pip": -25.107,
+    "middle abad": 12.594,
+    "middle mcp": -22.91,
+    "middle pip": -18.559,
+    "ring abad": 25.0,
+    "ring mcp": -80.0,
+    "ring pip": -60.0,
+    "thumb ip": 77.785,
+    "thumb mp": -42.818,
+    "thumb roll": 114.294,
+    "thumb side": 11.044
+   },
+   "45": {
+    "index abad": 12.009,
+    "index mcp": -3.019,
+    "index pip": -24.194,
+    "middle abad": 12.706,
+    "middle mcp": -21.842,
+    "middle pip": -18.085,
+    "ring abad": 25.0,
+    "ring mcp": -80.0,
+    "ring pip": -60.0,
+    "thumb ip": 79.019,
+    "thumb mp": -46.576,
+    "thumb roll": 111.304,
+    "thumb side": 12.248
+   }
+  },
+  "open": {
+   "index abad": 12.336,
+   "index mcp": -1.795,
+   "index pip": -11.238,
+   "middle abad": 13.009,
+   "middle mcp": -19.153,
+   "middle pip": -6.396,
+   "ring abad": 25.0,
+   "ring mcp": -80.0,
+   "ring pip": -60.0,
+   "thumb ip": 79.019,
+   "thumb mp": -56.987,
+   "thumb roll": 90.016,
+   "thumb side": 16.162
+  },
+  "ring_park": {
+   "ring abad": 25.0,
+   "ring mcp": -80.0,
+   "ring pip": -60.0
+  }
+ },
+ "test_lift": {
+  "rise_mm": 8,
+  "rise_s": 0.5,
+  "hold_s": 2.5
+ },
+ "motion": {
+  "translation_law": "minimum-jerk",
+  "translation_peak_mps2": 6.0,
+  "tilt_rate_deg_s": 10,
+  "tilt_ramp_s": 0.1,
+  "tracking_scale": [
+   0.9,
+   1.1
+  ],
+  "lower": {
+   "drop_mm": 8,
+   "s": 0.5
+  },
+  "set_down": {
+   "drop_mm": 8,
+   "s": 0.5
+  }
+ },
+ "profiles": {
+  "T0": {
+   "tilt": null,
+   "sequence": [
+    {
+     "kind": "move",
+     "delta_m": [
+      0.0,
+      0.0,
+      0.15
+     ]
+    },
+    {
+     "kind": "move",
+     "delta_m": [
+      0.25,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "kind": "move",
+     "delta_m": [
+      0.0,
+      0.25,
+      0.0
+     ]
+    },
+    {
+     "kind": "dwell",
+     "s": 0.3
+    },
+    {
+     "kind": "move",
+     "delta_m": [
+      0.0,
+      0.0,
+      -0.15
+     ]
+    }
+   ]
+  },
+  "R30": {
+   "tilt": {
+    "axis": [
+     1,
+     0,
+     0
+    ],
+    "deg": 30
+   },
+   "sequence": [
+    {
+     "kind": "move",
+     "delta_m": [
+      0.0,
+      0.0,
+      0.15
+     ]
+    },
+    {
+     "kind": "tilt",
+     "sign": 1
+    },
+    {
+     "kind": "move",
+     "delta_m": [
+      0.25,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "kind": "move",
+     "delta_m": [
+      0.0,
+      0.25,
+      0.0
+     ]
+    },
+    {
+     "kind": "dwell",
+     "s": 0.3
+    },
+    {
+     "kind": "tilt",
+     "sign": -1
+    },
+    {
+     "kind": "move",
+     "delta_m": [
+      0.0,
+      0.0,
+      -0.15
+     ]
+    }
+   ]
+  },
+  "P30": {
+   "tilt": {
+    "axis": [
+     0,
+     1,
+     0
+    ],
+    "deg": 30
+   },
+   "sequence": [
+    {
+     "kind": "move",
+     "delta_m": [
+      0.0,
+      0.0,
+      0.15
+     ]
+    },
+    {
+     "kind": "tilt",
+     "sign": 1
+    },
+    {
+     "kind": "move",
+     "delta_m": [
+      0.25,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "kind": "move",
+     "delta_m": [
+      0.0,
+      0.25,
+      0.0
+     ]
+    },
+    {
+     "kind": "dwell",
+     "s": 0.3
+    },
+    {
+     "kind": "tilt",
+     "sign": -1
+    },
+    {
+     "kind": "move",
+     "delta_m": [
+      0.0,
+      0.0,
+      -0.15
+     ]
+    }
+   ]
+  }
+ },
+ "specimens": {
+  "format": "specimen-sheets/1",
+  "classes": {
+   "brittle": {
+    "name": "brittle shell",
+    "codes": [
+     "SH-1",
+     "SH-2",
+     "SH-3"
+    ]
+   },
+   "soft": {
+    "name": "soft pack",
+    "codes": [
+     "SP"
+    ]
+   },
+   "full_load": {
+    "name": "full-load block",
+    "codes": [
+     "FL"
+    ]
+   }
+  },
+  "codes": {
+   "SH-1": {
+    "class": "brittle",
+    "mass_range_kg": [
+     0.04,
+     0.7
+    ],
+    "ceiling_n": 4.0,
+    "travel_limit_mm": null
+   },
+   "SH-2": {
+    "class": "brittle",
+    "mass_range_kg": [
+     0.068,
+     0.7
+    ],
+    "ceiling_n": 6.4,
+    "travel_limit_mm": null
+   },
+   "SH-3": {
+    "class": "brittle",
+    "mass_range_kg": [
+     0.117,
+     0.7
+    ],
+    "ceiling_n": 10.6,
+    "travel_limit_mm": null
+   },
+   "SP": {
+    "class": "soft",
+    "mass_range_kg": [
+     0.03,
+     0.7
+    ],
+    "ceiling_n": null,
+    "travel_limit_mm": 6.4
+   },
+   "FL": {
+    "class": "full_load",
+    "mass_range_kg": [
+     0.15,
+     0.7
+    ],
+    "ceiling_n": null,
+    "travel_limit_mm": null
+   }
+  },
+  "width_mm": [
+   35,
+   45
+  ],
+  "lateral_mm": 50,
+  "height_mm": 50,
+  "pad_line_below_top_mm": 10,
+  "soft_k_n_per_mm": [
+   1,
+   10
+  ],
+  "finishes": {
+   "matte": {
+    "mu": [
+     0.4,
+     0.55
+    ]
+   },
+   "rough": {
+    "mu": [
+     0.55,
+     0.7
+    ]
+   }
+  },
+  "label_rule": {
+   "carry_max_kg": 0.2,
+   "decline_min_kg": 0.5
+  }
+ },
+ "placement": {
+  "offset_radius_mm": 2.0,
+  "yaw_deg": 3.0,
+  "clearance_mm": 2.0
+ },
+ "timeline": {
+  "shift1_opens_s": 3.0,
+  "clear_window_s": 2.0,
+  "grasp_window_s": 3.0,
+  "test_lift_s": 3.0,
+  "lower_s": 0.5,
+  "set_down_s": 0.5,
+  "release_window_s": 1.0,
+  "rest_s": 2.0,
+  "pause_s": 10.0,
+  "end_s": 1.0
+ },
+ "shifts": 2,
+ "jobs_per_shift": 10
+}

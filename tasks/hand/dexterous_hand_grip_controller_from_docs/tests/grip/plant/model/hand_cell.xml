@@ -1,0 +1,1685 @@
+<mujoco model="hand">
+ <compiler angle="radian" meshdir="hulls" autolimits="true" />
+ <option timestep="0.001" gravity="0 0 -9.81" integrator="implicitfast" cone="elliptic" impratio="10" noslip_iterations="5" />
+ <default>
+  <joint type="hinge" limited="false" damping="0.01" armature="0.0001" />
+  <geom type="mesh" contype="0" conaffinity="0" group="2" />
+  <site type="sphere" size="0.002" rgba="0.8 0.2 0.05 1" group="3" />
+ </default>
+ <asset>
+  <mesh name="index_dip_h00" file="index_dip_h00.stl" />
+  <mesh name="middle_dip_h00" file="middle_dip_h00.stl" />
+  <mesh name="ring_dip_h00" file="ring_dip_h00.stl" />
+  <mesh name="index_dip_h01" file="index_dip_h01.stl" />
+  <mesh name="middle_dip_h01" file="middle_dip_h01.stl" />
+  <mesh name="ring_dip_h01" file="ring_dip_h01.stl" />
+  <mesh name="index_dip_h02" file="index_dip_h02.stl" />
+  <mesh name="middle_dip_h02" file="middle_dip_h02.stl" />
+  <mesh name="ring_dip_h02" file="ring_dip_h02.stl" />
+  <mesh name="index_dip_h03" file="index_dip_h03.stl" />
+  <mesh name="middle_dip_h03" file="middle_dip_h03.stl" />
+  <mesh name="ring_dip_h03" file="ring_dip_h03.stl" />
+  <mesh name="index_dip_h04" file="index_dip_h04.stl" />
+  <mesh name="middle_dip_h04" file="middle_dip_h04.stl" />
+  <mesh name="ring_dip_h04" file="ring_dip_h04.stl" />
+  <mesh name="index_dip_h05" file="index_dip_h05.stl" />
+  <mesh name="middle_dip_h05" file="middle_dip_h05.stl" />
+  <mesh name="ring_dip_h05" file="ring_dip_h05.stl" />
+  <mesh name="index_dip_h06" file="index_dip_h06.stl" />
+  <mesh name="middle_dip_h06" file="middle_dip_h06.stl" />
+  <mesh name="ring_dip_h06" file="ring_dip_h06.stl" />
+  <mesh name="index_dip_h07" file="index_dip_h07.stl" />
+  <mesh name="middle_dip_h07" file="middle_dip_h07.stl" />
+  <mesh name="ring_dip_h07" file="ring_dip_h07.stl" />
+  <mesh name="index_dip_h08" file="index_dip_h08.stl" />
+  <mesh name="middle_dip_h08" file="middle_dip_h08.stl" />
+  <mesh name="ring_dip_h08" file="ring_dip_h08.stl" />
+  <mesh name="index_dip_h09" file="index_dip_h09.stl" />
+  <mesh name="middle_dip_h09" file="middle_dip_h09.stl" />
+  <mesh name="ring_dip_h09" file="ring_dip_h09.stl" />
+  <mesh name="index_dip_h10" file="index_dip_h10.stl" />
+  <mesh name="middle_dip_h10" file="middle_dip_h10.stl" />
+  <mesh name="ring_dip_h10" file="ring_dip_h10.stl" />
+  <mesh name="index_dip_h11" file="index_dip_h11.stl" />
+  <mesh name="middle_dip_h11" file="middle_dip_h11.stl" />
+  <mesh name="ring_dip_h11" file="ring_dip_h11.stl" />
+  <mesh name="index_dip_h12" file="index_dip_h12.stl" />
+  <mesh name="middle_dip_h12" file="middle_dip_h12.stl" />
+  <mesh name="ring_dip_h12" file="ring_dip_h12.stl" />
+  <mesh name="index_dip_h13" file="index_dip_h13.stl" />
+  <mesh name="middle_dip_h13" file="middle_dip_h13.stl" />
+  <mesh name="ring_dip_h13" file="ring_dip_h13.stl" />
+  <mesh name="index_dip_h14" file="index_dip_h14.stl" />
+  <mesh name="middle_dip_h14" file="middle_dip_h14.stl" />
+  <mesh name="ring_dip_h14" file="ring_dip_h14.stl" />
+  <mesh name="index_dip_h15" file="index_dip_h15.stl" />
+  <mesh name="middle_dip_h15" file="middle_dip_h15.stl" />
+  <mesh name="ring_dip_h15" file="ring_dip_h15.stl" />
+  <mesh name="index_dip_h16" file="index_dip_h16.stl" />
+  <mesh name="middle_dip_h16" file="middle_dip_h16.stl" />
+  <mesh name="ring_dip_h16" file="ring_dip_h16.stl" />
+  <mesh name="index_dip_h17" file="index_dip_h17.stl" />
+  <mesh name="middle_dip_h17" file="middle_dip_h17.stl" />
+  <mesh name="ring_dip_h17" file="ring_dip_h17.stl" />
+  <mesh name="index_dip_h18" file="index_dip_h18.stl" />
+  <mesh name="middle_dip_h18" file="middle_dip_h18.stl" />
+  <mesh name="ring_dip_h18" file="ring_dip_h18.stl" />
+  <mesh name="index_dip_h19" file="index_dip_h19.stl" />
+  <mesh name="middle_dip_h19" file="middle_dip_h19.stl" />
+  <mesh name="ring_dip_h19" file="ring_dip_h19.stl" />
+  <mesh name="index_dip_h20" file="index_dip_h20.stl" />
+  <mesh name="middle_dip_h20" file="middle_dip_h20.stl" />
+  <mesh name="ring_dip_h20" file="ring_dip_h20.stl" />
+  <mesh name="index_dip_h21" file="index_dip_h21.stl" />
+  <mesh name="middle_dip_h21" file="middle_dip_h21.stl" />
+  <mesh name="ring_dip_h21" file="ring_dip_h21.stl" />
+  <mesh name="index_dip_h22" file="index_dip_h22.stl" />
+  <mesh name="middle_dip_h22" file="middle_dip_h22.stl" />
+  <mesh name="ring_dip_h22" file="ring_dip_h22.stl" />
+  <mesh name="index_dip_h23" file="index_dip_h23.stl" />
+  <mesh name="middle_dip_h23" file="middle_dip_h23.stl" />
+  <mesh name="ring_dip_h23" file="ring_dip_h23.stl" />
+  <mesh name="index_rocker_h00" file="index_rocker_h00.stl" />
+  <mesh name="middle_rocker_h00" file="middle_rocker_h00.stl" />
+  <mesh name="ring_rocker_h00" file="ring_rocker_h00.stl" />
+  <mesh name="index_rocker_h01" file="index_rocker_h01.stl" />
+  <mesh name="middle_rocker_h01" file="middle_rocker_h01.stl" />
+  <mesh name="ring_rocker_h01" file="ring_rocker_h01.stl" />
+  <mesh name="index_rocker_h02" file="index_rocker_h02.stl" />
+  <mesh name="middle_rocker_h02" file="middle_rocker_h02.stl" />
+  <mesh name="ring_rocker_h02" file="ring_rocker_h02.stl" />
+  <mesh name="index_rocker_h03" file="index_rocker_h03.stl" />
+  <mesh name="middle_rocker_h03" file="middle_rocker_h03.stl" />
+  <mesh name="ring_rocker_h03" file="ring_rocker_h03.stl" />
+  <mesh name="index_rocker_h04" file="index_rocker_h04.stl" />
+  <mesh name="middle_rocker_h04" file="middle_rocker_h04.stl" />
+  <mesh name="ring_rocker_h04" file="ring_rocker_h04.stl" />
+  <mesh name="index_rocker_h05" file="index_rocker_h05.stl" />
+  <mesh name="middle_rocker_h05" file="middle_rocker_h05.stl" />
+  <mesh name="ring_rocker_h05" file="ring_rocker_h05.stl" />
+  <mesh name="index_rocker_h06" file="index_rocker_h06.stl" />
+  <mesh name="middle_rocker_h06" file="middle_rocker_h06.stl" />
+  <mesh name="ring_rocker_h06" file="ring_rocker_h06.stl" />
+  <mesh name="index_rocker_h07" file="index_rocker_h07.stl" />
+  <mesh name="middle_rocker_h07" file="middle_rocker_h07.stl" />
+  <mesh name="ring_rocker_h07" file="ring_rocker_h07.stl" />
+  <mesh name="index_rocker_h08" file="index_rocker_h08.stl" />
+  <mesh name="middle_rocker_h08" file="middle_rocker_h08.stl" />
+  <mesh name="ring_rocker_h08" file="ring_rocker_h08.stl" />
+  <mesh name="index_rocker_h09" file="index_rocker_h09.stl" />
+  <mesh name="middle_rocker_h09" file="middle_rocker_h09.stl" />
+  <mesh name="ring_rocker_h09" file="ring_rocker_h09.stl" />
+  <mesh name="index_rocker_h10" file="index_rocker_h10.stl" />
+  <mesh name="middle_rocker_h10" file="middle_rocker_h10.stl" />
+  <mesh name="ring_rocker_h10" file="ring_rocker_h10.stl" />
+  <mesh name="index_rocker_h11" file="index_rocker_h11.stl" />
+  <mesh name="middle_rocker_h11" file="middle_rocker_h11.stl" />
+  <mesh name="ring_rocker_h11" file="ring_rocker_h11.stl" />
+  <mesh name="index_pitch_h00" file="index_pitch_h00.stl" />
+  <mesh name="middle_pitch_h00" file="middle_pitch_h00.stl" />
+  <mesh name="ring_pitch_h00" file="ring_pitch_h00.stl" />
+  <mesh name="index_pitch_h01" file="index_pitch_h01.stl" />
+  <mesh name="middle_pitch_h01" file="middle_pitch_h01.stl" />
+  <mesh name="ring_pitch_h01" file="ring_pitch_h01.stl" />
+  <mesh name="index_pitch_h02" file="index_pitch_h02.stl" />
+  <mesh name="middle_pitch_h02" file="middle_pitch_h02.stl" />
+  <mesh name="ring_pitch_h02" file="ring_pitch_h02.stl" />
+  <mesh name="index_pitch_h03" file="index_pitch_h03.stl" />
+  <mesh name="middle_pitch_h03" file="middle_pitch_h03.stl" />
+  <mesh name="ring_pitch_h03" file="ring_pitch_h03.stl" />
+  <mesh name="index_pitch_h04" file="index_pitch_h04.stl" />
+  <mesh name="middle_pitch_h04" file="middle_pitch_h04.stl" />
+  <mesh name="ring_pitch_h04" file="ring_pitch_h04.stl" />
+  <mesh name="index_pitch_h05" file="index_pitch_h05.stl" />
+  <mesh name="middle_pitch_h05" file="middle_pitch_h05.stl" />
+  <mesh name="ring_pitch_h05" file="ring_pitch_h05.stl" />
+  <mesh name="index_pitch_h06" file="index_pitch_h06.stl" />
+  <mesh name="middle_pitch_h06" file="middle_pitch_h06.stl" />
+  <mesh name="ring_pitch_h06" file="ring_pitch_h06.stl" />
+  <mesh name="index_pitch_h07" file="index_pitch_h07.stl" />
+  <mesh name="middle_pitch_h07" file="middle_pitch_h07.stl" />
+  <mesh name="ring_pitch_h07" file="ring_pitch_h07.stl" />
+  <mesh name="index_pitch_h08" file="index_pitch_h08.stl" />
+  <mesh name="middle_pitch_h08" file="middle_pitch_h08.stl" />
+  <mesh name="ring_pitch_h08" file="ring_pitch_h08.stl" />
+  <mesh name="index_pitch_h09" file="index_pitch_h09.stl" />
+  <mesh name="middle_pitch_h09" file="middle_pitch_h09.stl" />
+  <mesh name="ring_pitch_h09" file="ring_pitch_h09.stl" />
+  <mesh name="index_pitch_h10" file="index_pitch_h10.stl" />
+  <mesh name="middle_pitch_h10" file="middle_pitch_h10.stl" />
+  <mesh name="ring_pitch_h10" file="ring_pitch_h10.stl" />
+  <mesh name="index_pitch_h11" file="index_pitch_h11.stl" />
+  <mesh name="middle_pitch_h11" file="middle_pitch_h11.stl" />
+  <mesh name="ring_pitch_h11" file="ring_pitch_h11.stl" />
+  <mesh name="index_abad_h00" file="index_abad_h00.stl" />
+  <mesh name="middle_abad_h00" file="middle_abad_h00.stl" />
+  <mesh name="ring_abad_h00" file="ring_abad_h00.stl" />
+  <mesh name="index_abad_h01" file="index_abad_h01.stl" />
+  <mesh name="middle_abad_h01" file="middle_abad_h01.stl" />
+  <mesh name="ring_abad_h01" file="ring_abad_h01.stl" />
+  <mesh name="index_abad_h02" file="index_abad_h02.stl" />
+  <mesh name="middle_abad_h02" file="middle_abad_h02.stl" />
+  <mesh name="ring_abad_h02" file="ring_abad_h02.stl" />
+  <mesh name="index_abad_h03" file="index_abad_h03.stl" />
+  <mesh name="middle_abad_h03" file="middle_abad_h03.stl" />
+  <mesh name="ring_abad_h03" file="ring_abad_h03.stl" />
+  <mesh name="index_abad_h04" file="index_abad_h04.stl" />
+  <mesh name="middle_abad_h04" file="middle_abad_h04.stl" />
+  <mesh name="ring_abad_h04" file="ring_abad_h04.stl" />
+  <mesh name="index_abad_h05" file="index_abad_h05.stl" />
+  <mesh name="middle_abad_h05" file="middle_abad_h05.stl" />
+  <mesh name="ring_abad_h05" file="ring_abad_h05.stl" />
+  <mesh name="index_abad_h06" file="index_abad_h06.stl" />
+  <mesh name="middle_abad_h06" file="middle_abad_h06.stl" />
+  <mesh name="ring_abad_h06" file="ring_abad_h06.stl" />
+  <mesh name="index_abad_h07" file="index_abad_h07.stl" />
+  <mesh name="middle_abad_h07" file="middle_abad_h07.stl" />
+  <mesh name="ring_abad_h07" file="ring_abad_h07.stl" />
+  <mesh name="index_abad_h08" file="index_abad_h08.stl" />
+  <mesh name="middle_abad_h08" file="middle_abad_h08.stl" />
+  <mesh name="ring_abad_h08" file="ring_abad_h08.stl" />
+  <mesh name="index_abad_h09" file="index_abad_h09.stl" />
+  <mesh name="middle_abad_h09" file="middle_abad_h09.stl" />
+  <mesh name="ring_abad_h09" file="ring_abad_h09.stl" />
+  <mesh name="index_abad_h10" file="index_abad_h10.stl" />
+  <mesh name="middle_abad_h10" file="middle_abad_h10.stl" />
+  <mesh name="ring_abad_h10" file="ring_abad_h10.stl" />
+  <mesh name="index_abad_h11" file="index_abad_h11.stl" />
+  <mesh name="middle_abad_h11" file="middle_abad_h11.stl" />
+  <mesh name="ring_abad_h11" file="ring_abad_h11.stl" />
+  <mesh name="index_abad_h12" file="index_abad_h12.stl" />
+  <mesh name="middle_abad_h12" file="middle_abad_h12.stl" />
+  <mesh name="ring_abad_h12" file="ring_abad_h12.stl" />
+  <mesh name="index_abad_h13" file="index_abad_h13.stl" />
+  <mesh name="middle_abad_h13" file="middle_abad_h13.stl" />
+  <mesh name="ring_abad_h13" file="ring_abad_h13.stl" />
+  <mesh name="index_abad_h14" file="index_abad_h14.stl" />
+  <mesh name="middle_abad_h14" file="middle_abad_h14.stl" />
+  <mesh name="ring_abad_h14" file="ring_abad_h14.stl" />
+  <mesh name="index_abad_h15" file="index_abad_h15.stl" />
+  <mesh name="middle_abad_h15" file="middle_abad_h15.stl" />
+  <mesh name="ring_abad_h15" file="ring_abad_h15.stl" />
+  <mesh name="index_abad_h16" file="index_abad_h16.stl" />
+  <mesh name="middle_abad_h16" file="middle_abad_h16.stl" />
+  <mesh name="ring_abad_h16" file="ring_abad_h16.stl" />
+  <mesh name="index_abad_h17" file="index_abad_h17.stl" />
+  <mesh name="middle_abad_h17" file="middle_abad_h17.stl" />
+  <mesh name="ring_abad_h17" file="ring_abad_h17.stl" />
+  <mesh name="index_abad_h18" file="index_abad_h18.stl" />
+  <mesh name="middle_abad_h18" file="middle_abad_h18.stl" />
+  <mesh name="ring_abad_h18" file="ring_abad_h18.stl" />
+  <mesh name="index_abad_h19" file="index_abad_h19.stl" />
+  <mesh name="middle_abad_h19" file="middle_abad_h19.stl" />
+  <mesh name="ring_abad_h19" file="ring_abad_h19.stl" />
+  <mesh name="index_abad_h20" file="index_abad_h20.stl" />
+  <mesh name="middle_abad_h20" file="middle_abad_h20.stl" />
+  <mesh name="ring_abad_h20" file="ring_abad_h20.stl" />
+  <mesh name="index_abad_h21" file="index_abad_h21.stl" />
+  <mesh name="middle_abad_h21" file="middle_abad_h21.stl" />
+  <mesh name="ring_abad_h21" file="ring_abad_h21.stl" />
+  <mesh name="index_abad_h22" file="index_abad_h22.stl" />
+  <mesh name="middle_abad_h22" file="middle_abad_h22.stl" />
+  <mesh name="ring_abad_h22" file="ring_abad_h22.stl" />
+  <mesh name="index_abad_h23" file="index_abad_h23.stl" />
+  <mesh name="middle_abad_h23" file="middle_abad_h23.stl" />
+  <mesh name="ring_abad_h23" file="ring_abad_h23.stl" />
+  <mesh name="index_pip_h00" file="index_pip_h00.stl" />
+  <mesh name="middle_pip_h00" file="middle_pip_h00.stl" />
+  <mesh name="ring_pip_h00" file="ring_pip_h00.stl" />
+  <mesh name="index_pip_h01" file="index_pip_h01.stl" />
+  <mesh name="middle_pip_h01" file="middle_pip_h01.stl" />
+  <mesh name="ring_pip_h01" file="ring_pip_h01.stl" />
+  <mesh name="index_pip_h02" file="index_pip_h02.stl" />
+  <mesh name="middle_pip_h02" file="middle_pip_h02.stl" />
+  <mesh name="ring_pip_h02" file="ring_pip_h02.stl" />
+  <mesh name="index_pip_h03" file="index_pip_h03.stl" />
+  <mesh name="middle_pip_h03" file="middle_pip_h03.stl" />
+  <mesh name="ring_pip_h03" file="ring_pip_h03.stl" />
+  <mesh name="index_pip_h04" file="index_pip_h04.stl" />
+  <mesh name="middle_pip_h04" file="middle_pip_h04.stl" />
+  <mesh name="ring_pip_h04" file="ring_pip_h04.stl" />
+  <mesh name="index_pip_h05" file="index_pip_h05.stl" />
+  <mesh name="middle_pip_h05" file="middle_pip_h05.stl" />
+  <mesh name="ring_pip_h05" file="ring_pip_h05.stl" />
+  <mesh name="index_pip_h06" file="index_pip_h06.stl" />
+  <mesh name="middle_pip_h06" file="middle_pip_h06.stl" />
+  <mesh name="ring_pip_h06" file="ring_pip_h06.stl" />
+  <mesh name="index_pip_h07" file="index_pip_h07.stl" />
+  <mesh name="middle_pip_h07" file="middle_pip_h07.stl" />
+  <mesh name="ring_pip_h07" file="ring_pip_h07.stl" />
+  <mesh name="index_pip_h08" file="index_pip_h08.stl" />
+  <mesh name="middle_pip_h08" file="middle_pip_h08.stl" />
+  <mesh name="ring_pip_h08" file="ring_pip_h08.stl" />
+  <mesh name="index_pip_h09" file="index_pip_h09.stl" />
+  <mesh name="middle_pip_h09" file="middle_pip_h09.stl" />
+  <mesh name="ring_pip_h09" file="ring_pip_h09.stl" />
+  <mesh name="index_pip_h10" file="index_pip_h10.stl" />
+  <mesh name="middle_pip_h10" file="middle_pip_h10.stl" />
+  <mesh name="ring_pip_h10" file="ring_pip_h10.stl" />
+  <mesh name="index_pip_h11" file="index_pip_h11.stl" />
+  <mesh name="middle_pip_h11" file="middle_pip_h11.stl" />
+  <mesh name="ring_pip_h11" file="ring_pip_h11.stl" />
+  <mesh name="index_pip_h12" file="index_pip_h12.stl" />
+  <mesh name="middle_pip_h12" file="middle_pip_h12.stl" />
+  <mesh name="ring_pip_h12" file="ring_pip_h12.stl" />
+  <mesh name="index_pip_h13" file="index_pip_h13.stl" />
+  <mesh name="middle_pip_h13" file="middle_pip_h13.stl" />
+  <mesh name="ring_pip_h13" file="ring_pip_h13.stl" />
+  <mesh name="index_pip_h14" file="index_pip_h14.stl" />
+  <mesh name="middle_pip_h14" file="middle_pip_h14.stl" />
+  <mesh name="ring_pip_h14" file="ring_pip_h14.stl" />
+  <mesh name="index_pip_h15" file="index_pip_h15.stl" />
+  <mesh name="middle_pip_h15" file="middle_pip_h15.stl" />
+  <mesh name="ring_pip_h15" file="ring_pip_h15.stl" />
+  <mesh name="index_pip_h16" file="index_pip_h16.stl" />
+  <mesh name="middle_pip_h16" file="middle_pip_h16.stl" />
+  <mesh name="ring_pip_h16" file="ring_pip_h16.stl" />
+  <mesh name="index_pip_h17" file="index_pip_h17.stl" />
+  <mesh name="middle_pip_h17" file="middle_pip_h17.stl" />
+  <mesh name="ring_pip_h17" file="ring_pip_h17.stl" />
+  <mesh name="index_pip_h18" file="index_pip_h18.stl" />
+  <mesh name="middle_pip_h18" file="middle_pip_h18.stl" />
+  <mesh name="ring_pip_h18" file="ring_pip_h18.stl" />
+  <mesh name="index_pip_h19" file="index_pip_h19.stl" />
+  <mesh name="middle_pip_h19" file="middle_pip_h19.stl" />
+  <mesh name="ring_pip_h19" file="ring_pip_h19.stl" />
+  <mesh name="index_pip_h20" file="index_pip_h20.stl" />
+  <mesh name="middle_pip_h20" file="middle_pip_h20.stl" />
+  <mesh name="ring_pip_h20" file="ring_pip_h20.stl" />
+  <mesh name="index_pip_h21" file="index_pip_h21.stl" />
+  <mesh name="middle_pip_h21" file="middle_pip_h21.stl" />
+  <mesh name="ring_pip_h21" file="ring_pip_h21.stl" />
+  <mesh name="index_pip_h22" file="index_pip_h22.stl" />
+  <mesh name="middle_pip_h22" file="middle_pip_h22.stl" />
+  <mesh name="ring_pip_h22" file="ring_pip_h22.stl" />
+  <mesh name="index_pip_h23" file="index_pip_h23.stl" />
+  <mesh name="middle_pip_h23" file="middle_pip_h23.stl" />
+  <mesh name="ring_pip_h23" file="ring_pip_h23.stl" />
+  <mesh name="index_pitch_h12" file="index_pitch_h12.stl" />
+  <mesh name="middle_pitch_h12" file="middle_pitch_h12.stl" />
+  <mesh name="ring_pitch_h12" file="ring_pitch_h12.stl" />
+  <mesh name="index_pitch_h13" file="index_pitch_h13.stl" />
+  <mesh name="middle_pitch_h13" file="middle_pitch_h13.stl" />
+  <mesh name="ring_pitch_h13" file="ring_pitch_h13.stl" />
+  <mesh name="index_pitch_h14" file="index_pitch_h14.stl" />
+  <mesh name="middle_pitch_h14" file="middle_pitch_h14.stl" />
+  <mesh name="ring_pitch_h14" file="ring_pitch_h14.stl" />
+  <mesh name="index_pitch_h15" file="index_pitch_h15.stl" />
+  <mesh name="middle_pitch_h15" file="middle_pitch_h15.stl" />
+  <mesh name="ring_pitch_h15" file="ring_pitch_h15.stl" />
+  <mesh name="index_pitch_h16" file="index_pitch_h16.stl" />
+  <mesh name="middle_pitch_h16" file="middle_pitch_h16.stl" />
+  <mesh name="ring_pitch_h16" file="ring_pitch_h16.stl" />
+  <mesh name="index_pitch_h17" file="index_pitch_h17.stl" />
+  <mesh name="middle_pitch_h17" file="middle_pitch_h17.stl" />
+  <mesh name="ring_pitch_h17" file="ring_pitch_h17.stl" />
+  <mesh name="index_pitch_h18" file="index_pitch_h18.stl" />
+  <mesh name="middle_pitch_h18" file="middle_pitch_h18.stl" />
+  <mesh name="ring_pitch_h18" file="ring_pitch_h18.stl" />
+  <mesh name="index_pitch_h19" file="index_pitch_h19.stl" />
+  <mesh name="middle_pitch_h19" file="middle_pitch_h19.stl" />
+  <mesh name="ring_pitch_h19" file="ring_pitch_h19.stl" />
+  <mesh name="index_pitch_h20" file="index_pitch_h20.stl" />
+  <mesh name="middle_pitch_h20" file="middle_pitch_h20.stl" />
+  <mesh name="ring_pitch_h20" file="ring_pitch_h20.stl" />
+  <mesh name="index_pitch_h21" file="index_pitch_h21.stl" />
+  <mesh name="middle_pitch_h21" file="middle_pitch_h21.stl" />
+  <mesh name="ring_pitch_h21" file="ring_pitch_h21.stl" />
+  <mesh name="index_pitch_h22" file="index_pitch_h22.stl" />
+  <mesh name="middle_pitch_h22" file="middle_pitch_h22.stl" />
+  <mesh name="ring_pitch_h22" file="ring_pitch_h22.stl" />
+  <mesh name="index_pitch_h23" file="index_pitch_h23.stl" />
+  <mesh name="middle_pitch_h23" file="middle_pitch_h23.stl" />
+  <mesh name="ring_pitch_h23" file="ring_pitch_h23.stl" />
+  <mesh name="index_pitch_h24" file="index_pitch_h24.stl" />
+  <mesh name="middle_pitch_h24" file="middle_pitch_h24.stl" />
+  <mesh name="ring_pitch_h24" file="ring_pitch_h24.stl" />
+  <mesh name="index_pitch_h25" file="index_pitch_h25.stl" />
+  <mesh name="middle_pitch_h25" file="middle_pitch_h25.stl" />
+  <mesh name="ring_pitch_h25" file="ring_pitch_h25.stl" />
+  <mesh name="index_pitch_h26" file="index_pitch_h26.stl" />
+  <mesh name="middle_pitch_h26" file="middle_pitch_h26.stl" />
+  <mesh name="ring_pitch_h26" file="ring_pitch_h26.stl" />
+  <mesh name="index_pitch_h27" file="index_pitch_h27.stl" />
+  <mesh name="middle_pitch_h27" file="middle_pitch_h27.stl" />
+  <mesh name="ring_pitch_h27" file="ring_pitch_h27.stl" />
+  <mesh name="index_pitch_h28" file="index_pitch_h28.stl" />
+  <mesh name="middle_pitch_h28" file="middle_pitch_h28.stl" />
+  <mesh name="ring_pitch_h28" file="ring_pitch_h28.stl" />
+  <mesh name="index_pitch_h29" file="index_pitch_h29.stl" />
+  <mesh name="middle_pitch_h29" file="middle_pitch_h29.stl" />
+  <mesh name="ring_pitch_h29" file="ring_pitch_h29.stl" />
+  <mesh name="index_pitch_h30" file="index_pitch_h30.stl" />
+  <mesh name="middle_pitch_h30" file="middle_pitch_h30.stl" />
+  <mesh name="ring_pitch_h30" file="ring_pitch_h30.stl" />
+  <mesh name="index_pitch_h31" file="index_pitch_h31.stl" />
+  <mesh name="middle_pitch_h31" file="middle_pitch_h31.stl" />
+  <mesh name="ring_pitch_h31" file="ring_pitch_h31.stl" />
+  <mesh name="index_pitch_h32" file="index_pitch_h32.stl" />
+  <mesh name="middle_pitch_h32" file="middle_pitch_h32.stl" />
+  <mesh name="ring_pitch_h32" file="ring_pitch_h32.stl" />
+  <mesh name="index_pitch_h33" file="index_pitch_h33.stl" />
+  <mesh name="middle_pitch_h33" file="middle_pitch_h33.stl" />
+  <mesh name="ring_pitch_h33" file="ring_pitch_h33.stl" />
+  <mesh name="index_pitch_h34" file="index_pitch_h34.stl" />
+  <mesh name="middle_pitch_h34" file="middle_pitch_h34.stl" />
+  <mesh name="ring_pitch_h34" file="ring_pitch_h34.stl" />
+  <mesh name="index_pitch_h35" file="index_pitch_h35.stl" />
+  <mesh name="middle_pitch_h35" file="middle_pitch_h35.stl" />
+  <mesh name="ring_pitch_h35" file="ring_pitch_h35.stl" />
+  <mesh name="index_abad_h24" file="index_abad_h24.stl" />
+  <mesh name="middle_abad_h24" file="middle_abad_h24.stl" />
+  <mesh name="ring_abad_h24" file="ring_abad_h24.stl" />
+  <mesh name="index_abad_h25" file="index_abad_h25.stl" />
+  <mesh name="middle_abad_h25" file="middle_abad_h25.stl" />
+  <mesh name="ring_abad_h25" file="ring_abad_h25.stl" />
+  <mesh name="index_abad_h26" file="index_abad_h26.stl" />
+  <mesh name="middle_abad_h26" file="middle_abad_h26.stl" />
+  <mesh name="ring_abad_h26" file="ring_abad_h26.stl" />
+  <mesh name="index_abad_h27" file="index_abad_h27.stl" />
+  <mesh name="middle_abad_h27" file="middle_abad_h27.stl" />
+  <mesh name="ring_abad_h27" file="ring_abad_h27.stl" />
+  <mesh name="index_abad_h28" file="index_abad_h28.stl" />
+  <mesh name="middle_abad_h28" file="middle_abad_h28.stl" />
+  <mesh name="ring_abad_h28" file="ring_abad_h28.stl" />
+  <mesh name="index_pitch_h36" file="index_pitch_h36.stl" />
+  <mesh name="middle_pitch_h36" file="middle_pitch_h36.stl" />
+  <mesh name="ring_pitch_h36" file="ring_pitch_h36.stl" />
+  <mesh name="index_pitch_h37" file="index_pitch_h37.stl" />
+  <mesh name="middle_pitch_h37" file="middle_pitch_h37.stl" />
+  <mesh name="ring_pitch_h37" file="ring_pitch_h37.stl" />
+  <mesh name="index_pitch_h38" file="index_pitch_h38.stl" />
+  <mesh name="middle_pitch_h38" file="middle_pitch_h38.stl" />
+  <mesh name="ring_pitch_h38" file="ring_pitch_h38.stl" />
+  <mesh name="index_pitch_h39" file="index_pitch_h39.stl" />
+  <mesh name="middle_pitch_h39" file="middle_pitch_h39.stl" />
+  <mesh name="ring_pitch_h39" file="ring_pitch_h39.stl" />
+  <mesh name="index_pitch_h40" file="index_pitch_h40.stl" />
+  <mesh name="middle_pitch_h40" file="middle_pitch_h40.stl" />
+  <mesh name="ring_pitch_h40" file="ring_pitch_h40.stl" />
+  <mesh name="thumb_ip_h00" file="thumb_ip_h00.stl" />
+  <mesh name="thumb_ip_h01" file="thumb_ip_h01.stl" />
+  <mesh name="thumb_ip_h02" file="thumb_ip_h02.stl" />
+  <mesh name="thumb_ip_h03" file="thumb_ip_h03.stl" />
+  <mesh name="thumb_ip_h04" file="thumb_ip_h04.stl" />
+  <mesh name="thumb_ip_h05" file="thumb_ip_h05.stl" />
+  <mesh name="thumb_ip_h06" file="thumb_ip_h06.stl" />
+  <mesh name="thumb_ip_h07" file="thumb_ip_h07.stl" />
+  <mesh name="thumb_ip_h08" file="thumb_ip_h08.stl" />
+  <mesh name="thumb_ip_h09" file="thumb_ip_h09.stl" />
+  <mesh name="thumb_ip_h10" file="thumb_ip_h10.stl" />
+  <mesh name="thumb_ip_h11" file="thumb_ip_h11.stl" />
+  <mesh name="thumb_mp_h00" file="thumb_mp_h00.stl" />
+  <mesh name="thumb_mp_h01" file="thumb_mp_h01.stl" />
+  <mesh name="thumb_mp_h02" file="thumb_mp_h02.stl" />
+  <mesh name="thumb_mp_h03" file="thumb_mp_h03.stl" />
+  <mesh name="thumb_mp_h04" file="thumb_mp_h04.stl" />
+  <mesh name="thumb_mp_h05" file="thumb_mp_h05.stl" />
+  <mesh name="thumb_mp_h06" file="thumb_mp_h06.stl" />
+  <mesh name="thumb_mp_h07" file="thumb_mp_h07.stl" />
+  <mesh name="thumb_mp_h08" file="thumb_mp_h08.stl" />
+  <mesh name="thumb_mp_h09" file="thumb_mp_h09.stl" />
+  <mesh name="thumb_mp_h10" file="thumb_mp_h10.stl" />
+  <mesh name="thumb_mp_h11" file="thumb_mp_h11.stl" />
+  <mesh name="thumb_mp_h12" file="thumb_mp_h12.stl" />
+  <mesh name="thumb_mp_h13" file="thumb_mp_h13.stl" />
+  <mesh name="thumb_mp_h14" file="thumb_mp_h14.stl" />
+  <mesh name="thumb_mp_h15" file="thumb_mp_h15.stl" />
+  <mesh name="thumb_mp_h16" file="thumb_mp_h16.stl" />
+  <mesh name="thumb_mp_h17" file="thumb_mp_h17.stl" />
+  <mesh name="thumb_mp_h18" file="thumb_mp_h18.stl" />
+  <mesh name="thumb_mp_h19" file="thumb_mp_h19.stl" />
+  <mesh name="thumb_mp_h20" file="thumb_mp_h20.stl" />
+  <mesh name="thumb_mp_h21" file="thumb_mp_h21.stl" />
+  <mesh name="thumb_mp_h22" file="thumb_mp_h22.stl" />
+  <mesh name="thumb_mp_h23" file="thumb_mp_h23.stl" />
+  <mesh name="thumb_side_h00" file="thumb_side_h00.stl" />
+  <mesh name="thumb_side_h01" file="thumb_side_h01.stl" />
+  <mesh name="thumb_side_h02" file="thumb_side_h02.stl" />
+  <mesh name="thumb_side_h03" file="thumb_side_h03.stl" />
+  <mesh name="thumb_side_h04" file="thumb_side_h04.stl" />
+  <mesh name="thumb_side_h05" file="thumb_side_h05.stl" />
+  <mesh name="thumb_side_h06" file="thumb_side_h06.stl" />
+  <mesh name="thumb_side_h07" file="thumb_side_h07.stl" />
+  <mesh name="thumb_side_h08" file="thumb_side_h08.stl" />
+  <mesh name="thumb_side_h09" file="thumb_side_h09.stl" />
+  <mesh name="thumb_side_h10" file="thumb_side_h10.stl" />
+  <mesh name="thumb_side_h11" file="thumb_side_h11.stl" />
+  <mesh name="thumb_roll_h00" file="thumb_roll_h00.stl" />
+  <mesh name="thumb_roll_h01" file="thumb_roll_h01.stl" />
+  <mesh name="thumb_roll_h02" file="thumb_roll_h02.stl" />
+  <mesh name="thumb_roll_h03" file="thumb_roll_h03.stl" />
+  <mesh name="thumb_roll_h04" file="thumb_roll_h04.stl" />
+  <mesh name="thumb_roll_h05" file="thumb_roll_h05.stl" />
+  <mesh name="thumb_roll_h06" file="thumb_roll_h06.stl" />
+  <mesh name="thumb_roll_h07" file="thumb_roll_h07.stl" />
+  <mesh name="thumb_roll_h08" file="thumb_roll_h08.stl" />
+  <mesh name="thumb_roll_h09" file="thumb_roll_h09.stl" />
+  <mesh name="thumb_roll_h10" file="thumb_roll_h10.stl" />
+  <mesh name="thumb_roll_h11" file="thumb_roll_h11.stl" />
+  <mesh name="thumb_roll_h12" file="thumb_roll_h12.stl" />
+  <mesh name="thumb_roll_h13" file="thumb_roll_h13.stl" />
+  <mesh name="thumb_roll_h14" file="thumb_roll_h14.stl" />
+  <mesh name="thumb_roll_h15" file="thumb_roll_h15.stl" />
+  <mesh name="thumb_roll_h16" file="thumb_roll_h16.stl" />
+  <mesh name="thumb_roll_h17" file="thumb_roll_h17.stl" />
+  <mesh name="thumb_roll_h18" file="thumb_roll_h18.stl" />
+  <mesh name="thumb_roll_h19" file="thumb_roll_h19.stl" />
+  <mesh name="thumb_roll_h20" file="thumb_roll_h20.stl" />
+  <mesh name="thumb_roll_h21" file="thumb_roll_h21.stl" />
+  <mesh name="thumb_roll_h22" file="thumb_roll_h22.stl" />
+  <mesh name="thumb_roll_h23" file="thumb_roll_h23.stl" />
+  <mesh name="thumb_ip_h12" file="thumb_ip_h12.stl" />
+  <mesh name="thumb_ip_h13" file="thumb_ip_h13.stl" />
+  <mesh name="thumb_ip_h14" file="thumb_ip_h14.stl" />
+  <mesh name="thumb_ip_h15" file="thumb_ip_h15.stl" />
+  <mesh name="thumb_ip_h16" file="thumb_ip_h16.stl" />
+  <mesh name="thumb_ip_h17" file="thumb_ip_h17.stl" />
+  <mesh name="thumb_ip_h18" file="thumb_ip_h18.stl" />
+  <mesh name="thumb_ip_h19" file="thumb_ip_h19.stl" />
+  <mesh name="thumb_ip_h20" file="thumb_ip_h20.stl" />
+  <mesh name="thumb_ip_h21" file="thumb_ip_h21.stl" />
+  <mesh name="thumb_ip_h22" file="thumb_ip_h22.stl" />
+  <mesh name="thumb_ip_h23" file="thumb_ip_h23.stl" />
+  <mesh name="thumb_ip_h24" file="thumb_ip_h24.stl" />
+  <mesh name="thumb_ip_h25" file="thumb_ip_h25.stl" />
+  <mesh name="thumb_ip_h26" file="thumb_ip_h26.stl" />
+  <mesh name="thumb_ip_h27" file="thumb_ip_h27.stl" />
+  <mesh name="thumb_ip_h28" file="thumb_ip_h28.stl" />
+  <mesh name="thumb_ip_h29" file="thumb_ip_h29.stl" />
+  <mesh name="thumb_ip_h30" file="thumb_ip_h30.stl" />
+  <mesh name="thumb_ip_h31" file="thumb_ip_h31.stl" />
+  <mesh name="thumb_ip_h32" file="thumb_ip_h32.stl" />
+  <mesh name="thumb_ip_h33" file="thumb_ip_h33.stl" />
+  <mesh name="thumb_ip_h34" file="thumb_ip_h34.stl" />
+  <mesh name="thumb_ip_h35" file="thumb_ip_h35.stl" />
+  <mesh name="thumb_ip_h36" file="thumb_ip_h36.stl" />
+  <mesh name="thumb_ip_h37" file="thumb_ip_h37.stl" />
+  <mesh name="thumb_ip_h38" file="thumb_ip_h38.stl" />
+  <mesh name="thumb_ip_h39" file="thumb_ip_h39.stl" />
+  <mesh name="thumb_ip_h40" file="thumb_ip_h40.stl" />
+  <mesh name="thumb_ip_h41" file="thumb_ip_h41.stl" />
+  <mesh name="thumb_ip_h42" file="thumb_ip_h42.stl" />
+  <mesh name="thumb_ip_h43" file="thumb_ip_h43.stl" />
+  <mesh name="thumb_ip_h44" file="thumb_ip_h44.stl" />
+  <mesh name="thumb_ip_h45" file="thumb_ip_h45.stl" />
+  <mesh name="thumb_ip_h46" file="thumb_ip_h46.stl" />
+  <mesh name="thumb_ip_h47" file="thumb_ip_h47.stl" />
+  <mesh name="thumb_roll_h24" file="thumb_roll_h24.stl" />
+  <mesh name="thumb_roll_h25" file="thumb_roll_h25.stl" />
+  <mesh name="thumb_roll_h26" file="thumb_roll_h26.stl" />
+  <mesh name="thumb_roll_h27" file="thumb_roll_h27.stl" />
+  <mesh name="thumb_roll_h28" file="thumb_roll_h28.stl" />
+  <mesh name="thumb_roll_h29" file="thumb_roll_h29.stl" />
+  <mesh name="thumb_roll_h30" file="thumb_roll_h30.stl" />
+  <mesh name="thumb_roll_h31" file="thumb_roll_h31.stl" />
+  <mesh name="thumb_roll_h32" file="thumb_roll_h32.stl" />
+  <mesh name="thumb_roll_h33" file="thumb_roll_h33.stl" />
+  <mesh name="thumb_roll_h34" file="thumb_roll_h34.stl" />
+  <mesh name="thumb_roll_h35" file="thumb_roll_h35.stl" />
+  <mesh name="thumb_mp_h24" file="thumb_mp_h24.stl" />
+  <mesh name="thumb_mp_h25" file="thumb_mp_h25.stl" />
+  <mesh name="thumb_mp_h26" file="thumb_mp_h26.stl" />
+  <mesh name="thumb_mp_h27" file="thumb_mp_h27.stl" />
+  <mesh name="thumb_mp_h28" file="thumb_mp_h28.stl" />
+  <mesh name="thumb_side_h12" file="thumb_side_h12.stl" />
+  <mesh name="thumb_side_h13" file="thumb_side_h13.stl" />
+  <mesh name="thumb_side_h14" file="thumb_side_h14.stl" />
+  <mesh name="thumb_side_h15" file="thumb_side_h15.stl" />
+  <mesh name="thumb_side_h16" file="thumb_side_h16.stl" />
+  <mesh name="thumb_side_h17" file="thumb_side_h17.stl" />
+  <mesh name="thumb_side_h18" file="thumb_side_h18.stl" />
+  <mesh name="thumb_side_h19" file="thumb_side_h19.stl" />
+  <mesh name="thumb_side_h20" file="thumb_side_h20.stl" />
+  <mesh name="thumb_side_h21" file="thumb_side_h21.stl" />
+  <mesh name="palm_h00" file="palm_h00.stl" />
+  <mesh name="palm_h01" file="palm_h01.stl" />
+  <mesh name="palm_h02" file="palm_h02.stl" />
+  <mesh name="palm_h03" file="palm_h03.stl" />
+  <mesh name="palm_h04" file="palm_h04.stl" />
+  <mesh name="palm_h05" file="palm_h05.stl" />
+  <mesh name="palm_h06" file="palm_h06.stl" />
+  <mesh name="palm_h07" file="palm_h07.stl" />
+  <mesh name="palm_h08" file="palm_h08.stl" />
+  <mesh name="palm_h09" file="palm_h09.stl" />
+  <mesh name="palm_h10" file="palm_h10.stl" />
+  <mesh name="palm_h11" file="palm_h11.stl" />
+  <mesh name="palm_h12" file="palm_h12.stl" />
+  <mesh name="palm_h13" file="palm_h13.stl" />
+  <mesh name="palm_h14" file="palm_h14.stl" />
+  <mesh name="palm_h15" file="palm_h15.stl" />
+  <mesh name="palm_h16" file="palm_h16.stl" />
+  <mesh name="palm_h17" file="palm_h17.stl" />
+  <mesh name="palm_h18" file="palm_h18.stl" />
+  <mesh name="palm_h19" file="palm_h19.stl" />
+  <mesh name="palm_h20" file="palm_h20.stl" />
+  <mesh name="palm_h21" file="palm_h21.stl" />
+  <mesh name="palm_h22" file="palm_h22.stl" />
+  <mesh name="palm_h23" file="palm_h23.stl" />
+  <mesh name="palm_h24" file="palm_h24.stl" />
+  <mesh name="palm_h25" file="palm_h25.stl" />
+  <mesh name="palm_h26" file="palm_h26.stl" />
+  <mesh name="palm_h27" file="palm_h27.stl" />
+  <mesh name="palm_h28" file="palm_h28.stl" />
+  <mesh name="palm_h29" file="palm_h29.stl" />
+  <mesh name="palm_h30" file="palm_h30.stl" />
+  <mesh name="palm_h31" file="palm_h31.stl" />
+  <mesh name="palm_h32" file="palm_h32.stl" />
+  <mesh name="palm_h33" file="palm_h33.stl" />
+  <mesh name="palm_h34" file="palm_h34.stl" />
+  <mesh name="palm_h35" file="palm_h35.stl" />
+  <mesh name="palm_h36" file="palm_h36.stl" />
+  <mesh name="palm_h37" file="palm_h37.stl" />
+  <mesh name="palm_h38" file="palm_h38.stl" />
+  <mesh name="palm_h39" file="palm_h39.stl" />
+  <mesh name="palm_h40" file="palm_h40.stl" />
+  <mesh name="palm_h41" file="palm_h41.stl" />
+  <mesh name="palm_h42" file="palm_h42.stl" />
+  <mesh name="palm_h43" file="palm_h43.stl" />
+  <mesh name="palm_h44" file="palm_h44.stl" />
+  <mesh name="palm_h45" file="palm_h45.stl" />
+  <mesh name="palm_h46" file="palm_h46.stl" />
+  <mesh name="palm_h47" file="palm_h47.stl" />
+  <mesh name="palm_h48" file="palm_h48.stl" />
+  <mesh name="palm_h49" file="palm_h49.stl" />
+  <mesh name="palm_h50" file="palm_h50.stl" />
+  <mesh name="palm_h51" file="palm_h51.stl" />
+  <mesh name="palm_h52" file="palm_h52.stl" />
+  <mesh name="palm_h53" file="palm_h53.stl" />
+  <mesh name="palm_h54" file="palm_h54.stl" />
+  <mesh name="palm_h55" file="palm_h55.stl" />
+  <mesh name="palm_h56" file="palm_h56.stl" />
+  <mesh name="palm_h57" file="palm_h57.stl" />
+  <mesh name="palm_h58" file="palm_h58.stl" />
+  <mesh name="palm_h59" file="palm_h59.stl" />
+  <mesh name="palm_h60" file="palm_h60.stl" />
+  <mesh name="palm_h61" file="palm_h61.stl" />
+  <mesh name="palm_h62" file="palm_h62.stl" />
+  <mesh name="palm_h63" file="palm_h63.stl" />
+  <mesh name="palm_h64" file="palm_h64.stl" />
+  <mesh name="palm_h65" file="palm_h65.stl" />
+  <mesh name="palm_h66" file="palm_h66.stl" />
+  <mesh name="palm_h67" file="palm_h67.stl" />
+  <mesh name="palm_h68" file="palm_h68.stl" />
+  <mesh name="palm_h69" file="palm_h69.stl" />
+  <mesh name="palm_h70" file="palm_h70.stl" />
+  <mesh name="palm_h71" file="palm_h71.stl" />
+  <mesh name="palm_h72" file="palm_h72.stl" />
+  <mesh name="palm_h73" file="palm_h73.stl" />
+  <mesh name="palm_h74" file="palm_h74.stl" />
+  <mesh name="palm_h75" file="palm_h75.stl" />
+  <mesh name="palm_h76" file="palm_h76.stl" />
+  <mesh name="palm_h77" file="palm_h77.stl" />
+  <mesh name="palm_h78" file="palm_h78.stl" />
+  <mesh name="palm_h79" file="palm_h79.stl" />
+  <mesh name="palm_h80" file="palm_h80.stl" />
+  <mesh name="palm_h81" file="palm_h81.stl" />
+  <mesh name="palm_h82" file="palm_h82.stl" />
+  <mesh name="palm_h83" file="palm_h83.stl" />
+  <mesh name="palm_h84" file="palm_h84.stl" />
+  <mesh name="palm_h85" file="palm_h85.stl" />
+  <mesh name="palm_h86" file="palm_h86.stl" />
+  <mesh name="palm_h87" file="palm_h87.stl" />
+  <mesh name="palm_h88" file="palm_h88.stl" />
+  <mesh name="palm_h89" file="palm_h89.stl" />
+  <mesh name="palm_h90" file="palm_h90.stl" />
+  <mesh name="palm_h91" file="palm_h91.stl" />
+  <mesh name="palm_h92" file="palm_h92.stl" />
+  <mesh name="palm_h93" file="palm_h93.stl" />
+  <mesh name="palm_h94" file="palm_h94.stl" />
+  <mesh name="palm_h95" file="palm_h95.stl" />
+  <mesh name="palm_h96" file="palm_h96.stl" />
+  <mesh name="palm_h97" file="palm_h97.stl" />
+  <mesh name="palm_h98" file="palm_h98.stl" />
+  <mesh name="palm_h99" file="palm_h99.stl" />
+  <mesh name="palm_h100" file="palm_h100.stl" />
+  <mesh name="palm_h101" file="palm_h101.stl" />
+  <mesh name="palm_h102" file="palm_h102.stl" />
+  <mesh name="palm_h103" file="palm_h103.stl" />
+  <mesh name="palm_h104" file="palm_h104.stl" />
+  <mesh name="palm_h105" file="palm_h105.stl" />
+  <mesh name="palm_h106" file="palm_h106.stl" />
+  <mesh name="palm_h107" file="palm_h107.stl" />
+  <mesh name="palm_h108" file="palm_h108.stl" />
+  <mesh name="palm_h109" file="palm_h109.stl" />
+  <mesh name="palm_h110" file="palm_h110.stl" />
+  <mesh name="palm_h111" file="palm_h111.stl" />
+  <mesh name="palm_h112" file="palm_h112.stl" />
+  <mesh name="palm_h113" file="palm_h113.stl" />
+  <mesh name="palm_h114" file="palm_h114.stl" />
+  <mesh name="palm_h115" file="palm_h115.stl" />
+  <mesh name="palm_h116" file="palm_h116.stl" />
+  <mesh name="palm_h117" file="palm_h117.stl" />
+  <mesh name="palm_h118" file="palm_h118.stl" />
+  <mesh name="palm_h119" file="palm_h119.stl" />
+  <mesh name="palm_h120" file="palm_h120.stl" />
+  <mesh name="palm_h121" file="palm_h121.stl" />
+  <mesh name="palm_h122" file="palm_h122.stl" />
+  <mesh name="palm_h123" file="palm_h123.stl" />
+  <mesh name="palm_h124" file="palm_h124.stl" />
+  <mesh name="palm_h125" file="palm_h125.stl" />
+  <mesh name="palm_h126" file="palm_h126.stl" />
+  <mesh name="palm_h127" file="palm_h127.stl" />
+  <mesh name="palm_h128" file="palm_h128.stl" />
+  <mesh name="palm_h129" file="palm_h129.stl" />
+  <mesh name="palm_h130" file="palm_h130.stl" />
+  <mesh name="palm_h131" file="palm_h131.stl" />
+  <mesh name="palm_h132" file="palm_h132.stl" />
+  <mesh name="palm_h133" file="palm_h133.stl" />
+  <mesh name="palm_h134" file="palm_h134.stl" />
+  <mesh name="palm_h135" file="palm_h135.stl" />
+  <mesh name="palm_h136" file="palm_h136.stl" />
+  <mesh name="palm_h137" file="palm_h137.stl" />
+  <mesh name="palm_h138" file="palm_h138.stl" />
+  <mesh name="palm_h139" file="palm_h139.stl" />
+  <mesh name="palm_h140" file="palm_h140.stl" />
+  <mesh name="palm_h141" file="palm_h141.stl" />
+  <mesh name="palm_h142" file="palm_h142.stl" />
+  <mesh name="palm_h143" file="palm_h143.stl" />
+  <mesh name="palm_h144" file="palm_h144.stl" />
+  <mesh name="palm_h145" file="palm_h145.stl" />
+  <mesh name="palm_h146" file="palm_h146.stl" />
+  <mesh name="palm_h147" file="palm_h147.stl" />
+  <mesh name="palm_h148" file="palm_h148.stl" />
+  <mesh name="palm_h149" file="palm_h149.stl" />
+  <mesh name="palm_h150" file="palm_h150.stl" />
+  <mesh name="palm_h151" file="palm_h151.stl" />
+  <mesh name="palm_h152" file="palm_h152.stl" />
+  <mesh name="palm_h153" file="palm_h153.stl" />
+  <mesh name="palm_h154" file="palm_h154.stl" />
+  <mesh name="palm_h155" file="palm_h155.stl" />
+  <mesh name="palm_h156" file="palm_h156.stl" />
+  <mesh name="palm_h157" file="palm_h157.stl" />
+  <mesh name="palm_h158" file="palm_h158.stl" />
+  <mesh name="palm_h159" file="palm_h159.stl" />
+  <mesh name="palm_h160" file="palm_h160.stl" />
+  <mesh name="palm_h161" file="palm_h161.stl" />
+  <mesh name="palm_h162" file="palm_h162.stl" />
+  <mesh name="palm_h163" file="palm_h163.stl" />
+  <mesh name="palm_h164" file="palm_h164.stl" />
+  <mesh name="palm_h165" file="palm_h165.stl" />
+  <mesh name="palm_h166" file="palm_h166.stl" />
+  <mesh name="palm_h167" file="palm_h167.stl" />
+  <mesh name="palm_h168" file="palm_h168.stl" />
+  <mesh name="palm_h169" file="palm_h169.stl" />
+  <mesh name="palm_h170" file="palm_h170.stl" />
+  <mesh name="palm_h171" file="palm_h171.stl" />
+  <mesh name="palm_h172" file="palm_h172.stl" />
+  <mesh name="palm_h173" file="palm_h173.stl" />
+  <mesh name="palm_h174" file="palm_h174.stl" />
+  <mesh name="palm_h175" file="palm_h175.stl" />
+  <mesh name="palm_h176" file="palm_h176.stl" />
+  <mesh name="palm_h177" file="palm_h177.stl" />
+  <mesh name="palm_h178" file="palm_h178.stl" />
+  <mesh name="palm_h179" file="palm_h179.stl" />
+  <mesh name="palm_h180" file="palm_h180.stl" />
+  <mesh name="palm_h181" file="palm_h181.stl" />
+  <mesh name="palm_h182" file="palm_h182.stl" />
+  <mesh name="palm_h183" file="palm_h183.stl" />
+  <mesh name="palm_h184" file="palm_h184.stl" />
+  <mesh name="palm_h185" file="palm_h185.stl" />
+  <mesh name="palm_h186" file="palm_h186.stl" />
+  <mesh name="palm_h187" file="palm_h187.stl" />
+  <mesh name="palm_h188" file="palm_h188.stl" />
+  <mesh name="palm_h189" file="palm_h189.stl" />
+  <mesh name="palm_h190" file="palm_h190.stl" />
+  <mesh name="palm_h191" file="palm_h191.stl" />
+  <mesh name="palm_h192" file="palm_h192.stl" />
+  <mesh name="palm_h193" file="palm_h193.stl" />
+  <mesh name="palm_h194" file="palm_h194.stl" />
+  <mesh name="palm_h195" file="palm_h195.stl" />
+  <mesh name="palm_h196" file="palm_h196.stl" />
+  <mesh name="palm_h197" file="palm_h197.stl" />
+  <mesh name="palm_h198" file="palm_h198.stl" />
+  <mesh name="palm_h199" file="palm_h199.stl" />
+  <mesh name="palm_h200" file="palm_h200.stl" />
+  <mesh name="palm_h201" file="palm_h201.stl" />
+  <mesh name="palm_h202" file="palm_h202.stl" />
+  <mesh name="palm_h203" file="palm_h203.stl" />
+  <mesh name="palm_h204" file="palm_h204.stl" />
+  <mesh name="palm_h205" file="palm_h205.stl" />
+  <mesh name="palm_h206" file="palm_h206.stl" />
+  <mesh name="palm_h207" file="palm_h207.stl" />
+  <mesh name="palm_h208" file="palm_h208.stl" />
+  <mesh name="palm_h209" file="palm_h209.stl" />
+  <mesh name="palm_h210" file="palm_h210.stl" />
+ </asset>
+ <worldbody>
+  <body name="palm" pos="0 0 0" quat="1 0 0 0">
+   <inertial pos="-0.00279656313 0.0589075268 0.00528772603" mass="0.2987839147" fullinertia="0.000227535904 0.000242314595 0.000333330738 7.23380466e-07 2.04209181e-06 -2.05296595e-06" />
+   <body name="index_abad" pos="-0.0331 0.08715 -0.0065" quat="0.999910947468 0 0 -0.0133453038415">
+    <inertial pos="0.000154503546187 0.0181492944782 0.00821305769713" mass="0.0348835615" fullinertia="7.25747601e-06 4.93160342e-06 4.77513242e-06 -2.07804035e-08 1.07208447e-07 2.74846362e-07" />
+    <joint name="index abad" axis="0 0 -1" pos="-4.30422136292941e-10 1.61220426184469e-08 0" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-0.797518119 0.316209407" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+    <body name="index_pitch" pos="0.0123682 0.0238386 -0.003" quat="0.999999601242 0.000892719880664 2.38336594949e-05 6.83157738052e-14">
+     <inertial pos="-0.0120344026 0.0219533988 0.00107474645" mass="0.031802492811" fullinertia="6.77479372e-06 2.64138693e-06 7.44353056e-06 5.71518951e-07 6.35158099e-08 -1.62812176e-07" />
+     <joint name="index mcp" axis="0.999643805730757 0.0266882308167423 1.11704246293556e-10" pos="1.95443741348207e-10 -7.32060985022e-09 -5.00496705495823e-11" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-2.22475374 0.0409313317" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+     <body name="index_rocker" pos="-0.0162626 0.0470916 0.00491515" quat="0.999999751547 -0.000704664941309 -1.88130046697e-05 3.51591829129e-14">
+      <inertial pos="0.00154849942046 0.0161280254662 -0.00467190849839" mass="0.00159974377" fullinertia="1.83672484e-07 4.90897794e-08 1.53890024e-07 3.58750103e-09 -1.80136644e-09 6.82245222e-08" />
+      <joint name="index rocker" axis="0.999643805730762 0.0266882308165753 2.57379817841242e-11" pos="-2.72131918593514e-11 1.01930692880344e-09 3.40054707672564e-09" frictionloss="0" damping="0.0001" armature="1e-07" limited="true" range="-1.67837905 0.00872664626" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+      <site name="index_rocker_fourbar" pos="-0.000881618310218001 0.0307167237045247 -0.0120295220486836" />
+      <geom name="index_rocker_h00" type="mesh" mesh="index_rocker_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_rocker_h01" type="mesh" mesh="index_rocker_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_rocker_h02" type="mesh" mesh="index_rocker_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_rocker_h03" type="mesh" mesh="index_rocker_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_rocker_h04" type="mesh" mesh="index_rocker_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_rocker_h05" type="mesh" mesh="index_rocker_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_rocker_h06" type="mesh" mesh="index_rocker_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_rocker_h07" type="mesh" mesh="index_rocker_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_rocker_h08" type="mesh" mesh="index_rocker_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_rocker_h09" type="mesh" mesh="index_rocker_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_rocker_h10" type="mesh" mesh="index_rocker_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_rocker_h11" type="mesh" mesh="index_rocker_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     </body>
+     <body name="index_pip" pos="-0.00094743 0.0354873 -6.34058e-05" quat="0.999999954734 -0.000300778995436 -8.03010036315e-06 0">
+      <inertial pos="-0.00989964768149 0.00781044916149 -0.000624112981229" mass="0.0101428785" fullinertia="1.33101895e-06 1.28657707e-06 2.15350738e-06 2.43685135e-07 -6.47655529e-08 6.35463008e-08" />
+      <joint name="index pip" axis="0.99964380573076 0.0266882308166636 1.50039655676547e-10" pos="2.3497894194015e-10 -8.80145429692594e-09 7.35570154768771e-11" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-1.3914892 0" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+      <body name="index_dip" pos="-0.00537911 0.0328682 -3.89616e-05" quat="0.707036801173 -0.00985524725757 0.707039398269 0.00985521105729">
+       <inertial pos="0.000501097299 0.00953572603 -0.00854453916" mass="0.012855753544" fullinertia="2.1778004e-06 6.84803091e-07 2.18009165e-06 -8.66420883e-08 -2.65528369e-11 -2.46365847e-09" />
+       <joint name="index dip" axis="-3.6733526288033e-06 -0.00118429972332025 0.99999929871009" pos="-2.14899414342721e-10 -3.05967024896482e-08 -3.6236481106613e-11" frictionloss="0" damping="0.0001" armature="1e-07" limited="true" range="-1.87209896 0.00872664626" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+       <site name="index_dip_fourbar" pos="0.00702964487072933 0.00973793383782303 -0.0105499949179419" />
+       <geom name="index_dip_h00" type="mesh" mesh="index_dip_h00" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="index_dip_h01" type="mesh" mesh="index_dip_h01" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="index_dip_h02" type="mesh" mesh="index_dip_h02" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="index_dip_h03" type="mesh" mesh="index_dip_h03" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="index_dip_h04" type="mesh" mesh="index_dip_h04" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="index_dip_h05" type="mesh" mesh="index_dip_h05" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="index_dip_h06" type="mesh" mesh="index_dip_h06" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="index_dip_h07" type="mesh" mesh="index_dip_h07" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="index_dip_h08" type="mesh" mesh="index_dip_h08" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="index_dip_h09" type="mesh" mesh="index_dip_h09" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="index_dip_h10" type="mesh" mesh="index_dip_h10" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="index_dip_h11" type="mesh" mesh="index_dip_h11" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="index_dip_h12" type="mesh" mesh="index_dip_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="index_dip_h13" type="mesh" mesh="index_dip_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="index_dip_h14" type="mesh" mesh="index_dip_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="index_dip_h15" type="mesh" mesh="index_dip_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="index_dip_h16" type="mesh" mesh="index_dip_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="index_dip_h17" type="mesh" mesh="index_dip_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="index_dip_h18" type="mesh" mesh="index_dip_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="index_dip_h19" type="mesh" mesh="index_dip_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="index_dip_h20" type="mesh" mesh="index_dip_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="index_dip_h21" type="mesh" mesh="index_dip_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="index_dip_h22" type="mesh" mesh="index_dip_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="index_dip_h23" type="mesh" mesh="index_dip_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <site name="index_dip_pad" pos="0.0103985353 0.023451578 -0.00851141327" zaxis="0.987677991 0.156499682 0.000189278444" size="0.002" />
+      </body>
+      <geom name="index_pip_h00" type="mesh" mesh="index_pip_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h01" type="mesh" mesh="index_pip_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h02" type="mesh" mesh="index_pip_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h03" type="mesh" mesh="index_pip_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h04" type="mesh" mesh="index_pip_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h05" type="mesh" mesh="index_pip_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h06" type="mesh" mesh="index_pip_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h07" type="mesh" mesh="index_pip_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h08" type="mesh" mesh="index_pip_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h09" type="mesh" mesh="index_pip_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h10" type="mesh" mesh="index_pip_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h11" type="mesh" mesh="index_pip_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h12" type="mesh" mesh="index_pip_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h13" type="mesh" mesh="index_pip_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h14" type="mesh" mesh="index_pip_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h15" type="mesh" mesh="index_pip_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h16" type="mesh" mesh="index_pip_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h17" type="mesh" mesh="index_pip_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h18" type="mesh" mesh="index_pip_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h19" type="mesh" mesh="index_pip_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h20" type="mesh" mesh="index_pip_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h21" type="mesh" mesh="index_pip_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h22" type="mesh" mesh="index_pip_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="index_pip_h23" type="mesh" mesh="index_pip_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     </body>
+     <geom name="index_pitch_h00" type="mesh" mesh="index_pitch_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h01" type="mesh" mesh="index_pitch_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h02" type="mesh" mesh="index_pitch_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h03" type="mesh" mesh="index_pitch_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h04" type="mesh" mesh="index_pitch_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h05" type="mesh" mesh="index_pitch_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h06" type="mesh" mesh="index_pitch_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h07" type="mesh" mesh="index_pitch_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h08" type="mesh" mesh="index_pitch_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h09" type="mesh" mesh="index_pitch_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h10" type="mesh" mesh="index_pitch_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h11" type="mesh" mesh="index_pitch_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h12" type="mesh" mesh="index_pitch_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h13" type="mesh" mesh="index_pitch_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h14" type="mesh" mesh="index_pitch_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h15" type="mesh" mesh="index_pitch_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h16" type="mesh" mesh="index_pitch_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h17" type="mesh" mesh="index_pitch_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h18" type="mesh" mesh="index_pitch_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h19" type="mesh" mesh="index_pitch_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h20" type="mesh" mesh="index_pitch_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h21" type="mesh" mesh="index_pitch_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h22" type="mesh" mesh="index_pitch_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h23" type="mesh" mesh="index_pitch_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h24" type="mesh" mesh="index_pitch_h24" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h25" type="mesh" mesh="index_pitch_h25" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h26" type="mesh" mesh="index_pitch_h26" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h27" type="mesh" mesh="index_pitch_h27" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h28" type="mesh" mesh="index_pitch_h28" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h29" type="mesh" mesh="index_pitch_h29" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h30" type="mesh" mesh="index_pitch_h30" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h31" type="mesh" mesh="index_pitch_h31" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h32" type="mesh" mesh="index_pitch_h32" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h33" type="mesh" mesh="index_pitch_h33" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h34" type="mesh" mesh="index_pitch_h34" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h35" type="mesh" mesh="index_pitch_h35" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h36" type="mesh" mesh="index_pitch_h36" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h37" type="mesh" mesh="index_pitch_h37" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h38" type="mesh" mesh="index_pitch_h38" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h39" type="mesh" mesh="index_pitch_h39" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="index_pitch_h40" type="mesh" mesh="index_pitch_h40" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    </body>
+    <geom name="index_abad_h00" type="mesh" mesh="index_abad_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h01" type="mesh" mesh="index_abad_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h02" type="mesh" mesh="index_abad_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h03" type="mesh" mesh="index_abad_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h04" type="mesh" mesh="index_abad_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h05" type="mesh" mesh="index_abad_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h06" type="mesh" mesh="index_abad_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h07" type="mesh" mesh="index_abad_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h08" type="mesh" mesh="index_abad_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h09" type="mesh" mesh="index_abad_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h10" type="mesh" mesh="index_abad_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h11" type="mesh" mesh="index_abad_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h12" type="mesh" mesh="index_abad_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h13" type="mesh" mesh="index_abad_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h14" type="mesh" mesh="index_abad_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h15" type="mesh" mesh="index_abad_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h16" type="mesh" mesh="index_abad_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h17" type="mesh" mesh="index_abad_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h18" type="mesh" mesh="index_abad_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h19" type="mesh" mesh="index_abad_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h20" type="mesh" mesh="index_abad_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h21" type="mesh" mesh="index_abad_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h22" type="mesh" mesh="index_abad_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h23" type="mesh" mesh="index_abad_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h24" type="mesh" mesh="index_abad_h24" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h25" type="mesh" mesh="index_abad_h25" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h26" type="mesh" mesh="index_abad_h26" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h27" type="mesh" mesh="index_abad_h27" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="index_abad_h28" type="mesh" mesh="index_abad_h28" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   </body>
+   <body name="middle_abad" pos="-0.0025 0.09215 -0.0065" quat="0.999910947468 0 0 -0.0133453038415">
+    <inertial pos="0.000154503546187 0.0181492944782 0.00821305769713" mass="0.0348835615" fullinertia="7.25747601e-06 4.93160342e-06 4.77513242e-06 -2.07804035e-08 1.07208447e-07 2.74846362e-07" />
+    <joint name="middle abad" axis="0 0 -1" pos="-4.30422030882874e-10 1.61220426351438e-08 0" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-0.797518119 0.736030267" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+    <body name="middle_pitch" pos="0.0123682 0.0238386 -0.003" quat="0.999999601242 0.000892719880664 2.38336594949e-05 6.83157738052e-14">
+     <inertial pos="-0.0120344026 0.0219533988 0.00107474645" mass="0.031802492811" fullinertia="6.77479372e-06 2.64138693e-06 7.44353056e-06 5.71518951e-07 6.35158099e-08 -1.62812176e-07" />
+     <joint name="middle mcp" axis="0.999643805730757 0.0266882308167423 1.11704246293556e-10" pos="1.95443741348207e-10 -7.32060985022e-09 -5.00496705495823e-11" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-2.22475374 0.0409313317" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+     <body name="middle_rocker" pos="-0.0162626 0.0470916 0.00491515" quat="0.999999751547 -0.000704664941309 -1.88130046697e-05 3.51591829129e-14">
+      <inertial pos="0.00154849942046 0.0161280254662 -0.00467190849839" mass="0.00159974377" fullinertia="1.83672484e-07 4.90897794e-08 1.53890024e-07 3.58750103e-09 -1.80136644e-09 6.82245222e-08" />
+      <joint name="middle rocker" axis="0.999643805730762 0.0266882308165752 2.57378497796465e-11" pos="-2.72131807441116e-11 1.01930651246709e-09 3.40054667529383e-09" frictionloss="0" damping="0.0001" armature="1e-07" limited="true" range="-1.67837905 0.00872664626" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+      <site name="middle_rocker_fourbar" pos="-0.000881618310218018 0.0307167237045252 -0.0120295220486823" />
+      <geom name="middle_rocker_h00" type="mesh" mesh="middle_rocker_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_rocker_h01" type="mesh" mesh="middle_rocker_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_rocker_h02" type="mesh" mesh="middle_rocker_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_rocker_h03" type="mesh" mesh="middle_rocker_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_rocker_h04" type="mesh" mesh="middle_rocker_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_rocker_h05" type="mesh" mesh="middle_rocker_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_rocker_h06" type="mesh" mesh="middle_rocker_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_rocker_h07" type="mesh" mesh="middle_rocker_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_rocker_h08" type="mesh" mesh="middle_rocker_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_rocker_h09" type="mesh" mesh="middle_rocker_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_rocker_h10" type="mesh" mesh="middle_rocker_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_rocker_h11" type="mesh" mesh="middle_rocker_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     </body>
+     <body name="middle_pip" pos="-0.00094743 0.0354873 -6.34058e-05" quat="0.999999954734 -0.000300778995436 -8.03010036315e-06 0">
+      <inertial pos="-0.00989964768149 0.00781044916149 -0.00062411298123" mass="0.0101428785" fullinertia="1.33101895e-06 1.28657707e-06 2.15350738e-06 2.43685135e-07 -6.47655529e-08 6.35463008e-08" />
+      <joint name="middle pip" axis="0.99964380573076 0.0266882308166636 1.50039655676547e-10" pos="2.34978941949745e-10 -8.80145429728534e-09 7.35567119004817e-11" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-1.3914892 0" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+      <body name="middle_dip" pos="-0.00537911 0.0328682 -3.89616e-05" quat="0.707036801173 -0.00985524725757 0.707039398269 0.00985521105729">
+       <inertial pos="0.000501097299 0.00953572603 -0.00854453916" mass="0.012855753544" fullinertia="2.1778004e-06 6.84803091e-07 2.18009165e-06 -8.66420883e-08 -2.65528369e-11 -2.46365847e-09" />
+       <joint name="middle dip" axis="-3.67335262916715e-06 -0.00118429972332025 0.99999929871009" pos="-2.14899848746449e-10 -3.05967030997575e-08 -3.62364809633991e-11" frictionloss="0" damping="0.0001" armature="1e-07" limited="true" range="-1.87209896 0.00872664626" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+       <site name="middle_dip_fourbar" pos="0.00702964487072804 0.00973793383782356 -0.0105499949179419" />
+       <geom name="middle_dip_h00" type="mesh" mesh="middle_dip_h00" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="middle_dip_h01" type="mesh" mesh="middle_dip_h01" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="middle_dip_h02" type="mesh" mesh="middle_dip_h02" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="middle_dip_h03" type="mesh" mesh="middle_dip_h03" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="middle_dip_h04" type="mesh" mesh="middle_dip_h04" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="middle_dip_h05" type="mesh" mesh="middle_dip_h05" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="middle_dip_h06" type="mesh" mesh="middle_dip_h06" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="middle_dip_h07" type="mesh" mesh="middle_dip_h07" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="middle_dip_h08" type="mesh" mesh="middle_dip_h08" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="middle_dip_h09" type="mesh" mesh="middle_dip_h09" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="middle_dip_h10" type="mesh" mesh="middle_dip_h10" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="middle_dip_h11" type="mesh" mesh="middle_dip_h11" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="middle_dip_h12" type="mesh" mesh="middle_dip_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="middle_dip_h13" type="mesh" mesh="middle_dip_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="middle_dip_h14" type="mesh" mesh="middle_dip_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="middle_dip_h15" type="mesh" mesh="middle_dip_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="middle_dip_h16" type="mesh" mesh="middle_dip_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="middle_dip_h17" type="mesh" mesh="middle_dip_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="middle_dip_h18" type="mesh" mesh="middle_dip_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="middle_dip_h19" type="mesh" mesh="middle_dip_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="middle_dip_h20" type="mesh" mesh="middle_dip_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="middle_dip_h21" type="mesh" mesh="middle_dip_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="middle_dip_h22" type="mesh" mesh="middle_dip_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="middle_dip_h23" type="mesh" mesh="middle_dip_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <site name="middle_dip_pad" pos="0.0103985353 0.023451578 -0.00851141327" zaxis="0.987677991 0.156499682 0.000189278444" size="0.002" />
+      </body>
+      <geom name="middle_pip_h00" type="mesh" mesh="middle_pip_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h01" type="mesh" mesh="middle_pip_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h02" type="mesh" mesh="middle_pip_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h03" type="mesh" mesh="middle_pip_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h04" type="mesh" mesh="middle_pip_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h05" type="mesh" mesh="middle_pip_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h06" type="mesh" mesh="middle_pip_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h07" type="mesh" mesh="middle_pip_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h08" type="mesh" mesh="middle_pip_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h09" type="mesh" mesh="middle_pip_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h10" type="mesh" mesh="middle_pip_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h11" type="mesh" mesh="middle_pip_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h12" type="mesh" mesh="middle_pip_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h13" type="mesh" mesh="middle_pip_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h14" type="mesh" mesh="middle_pip_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h15" type="mesh" mesh="middle_pip_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h16" type="mesh" mesh="middle_pip_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h17" type="mesh" mesh="middle_pip_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h18" type="mesh" mesh="middle_pip_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h19" type="mesh" mesh="middle_pip_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h20" type="mesh" mesh="middle_pip_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h21" type="mesh" mesh="middle_pip_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h22" type="mesh" mesh="middle_pip_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="middle_pip_h23" type="mesh" mesh="middle_pip_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     </body>
+     <geom name="middle_pitch_h00" type="mesh" mesh="middle_pitch_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h01" type="mesh" mesh="middle_pitch_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h02" type="mesh" mesh="middle_pitch_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h03" type="mesh" mesh="middle_pitch_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h04" type="mesh" mesh="middle_pitch_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h05" type="mesh" mesh="middle_pitch_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h06" type="mesh" mesh="middle_pitch_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h07" type="mesh" mesh="middle_pitch_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h08" type="mesh" mesh="middle_pitch_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h09" type="mesh" mesh="middle_pitch_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h10" type="mesh" mesh="middle_pitch_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h11" type="mesh" mesh="middle_pitch_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h12" type="mesh" mesh="middle_pitch_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h13" type="mesh" mesh="middle_pitch_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h14" type="mesh" mesh="middle_pitch_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h15" type="mesh" mesh="middle_pitch_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h16" type="mesh" mesh="middle_pitch_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h17" type="mesh" mesh="middle_pitch_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h18" type="mesh" mesh="middle_pitch_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h19" type="mesh" mesh="middle_pitch_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h20" type="mesh" mesh="middle_pitch_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h21" type="mesh" mesh="middle_pitch_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h22" type="mesh" mesh="middle_pitch_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h23" type="mesh" mesh="middle_pitch_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h24" type="mesh" mesh="middle_pitch_h24" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h25" type="mesh" mesh="middle_pitch_h25" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h26" type="mesh" mesh="middle_pitch_h26" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h27" type="mesh" mesh="middle_pitch_h27" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h28" type="mesh" mesh="middle_pitch_h28" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h29" type="mesh" mesh="middle_pitch_h29" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h30" type="mesh" mesh="middle_pitch_h30" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h31" type="mesh" mesh="middle_pitch_h31" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h32" type="mesh" mesh="middle_pitch_h32" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h33" type="mesh" mesh="middle_pitch_h33" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h34" type="mesh" mesh="middle_pitch_h34" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h35" type="mesh" mesh="middle_pitch_h35" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h36" type="mesh" mesh="middle_pitch_h36" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h37" type="mesh" mesh="middle_pitch_h37" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h38" type="mesh" mesh="middle_pitch_h38" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h39" type="mesh" mesh="middle_pitch_h39" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="middle_pitch_h40" type="mesh" mesh="middle_pitch_h40" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    </body>
+    <geom name="middle_abad_h00" type="mesh" mesh="middle_abad_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h01" type="mesh" mesh="middle_abad_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h02" type="mesh" mesh="middle_abad_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h03" type="mesh" mesh="middle_abad_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h04" type="mesh" mesh="middle_abad_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h05" type="mesh" mesh="middle_abad_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h06" type="mesh" mesh="middle_abad_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h07" type="mesh" mesh="middle_abad_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h08" type="mesh" mesh="middle_abad_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h09" type="mesh" mesh="middle_abad_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h10" type="mesh" mesh="middle_abad_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h11" type="mesh" mesh="middle_abad_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h12" type="mesh" mesh="middle_abad_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h13" type="mesh" mesh="middle_abad_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h14" type="mesh" mesh="middle_abad_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h15" type="mesh" mesh="middle_abad_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h16" type="mesh" mesh="middle_abad_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h17" type="mesh" mesh="middle_abad_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h18" type="mesh" mesh="middle_abad_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h19" type="mesh" mesh="middle_abad_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h20" type="mesh" mesh="middle_abad_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h21" type="mesh" mesh="middle_abad_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h22" type="mesh" mesh="middle_abad_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h23" type="mesh" mesh="middle_abad_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h24" type="mesh" mesh="middle_abad_h24" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h25" type="mesh" mesh="middle_abad_h25" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h26" type="mesh" mesh="middle_abad_h26" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h27" type="mesh" mesh="middle_abad_h27" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="middle_abad_h28" type="mesh" mesh="middle_abad_h28" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   </body>
+   <body name="ring_abad" pos="0.0281 0.08715 -0.0065" quat="0.999910947468 0 0 -0.0133453038415">
+    <inertial pos="0.000154503546187 0.0181492944782 0.00821305769713" mass="0.0348835615" fullinertia="7.25747601e-06 4.93160342e-06 4.77513242e-06 -2.07804035e-08 1.07208447e-07 2.74846362e-07" />
+    <joint name="ring abad" axis="0 0 -1" pos="-4.30422087737985e-10 1.61220426197432e-08 0" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-0.454024885 0.797518119" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+    <body name="ring_pitch" pos="0.0123682 0.0238386 -0.003" quat="0.999999601242 0.000892719880664 2.38336594949e-05 6.83157738052e-14">
+     <inertial pos="-0.0120344026 0.0219533988 0.00107474645" mass="0.031802492811" fullinertia="6.77479372e-06 2.64138693e-06 7.44353056e-06 5.71518951e-07 6.35158099e-08 -1.62812176e-07" />
+     <joint name="ring mcp" axis="0.999643805730757 0.0266882308167423 1.11704246293556e-10" pos="1.95443741348207e-10 -7.32060985022e-09 -5.00496705495823e-11" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-2.22475374 0.0409313317" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+     <body name="ring_rocker" pos="-0.0162626 0.0470916 0.00491515" quat="0.999999751547 -0.000704664941309 -1.88130046697e-05 3.51591829129e-14">
+      <inertial pos="0.00154849942046 0.0161280254662 -0.00467190849839" mass="0.00159974377" fullinertia="1.83672484e-07 4.90897794e-08 1.53890024e-07 3.58750103e-09 -1.80136644e-09 6.82245222e-08" />
+      <joint name="ring rocker" axis="0.999643805730762 0.0266882308165752 2.57380718137928e-11" pos="-2.72131785203982e-11 1.0193064291749e-09 3.40054652874103e-09" frictionloss="0" damping="0.0001" armature="1e-07" limited="true" range="-1.67837905 0.00872664626" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+      <site name="ring_rocker_fourbar" pos="-0.000881618310218014 0.0307167237045249 -0.0120295220486825" />
+      <geom name="ring_rocker_h00" type="mesh" mesh="ring_rocker_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_rocker_h01" type="mesh" mesh="ring_rocker_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_rocker_h02" type="mesh" mesh="ring_rocker_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_rocker_h03" type="mesh" mesh="ring_rocker_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_rocker_h04" type="mesh" mesh="ring_rocker_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_rocker_h05" type="mesh" mesh="ring_rocker_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_rocker_h06" type="mesh" mesh="ring_rocker_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_rocker_h07" type="mesh" mesh="ring_rocker_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_rocker_h08" type="mesh" mesh="ring_rocker_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_rocker_h09" type="mesh" mesh="ring_rocker_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_rocker_h10" type="mesh" mesh="ring_rocker_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_rocker_h11" type="mesh" mesh="ring_rocker_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     </body>
+     <body name="ring_pip" pos="-0.00094743 0.0354873 -6.34058e-05" quat="0.999999954734 -0.000300778995436 -8.03010036315e-06 0">
+      <inertial pos="-0.00989964768149 0.00781044916149 -0.00062411298123" mass="0.0101428785" fullinertia="1.33101895e-06 1.28657707e-06 2.15350738e-06 2.43685135e-07 -6.47655529e-08 6.35463008e-08" />
+      <joint name="ring pip" axis="0.99964380573076 0.0266882308166636 1.50039655676547e-10" pos="2.3497894195298e-10 -8.80145429740651e-09 7.35566095518684e-11" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-1.3914892 0" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+      <body name="ring_dip" pos="-0.00537911 0.0328682 -3.89616e-05" quat="0.707036801173 -0.00985524725757 0.707039398269 0.00985521105729">
+       <inertial pos="0.000501097299 0.00953572603 -0.00854453916" mass="0.012855753544" fullinertia="2.1778004e-06 6.84803091e-07 2.18009165e-06 -8.66420883e-08 -2.65528369e-11 -2.46365847e-09" />
+       <joint name="ring dip" axis="-3.67335262880343e-06 -0.00118429972332037 0.99999929871009" pos="-2.1489971343811e-10 -3.05967030999167e-08 -3.62364818304529e-11" frictionloss="0" damping="0.0001" armature="1e-07" limited="true" range="-1.87209896 0.00872664626" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+       <site name="ring_dip_fourbar" pos="0.00702964487072822 0.00973793383782328 -0.0105499949179419" />
+       <geom name="ring_dip_h00" type="mesh" mesh="ring_dip_h00" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="ring_dip_h01" type="mesh" mesh="ring_dip_h01" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="ring_dip_h02" type="mesh" mesh="ring_dip_h02" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="ring_dip_h03" type="mesh" mesh="ring_dip_h03" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="ring_dip_h04" type="mesh" mesh="ring_dip_h04" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="ring_dip_h05" type="mesh" mesh="ring_dip_h05" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="ring_dip_h06" type="mesh" mesh="ring_dip_h06" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="ring_dip_h07" type="mesh" mesh="ring_dip_h07" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="ring_dip_h08" type="mesh" mesh="ring_dip_h08" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="ring_dip_h09" type="mesh" mesh="ring_dip_h09" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="ring_dip_h10" type="mesh" mesh="ring_dip_h10" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="ring_dip_h11" type="mesh" mesh="ring_dip_h11" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="ring_dip_h12" type="mesh" mesh="ring_dip_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="ring_dip_h13" type="mesh" mesh="ring_dip_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="ring_dip_h14" type="mesh" mesh="ring_dip_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="ring_dip_h15" type="mesh" mesh="ring_dip_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="ring_dip_h16" type="mesh" mesh="ring_dip_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="ring_dip_h17" type="mesh" mesh="ring_dip_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="ring_dip_h18" type="mesh" mesh="ring_dip_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="ring_dip_h19" type="mesh" mesh="ring_dip_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="ring_dip_h20" type="mesh" mesh="ring_dip_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="ring_dip_h21" type="mesh" mesh="ring_dip_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="ring_dip_h22" type="mesh" mesh="ring_dip_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="ring_dip_h23" type="mesh" mesh="ring_dip_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <site name="ring_dip_pad" pos="0.0103985353 0.023451578 -0.00851141327" zaxis="0.987677991 0.156499682 0.000189278444" size="0.002" />
+      </body>
+      <geom name="ring_pip_h00" type="mesh" mesh="ring_pip_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h01" type="mesh" mesh="ring_pip_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h02" type="mesh" mesh="ring_pip_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h03" type="mesh" mesh="ring_pip_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h04" type="mesh" mesh="ring_pip_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h05" type="mesh" mesh="ring_pip_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h06" type="mesh" mesh="ring_pip_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h07" type="mesh" mesh="ring_pip_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h08" type="mesh" mesh="ring_pip_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h09" type="mesh" mesh="ring_pip_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h10" type="mesh" mesh="ring_pip_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h11" type="mesh" mesh="ring_pip_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h12" type="mesh" mesh="ring_pip_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h13" type="mesh" mesh="ring_pip_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h14" type="mesh" mesh="ring_pip_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h15" type="mesh" mesh="ring_pip_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h16" type="mesh" mesh="ring_pip_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h17" type="mesh" mesh="ring_pip_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h18" type="mesh" mesh="ring_pip_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h19" type="mesh" mesh="ring_pip_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h20" type="mesh" mesh="ring_pip_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h21" type="mesh" mesh="ring_pip_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h22" type="mesh" mesh="ring_pip_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="ring_pip_h23" type="mesh" mesh="ring_pip_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     </body>
+     <geom name="ring_pitch_h00" type="mesh" mesh="ring_pitch_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h01" type="mesh" mesh="ring_pitch_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h02" type="mesh" mesh="ring_pitch_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h03" type="mesh" mesh="ring_pitch_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h04" type="mesh" mesh="ring_pitch_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h05" type="mesh" mesh="ring_pitch_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h06" type="mesh" mesh="ring_pitch_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h07" type="mesh" mesh="ring_pitch_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h08" type="mesh" mesh="ring_pitch_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h09" type="mesh" mesh="ring_pitch_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h10" type="mesh" mesh="ring_pitch_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h11" type="mesh" mesh="ring_pitch_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h12" type="mesh" mesh="ring_pitch_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h13" type="mesh" mesh="ring_pitch_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h14" type="mesh" mesh="ring_pitch_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h15" type="mesh" mesh="ring_pitch_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h16" type="mesh" mesh="ring_pitch_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h17" type="mesh" mesh="ring_pitch_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h18" type="mesh" mesh="ring_pitch_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h19" type="mesh" mesh="ring_pitch_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h20" type="mesh" mesh="ring_pitch_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h21" type="mesh" mesh="ring_pitch_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h22" type="mesh" mesh="ring_pitch_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h23" type="mesh" mesh="ring_pitch_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h24" type="mesh" mesh="ring_pitch_h24" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h25" type="mesh" mesh="ring_pitch_h25" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h26" type="mesh" mesh="ring_pitch_h26" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h27" type="mesh" mesh="ring_pitch_h27" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h28" type="mesh" mesh="ring_pitch_h28" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h29" type="mesh" mesh="ring_pitch_h29" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h30" type="mesh" mesh="ring_pitch_h30" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h31" type="mesh" mesh="ring_pitch_h31" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h32" type="mesh" mesh="ring_pitch_h32" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h33" type="mesh" mesh="ring_pitch_h33" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h34" type="mesh" mesh="ring_pitch_h34" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h35" type="mesh" mesh="ring_pitch_h35" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h36" type="mesh" mesh="ring_pitch_h36" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h37" type="mesh" mesh="ring_pitch_h37" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h38" type="mesh" mesh="ring_pitch_h38" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h39" type="mesh" mesh="ring_pitch_h39" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="ring_pitch_h40" type="mesh" mesh="ring_pitch_h40" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    </body>
+    <geom name="ring_abad_h00" type="mesh" mesh="ring_abad_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h01" type="mesh" mesh="ring_abad_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h02" type="mesh" mesh="ring_abad_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h03" type="mesh" mesh="ring_abad_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h04" type="mesh" mesh="ring_abad_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h05" type="mesh" mesh="ring_abad_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h06" type="mesh" mesh="ring_abad_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h07" type="mesh" mesh="ring_abad_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h08" type="mesh" mesh="ring_abad_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h09" type="mesh" mesh="ring_abad_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h10" type="mesh" mesh="ring_abad_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h11" type="mesh" mesh="ring_abad_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h12" type="mesh" mesh="ring_abad_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h13" type="mesh" mesh="ring_abad_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h14" type="mesh" mesh="ring_abad_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h15" type="mesh" mesh="ring_abad_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h16" type="mesh" mesh="ring_abad_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h17" type="mesh" mesh="ring_abad_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h18" type="mesh" mesh="ring_abad_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h19" type="mesh" mesh="ring_abad_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h20" type="mesh" mesh="ring_abad_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h21" type="mesh" mesh="ring_abad_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h22" type="mesh" mesh="ring_abad_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h23" type="mesh" mesh="ring_abad_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h24" type="mesh" mesh="ring_abad_h24" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h25" type="mesh" mesh="ring_abad_h25" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h26" type="mesh" mesh="ring_abad_h26" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h27" type="mesh" mesh="ring_abad_h27" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="ring_abad_h28" type="mesh" mesh="ring_abad_h28" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   </body>
+   <body name="thumb_roll" pos="-0.0275061 0.0291595 -0.0105" quat="1.31544401599e-06 0.991444886682 0.130525999979 1.73181230656e-07">
+    <inertial pos="-0.0104211024885 -0.00988649864399 -8.11716747946e-05" mass="0.0168502405" fullinertia="2.76860357e-06 2.71122538e-06 2.70598343e-06 -3.02557919e-07 1.00435459e-07 2.05794444e-07" />
+    <joint name="thumb roll" axis="3.87799570049573e-07 0.999999999996404 2.65358979324573e-06" pos="-1.2485083289143e-08 4.67515112062877e-15 6.3129309084558e-11" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-0.00936323696 2.05389318" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+    <body name="thumb_side" pos="-0.0195022 -0.0117032 0.0095" quat="0.707105482511 0 0 -0.707108079859">
+     <inertial pos="0.0132864308159 -0.0184716105461 -0.0120625843422" mass="0.0505012404" fullinertia="8.58297497e-06 1.41463162e-05 1.90998819e-05 5.54796572e-06 -1.58985728e-07 5.7958965e-09" />
+     <joint name="thumb side" axis="-2.65358979373506e-06 -9.7476953729886e-12 -0.999999999996479" pos="6.97780581692889e-08 3.13302050678721e-08 -1.85162648338821e-13" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-0.630737519 0.8871278" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+     <body name="thumb_mp" pos="0.0399963 -0.0190516 -0.017527" quat="-0.403511350899 0.4407374251 0.557125083235 0.576663466368">
+      <inertial pos="-7.41268081398e-05 0.0189477689192 -0.0150712545368" mass="0.0290193014" fullinertia="6.23218585e-06 2.98857074e-06 5.61089361e-06 9.39146131e-07 5.68597015e-09 1.27081398e-06" />
+      <joint name="thumb mp" axis="-0.532842697526764 0.0683340763810982 0.843450718001676" pos="0.000103808207133533 4.81836129616683e-05 6.16762323105915e-05" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-1.45086967 1.5707464" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+      <body name="thumb_ip" pos="-0.00993505 0.0328877 -0.00894129" quat="0.999999107319 0.000711972465475 -9.13204704454e-05 -0.00112699501548">
+       <inertial pos="4.62589215273e-05 0.0149369264537 -0.013582052483" mass="0.0200530512" fullinertia="4.20218001e-06 2.42097327e-06 3.70017306e-06 7.29538138e-07 6.02926265e-08 9.01790897e-07" />
+       <joint name="thumb ip" axis="-0.532842673225542 0.0683340816652259 0.843450732925657" pos="0.000103693207290195 4.84570200568877e-05 6.15814270761901e-05" frictionloss="0.02" damping="0.01" armature="0.00375" limited="true" range="-1.59627958 1.43150532" solreflimit="0.002 1" solimplimit="0.99 0.999 0.001 0.5 2" solreffriction="0.002 1" solimpfriction="0.9999 0.99999 0.001 0.5 2" />
+       <geom name="thumb_ip_h00" type="mesh" mesh="thumb_ip_h00" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="thumb_ip_h01" type="mesh" mesh="thumb_ip_h01" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="thumb_ip_h02" type="mesh" mesh="thumb_ip_h02" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="thumb_ip_h03" type="mesh" mesh="thumb_ip_h03" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="thumb_ip_h04" type="mesh" mesh="thumb_ip_h04" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="thumb_ip_h05" type="mesh" mesh="thumb_ip_h05" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="thumb_ip_h06" type="mesh" mesh="thumb_ip_h06" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="thumb_ip_h07" type="mesh" mesh="thumb_ip_h07" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="thumb_ip_h08" type="mesh" mesh="thumb_ip_h08" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="thumb_ip_h09" type="mesh" mesh="thumb_ip_h09" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="thumb_ip_h10" type="mesh" mesh="thumb_ip_h10" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="thumb_ip_h11" type="mesh" mesh="thumb_ip_h11" contype="1" conaffinity="1" group="1" mass="0" condim="4" />
+       <geom name="thumb_ip_h12" type="mesh" mesh="thumb_ip_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h13" type="mesh" mesh="thumb_ip_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h14" type="mesh" mesh="thumb_ip_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h15" type="mesh" mesh="thumb_ip_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h16" type="mesh" mesh="thumb_ip_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h17" type="mesh" mesh="thumb_ip_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h18" type="mesh" mesh="thumb_ip_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h19" type="mesh" mesh="thumb_ip_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h20" type="mesh" mesh="thumb_ip_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h21" type="mesh" mesh="thumb_ip_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h22" type="mesh" mesh="thumb_ip_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h23" type="mesh" mesh="thumb_ip_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h24" type="mesh" mesh="thumb_ip_h24" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h25" type="mesh" mesh="thumb_ip_h25" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h26" type="mesh" mesh="thumb_ip_h26" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h27" type="mesh" mesh="thumb_ip_h27" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h28" type="mesh" mesh="thumb_ip_h28" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h29" type="mesh" mesh="thumb_ip_h29" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h30" type="mesh" mesh="thumb_ip_h30" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h31" type="mesh" mesh="thumb_ip_h31" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h32" type="mesh" mesh="thumb_ip_h32" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h33" type="mesh" mesh="thumb_ip_h33" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h34" type="mesh" mesh="thumb_ip_h34" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h35" type="mesh" mesh="thumb_ip_h35" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h36" type="mesh" mesh="thumb_ip_h36" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h37" type="mesh" mesh="thumb_ip_h37" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h38" type="mesh" mesh="thumb_ip_h38" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h39" type="mesh" mesh="thumb_ip_h39" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h40" type="mesh" mesh="thumb_ip_h40" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h41" type="mesh" mesh="thumb_ip_h41" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h42" type="mesh" mesh="thumb_ip_h42" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h43" type="mesh" mesh="thumb_ip_h43" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h44" type="mesh" mesh="thumb_ip_h44" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h45" type="mesh" mesh="thumb_ip_h45" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h46" type="mesh" mesh="thumb_ip_h46" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <geom name="thumb_ip_h47" type="mesh" mesh="thumb_ip_h47" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+       <site name="thumb_ip_pad" pos="0.0056158208 0.0283026284 -0.0119946702" zaxis="0.732585255 0.53574945 0.419870659" size="0.002" />
+      </body>
+      <geom name="thumb_mp_h00" type="mesh" mesh="thumb_mp_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h01" type="mesh" mesh="thumb_mp_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h02" type="mesh" mesh="thumb_mp_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h03" type="mesh" mesh="thumb_mp_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h04" type="mesh" mesh="thumb_mp_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h05" type="mesh" mesh="thumb_mp_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h06" type="mesh" mesh="thumb_mp_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h07" type="mesh" mesh="thumb_mp_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h08" type="mesh" mesh="thumb_mp_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h09" type="mesh" mesh="thumb_mp_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h10" type="mesh" mesh="thumb_mp_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h11" type="mesh" mesh="thumb_mp_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h12" type="mesh" mesh="thumb_mp_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h13" type="mesh" mesh="thumb_mp_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h14" type="mesh" mesh="thumb_mp_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h15" type="mesh" mesh="thumb_mp_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h16" type="mesh" mesh="thumb_mp_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h17" type="mesh" mesh="thumb_mp_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h18" type="mesh" mesh="thumb_mp_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h19" type="mesh" mesh="thumb_mp_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h20" type="mesh" mesh="thumb_mp_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h21" type="mesh" mesh="thumb_mp_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h22" type="mesh" mesh="thumb_mp_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h23" type="mesh" mesh="thumb_mp_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h24" type="mesh" mesh="thumb_mp_h24" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h25" type="mesh" mesh="thumb_mp_h25" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h26" type="mesh" mesh="thumb_mp_h26" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h27" type="mesh" mesh="thumb_mp_h27" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+      <geom name="thumb_mp_h28" type="mesh" mesh="thumb_mp_h28" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     </body>
+     <geom name="thumb_side_h00" type="mesh" mesh="thumb_side_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h01" type="mesh" mesh="thumb_side_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h02" type="mesh" mesh="thumb_side_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h03" type="mesh" mesh="thumb_side_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h04" type="mesh" mesh="thumb_side_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h05" type="mesh" mesh="thumb_side_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h06" type="mesh" mesh="thumb_side_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h07" type="mesh" mesh="thumb_side_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h08" type="mesh" mesh="thumb_side_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h09" type="mesh" mesh="thumb_side_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h10" type="mesh" mesh="thumb_side_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h11" type="mesh" mesh="thumb_side_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h12" type="mesh" mesh="thumb_side_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h13" type="mesh" mesh="thumb_side_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h14" type="mesh" mesh="thumb_side_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h15" type="mesh" mesh="thumb_side_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h16" type="mesh" mesh="thumb_side_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h17" type="mesh" mesh="thumb_side_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h18" type="mesh" mesh="thumb_side_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h19" type="mesh" mesh="thumb_side_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h20" type="mesh" mesh="thumb_side_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+     <geom name="thumb_side_h21" type="mesh" mesh="thumb_side_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    </body>
+    <geom name="thumb_roll_h00" type="mesh" mesh="thumb_roll_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h01" type="mesh" mesh="thumb_roll_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h02" type="mesh" mesh="thumb_roll_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h03" type="mesh" mesh="thumb_roll_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h04" type="mesh" mesh="thumb_roll_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h05" type="mesh" mesh="thumb_roll_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h06" type="mesh" mesh="thumb_roll_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h07" type="mesh" mesh="thumb_roll_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h08" type="mesh" mesh="thumb_roll_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h09" type="mesh" mesh="thumb_roll_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h10" type="mesh" mesh="thumb_roll_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h11" type="mesh" mesh="thumb_roll_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h12" type="mesh" mesh="thumb_roll_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h13" type="mesh" mesh="thumb_roll_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h14" type="mesh" mesh="thumb_roll_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h15" type="mesh" mesh="thumb_roll_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h16" type="mesh" mesh="thumb_roll_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h17" type="mesh" mesh="thumb_roll_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h18" type="mesh" mesh="thumb_roll_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h19" type="mesh" mesh="thumb_roll_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h20" type="mesh" mesh="thumb_roll_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h21" type="mesh" mesh="thumb_roll_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h22" type="mesh" mesh="thumb_roll_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h23" type="mesh" mesh="thumb_roll_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h24" type="mesh" mesh="thumb_roll_h24" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h25" type="mesh" mesh="thumb_roll_h25" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h26" type="mesh" mesh="thumb_roll_h26" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h27" type="mesh" mesh="thumb_roll_h27" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h28" type="mesh" mesh="thumb_roll_h28" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h29" type="mesh" mesh="thumb_roll_h29" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h30" type="mesh" mesh="thumb_roll_h30" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h31" type="mesh" mesh="thumb_roll_h31" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h32" type="mesh" mesh="thumb_roll_h32" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h33" type="mesh" mesh="thumb_roll_h33" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h34" type="mesh" mesh="thumb_roll_h34" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+    <geom name="thumb_roll_h35" type="mesh" mesh="thumb_roll_h35" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   </body>
+   <geom name="palm_h00" type="mesh" mesh="palm_h00" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h01" type="mesh" mesh="palm_h01" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h02" type="mesh" mesh="palm_h02" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h03" type="mesh" mesh="palm_h03" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h04" type="mesh" mesh="palm_h04" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h05" type="mesh" mesh="palm_h05" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h06" type="mesh" mesh="palm_h06" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h07" type="mesh" mesh="palm_h07" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h08" type="mesh" mesh="palm_h08" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h09" type="mesh" mesh="palm_h09" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h10" type="mesh" mesh="palm_h10" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h11" type="mesh" mesh="palm_h11" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h12" type="mesh" mesh="palm_h12" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h13" type="mesh" mesh="palm_h13" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h14" type="mesh" mesh="palm_h14" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h15" type="mesh" mesh="palm_h15" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h16" type="mesh" mesh="palm_h16" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h17" type="mesh" mesh="palm_h17" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h18" type="mesh" mesh="palm_h18" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h19" type="mesh" mesh="palm_h19" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h20" type="mesh" mesh="palm_h20" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h21" type="mesh" mesh="palm_h21" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h22" type="mesh" mesh="palm_h22" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h23" type="mesh" mesh="palm_h23" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h24" type="mesh" mesh="palm_h24" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h25" type="mesh" mesh="palm_h25" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h26" type="mesh" mesh="palm_h26" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h27" type="mesh" mesh="palm_h27" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h28" type="mesh" mesh="palm_h28" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h29" type="mesh" mesh="palm_h29" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h30" type="mesh" mesh="palm_h30" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h31" type="mesh" mesh="palm_h31" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h32" type="mesh" mesh="palm_h32" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h33" type="mesh" mesh="palm_h33" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h34" type="mesh" mesh="palm_h34" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h35" type="mesh" mesh="palm_h35" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h36" type="mesh" mesh="palm_h36" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h37" type="mesh" mesh="palm_h37" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h38" type="mesh" mesh="palm_h38" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h39" type="mesh" mesh="palm_h39" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h40" type="mesh" mesh="palm_h40" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h41" type="mesh" mesh="palm_h41" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h42" type="mesh" mesh="palm_h42" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h43" type="mesh" mesh="palm_h43" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h44" type="mesh" mesh="palm_h44" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h45" type="mesh" mesh="palm_h45" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h46" type="mesh" mesh="palm_h46" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h47" type="mesh" mesh="palm_h47" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h48" type="mesh" mesh="palm_h48" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h49" type="mesh" mesh="palm_h49" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h50" type="mesh" mesh="palm_h50" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h51" type="mesh" mesh="palm_h51" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h52" type="mesh" mesh="palm_h52" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h53" type="mesh" mesh="palm_h53" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h54" type="mesh" mesh="palm_h54" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h55" type="mesh" mesh="palm_h55" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h56" type="mesh" mesh="palm_h56" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h57" type="mesh" mesh="palm_h57" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h58" type="mesh" mesh="palm_h58" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h59" type="mesh" mesh="palm_h59" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h60" type="mesh" mesh="palm_h60" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h61" type="mesh" mesh="palm_h61" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h62" type="mesh" mesh="palm_h62" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h63" type="mesh" mesh="palm_h63" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h64" type="mesh" mesh="palm_h64" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h65" type="mesh" mesh="palm_h65" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h66" type="mesh" mesh="palm_h66" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h67" type="mesh" mesh="palm_h67" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h68" type="mesh" mesh="palm_h68" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h69" type="mesh" mesh="palm_h69" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h70" type="mesh" mesh="palm_h70" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h71" type="mesh" mesh="palm_h71" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h72" type="mesh" mesh="palm_h72" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h73" type="mesh" mesh="palm_h73" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h74" type="mesh" mesh="palm_h74" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h75" type="mesh" mesh="palm_h75" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h76" type="mesh" mesh="palm_h76" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h77" type="mesh" mesh="palm_h77" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h78" type="mesh" mesh="palm_h78" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h79" type="mesh" mesh="palm_h79" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h80" type="mesh" mesh="palm_h80" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h81" type="mesh" mesh="palm_h81" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h82" type="mesh" mesh="palm_h82" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h83" type="mesh" mesh="palm_h83" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h84" type="mesh" mesh="palm_h84" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h85" type="mesh" mesh="palm_h85" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h86" type="mesh" mesh="palm_h86" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h87" type="mesh" mesh="palm_h87" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h88" type="mesh" mesh="palm_h88" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h89" type="mesh" mesh="palm_h89" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h90" type="mesh" mesh="palm_h90" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h91" type="mesh" mesh="palm_h91" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h92" type="mesh" mesh="palm_h92" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h93" type="mesh" mesh="palm_h93" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h94" type="mesh" mesh="palm_h94" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h95" type="mesh" mesh="palm_h95" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h96" type="mesh" mesh="palm_h96" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h97" type="mesh" mesh="palm_h97" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h98" type="mesh" mesh="palm_h98" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h99" type="mesh" mesh="palm_h99" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h100" type="mesh" mesh="palm_h100" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h101" type="mesh" mesh="palm_h101" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h102" type="mesh" mesh="palm_h102" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h103" type="mesh" mesh="palm_h103" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h104" type="mesh" mesh="palm_h104" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h105" type="mesh" mesh="palm_h105" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h106" type="mesh" mesh="palm_h106" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h107" type="mesh" mesh="palm_h107" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h108" type="mesh" mesh="palm_h108" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h109" type="mesh" mesh="palm_h109" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h110" type="mesh" mesh="palm_h110" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h111" type="mesh" mesh="palm_h111" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h112" type="mesh" mesh="palm_h112" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h113" type="mesh" mesh="palm_h113" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h114" type="mesh" mesh="palm_h114" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h115" type="mesh" mesh="palm_h115" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h116" type="mesh" mesh="palm_h116" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h117" type="mesh" mesh="palm_h117" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h118" type="mesh" mesh="palm_h118" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h119" type="mesh" mesh="palm_h119" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h120" type="mesh" mesh="palm_h120" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h121" type="mesh" mesh="palm_h121" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h122" type="mesh" mesh="palm_h122" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h123" type="mesh" mesh="palm_h123" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h124" type="mesh" mesh="palm_h124" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h125" type="mesh" mesh="palm_h125" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h126" type="mesh" mesh="palm_h126" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h127" type="mesh" mesh="palm_h127" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h128" type="mesh" mesh="palm_h128" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h129" type="mesh" mesh="palm_h129" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h130" type="mesh" mesh="palm_h130" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h131" type="mesh" mesh="palm_h131" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h132" type="mesh" mesh="palm_h132" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h133" type="mesh" mesh="palm_h133" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h134" type="mesh" mesh="palm_h134" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h135" type="mesh" mesh="palm_h135" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h136" type="mesh" mesh="palm_h136" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h137" type="mesh" mesh="palm_h137" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h138" type="mesh" mesh="palm_h138" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h139" type="mesh" mesh="palm_h139" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h140" type="mesh" mesh="palm_h140" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h141" type="mesh" mesh="palm_h141" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h142" type="mesh" mesh="palm_h142" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h143" type="mesh" mesh="palm_h143" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h144" type="mesh" mesh="palm_h144" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h145" type="mesh" mesh="palm_h145" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h146" type="mesh" mesh="palm_h146" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h147" type="mesh" mesh="palm_h147" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h148" type="mesh" mesh="palm_h148" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h149" type="mesh" mesh="palm_h149" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h150" type="mesh" mesh="palm_h150" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h151" type="mesh" mesh="palm_h151" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h152" type="mesh" mesh="palm_h152" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h153" type="mesh" mesh="palm_h153" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h154" type="mesh" mesh="palm_h154" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h155" type="mesh" mesh="palm_h155" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h156" type="mesh" mesh="palm_h156" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h157" type="mesh" mesh="palm_h157" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h158" type="mesh" mesh="palm_h158" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h159" type="mesh" mesh="palm_h159" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h160" type="mesh" mesh="palm_h160" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h161" type="mesh" mesh="palm_h161" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h162" type="mesh" mesh="palm_h162" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h163" type="mesh" mesh="palm_h163" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h164" type="mesh" mesh="palm_h164" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h165" type="mesh" mesh="palm_h165" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h166" type="mesh" mesh="palm_h166" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h167" type="mesh" mesh="palm_h167" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h168" type="mesh" mesh="palm_h168" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h169" type="mesh" mesh="palm_h169" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h170" type="mesh" mesh="palm_h170" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h171" type="mesh" mesh="palm_h171" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h172" type="mesh" mesh="palm_h172" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h173" type="mesh" mesh="palm_h173" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h174" type="mesh" mesh="palm_h174" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h175" type="mesh" mesh="palm_h175" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h176" type="mesh" mesh="palm_h176" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h177" type="mesh" mesh="palm_h177" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h178" type="mesh" mesh="palm_h178" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h179" type="mesh" mesh="palm_h179" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h180" type="mesh" mesh="palm_h180" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h181" type="mesh" mesh="palm_h181" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h182" type="mesh" mesh="palm_h182" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h183" type="mesh" mesh="palm_h183" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h184" type="mesh" mesh="palm_h184" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h185" type="mesh" mesh="palm_h185" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h186" type="mesh" mesh="palm_h186" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h187" type="mesh" mesh="palm_h187" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h188" type="mesh" mesh="palm_h188" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h189" type="mesh" mesh="palm_h189" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h190" type="mesh" mesh="palm_h190" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h191" type="mesh" mesh="palm_h191" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h192" type="mesh" mesh="palm_h192" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h193" type="mesh" mesh="palm_h193" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h194" type="mesh" mesh="palm_h194" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h195" type="mesh" mesh="palm_h195" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h196" type="mesh" mesh="palm_h196" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h197" type="mesh" mesh="palm_h197" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h198" type="mesh" mesh="palm_h198" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h199" type="mesh" mesh="palm_h199" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h200" type="mesh" mesh="palm_h200" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h201" type="mesh" mesh="palm_h201" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h202" type="mesh" mesh="palm_h202" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h203" type="mesh" mesh="palm_h203" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h204" type="mesh" mesh="palm_h204" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h205" type="mesh" mesh="palm_h205" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h206" type="mesh" mesh="palm_h206" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h207" type="mesh" mesh="palm_h207" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h208" type="mesh" mesh="palm_h208" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h209" type="mesh" mesh="palm_h209" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+   <geom name="palm_h210" type="mesh" mesh="palm_h210" contype="1" conaffinity="1" group="3" mass="0" condim="3" />
+  </body>
+ </worldbody>
+ <contact>
+  <exclude body1="thumb_roll" body2="thumb_side" />
+  <exclude body1="thumb_roll" body2="thumb_mp" />
+  <exclude body1="thumb_roll" body2="thumb_ip" />
+  <exclude body1="thumb_side" body2="thumb_mp" />
+  <exclude body1="thumb_side" body2="thumb_ip" />
+  <exclude body1="thumb_mp" body2="thumb_ip" />
+  <exclude body1="index_abad" body2="index_pitch" />
+  <exclude body1="index_abad" body2="index_pip" />
+  <exclude body1="index_abad" body2="index_dip" />
+  <exclude body1="index_abad" body2="index_rocker" />
+  <exclude body1="index_pitch" body2="index_pip" />
+  <exclude body1="index_pitch" body2="index_dip" />
+  <exclude body1="index_pitch" body2="index_rocker" />
+  <exclude body1="index_pip" body2="index_dip" />
+  <exclude body1="index_pip" body2="index_rocker" />
+  <exclude body1="index_dip" body2="index_rocker" />
+  <exclude body1="middle_abad" body2="middle_pitch" />
+  <exclude body1="middle_abad" body2="middle_pip" />
+  <exclude body1="middle_abad" body2="middle_dip" />
+  <exclude body1="middle_abad" body2="middle_rocker" />
+  <exclude body1="middle_pitch" body2="middle_pip" />
+  <exclude body1="middle_pitch" body2="middle_dip" />
+  <exclude body1="middle_pitch" body2="middle_rocker" />
+  <exclude body1="middle_pip" body2="middle_dip" />
+  <exclude body1="middle_pip" body2="middle_rocker" />
+  <exclude body1="middle_dip" body2="middle_rocker" />
+  <exclude body1="ring_abad" body2="ring_pitch" />
+  <exclude body1="ring_abad" body2="ring_pip" />
+  <exclude body1="ring_abad" body2="ring_dip" />
+  <exclude body1="ring_abad" body2="ring_rocker" />
+  <exclude body1="ring_pitch" body2="ring_pip" />
+  <exclude body1="ring_pitch" body2="ring_dip" />
+  <exclude body1="ring_pitch" body2="ring_rocker" />
+  <exclude body1="ring_pip" body2="ring_dip" />
+  <exclude body1="ring_pip" body2="ring_rocker" />
+  <exclude body1="ring_dip" body2="ring_rocker" />
+ <exclude body1="palm" body2="thumb_roll" /></contact>
+ <equality>
+  <connect name="index_fourbar" site1="index_dip_fourbar" site2="index_rocker_fourbar" solref="0.002 1" solimp="0.99 0.999 0.001 0.5 2" />
+  <connect name="middle_fourbar" site1="middle_dip_fourbar" site2="middle_rocker_fourbar" solref="0.002 1" solimp="0.99 0.999 0.001 0.5 2" />
+  <connect name="ring_fourbar" site1="ring_dip_fourbar" site2="ring_rocker_fourbar" solref="0.002 1" solimp="0.99 0.999 0.001 0.5 2" />
+ </equality>
+ <custom>
+  <numeric name="taught_00" size="14" data="0.03 1.20390137 -0.691690859 0.179453822 2.0015333 -0.467809512 -0.0891219582 0.202948379 -0.337731315 -0.441829313 0.215548527 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_01" size="14" data="0.0305 1.21162563 -0.694124022 0.180034924 2.0015333 -0.466412482 -0.0876470394 0.203188007 -0.337128731 -0.439581803 0.215772736 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_02" size="14" data="0.031 1.21936616 -0.696557453 0.180615221 2.0015333 -0.465005412 -0.0861911209 0.203426309 -0.336516112 -0.437350223 0.215995675 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_03" size="14" data="0.0315 1.22712138 -0.698990366 0.181194758 2.0015333 -0.463588328 -0.0847541776 0.203663296 -0.335893486 -0.435134575 0.216217352 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_04" size="14" data="0.032 1.23488976 -0.701422013 0.181773587 2.0015333 -0.462161258 -0.0833361804 0.203898978 -0.335260878 -0.432934862 0.216437776 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_05" size="14" data="0.0325 1.24266979 -0.703851635 0.182351753 2.0015333 -0.460724227 -0.0819371019 0.204133366 -0.334618316 -0.430751085 0.216656957 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_06" size="14" data="0.033 1.25046 -0.706278502 0.182929308 2.0015333 -0.459277264 -0.080556912 0.204366471 -0.333965826 -0.428583248 0.216874905 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_07" size="14" data="0.0335 1.25825892 -0.70870189 0.183506302 2.0015333 -0.457820394 -0.0791955827 0.204598303 -0.333303436 -0.426431347 0.217091628 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_08" size="14" data="0.034 1.26606514 -0.71112109 0.184082786 2.0015333 -0.456353646 -0.0778530835 0.204828871 -0.33263117 -0.424295387 0.217307136 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_09" size="14" data="0.0345 1.27387725 -0.713535403 0.184658812 2.0015333 -0.454877045 -0.0765293852 0.205058188 -0.331949058 -0.422175365 0.217521438 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_10" size="14" data="0.035 1.28169388 -0.71594415 0.185234434 2.0015333 -0.453392272 -0.0752250206 0.205286246 -0.331250374 -0.420080955 0.217734495 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_11" size="14" data="0.0355 1.28951369 -0.718346661 0.185809704 2.0015333 -0.451915932 -0.0739286079 0.205513092 -0.330559767 -0.417986928 0.217946417 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_12" size="14" data="0.036 1.29733538 -0.720742288 0.186384675 2.0015333 -0.450429936 -0.0726508605 0.205738716 -0.329859532 -0.415908774 0.218157161 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_13" size="14" data="0.0365 1.30515768 -0.723130392 0.186959403 2.0015333 -0.448934311 -0.0713917465 0.205963126 -0.329149695 -0.41384649 0.218366734 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_14" size="14" data="0.037 1.31297934 -0.725510353 0.187533941 2.0015333 -0.447429084 -0.070151235 0.206186333 -0.328430284 -0.411800074 0.218575146 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_15" size="14" data="0.0375 1.32079915 -0.727881567 0.188108345 2.0015333 -0.445914283 -0.0689292936 0.206408346 -0.327701325 -0.409769523 0.218782405 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_16" size="14" data="0.038 1.32861594 -0.730243444 0.188682669 2.0015333 -0.444389935 -0.0677258897 0.206629174 -0.326962845 -0.407754834 0.218988521 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_17" size="14" data="0.0385 1.33642857 -0.73259541 0.189256968 2.0015333 -0.442856067 -0.0665409919 0.206848828 -0.326214872 -0.405756001 0.219193501 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_18" size="14" data="0.039 1.34423592 -0.7349369 0.189831297 2.0015333 -0.441312706 -0.0653745665 0.207067315 -0.325457435 -0.403773021 0.219397354 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_19" size="14" data="0.0395 1.3513766 -0.739597895 0.190940452 1.9995075 -0.439759881 -0.0642265804 0.207284646 -0.324690561 -0.401805887 0.219600089 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_20" size="14" data="0.04 1.35760467 -0.747319073 0.192755934 1.99481025 -0.43819762 -0.0630969984 0.20750083 -0.323914277 -0.399854594 0.219801714 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_21" size="14" data="0.0405 1.36378656 -0.754994681 0.194565805 1.99014079 -0.43662595 -0.0619857886 0.207715875 -0.323128612 -0.397919135 0.220002238 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_22" size="14" data="0.041 1.36992281 -0.762625158 0.196370289 1.98549893 -0.43507787 -0.0608697387 0.207929868 -0.322333595 -0.395999503 0.220201668 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_23" size="14" data="0.0415 1.37601398 -0.770210985 0.198169618 1.98088447 -0.433508897 -0.0597842672 0.208142669 -0.321529253 -0.39409569 0.220400013 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_24" size="14" data="0.042 1.37914544 -0.776971082 0.200186493 1.97584514 -0.431930711 -0.0587170222 0.208354357 -0.320715616 -0.392207689 0.220597281 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_25" size="14" data="0.0425 1.37914544 -0.782903237 0.202443271 1.97032271 -0.430343339 -0.0576679684 0.208564941 -0.319892712 -0.39033549 0.22079348 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_26" size="14" data="0.043 1.37914544 -0.788860535 0.204703807 1.96479297 -0.42874681 -0.0566370712 0.208774432 -0.31906057 -0.388479084 0.220988618 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_27" size="14" data="0.0435 1.37914544 -0.794841014 0.206967717 1.95925729 -0.427141151 -0.0556242929 0.208982837 -0.318219219 -0.386638462 0.221182704 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_28" size="14" data="0.044 1.37914544 -0.800842706 0.209234627 1.95371706 -0.425526391 -0.0546295986 0.209190164 -0.317368689 -0.384813612 0.221375744 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_29" size="14" data="0.0445 1.37914544 -0.806863671 0.211504185 1.9481736 -0.423902563 -0.0536529472 0.209396422 -0.316509011 -0.383004523 0.221567747 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_30" size="14" data="0.045 1.37914544 -0.812901993 0.21377605 1.94262824 -0.42226969 -0.0526943063 0.209601619 -0.315640212 -0.381211185 0.22175872 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_31" size="14" data="0.0455 1.37914544 -0.818955824 0.21604991 1.93708227 -0.420627802 -0.051753642 0.209805766 -0.314762324 -0.379433583 0.221948672 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_32" size="14" data="0.046 1.37914544 -0.82502332 0.218325462 1.93153695 -0.418976932 -0.0508309041 0.210008865 -0.313895264 -0.377653479 0.222137675 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_33" size="14" data="0.0465 1.37914544 -0.831102694 0.220602428 1.92599351 -0.417371524 -0.049884493 0.21021109 -0.313013436 -0.375900043 0.22232561 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_34" size="14" data="0.047 1.37914544 -0.837192212 0.222880549 1.92045314 -0.415725423 -0.048986098 0.210412129 -0.312122736 -0.37416225 0.222512544 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_35" size="14" data="0.0475 1.37914544 -0.843290192 0.225159584 1.91491699 -0.414070532 -0.0481054844 0.210612148 -0.311223195 -0.372440084 0.222698488 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_36" size="14" data="0.048 1.37914544 -0.849394953 0.227439308 1.90938621 -0.412406881 -0.0472426133 0.210811155 -0.310314844 -0.370733531 0.222883447 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_37" size="14" data="0.0485 1.37914544 -0.855504909 0.229719516 1.90386188 -0.410734502 -0.0463974417 0.211009156 -0.309397713 -0.369042577 0.223067428 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_38" size="14" data="0.049 1.37914544 -0.861618559 0.232000035 1.89834501 -0.409053424 -0.0455699316 0.211206161 -0.308471835 -0.367367201 0.223250441 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_39" size="14" data="0.0495 1.37914544 -0.867734375 0.234280689 1.89283666 -0.407363678 -0.0447600405 0.211402177 -0.307537239 -0.365707392 0.22343249 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_40" size="14" data="0.05 1.37914544 -0.873850938 0.236561334 1.88733777 -0.405665293 -0.0439677331 0.211597212 -0.306593959 -0.364063128 0.223613584 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_41" size="14" data="0.0505 1.37914544 -0.879966872 0.238841841 1.88184928 -0.403958307 -0.0431929544 0.21179127 -0.305642027 -0.362434391 0.223793729 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_42" size="14" data="0.051 1.37914544 -0.886080854 0.2411221 1.87637209 -0.402242742 -0.0424356775 0.211984364 -0.304681473 -0.360821165 0.223972933 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_43" size="14" data="0.0515 1.37914544 -0.892191602 0.24340201 1.87090705 -0.400580449 -0.041643138 0.212176729 -0.303712331 -0.359223429 0.224151203 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_44" size="14" data="0.052 1.37914544 -0.898297925 0.245681497 1.86545496 -0.398871564 -0.0409088646 0.212367911 -0.302734633 -0.357641164 0.224328546 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_45" size="14" data="0.0525 1.37914544 -0.904398637 0.247960491 1.86001662 -0.397154302 -0.0401919256 0.212558151 -0.301748414 -0.356074346 0.224504968 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_46" size="14" data="0.053 1.37914544 -0.910492634 0.250238947 1.85459277 -0.395428696 -0.0394922742 0.212747452 -0.300753708 -0.354522953 0.224680475 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_47" size="14" data="0.0535 1.37914544 -0.916578885 0.252516832 1.8491841 -0.393694778 -0.038809871 0.212935821 -0.299750547 -0.352986966 0.224855076 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_48" size="14" data="0.054 1.37914544 -0.922656359 0.254794125 1.84379129 -0.391952583 -0.0381446603 0.213123265 -0.298738963 -0.351466364 0.225028778 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_49" size="14" data="0.0545 1.37914544 -0.928724132 0.257070822 1.83841496 -0.390202138 -0.0374966112 0.213309795 -0.297718995 -0.34996112 0.225201584 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_50" size="14" data="0.055 1.37914544 -0.934776377 0.259345909 1.8330587 -0.388443444 -0.0368657381 0.21349542 -0.296706 -0.348463118 0.225373557 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_51" size="14" data="0.0555 1.37914544 -0.940826941 0.261622448 1.82771414 -0.386676653 -0.0362517936 0.213680133 -0.29570882 -0.346948346 0.225544704 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_52" size="14" data="0.056 1.37914544 -0.946860339 0.263897429 1.82239073 -0.384901676 -0.0356549341 0.213863954 -0.294680488 -0.345480677 0.225714874 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_53" size="14" data="0.0565 1.37914544 -0.952880674 0.266171903 1.81708603 -0.383195107 -0.0350074936 0.214047186 -0.293644029 -0.344028217 0.225884173 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_54" size="14" data="0.057 1.37914544 -0.958887257 0.268445923 1.81180047 -0.381428871 -0.0344321762 0.214229237 -0.292599478 -0.342590937 0.226052611 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_55" size="14" data="0.0575 1.37914544 -0.964879392 0.270719545 1.80653451 -0.379654697 -0.0338736975 0.214410409 -0.29154687 -0.341168817 0.226220196 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_56" size="14" data="0.058 1.37914544 -0.970856441 0.272992839 1.80128857 -0.377872618 -0.0333320162 0.214590712 -0.29048624 -0.339761826 0.22638693 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_57" size="14" data="0.0585 1.37914544 -0.976817832 0.275265885 1.79606303 -0.376082671 -0.0328070794 0.214770153 -0.289417629 -0.338369931 0.226552823 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_58" size="14" data="0.059 1.37914544 -0.982762987 0.277538769 1.79085825 -0.374284893 -0.0322988318 0.214948737 -0.288341072 -0.336993105 0.22671788 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_59" size="14" data="0.0595 1.37914544 -0.988691372 0.279811575 1.78567457 -0.372479322 -0.0318072293 0.21512647 -0.287256611 -0.335631311 0.226882105 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_60" size="14" data="0.06 1.37914544 -0.994602527 0.282084411 1.78051229 -0.370665998 -0.0313322134 0.215303361 -0.286164273 -0.334284532 0.227045505 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="taught_rows" size="1" data="61" />
+  <numeric name="taught_open" size="13" data="1.37914544 -0.994602527 0.282084411 1.57107278 -0.196133073 -0.0313322134 0.215303361 -0.111631348 -0.334284532 0.227045505 -1.04719755 -1.3962634 0.436332313" />
+  <numeric name="ring_park" size="3" data="0.436332313 -1.3962634 -1.04719755" />
+  <numeric name="pick_nest_pose" size="7" data="-0.0135383338 0.153727973 -0.079374496 0.739920187 0.300037847 0.0451901281 0.600377597" />
+  <numeric name="taught_width" size="1" data="0.04" />
+ </custom>
+</mujoco>

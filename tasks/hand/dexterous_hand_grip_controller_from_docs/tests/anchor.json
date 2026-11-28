@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "full_at": 1.0,
+ "metric": "acceptance_score",
+ "note": "acceptance_score is the acceptance's raw score: the mean over the four shifts (two hand units, two shifts each) of S = mean carry quality x (0.7 + 0.3 J), already on [0, 1]; reward = the pass conditions x acceptance_score / 1.0",
+ "source": "the oracle's own measured acceptance_score under ale validate (validate-4964e4e7): the privileged reference controller (solution/) echoes the grader's reference script on the frozen hidden set (two units, four shifts) and meets every pass condition, acceptance_score 1.0 (vendor/ale bfb7505; the untouched sandbox scored 0.0)",
+ "value": 1.0
+}
