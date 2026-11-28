@@ -504,6 +504,20 @@ class RodOracle(DropOracle):
         self._last_step = tr["step"]
         self._last_row = row.copy()
         return row
+# Torso guard (2026-11-28). The torso's first joint cannot hold the body once the second joint unfolds while the first
+# leans forward: it sags past its command (seen at 1.65 rad against a command of 1.0 on hidden shift 1256, from the ninth
+# rod on), and the Cartesian servo, which starts from the measured joints, then leaves the arm out of reach for the rest
+# of the shift. In the trace every sag began with first + second joint above 0.04 rad (0.04 to 0.31) and no posture
+# with the sum below -0.1 sagged. So the commanded lean is capped by the commanded fold: first <= -second - 0.05.
+_rod_act = RodOracle.act
+def _guarded_act(self, obs, tr):
+    row = np.asarray(_rod_act(self, obs, tr), float).copy()
+    cap = max(float(self.arm.lo[0]), -float(row[4]) - 0.05)
+    if row[3] > cap:
+        row[3] = cap; self.target_q[0] = cap
+        if getattr(self, "_last_row", None) is not None: self._last_row = row.copy()
+    return row
+RodOracle.act = _guarded_act
 # Optional local diagnostics; never reads any additional observation channel.
 import os as _os
 if _os.environ.get('ROD_TRACE'):

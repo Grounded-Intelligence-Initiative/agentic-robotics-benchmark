@@ -4,5 +4,6 @@
   "step_timeout_s": 30,
   "probe_rate": 0.01,
   "scoring_cap": 1.5,
-  "reply_wall_cap_s": 2.0
+  "reply_wall_cap_s": 2.0,
+  "probe_pass_fraction": 0.0
 }

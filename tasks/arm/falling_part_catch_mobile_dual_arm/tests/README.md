@@ -49,8 +49,8 @@ stay in the tote, so the tote fills over the shift. The shift ends early only if
 - Finger pads: friction 2.0 on the finger links (`cell_env.FINGER_FRICTION`), so that a firmly squeezed part is held without the simulator's attachment. Either hand or both may be used. The author's decisions (2026-11-26).
 - The rack (2026-11-26, the author's decision after a frontier model scored 0.79 raw against the reference's 0.90 with one
   rod hanging: the hand waited under it and the catch was timing only). Ten rods hang at once (`cell_env.RACK`, two rows
-  of five, 0.10 m pitch); each event lets go the rod at one place, drawn with the shift's hidden weights (Dirichlet 1.5,
-  rng [51, seed]); the place is refilled when the next event starts, with rods that are still hanging when the shift
+  of five, 0.10 m pitch); each event lets go the rod at one place, drawn uniformly over the ten places (rng [51, seed]; until 2026-11-28 with
+  per-shift Dirichlet 1.5 weights, which let a controller wait under the likeliest places); the place is refilled when the next event starts, with rods that are still hanging when the shift
   ends (nine more objects). A finger on any hanging rod during an event ends it (`early_touch`). The reference is told
   which rod goes (truth carries the current event's rod), which is its privilege; it waits 0.45 m below the rod's
   middle and moves by one bounded Cartesian servo step per reply (no global inverse-kinematics search), with a height
@@ -86,3 +86,19 @@ Two open problems follow, neither resolved in this folder:
   replayed answer.
 - Without the lock the task is too easy for the benchmark's guide (reward under 0.5): the rack did not make the catch
   hard for this model.
+
+## Changes of 2026-11-28 (the measurement above predates them)
+
+- Every place of the rack is equally likely to let go (see the rack note): the measured controller's strategy of
+  waiting under the likeliest places no longer has anything to learn.
+- `probe_pass_fraction` is 0 in `grader_config.json`: the match lock still probes and reports `probes_total` and
+  `probes_passed`, but no longer zeroes the reward. Reason: the probe shifts the joint readings only, and a controller
+  that sees through its cameras and commands joint targets independent of the measured joints answers both requests
+  alike without replaying anything (measured above: 0 to 1 probes passed of 29 to 40, no forbidden access in its code).
+  What the lock guards against, a replayed action stream, cannot score here anyway: the release times, the places and
+  the rods of a hidden shift are not known to the agent and the cell does not wait.
+- The reference got a torso guard (`solution/privileged/oracle.py`, end of file): the robot's first torso joint sags
+  when the commanded lean exceeds the commanded fold of the second joint, after which the arm stayed out of reach for
+  the rest of a shift (hidden shift 1256: 0.45, nine rods placed, then none). The guard caps the lean; that shift is
+  1.00 since. Anchor re-measured after both changes: 0.975 (`anchor.json`).
+- A frontier-model measurement of this version is in progress; the table above is the earlier version's.

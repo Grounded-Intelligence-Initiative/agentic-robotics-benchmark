@@ -110,9 +110,10 @@ class Cell:
             # The rack: ten rods hang under the feeder at once and nothing shows which one goes next (the author's decision
             # of 2026-11-26: with one rod hanging, the hand could wait under it and the catch was a matter of timing only).
             # Each event lets go the rod at one place of the rack; when the event is over a new rod is hung there. Which
-            # place goes is drawn with this shift's own hidden weights (some places let go more often than others).
+            # place goes is drawn anew for every event, every place equally likely: there is no favourite place to wait under
+            # (2026-11-28; with per-shift weights a frontier model kept its hand under the likeliest places and scored 0.74).
             gr = np.random.default_rng([51, seed]); S = RACK["rows"] * RACK["cols"]
-            w = gr.dirichlet([1.5] * S); seq = [int(gr.choice(S, p=w)) for _ in range(n_parts)]
+            w = np.full(S, 1.0 / S); seq = [int(gr.choice(S, p=w)) for _ in range(n_parts)]      # every place equally likely (2026-11-28)
             slot_of, hang_at, extra = {}, {}, []          # object index -> place; object index -> event at whose start it is hung (-1: from the start)
             for sl in range(S):
                 evs = [i for i, x in enumerate(seq) if x == sl]; prev = -1

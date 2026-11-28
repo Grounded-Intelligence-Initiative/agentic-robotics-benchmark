@@ -61,9 +61,9 @@ is over, a new rod is hung in the place it left, so ten always hang. Three house
 are not parts: leave them where they are.
 
 Each shift has its own constants, fixed for the whole shift and hidden: where the feeder stands, how high its plate
-is, how heavy this shift's rods are, **and how often each place of the rack lets go**: in every shift some places go
-more often than others, and a program that works this out from the first rods can have its hands in better places for
-the later ones. Which place goes next is drawn anew every time and nothing announces it. It has to be seen.
+is, how heavy this shift's rods are. **Which place of the rack lets go next is drawn anew every time, every one of the
+ten places equally likely**, and nothing announces it: there is no favourite place to wait under. It has to be seen,
+and the hand has to get there while the rod falls.
 
 A part's event ends when one of these happens:
 
