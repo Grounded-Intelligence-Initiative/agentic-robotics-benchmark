@@ -1,0 +1,9 @@
+{
+  "metric": "ring_sort_score",
+  "direction": "higher",
+  "value": 0.9444444444444445,
+  "full_at": 0.85,
+  "source": "the reference (solution/controller/controller.py) measured by `ale validate` run validate-f50dc24c with a null anchor (task v4: no simulator for the agent, 1 practice episode, survey-style document, steel-cored variants told apart only by weighing, pallet bumps, 10000-step takt), on lab hardware (lab208, Ubuntu 24.04, engine vendor/ale @ bfb7505): 136 of 144 rings sorted, 34 of 36 spindles complete, 0 damaged, over 6 hidden episodes (five fully sorted, one out of steps at 16/24)",
+  "reference_commit": "local task folder of 2026-11-27 (pre-PR)",
+  "note": "ring_sort_score = mean over the graded episodes of 0.8 * rings sorted / 24 + 0.2 * complete spindles / 6 (tests/verify.py). full_at 0.85: in development, with the grader's repeated-t probes simulated, the reference scored 0.975 over 40 v4 episodes (seeds 1300-1339; 37 fully sorted, 3 out of steps at 0.667); 0.85 of this anchor leaves room for about three such episodes in six."
+}
