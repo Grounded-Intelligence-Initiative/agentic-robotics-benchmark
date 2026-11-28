@@ -1,0 +1,1 @@
+{"reference": "PRIVILEGED v3; not image-only", "delivered": 6, "deliveries": 6, "delivered_fraction": 1.0, "success": 1.0, "steps": 159, "collisions": 0, "simulated_seconds": 168.92000000000002, "leg_1_actions": 19, "leg_2_actions": 18, "leg_3_actions": 20, "leg_4_actions": 25, "leg_5_actions": 37, "leg_6_actions": 40, "requests": 165}

@@ -1,0 +1,44 @@
+schema_version = "1.4+ale.1"
+# The service journal and final state receipt are inaccessible to the agent and restored in the fresh verifier.
+# /home/user/submission is declared only because the agent's home is otherwise absent there; nothing in it is scored.
+artifacts = ["/home/user/submission", "/var/lib/visual_robotics/state.json", "/var/lib/visual_robotics/events.jsonl"]
+
+[task]
+name = "grounded-intelligence-initiative/in_context_control_learning"
+
+[metadata]
+platform = "quadruped"
+
+[environment]
+cpus = 2
+memory_mb = 4096
+gpus = 0
+
+# The robot service's MCP bridge, which setup copies from environment/setup/payload/ into the root-owned
+# /opt/visual_robotics/client. Nothing in it depends on the working directory: Python resolves its one local import
+# (client.py) from the script's own folder, and the bridge uses only stdin, stdout and the world socket.
+[[environment.mcp_servers]]
+name = "robot"
+transport = "stdio"
+command = "/opt/venv/bin/python3"
+args = ["/opt/visual_robotics/client/mcp_stdio.py"]
+
+# Retain PR36's wall-clock envelope; there is no episode quota on direct poses, observations or recovery.
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+# Separate verification: tests/test.sh runs as root in a fresh verifier sandbox started from the task image, into which
+# the engine restores only the declared artifacts. No program the agent left in its own sandbox (the base image leaves
+# /usr/local/bin agent-writable and ahead of /usr/bin on root's PATH), no file under /home/user and no process reaches
+# the grader. setup.sh does not run there and no agent code runs: the grader replays the restored ledger against the
+# hidden scene it names (tests/hidden_scenes.json, the world model in tests/) and audits the engine's trajectory.
+[verifier]
+# The verifier may need to replay an entire six-hour uncapped interaction on the same CPU allocation.
+timeout_sec = 25200
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 2
+memory_mb = 4096
+gpus = 0

@@ -1,0 +1,1 @@
+Operate through your own direct robot MCP calls: `robot_observe`, `robot_act`, `robot_advance`, `robot_recover`. See the task instruction for the joint order, limits and milestones. The Python files here are the tool transport, not a participant programming interface.

@@ -1,0 +1,8 @@
+{
+  "metric": "milestone_fraction",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1.0,
+  "source": "Unchanged full-scale anchor: two commissioning checks, six approaches and six docks. Measured 14/14 on the final V9 physics by the first right-hand registered RGB/stdio MCP author run (3199 poses, exact replay). Its paired left-hand run parked on the runners but fell on departure. A partial is never a new denominator. The official native validation is separate.",
+  "measurements": [1.0]
+}
