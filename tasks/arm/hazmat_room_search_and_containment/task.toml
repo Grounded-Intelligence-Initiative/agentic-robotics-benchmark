@@ -1,0 +1,36 @@
+schema_version = "1.4+ale.1"
+
+# The agent leaves its controller (run.sh and what it needs) here.
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/hazmat_room_search_and_containment"
+
+[metadata]
+platform = "arm"
+
+# A MuJoCo model of a mobile manipulator in a furnished laboratory: about 3000 control steps per
+# second on one core, and 75 ms for each picture of the cart's camera (ray-cast in Python).
+[environment]
+cpus = 2
+memory_mb = 4096
+
+[agent]
+timeout_sec = 10800
+network_mode = "no-network"
+
+# Separate verification: a fresh verifier sandbox with only /home/user/submission restored.
+# 24 episodes of at most 75000 control steps each (1500 s at 50 Hz). The grader's own share is
+# about two minutes an episode; the rest is the controller's time per step (5 s deadline each,
+# tests/grader_config.json). The reference takes four to five minutes an episode here. The
+# grader stops starting episodes after 12000 s (grader_config.json, `time_budget_s`) and counts
+# the ones it did not reach as not won, so 14400 s is never reached by a controller that
+# answers within its deadlines.
+[verifier]
+timeout_sec = 14400
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 2
+memory_mb = 4096
+gpus = 0

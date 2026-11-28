@@ -1,0 +1,7 @@
+# The task image's Python dependencies, the one list (environment/Dockerfile installs it into
+# the py3.12 /opt/venv). The simulator needs MuJoCo and numpy; scipy is there for the agent.
+# The Dockerfile also installs robosuite 1.5.2 without its dependencies, for the Panda's model
+# files only (nothing imports the package).
+mujoco==3.16.0
+numpy==2.2.6
+scipy==1.15.3

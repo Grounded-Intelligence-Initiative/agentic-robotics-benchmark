@@ -1,0 +1,10 @@
+{
+  "episodes": 24,
+  "probe_rate": 0.03,
+  "probe_pass_fraction": 0.5,
+  "probe_shift_rad": 0.02,
+  "probe_shift_base": 0.01,
+  "step_timeout_s": 5,
+  "time_budget_s": 12000,
+  "scoring_cap": 1.5
+}

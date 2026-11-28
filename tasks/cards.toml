@@ -173,6 +173,12 @@ summary = "Lace pairs of children's sneakers criss-cross, box them and send them
 platforms = ["arm"]
 stages = ["behavior"]
 
+[hazmat_room_search_and_containment]
+title = "Move hazardous carriers to a store with a Panda"
+summary = "Find two or three spill-prone carriers hidden in a lab with a mobile Panda, move them to a store across the yard and put each into the vessel of its class; a trolley stands ready."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [driving_safety_supervisor]
 title = "Supervise a self-driving car for safety"
 summary = "Watch an automated car's camera and planner, let the planner drive while it is safe and take over when it is not, on hidden CARLA routes."
