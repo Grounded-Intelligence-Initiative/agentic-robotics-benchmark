@@ -1,0 +1,7 @@
+{
+  "metric": "workzone_update_success",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1.0,
+  "source": "TASL channelized single-island workzone oracle, validate-296157a2, episode grounded-intelligence-initiative.workzone_lane_map_update-oracle-c3e9c607, workzone_update_success = 1.0; ALE bfb75050aca2c54b45c5ab23bae6028a834a468a."
+}

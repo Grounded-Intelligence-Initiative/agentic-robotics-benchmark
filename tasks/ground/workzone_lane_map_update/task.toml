@@ -1,0 +1,25 @@
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/workzone_lane_map_update"
+
+[metadata]
+platform = "ground"
+
+[environment]
+cpus = 4
+memory_mb = 6144
+
+[agent]
+timeout_sec = 5400
+network_mode = "no-network"
+
+[verifier]
+environment_mode = "separate"
+timeout_sec = 300
+
+[verifier.environment]
+cpus = 2
+memory_mb = 4096
+gpus = 0
