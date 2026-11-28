@@ -1,0 +1,1390 @@
+{
+  "source": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/",
+  "files": [
+    {
+      "path": "Isaac/Environments/Simple_Room/.thumbs/256x256/.simple_room.usd.last_generated",
+      "bytes": 19,
+      "sha256": "5eb5e4ff9bfe172269671a0ae3e9e4822dd2c133bbdda5c135a6d6a16c597751"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/.thumbs/256x256/simple_room.usd.png",
+      "bytes": 80752,
+      "sha256": "28dda9165561482a84a3f98bbd0aa3fe65aa535cc9eb0b7188cbb926a3e5a1a9"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/.thumbs/simple_room.thumb.usd",
+      "bytes": 8648,
+      "sha256": "e585bd69501ee5c54d108df99f935c950b95ef075587f6ad07c0961fc5fb89d6"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/DefaultMaterial.mdl",
+      "bytes": 2851,
+      "sha256": "835f07a1da29b3f30010a7b6b317d216efa96184a4ae7ade4f2f470b5f0aff74"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/MI_Parquet_Floor.mdl",
+      "bytes": 2283,
+      "sha256": "ea0cb3434afa4975744158c89cca3de0e7f74257a40e7ce39502132f567e9446"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/MI_Table.mdl",
+      "bytes": 2329,
+      "sha256": "761114022d945ee6fae32174fe47d8fa100b33443d75488bf3458469b7d3c931"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/MI_WhitePlastic.mdl",
+      "bytes": 3199,
+      "sha256": "609cefba9e722e612c17953e8170d5b8a95276af14e068d9c06758fd67ca9c67"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/MI_WhitePlastic2.mdl",
+      "bytes": 3199,
+      "sha256": "e38a395077f99c992daa4c2aa61343cb7a11eb1ef01ed730405b920913513872"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/MI_WoodWall.mdl",
+      "bytes": 2174,
+      "sha256": "adf0a41e0b3b458fc5a1d4c15b0b4b705c4e359d657e43c0bcb94b3687a64101"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/M_Emissive_Light.mdl",
+      "bytes": 1227,
+      "sha256": "b3b2ba6d9baa069db286b12cd15db59fa3d33c63316e07ec91cd3c67123aaae8"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/M_Glass.mdl",
+      "bytes": 1532,
+      "sha256": "853a82183b0e4480d6af1b364715e8ae9f16aac0c12ba7c2f0fccfc8eb272572"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/M_Sky_Panning_Clouds2.mdl",
+      "bytes": 5566,
+      "sha256": "bb50432283024c16254d34074b5de59c66f129777b923f6515f521008bc0c093"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/DefaultMaterial_Base_Color.png.auto.png",
+      "bytes": 314,
+      "sha256": "2ca521a137103fb16672f53b2bdaf8baa518e8b362359fa3f830a045f11abb5d"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/DefaultMaterial_Mixed_AO.png.auto.png",
+      "bytes": 4379,
+      "sha256": "4ce6a103c4a3516705ec73e77627948c34126f8abf0addc6667d138036499277"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/DefaultMaterial_Normal_DirectX.png.auto.png",
+      "bytes": 7014,
+      "sha256": "d807c9b97ecc3bcfca7940676c058786fa33349f1ef03f43ba21367c6f4d9711"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/DefaultMaterial_Roughness.png.auto.png",
+      "bytes": 323,
+      "sha256": "d7af9c643e1a3484b0b6b188bb9631e5d2ea55e850112ede243e4c587eb4229c"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/Parquet_AO.png.auto.png",
+      "bytes": 1073,
+      "sha256": "266fc1cb88ece805d3fd6882fd6142dacc9cbbfe0a2b55106b3e6defbc6fd50d"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/Parquet_Color.png.auto.png",
+      "bytes": 15899,
+      "sha256": "71860beeb5b22097d68a84579b7eedb13355803ce0c887fa88993f5afa29d252"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/Parquet_Normal.png.auto.png",
+      "bytes": 1724,
+      "sha256": "2d4f193a961d0d6a5446bf6173d00d9771b7a2712bb5492376ce3668b95c73be"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/Parquet_Rough.png.auto.png",
+      "bytes": 8319,
+      "sha256": "a7c59982eda8791a46a540fe33989e6f6c9888bc809c27ea104e00d513927e45"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/T_Default_Material_Grid_M.png.auto.png",
+      "bytes": 14904,
+      "sha256": "5441fbea19fe9c8f8a307d460478f9e6a9b89922dc4851255a5855b95c1eab23"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/T_Default_Material_Grid_N.png.auto.png",
+      "bytes": 796,
+      "sha256": "f764ac162a9370ff7ec58ace7aa81ace3470d5b9bbe8563cdb2decaefae698e8"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/T_Sky_Blue.png.auto.png",
+      "bytes": 10149,
+      "sha256": "c58f9e4c1ff6a54dc1fc315cc2ba50df47295b7a46d46bc8493dc20b96f9b56a"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/T_Sky_Clouds_M.png.auto.png",
+      "bytes": 23429,
+      "sha256": "4a8bb933618d001d707dff11869503f024a8ea6c2898de449fdf8b3c37b40307"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/T_Sky_Stars.png.auto.png",
+      "bytes": 6212,
+      "sha256": "bd407c568203e1c76e4419a20c6dd17cdf271fb6a91a73b9971c2681f5ca8b78"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/WallWood_Color.png.auto.png",
+      "bytes": 14535,
+      "sha256": "e339a3f358a8656648538426b09eee2a2bd7076726036bd3ed9634d74ba7bea7"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/WallWood_Normal.png.auto.png",
+      "bytes": 7952,
+      "sha256": "5ac73314f6273c028adb00c0ff5d153359019915ddafe7556270747b669a4f1f"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/WallWood_Rough.png.auto.png",
+      "bytes": 7354,
+      "sha256": "ee99e0b8fee79cd1a6267502ec04a234d5900e9d5f3dd89fb004e5cdf88a815f"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/WhitePlastic_Color.png.auto.png",
+      "bytes": 3668,
+      "sha256": "4f67ef5817c48c04c8417f8c61e79e31c3772ac3d91fdaa8732fb733cb6587fb"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/WhitePlastic_Normal.png.auto.png",
+      "bytes": 235,
+      "sha256": "f5eb0725552f1a03ae1c921b8d5955df0fd3f10f8e700cffe2908ef7a342b193"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/138x108/WhitePlastic_Rough.png.auto.png",
+      "bytes": 9148,
+      "sha256": "69e6859ca8c2137e162db9c879fd5ea67e9c0ea25b5c825b6c502d21ac62184d"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/DefaultMaterial_Base_Color.png.auto.png",
+      "bytes": 826,
+      "sha256": "5c5f53f68dd0d8bc28657419f9a92ef2893917ea17519c1a6308caf7f8d754ae"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/DefaultMaterial_Mixed_AO.png.auto.png",
+      "bytes": 14113,
+      "sha256": "57837959391b648b5c1e963734ea3f689509718dd29d4cdfd2d79acc08f72200"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/DefaultMaterial_Normal_DirectX.png.auto.png",
+      "bytes": 25506,
+      "sha256": "f60997d5d02e226773a48bbc5ec6d500d2a3215c868aaeacfe5a443aff781578"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/DefaultMaterial_Roughness.png.auto.png",
+      "bytes": 853,
+      "sha256": "ea5ecd298b320a0b03270d9320cec337b14fa9fed3d5d42658fe1246a2a794b0"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/Parquet_AO.png.auto.png",
+      "bytes": 2041,
+      "sha256": "b50642adcc561862d26d3fa445921cfebbdb9bee71c482b7c1e0547fbe116d41"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/Parquet_Color.png.auto.png",
+      "bytes": 78089,
+      "sha256": "2088aaa46945e3f4fb1a2adf6dc9a869ad4dac238588ad7fa83ca96cde5f3fa1"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/Parquet_Normal.png.auto.png",
+      "bytes": 14435,
+      "sha256": "691ae4282a489963f6f509c63d7235878da104537bb23ce609d61a715b3bb5a0"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/Parquet_Rough.png.auto.png",
+      "bytes": 43124,
+      "sha256": "8ab0feb3ac813078c47a54d7538d10e5cb2486e6ccc55be9f915b0d0d10e2df5"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/T_Default_Material_Grid_M.png.auto.png",
+      "bytes": 93611,
+      "sha256": "17f14ff818f8300982af86cfea249c12ce95f3714dab0f619622def552b44b9f"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/T_Default_Material_Grid_N.png.auto.png",
+      "bytes": 2690,
+      "sha256": "147efe47a904b1936c5bee684928cfc7c17efa7855502c37eabf07ff15d905d6"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/T_Sky_Blue.png.auto.png",
+      "bytes": 43308,
+      "sha256": "2e4f6b909b0b2f2ef264b3d08d5588d958c70802e509d426365d7e24e8add044"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/T_Sky_Clouds_M.png.auto.png",
+      "bytes": 70654,
+      "sha256": "7358fd1049a8215e7b7c5ee89a1e7c3b2243f850eba6f7869ff52e912aa169c7"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/T_Sky_Stars.png.auto.png",
+      "bytes": 20824,
+      "sha256": "91eb2e1047a76b4aa478d80d2d47d97a103141476dedc25802158e84fbadc82f"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/WallWood_Color.png.auto.png",
+      "bytes": 77091,
+      "sha256": "391c1f99d22c093f24db7bfc5f68ee7f0b9b270d3b66d1d98f805185c64a8722"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/WallWood_Normal.png.auto.png",
+      "bytes": 50647,
+      "sha256": "a2f798b1d0aa0b0372659bdd3cd9fcb69cbd2b1527b288f320487110dbd8e7bd"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/WallWood_Rough.png.auto.png",
+      "bytes": 40258,
+      "sha256": "5ed4ef16ff3e57fae5eef8a3d3f2b0835ca417f7f49eff5284ff3d4833f9eacd"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/WhitePlastic_Color.png.auto.png",
+      "bytes": 16844,
+      "sha256": "0d03516c77e7302e18babe28924280cdb033eeb65ca907fc623ce5f44b24b958"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/WhitePlastic_Normal.png.auto.png",
+      "bytes": 660,
+      "sha256": "729fa9b29d1152e1d80127349a7ceab8d17d3d27502ac833b12eef57a04e3227"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/.thumbs/256x256/WhitePlastic_Rough.png.auto.png",
+      "bytes": 49049,
+      "sha256": "6414e317e634b202fa1ec45522894e1208def038a397552d284f3000f3e57f79"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/DefaultMaterial_Base_Color.png",
+      "bytes": 309606,
+      "sha256": "49a93f3124cc628d579ac7ad39708ef1692c642668fd9ae784264dd728069bfd"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/DefaultMaterial_Mixed_AO.png",
+      "bytes": 1110839,
+      "sha256": "1a53593fa84590c8339714c247a7b5b71bd578ce72fc0168b1e335efb0a17cd5"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/DefaultMaterial_Normal_DirectX.png",
+      "bytes": 2052839,
+      "sha256": "12aec50406cf9ba8f5c32cb27d35dd1af367433a7cd91de5d191fe0ddec57009"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/DefaultMaterial_Roughness.png",
+      "bytes": 87313,
+      "sha256": "0ab8364b5adfab4bd74ac4df359eb271595b3f0593eaf7e50ffd539b6155ad7c"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/OmniUe4Base.mdl",
+      "bytes": 8443,
+      "sha256": "505961c8fc04f949f6cd02d99b878d2eaed050873ec6af8987d2656167878373"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/OmniUe4Function.mdl",
+      "bytes": 46370,
+      "sha256": "4afd5f8cbee83e8f9a4520409917b2b72fcb5cbc48ade66580b8453c4a2c1726"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/OmniUe4Translucent.mdl",
+      "bytes": 8088,
+      "sha256": "a3a9ebf29ab9752f6fa91c68de85d8be8cce88a9fb5ce9fa5132562dc132ed0b"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/Parquet_AO.png",
+      "bytes": 100361,
+      "sha256": "8917fc3f37e3e5985823f01339d5009eb2094ba3156f6f1326cd3ada0e9836c3"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/Parquet_Color.png",
+      "bytes": 17770200,
+      "sha256": "c67a4b0c0d77134cbe667af01b81861b5c157a738d7659fb3d348dabc204fe2f"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/Parquet_Normal.png",
+      "bytes": 9157075,
+      "sha256": "ef2d766ab27ff02e3b519a9438746d94264dc130bdc23f6ddddd89fed57e8c81"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/Parquet_Rough.png",
+      "bytes": 7945746,
+      "sha256": "dd7abcbf1627299aaddc730f4399683a51dbae4dca8180e683d71e4533d67b96"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/T_Default_Material_Grid_M.png",
+      "bytes": 239549,
+      "sha256": "9311e9d988b3fe8d40b672b80423877892a75fac45e12dd829cd8c58cc3fbc2f"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/T_Default_Material_Grid_N.png",
+      "bytes": 5059,
+      "sha256": "0bc4af8129e4903b101ad10870f3036943668e96656b4eb60b4393557eea8b27"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/T_Sky_Blue.png",
+      "bytes": 17235134,
+      "sha256": "ceec1505a409b50b4b28ee6aaec027bcbd7ad05613dffb03b529325adc924c21"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/T_Sky_Clouds_M.png",
+      "bytes": 2810867,
+      "sha256": "8b702356fefb468719b7855dbac493674bba2572b1568ffabd680173c3e16f43"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/T_Sky_Stars.png",
+      "bytes": 43597,
+      "sha256": "f488c9b086a5cd1989aacbf631474c1bf0b3b96b62b0b0abd1a16cbd4e99822b"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/WallWood_Color.png",
+      "bytes": 22115990,
+      "sha256": "5890ba4255bf7ce41465c5ec8131d02aa04853480ceafa99dbee2106bdc15906"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/WallWood_Normal.png",
+      "bytes": 11588550,
+      "sha256": "9082f2f18db24a5e9d92282aab6b01c930d9d1d1d97825540e7cb7465f561b94"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/WallWood_Rough.png",
+      "bytes": 7578363,
+      "sha256": "52246dd49107cec33307654ae1021b88cd65af53069b9e235f703aa34f90be7b"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/WhitePlastic_Color.png",
+      "bytes": 4639472,
+      "sha256": "f1705e778fe56e1b22f86d7e4fb8e12def7e5e0a1c053be46db5100fec093861"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/WhitePlastic_Normal.png",
+      "bytes": 304449,
+      "sha256": "67eac4ffbea3538fcf40a44c63abfa432517c78895c5537396dea7b87cca7f7c"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/Textures/WhitePlastic_Rough.png",
+      "bytes": 8055045,
+      "sha256": "9f94f83edcfb93a03f79df531db6f5237fceb20eacee46c0cb8c07c1ed66c86e"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Materials/WorldGridMaterial.mdl",
+      "bytes": 2853,
+      "sha256": "052fa93c3dbab98fab623e559210cb11371759e87960ea269c44995c678616d6"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/SM_SkySphere.usd",
+      "bytes": 115944,
+      "sha256": "abe83ba86cdcc0177d175b07fda332ddf9c096a90830f02cdc486cb6c8c6cec0"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/SM_Template_Map_Floor.usd",
+      "bytes": 6736,
+      "sha256": "b8d3270214b18310c3c435a729008f9bb35f48044a0a1b0dfe2c7ecdf62fa867"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_bottom.usd",
+      "bytes": 26249,
+      "sha256": "ce3040786d1f8857a451017ebe76d9a238b51748466f2fdad5d7c78ced1ccb7e"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_back.usd",
+      "bytes": 8948,
+      "sha256": "b3b4b229068e9013c2c51cceac6dd4e1c84263c2d262a51f19f92910895581bf"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_back001.usd",
+      "bytes": 8967,
+      "sha256": "999a8b261edbfe4bf8ba589aa3205e0e4b50668a63e8e789bb2548e65613e869"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_corner.usd",
+      "bytes": 16679,
+      "sha256": "11fe9c1a0d73be0d6cf25d1d22203e5b4842cc487e76a1d2eb58b5c19d9f3d0e"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_corner001.usd",
+      "bytes": 16716,
+      "sha256": "59f8979fb9fb22918af767b52719724550f8958052bddd41dc83ba6f76f61c59"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_corner002.usd",
+      "bytes": 16700,
+      "sha256": "5d752d746d7f9f1d9a4b12aec4dd8400032715054b8dfd20829fe1fba54c33ae"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_corner003.usd",
+      "bytes": 16716,
+      "sha256": "6ed68c8eb896024178ac7984189a20da3fb0e99dad1e2938f5e017dbf03c0f4c"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_corner004.usd",
+      "bytes": 16700,
+      "sha256": "298951d67ac6a9775af7c171fe978285d1df508f9cda8ece63904ea7ff3cf2c8"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_corner005.usd",
+      "bytes": 16700,
+      "sha256": "733dbb01657cbbca74727d0e9bbdf3d4d045f68cd6e96b75054150c00a8bc11c"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_corner006.usd",
+      "bytes": 16708,
+      "sha256": "31b7b607d62d1f42dffe5c3c0058acc6ff045fda5b55c051cd1e7b1eceb980cb"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_corner007.usd",
+      "bytes": 16700,
+      "sha256": "8879af8e3cbcb25986a64a5d85ee9e19bd34a07975ae96cee8d0f48bab25649c"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_front_center.usd",
+      "bytes": 8795,
+      "sha256": "3d35dfcd9784bddc6132c678eda53af1175d268f48d44e074791d73160f8eb80"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_front_center001.usd",
+      "bytes": 8782,
+      "sha256": "9e71ac54120e878fdc34ad92a47fa9f288058cef1deb406ae6aaa92d6f3d5d84"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_front_center_side.usd",
+      "bytes": 8880,
+      "sha256": "9da6f7bb40357cceaea8ec016d98fa57484e5d6b9a4ad3e2b022e4fe89a9451c"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_front_center_side001.usd",
+      "bytes": 8972,
+      "sha256": "764b36d6a9c67152e08f626eddc589dccc48702ac9f2d60a722e908b04840e67"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_front_center_side002.usd",
+      "bytes": 8883,
+      "sha256": "ea25bcc8069843346003d58b15b84c1423ee80bd620ad6ea1697534d62c51a58"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_front_center_side003.usd",
+      "bytes": 8867,
+      "sha256": "0e0d549c9886f0aa1cf52ff9679baf27aa46de74fa581227cc1d119022105e9f"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_side.usd",
+      "bytes": 8956,
+      "sha256": "8409dbf19a28b2906dd21bf69489aed82e5d6be8a4937089c7727bf715e5686d"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_side001.usd",
+      "bytes": 8967,
+      "sha256": "13702666e354a8b12838b68fb1081678bb8d27895a04e613fc6c53d0794935d3"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_side002.usd",
+      "bytes": 8975,
+      "sha256": "33898a0a24cb2bf5a629dc38ae45d9d06f18fba622feb9367d640da0e422de63"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_rim_side003.usd",
+      "bytes": 8959,
+      "sha256": "6ad97b3d8bb8dfecfe13ba68ea266cfacb94c5c31139020db018fd31b7955ff5"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_floor_top.usd",
+      "bytes": 26246,
+      "sha256": "caedc7085099d471ca49a493caa2a72c5a29d0927c474735a701407784083dfb"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_florr_edge.usd",
+      "bytes": 56001,
+      "sha256": "e57aa49c550180f1ff4e3f7e7b9f730a89e6448c51cd8c61865f0cdb6526d612"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_florr_edge001.usd",
+      "bytes": 55884,
+      "sha256": "31f7baea39c4bd756d74cfd5bff7987c171f046ae9fa320646afe4ad8e40b937"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_lamp.usd",
+      "bytes": 22161,
+      "sha256": "503097e56f3e6a77a3486abc7f7fbc2a599d2f7db62fa385b31d2f1b54afd90a"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_lamp_frame.usd",
+      "bytes": 68027,
+      "sha256": "9122ba9284819e6f9a1bcd00156052e6df9051b2ba1cc9afd4a72d5885aaf9e4"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wall_back.usd",
+      "bytes": 22962,
+      "sha256": "8b58adb916996fbbe133b1f7f7251003731d8ceeb72beae517a21db2c0b220d8"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wall_back001.usd",
+      "bytes": 22934,
+      "sha256": "ded79cc3e3a486025c877aa50c44ff5b0d6e6cfe2ec892ed131dea9c36affd8b"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wall_corner.usd",
+      "bytes": 29116,
+      "sha256": "c64d5ad8d6768809534274ab2e25f950d297407cdb8061deb76af592edee3a30"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wall_corner001.usd",
+      "bytes": 29184,
+      "sha256": "847f83fc78eb643c338f504fe34eed6394803bc8dadcf37c591609937b832aae"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wall_corner002.usd",
+      "bytes": 29159,
+      "sha256": "37f1ceeb3131222db6b977778f3398113b8e386ea0f144495d55ef54cb52d1a1"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wall_corner003.usd",
+      "bytes": 29159,
+      "sha256": "2e1b699e9092a71d2371a0c7157e508fefc40e4478ad496f48f107db06226b86"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wall_side.usd",
+      "bytes": 22382,
+      "sha256": "4b1fdee552ef2648e4ee1e655073827b74dabbbbdc094d3043350197f68c037b"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wall_side001.usd",
+      "bytes": 22393,
+      "sha256": "28f8fe5a708c43436d343c02bfe4b92bef3ef06dc8171eaef7dfe5c328b2809b"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_window.usd",
+      "bytes": 1721,
+      "sha256": "a06c0bc385bd7db6ad0fd170a55d128e1aa4e315cc0e4f8885e8fb3c25fb72bb"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_window1.usd",
+      "bytes": 1729,
+      "sha256": "d6e716d454f91afb7767dc533ecefaf3e3374749685e817bc86765edb7ca380b"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_window_frame_bottom001.usd",
+      "bytes": 15067,
+      "sha256": "63d2cb4a5e1ce45a2e17231ee8198f69c5bf45a298fe3dc0784f449935157e52"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_window_frame_bottom002.usd",
+      "bytes": 15075,
+      "sha256": "88adedfb2e3eb9c05cb39d5d4af1b9f239503bde024da9fc58ce37f0c56c444e"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_window_frame_corner002.usd",
+      "bytes": 31362,
+      "sha256": "80c4dbd002404ffd68fcfec9de3d543946272fba3469c28e3e84787468753cd2"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_window_frame_corner004.usd",
+      "bytes": 31450,
+      "sha256": "8a85144c2d9187c869cbb0ee2d6e9d97f879635368a4ffa2f0ec0c74e5b621d9"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_window_frame_corner005.usd",
+      "bytes": 31362,
+      "sha256": "723180754edc131dae15b9d5cae17ef3ba38c126acb502d196308ff3130c8bb6"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_window_frame_corner006.usd",
+      "bytes": 31450,
+      "sha256": "cdd9dd8e71d69183b88e3873fe08a5b9192945d79b0bb5721a0a74637416cf21"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_window_frame_side001.usd",
+      "bytes": 15428,
+      "sha256": "abdc91d02c0725d791fd2be9ae577cd08bf9a0cd435c794eb9cf541b01067f85"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_window_frame_side002.usd",
+      "bytes": 15484,
+      "sha256": "c690893f18e6fb3c44330e844ef2dea5317b559d61cbb14448ebbebd010ac33f"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wood_wall_008.usd",
+      "bytes": 3717,
+      "sha256": "0271ad2bb5d5b02f18ebf2e2cb8253c6d736268ca23a5d61207617cd7ab1b099"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wood_wall_009.usd",
+      "bytes": 3717,
+      "sha256": "4f8b6153dd9aaae6304af6beedee0a1dd6374fe030ec2cb74e1bfd346e623fe1"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wood_wall_1.usd",
+      "bytes": 3915,
+      "sha256": "07163f6f447fcf2246957741952c208fa583315661d84f41cebc7df30dd60c7d"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wood_wall_2.usd",
+      "bytes": 3915,
+      "sha256": "08f07cb39f2edb66dca88398b1d24362303769be15de8887a987ef73b7f64b94"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wood_wall_3.usd",
+      "bytes": 3915,
+      "sha256": "5a08e8d53266777187fd6896043af08c646c9dd1ce04e88563c25328657b004f"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wood_wall_4.usd",
+      "bytes": 3915,
+      "sha256": "881dd5b1f45927e649effc4198992012bd71855db5a838ffaf96637e71c4a756"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wood_wall_5.usd",
+      "bytes": 3915,
+      "sha256": "843cd959fed49113e64a88d40b8cd275f077973dd7b7d7838bd11d9907924bb8"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wood_wall_6.usd",
+      "bytes": 3723,
+      "sha256": "bdc3fff675b8b7b88280fa62e6d07edc694f193c654aee88e49bf23de97418b9"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/Towel_Room01_wood_wall_7.usd",
+      "bytes": 3723,
+      "sha256": "624dc2c473c759830d6fcc9ccc7e6fc766b25a42868972def5bac0c0504489b2"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/Props/table_low.usd",
+      "bytes": 105767,
+      "sha256": "9843b47c308706a3e17543910285d75d841fa095571e1096ea5c1324e42702bc"
+    },
+    {
+      "path": "Isaac/Environments/Simple_Room/simple_room.usd",
+      "bytes": 1630266,
+      "sha256": "6a1f66ad8ff255db16b35de7a5a5b5c40f3acb257b8504ab23562fe95660db4d"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/002_master_chef_can.thumb.usd",
+      "bytes": 3156,
+      "sha256": "95059f11bb1afdf695a64bdd403b4de1ead7228f18bcc1357aea742faea0e95f"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/003_cracker_box.thumb.usd",
+      "bytes": 3151,
+      "sha256": "0e147823dbd46ceb2eebf40f5e7ae5c29d6bc11b1efbcfba733de5ac8d0e18c7"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/004_sugar_box.thumb.usd",
+      "bytes": 3149,
+      "sha256": "ac920b6a589cd90d8c9424c1b146489703bbe8000025d8fd7b99d8286e3a3d32"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/005_tomato_soup_can.thumb.usd",
+      "bytes": 3156,
+      "sha256": "77b30a5f3f4d3f924aed742aae51ddad945a60121050f3b3d9a2ca4fc83fd422"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/006_mustard_bottle.thumb.usd",
+      "bytes": 3154,
+      "sha256": "e660bcf89b2d2a464c519b136eddc2ed9d471ce6f9790eecda35b5b734dbeb6b"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/007_tuna_fish_can.thumb.usd",
+      "bytes": 3154,
+      "sha256": "7c8ac287bc05824eac1f7d460d581a37f18e15f83e81bf7632650dede8f35cd8"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/008_pudding_box.thumb.usd",
+      "bytes": 3150,
+      "sha256": "f5bb94260c244745863008fdb0c9472e7923fdf3648d299f1f164c530843aea4"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/009_gelatin_box.thumb.usd",
+      "bytes": 3152,
+      "sha256": "c7daaba5835e078423f87c48e3f4299994e6ca6bb8dc11c836f7c9683fc511e3"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/010_potted_meat_can.thumb.usd",
+      "bytes": 3156,
+      "sha256": "d0cf51d7c4582f31eaa45ee3c288b2fc11ac91b0962b90cd647a44b166e71715"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/011_banana.thumb.usd",
+      "bytes": 3146,
+      "sha256": "136d11b410a8db0d7c83cd81496369786a6480f1241b0f59e4ee12a6891318a6"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/019_pitcher_base.thumb.usd",
+      "bytes": 3153,
+      "sha256": "7a2eb264f04aaabf6e17852e4a194f9d39d50c6a028d2c4fafdaadd10329e47a"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/021_bleach_cleanser.thumb.usd",
+      "bytes": 3156,
+      "sha256": "3021022da263cd735f7aea0410ac4769f573be9efa2852bb1ef536ff081de51f"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/024_bowl.thumb.usd",
+      "bytes": 3144,
+      "sha256": "94c1b3d36dbfd3604b53bf75e265fb483486a343865e6baed6698d2c508b3892"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/025_mug.thumb.usd",
+      "bytes": 3143,
+      "sha256": "2a91d3cc03047fc88e93eb331934c8d5e50187b97f4bfc7f98af0f54a3a862d5"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/035_power_drill.thumb.usd",
+      "bytes": 3151,
+      "sha256": "92012b08ec2d626605a07e8571cc07e8d8145d740a0e09d79734bedce942ebbc"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/036_wood_block.thumb.usd",
+      "bytes": 3150,
+      "sha256": "3ba24e54df7ead0a4716a87051811c69fac1d513c004d222f3ec8f67fb945a6c"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/037_scissors.thumb.usd",
+      "bytes": 3148,
+      "sha256": "c882e0ac278178ddf30dd226798721532be362ae3a7e87433e9a1c18910cc810"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/040_large_marker.thumb.usd",
+      "bytes": 3152,
+      "sha256": "1a3deff52087878ce7401be5bcaa076a9f54267b237a744e6b5110505143abc7"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/051_large_clamp.thumb.usd",
+      "bytes": 3150,
+      "sha256": "718629e6751020525ab41c02c8d286a6514fc198fdd01f6bbd6fac72686b16fc"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/052_extra_large_clamp.thumb.usd",
+      "bytes": 3158,
+      "sha256": "6296778ba2010fedcf85ad3cd518ae54b129f3f1209b463c0cfeac0013915deb"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/061_foam_brick.thumb.usd",
+      "bytes": 3150,
+      "sha256": "3b54c6c8329ac407926cdcfd786b6b1bd90e149cd558a5176f9dcc0d5e0ae9ce"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.002_master_chef_can.usd.last_generated",
+      "bytes": 19,
+      "sha256": "3ccda9db7609d173517cc73ebdbcfa4ff2e93a44450e50d0727c348d32a1ce93"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.003_cracker_box.usd.last_generated",
+      "bytes": 19,
+      "sha256": "74f900be50305c5a17bc04c06344c5caad8d4c3f4aa82cf5188aea92c14d5745"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.004_sugar_box.usd.last_generated",
+      "bytes": 19,
+      "sha256": "fbf051fe7ec5b6a737dce266797aa23799548e69d1813705126e7557330fe7ab"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.005_tomato_soup_can.usd.last_generated",
+      "bytes": 19,
+      "sha256": "79fe68b83d088c81f9198154db78c3a57e795c808b54e44080f506840ed8ef8d"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.006_mustard_bottle.usd.last_generated",
+      "bytes": 19,
+      "sha256": "416fa4916b7de954f535b98d1757d704fc32eba635b1fa9ceb0cf2fb63a1eca6"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.007_tuna_fish_can.usd.last_generated",
+      "bytes": 19,
+      "sha256": "e1ae90758ff814b07f799c03e33add779f34023c19435837b60166dec6ce1a08"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.008_pudding_box.usd.last_generated",
+      "bytes": 19,
+      "sha256": "ac7c57215e5eb860b72d26c46abfa94ff3800438b9eda2d193b4e7b69b644925"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.009_gelatin_box.usd.last_generated",
+      "bytes": 19,
+      "sha256": "632c3517ee215f3be9dbdca1131be9581e4765f8daf1816d616046aea67be490"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.010_potted_meat_can.usd.last_generated",
+      "bytes": 19,
+      "sha256": "b3084ea58c1dae485fc768fbdeb1a7a747039bdd5a087ebe93d8a48b7436942a"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.011_banana.usd.last_generated",
+      "bytes": 19,
+      "sha256": "5a1fb88d3e35df4f3d979f80ecd3c93f61819faa108d7ecd762bc59a2e19e061"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.019_pitcher_base.usd.last_generated",
+      "bytes": 19,
+      "sha256": "2a6c35f445ac5497baa543ee667a75717b8a0b7ff45139d45cb695e78025dc96"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.021_bleach_cleanser.usd.last_generated",
+      "bytes": 19,
+      "sha256": "d414577366921412f513fce67efcc82657a51c13f6dcb5da8536fb28c8a2d1d1"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.024_bowl.usd.last_generated",
+      "bytes": 19,
+      "sha256": "b264bee31742c89105f012f13180bc3c65df6c76d1ba834eab036193f4bea779"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.025_mug.usd.last_generated",
+      "bytes": 19,
+      "sha256": "07306c0983cb8971b4d3f1a5d1bbe88abbdd974f4862f5e825b1e46397ebfbf1"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.035_power_drill.usd.last_generated",
+      "bytes": 19,
+      "sha256": "bd5492631973a46360ee673fe53f5fbab2fae0559850e11528fe9295bef6d854"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.036_wood_block.usd.last_generated",
+      "bytes": 19,
+      "sha256": "b8b5def0f047277ff362b61ea27965a25d5dc75585880c1e7a1a00e657944fc3"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.037_scissors.usd.last_generated",
+      "bytes": 19,
+      "sha256": "840eac05b832b8f50cbbdd18fc47e369225ec606761ae5b6cb37b88b93c2a2e9"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.040_large_marker.usd.last_generated",
+      "bytes": 19,
+      "sha256": "b78242ac35a0b88b608cef9d867657f8962d5d222cff144b4a58db12a82acd82"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.051_large_clamp.usd.last_generated",
+      "bytes": 19,
+      "sha256": "7d177ad5fb77adb4bc6b1708d7343fe661f15918a10fc2eb00060f1c4e93252b"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.052_extra_large_clamp.usd.last_generated",
+      "bytes": 19,
+      "sha256": "62490668fb0e5e836144fe79651bbf87363df46a3ea6072cc3d8033fc3b8aea0"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/.061_foam_brick.usd.last_generated",
+      "bytes": 19,
+      "sha256": "aa4f1f3a935ffce0195047a2f96cdd1aad399bc23b3176fc4896f3a3027b33ce"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/002_master_chef_can.usd.png",
+      "bytes": 77557,
+      "sha256": "c6e84329741dc7b05b91717daf043e12e8ea639e5b9a549f4503fa2b50023ad5"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/003_cracker_box.usd.png",
+      "bytes": 80414,
+      "sha256": "5b6296b4e3d2f6cfe51b06b0f4da5f2ef4859d2fbb3dc165e365f229eb127187"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/004_sugar_box.usd.png",
+      "bytes": 71187,
+      "sha256": "78868369a8147dbb3d7ad97923555ad0d6d8236a744c6742a421589c752f98b6"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/005_tomato_soup_can.usd.png",
+      "bytes": 77219,
+      "sha256": "604ec92b2fd3bf9d126720940747c593509ce896a8ad23a2702d7a78b6c307bb"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/006_mustard_bottle.usd.png",
+      "bytes": 69718,
+      "sha256": "a58d97c0e9ba36a979aac66dfb82c21aadf01fdcfd875da6bf3ba66910c73f22"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/007_tuna_fish_can.usd.png",
+      "bytes": 75191,
+      "sha256": "6e6b7c90561f35a3dbf043fcbda4e4c78551c0d52935c73ff9002c94416cd218"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/008_pudding_box.usd.png",
+      "bytes": 85078,
+      "sha256": "fadbe4cd06ea9b73386298203dfa8c381f47b9e0fb08e165e1493afca89828c5"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/009_gelatin_box.usd.png",
+      "bytes": 85050,
+      "sha256": "ed57ab548473ec28be8e2174cdc72aa9ac3652c3d8879fad525622aa83a4ff32"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/010_potted_meat_can.usd.png",
+      "bytes": 85317,
+      "sha256": "24823ef4020f7d8a390d9eb47883ea4c43dbb8d1e78b6dc28c2a78c61a13485d"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/011_banana.usd.png",
+      "bytes": 64117,
+      "sha256": "115e6a723e0c7655b57e2e84eab0f86e21d9f56194474c27a04dbae872b515d5"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/019_pitcher_base.usd.png",
+      "bytes": 68547,
+      "sha256": "546ead55cf9f330444b4c13882365239a474f65cccb84546d705077cbf0e3d0d"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/021_bleach_cleanser.usd.png",
+      "bytes": 65111,
+      "sha256": "3cca4e952fe216626b35e422490462e314b40f20ec2c7eea3c8de12291f9830e"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/024_bowl.usd.png",
+      "bytes": 67779,
+      "sha256": "0829ef8ef02e373a12b72748559e600389f43c03047c8a0bbb4e4b0e420a200b"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/025_mug.usd.png",
+      "bytes": 74206,
+      "sha256": "0c467c86cfa12295bc054ffbac1c38cdbf6cb713ec4562da0ee3cd9724b3d10f"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/035_power_drill.usd.png",
+      "bytes": 74526,
+      "sha256": "f269a7e638f1991b24b89af76176349ca031a857f833487c95df18e482a3e5db"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/036_wood_block.usd.png",
+      "bytes": 75347,
+      "sha256": "2f0b5606955816156290933764c4d2d8accaf5bf3db36bb46539370f7ba7761c"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/037_scissors.usd.png",
+      "bytes": 64824,
+      "sha256": "60885b806078c6c6c9735625332abcb634653db036ee1147de9d275204c6f2b9"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/040_large_marker.usd.png",
+      "bytes": 68753,
+      "sha256": "eb6b252406e8ec4b5c870d4b44201469c50c3b806fd5c4d07e30936c27a0495f"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/051_large_clamp.usd.png",
+      "bytes": 63872,
+      "sha256": "7b4303ea7918be6b4fa985c89c31c0a3704ffb299bf1b5a1fae98afdaf3d4659"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/052_extra_large_clamp.usd.png",
+      "bytes": 62107,
+      "sha256": "25c429e082e21af0dd37e99862ba17a6b1d49cc1cbe46c07eafaa55cacc8b681"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/.thumbs/256x256/061_foam_brick.usd.png",
+      "bytes": 63450,
+      "sha256": "454603698013330c3f0c38cc12c39857eb6a3af71d8d01cddd8aba1033915cab"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/002_master_chef_can.usd",
+      "bytes": 628309,
+      "sha256": "f5bd7d98fb23d777b0aa4710bcc93d3077b8e06cefaafe5863b11eb23f2c4175"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/003_cracker_box.usd",
+      "bytes": 460489,
+      "sha256": "2d3725fd7f47e6064cdfdd19553e49f5de6df5f1afcbcceb43466d57847b479d"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/004_sugar_box.usd",
+      "bytes": 459153,
+      "sha256": "abbf30b1b20585ba36f677c744a4dd7500d84b6fa77e5bd720e9e56bcc0e5201"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/005_tomato_soup_can.usd",
+      "bytes": 467128,
+      "sha256": "e16f7533402d465535042d8ddf3a8e401b4e3c1821d34c6e5cb8993e13d5381e"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/006_mustard_bottle.usd",
+      "bytes": 458920,
+      "sha256": "cf833351d1a4ad5c3a1861536cb2192f4a5cf12e6cf80bd08609be2f0aec7a48"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/007_tuna_fish_can.usd",
+      "bytes": 458117,
+      "sha256": "da22c2bec9851089ef8d3047515e2b36e22d685290c5ec6f319206f338c4a90b"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/008_pudding_box.usd",
+      "bytes": 460744,
+      "sha256": "e833edb71290afc24a4bea5ffc06714b5b07b26242d315dd796c001e6ea7b9b2"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/009_gelatin_box.usd",
+      "bytes": 460834,
+      "sha256": "c2d00f6051d7212f9d8c627e12362786aa172ba2bc798688a7ff162cb19a19c6"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/010_potted_meat_can.usd",
+      "bytes": 464493,
+      "sha256": "50472367ec0e026b2fb0372da279ef6f6f354225c4eb84a76fad307f132d8ada"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/011_banana.usd",
+      "bytes": 458028,
+      "sha256": "d4d1fa7af05967365cd538824ac68401111c574865a7fba7bc76d861f54f25dd"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/019_pitcher_base.usd",
+      "bytes": 467001,
+      "sha256": "369dff6efbbdadc86703e478dedd8cfe2467cefacb25bd69f8f8b7826eba753f"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/021_bleach_cleanser.usd",
+      "bytes": 457749,
+      "sha256": "46e71250bb9574c7b3cad9a99864a78d6b59931365dfad26c90428629b5860a7"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/024_bowl.usd",
+      "bytes": 461034,
+      "sha256": "fecb8efd02ec874af57fb3a4559b9be9cfb5c6af9094069e4b1ca6d71bbda154"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/025_mug.usd",
+      "bytes": 556368,
+      "sha256": "923c7034200de93a233ea3a223e90e032336342ec6974c47223cefa1ed8d88c3"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/035_power_drill.usd",
+      "bytes": 484104,
+      "sha256": "56b3e2147385c4c9b97c66c50650190875684c00c1c2a2cf0b521f72e9ed213e"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/036_wood_block.usd",
+      "bytes": 462608,
+      "sha256": "8d4fa24d16ed45451122fe12be24a66de7043a8a3e3be9c0ac58d197c776f525"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/037_scissors.usd",
+      "bytes": 468605,
+      "sha256": "d6be2399b52bc88be16f2facf0d33844604d7d25544dca15d6d4363c10bec834"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/040_large_marker.usd",
+      "bytes": 464425,
+      "sha256": "73189a60294bda11af23ddfb00a43dda0e4b40ff661300034e8092480bc25634"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/051_large_clamp.usd",
+      "bytes": 507215,
+      "sha256": "3c734dc8e228fcd396422e9290d75d49b4b9743d54d5034f15b89eb233660685"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/052_extra_large_clamp.usd",
+      "bytes": 510142,
+      "sha256": "4f4b0fba10ec4999ab493c452a718631641f66c234bd1069b6e5c0108b6230b4"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/061_foam_brick.usd",
+      "bytes": 464249,
+      "sha256": "117a5ea3afcf370730ad92a864aa89c7bca4c161753ac59d2eea13eb603e550d"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/002_master_chef_can_COLOR.png.auto.png",
+      "bytes": 22625,
+      "sha256": "b6113a1e4f809f3550d2ef8378c28e129afb86d45f5ff1fcd08e7df5ceb6849d"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/003_cracker_box_COLOR.png.auto.png",
+      "bytes": 16820,
+      "sha256": "4416f37f5fb8f82706a7dbed367899900448465478fe5227ddbe55b9eeaad65b"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/004_sugar_box_COLOR.png.auto.png",
+      "bytes": 17804,
+      "sha256": "98ba169ca40fc9c0664620f28aea9e0dee22d9b73cc35c1235fd25cb6d0522d5"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/005_tomato_soup_can_COLOR.png.auto.png",
+      "bytes": 17373,
+      "sha256": "a747a1965dbf27583035926fd804b4020971f42992c2dccb613237ef93e15266"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/006_mustard_bottle_COLOR.png.auto.png",
+      "bytes": 17445,
+      "sha256": "4ff38de0931a002ea74c389d94db5181ebeaf28c1f58b783cd5511b8ae0d9489"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/007_tuna_fish_can_COLOR.png.auto.png",
+      "bytes": 15021,
+      "sha256": "b941c0bd04c3a981f80423f276f51b4005e2d5ac7172b5aa8a372c076cd926fe"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/008_pudding_box_COLOR.png.auto.png",
+      "bytes": 14814,
+      "sha256": "bf34de9fc85faa0f4f61095510277b63a33df3f87841ccb1553c1bb632c3ace3"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/009_gelatin_box_COLOR.png.auto.png",
+      "bytes": 14950,
+      "sha256": "da75a53e00d97110228fda66c34a7c90a19a59b76801d8bb1c972fd4d980e9b8"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/010_potted_meat_can_COLOR.png.auto.png",
+      "bytes": 14452,
+      "sha256": "87eb5b4883e533d62de7f527570a652e0cd8a2f74e77659075a2c705fedb8c07"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/011_banana_COLOR.png.auto.png",
+      "bytes": 8582,
+      "sha256": "f8549a6d7953ff0a7e326fc91cda19385252e1c4d986c9848d2038e9bbfb2a40"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/019_pitcher_base_COLOR.png.auto.png",
+      "bytes": 9938,
+      "sha256": "061f5d4d3da5439e00cafe6173c76478dd007b34d59e84bb37584dc86c057b75"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/021_bleach_cleanser_COLOR.png.auto.png",
+      "bytes": 17270,
+      "sha256": "592b7a0ec3220645380dddf36bbee530b4d5e9f5539d222121a62aac72baf0dc"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/024_bowl_COLOR.png.auto.png",
+      "bytes": 9482,
+      "sha256": "0400832cac143b4aacb37c5709aca21a5b0cbe2311b5565167e874f350b0ac21"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/025_mug_COLOR.png.auto.png",
+      "bytes": 16870,
+      "sha256": "ba7164bf127460ca78856be2021bc8422977d757a01a842d83837b895d090d5f"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/035_power_drill_COLOR.png.auto.png",
+      "bytes": 11889,
+      "sha256": "4b485846b3e9e5857afb108a0a7861275d7c3e388636150248ca90c534dd923f"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/036_wood_block_COLOR.png.auto.png",
+      "bytes": 12244,
+      "sha256": "7df82278f3dff9c08ad6e519ffe5c791961a6d75fe7518c0c55bccd912bbaf6d"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/037_scissors_COLOR.png.auto.png",
+      "bytes": 7412,
+      "sha256": "fcb32988d117f7e1db858fbf13a3700eabb043869b2820ffc10c224b6de003a3"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/040_large_marker_COLOR.png.auto.png",
+      "bytes": 8975,
+      "sha256": "5311924a7fe83d5c1291d90109deeccca6d9624bdc5978140df10649721b6a09"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/051_large_clamp_COLOR.png.auto.png",
+      "bytes": 8094,
+      "sha256": "66820af9f73f2fa1ea503bb6c223b1496428a15360b60095ade9d2de818438a0"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/052_extra_large_clamp_COLOR.png.auto.png",
+      "bytes": 11933,
+      "sha256": "b44e5b42d0bf85f9e2b4addbbaf4b901233868b5bb2e4afc52edfab039825f41"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/138x108/061_foam_brick_COLOR.png.auto.png",
+      "bytes": 7409,
+      "sha256": "f747df10dae010c5ef3d6c59687d6f3dff0744adf401bad0cff87ec53dfac34d"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/002_master_chef_can_COLOR.png.auto.png",
+      "bytes": 103178,
+      "sha256": "e5345eb2c20d562aea724c052bacd548a70715f4aea41b1ab0fa5c44a78875cc"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/003_cracker_box_COLOR.png.auto.png",
+      "bytes": 78811,
+      "sha256": "1e70f00ed79b9018cbbdf7a0bb682aaeafa60d2482f49b08094647c2c1e57012"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/004_sugar_box_COLOR.png.auto.png",
+      "bytes": 93109,
+      "sha256": "8f34954c85bb2e3eb0efd402f1e982a621aa2494ef451a30a035ac40cbf1e111"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/005_tomato_soup_can_COLOR.png.auto.png",
+      "bytes": 85867,
+      "sha256": "ef58d57178e7e0ab65457b0fc0b004371b4b885ee608a5ba03d74d3aa78e4ee0"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/006_mustard_bottle_COLOR.png.auto.png",
+      "bytes": 78434,
+      "sha256": "db7e5db3dc31280aee44aed96e6e27c27c21b198d105f5617484c53b57e1cbb5"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/007_tuna_fish_can_COLOR.png.auto.png",
+      "bytes": 73933,
+      "sha256": "0ec7ae3eeb4ba16bb4c39b6baa7b2d6166aa5a6177f2db8966bb932f52b479d3"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/008_pudding_box_COLOR.png.auto.png",
+      "bytes": 73854,
+      "sha256": "984c8f52f25c9802bda480e584ab450bb581ce4729ad507f64c1934922e36b53"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/009_gelatin_box_COLOR.png.auto.png",
+      "bytes": 75801,
+      "sha256": "c5158870ba983f8b8c21b1d1599019e0d2ef4775b2368de063e7bb3ce2335c4b"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/010_potted_meat_can_COLOR.png.auto.png",
+      "bytes": 72137,
+      "sha256": "f265c1857ba6e02ae252e83d5481e2b94146e913a5506e0d32b8e24a473f779e"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/011_banana_COLOR.png.auto.png",
+      "bytes": 36716,
+      "sha256": "3e18e5ccf8461f7af6441bd550f1aab41d374c7da3166a0f3d6d3b7503fbaeec"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/019_pitcher_base_COLOR.png.auto.png",
+      "bytes": 40976,
+      "sha256": "4fd592e1530c7183e334d4079e9fb1457954098f4eb70a3cb72b34dccf0fc947"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/021_bleach_cleanser_COLOR.png.auto.png",
+      "bytes": 75985,
+      "sha256": "18ace42277754452ccd21da938db3c74225a038633e6e2955ecd81da62c7613a"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/024_bowl_COLOR.png.auto.png",
+      "bytes": 45377,
+      "sha256": "59de196057b27314850a0a09d6f8a5564a47d7938f6a1eb1bcc1490bf9273709"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/025_mug_COLOR.png.auto.png",
+      "bytes": 69101,
+      "sha256": "72ebd2c8621853193f13b37ac1030e6f13b6e87314d240ccc9efa1d8e7a6547a"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/035_power_drill_COLOR.png.auto.png",
+      "bytes": 53298,
+      "sha256": "5967b4fdbab7a55a35c59858bbb343d66ebef0ede9631b1d639910426e727942"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/036_wood_block_COLOR.png.auto.png",
+      "bytes": 64511,
+      "sha256": "08c5f72374b80a5b24f8e64bf1a7e045b5cf960dea66662528d38368c54071c3"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/037_scissors_COLOR.png.auto.png",
+      "bytes": 31526,
+      "sha256": "be90bc15d44383555a908805628661f191845aec6f758aabc54723961c2ed33b"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/040_large_marker_COLOR.png.auto.png",
+      "bytes": 38006,
+      "sha256": "f1e2fb1046f19c72ac3e7cd227a24dc92a16ce451cad169d83929fa6d2ffbdb6"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/051_large_clamp_COLOR.png.auto.png",
+      "bytes": 36412,
+      "sha256": "47e96686597d7909fcc5b587ec6cf9ce5f0d8b1dafcdc1a620373c3a226e85be"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/052_extra_large_clamp_COLOR.png.auto.png",
+      "bytes": 54102,
+      "sha256": "fab8c66425066b124b93d938f94509201283bd44e79642fbd76c89232b1bf46f"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/.thumbs/256x256/061_foam_brick_COLOR.png.auto.png",
+      "bytes": 35923,
+      "sha256": "51bf148bfde99efcf70fae4ce0ee04e389d5378ec0d49bab263459156256676b"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/002_master_chef_can_COLOR.png",
+      "bytes": 13635419,
+      "sha256": "15501e1de0c3aa45443710d248368bba3a259c5e23c45fae936fabe01dae3651"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/003_cracker_box_COLOR.png",
+      "bytes": 13564223,
+      "sha256": "dc8a7c90d9a96e2101c764b872a54cf91e3537dd9d059fdd32217b003072e42b"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/004_sugar_box_COLOR.png",
+      "bytes": 15511838,
+      "sha256": "28b350366d308d139f2259c5c1e4f1b5fa11d16396b36cee77fd476cfa2e1558"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/005_tomato_soup_can_COLOR.png",
+      "bytes": 12416459,
+      "sha256": "c6e19d89d60c65f702ed789742e488bc15125db3ee2c4bcbb6a7e3c433a3abf1"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/006_mustard_bottle_COLOR.png",
+      "bytes": 13059413,
+      "sha256": "f9fac6799af122d8457651ac8a9d3df779547f467920023ae8e30714c8fae582"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/007_tuna_fish_can_COLOR.png",
+      "bytes": 10319795,
+      "sha256": "b3ee1e690cfc825e22fd998a6c844607043e02fe36650206066555526f55ca37"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/008_pudding_box_COLOR.png",
+      "bytes": 11774885,
+      "sha256": "19bbe4971d72cb11c36ea74a924224f6cae7e0da08b4d50bf9b438ff3c31143d"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/009_gelatin_box_COLOR.png",
+      "bytes": 11332968,
+      "sha256": "e2afc1692fbc58dd7ec9841fb98856839d2c5a0d1c4588190add74d3cdfe3844"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/010_potted_meat_can_COLOR.png",
+      "bytes": 11030261,
+      "sha256": "543eeb94ba7f6ad15c9f6eff3dbb5f4b947415f5258e001ef94eef8994f9407e"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/011_banana_COLOR.png",
+      "bytes": 6096662,
+      "sha256": "841dd1e67d23815cfaac3a14019c4dd8712d956664dab853a4d558353eba3795"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/019_pitcher_base_COLOR.png",
+      "bytes": 7645626,
+      "sha256": "34ed9da0e4bebd59691e9a9b263792e7ecf01656e626aaa2e700e18cb6019db7"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/021_bleach_cleanser_COLOR.png",
+      "bytes": 12843013,
+      "sha256": "c83c683196429aff67497514bfedd732d4bed4abdfe5ae22daf2ef5fbf3076d5"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/024_bowl_COLOR.png",
+      "bytes": 7836979,
+      "sha256": "bc53e093e21cbd6640413a12a548f4d3e3544b9eeca5f08a2cc3f40aada43db4"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/025_mug_COLOR.png",
+      "bytes": 8282618,
+      "sha256": "c0cd34ec9a0eb023173e0a8adbaa3e24dc9129780592e134adbc811e08a20a9f"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/035_power_drill_COLOR.png",
+      "bytes": 8009103,
+      "sha256": "1ce0fbd4d28476ace764783cc0da5aa6033e64cceb97ba3eccbe673085bfe614"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/036_wood_block_COLOR.png",
+      "bytes": 14005254,
+      "sha256": "d8cd6a69ad41c26da2e7608d5aaf8bbf1970fe02933dbe45182d692b1e690990"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/037_scissors_COLOR.png",
+      "bytes": 4503890,
+      "sha256": "c2f0e21d607d50827151116fff0a03033f3960b04704608a227384449aae025e"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/040_large_marker_COLOR.png",
+      "bytes": 4687059,
+      "sha256": "36bd303d1c71003df8118ff9095178b943cdf2b102cbfe5e70ee676a454dfc8a"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/051_large_clamp_COLOR.png",
+      "bytes": 5751730,
+      "sha256": "bb3bf9637c93ffe067ff84c8b4276beaa7fbedaf472029d453c24dcb715560e8"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/052_extra_large_clamp_COLOR.png",
+      "bytes": 8464027,
+      "sha256": "5a5d2d31d90f41992e4c43cab91841027d6540895f95b44e052e37a02a1607fe"
+    },
+    {
+      "path": "Isaac/Props/YCB/Axis_Aligned/Materials/Textures/061_foam_brick_COLOR.png",
+      "bytes": 6495191,
+      "sha256": "c038d62fdc96a0a4ab34fde765b6e81b1a632b80cf08503e10e2f54ba8bfdf98"
+    }
+  ]
+}
