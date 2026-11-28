@@ -1,0 +1,16 @@
+{
+  "reward": 0.0,
+  "metrics": {
+    "ratio": 0.0,
+    "anchor_recorded": 0.0,
+    "episodes": 16.0,
+    "episodes_aborted": 16.0,
+    "episodes_completed": 0.0,
+    "episodes_unfinished": 16.0,
+    "panel_deadline_exhausted": 0.0,
+    "strict_course_fraction": 0.0,
+    "successes": 0.0,
+    "reward_exact": 0.0
+  },
+  "diagnostic": "scoring 0: missing submission/run.sh"
+}

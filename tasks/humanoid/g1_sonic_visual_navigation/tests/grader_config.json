@@ -1,0 +1,19 @@
+{
+  "episodes": 16,
+  "horizon": 4350,
+  "first_distance_m": [
+    5.5,
+    7.25
+  ],
+  "turn_magnitude_deg": [
+    80,
+    100
+  ],
+  "last_distance_m": [
+    3.8,
+    4.3
+  ],
+  "scoring_cap": 1.5,
+  "step_timeout_s": 15,
+  "verifier_deadline_s": 3540
+}

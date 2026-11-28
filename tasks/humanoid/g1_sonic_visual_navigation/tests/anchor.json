@@ -1,0 +1,13 @@
+{
+  "metric": "strict_course_fraction",
+  "direction": "higher",
+  "value": 0.9375,
+  "full_at": 1.0,
+  "unit": "fraction of assigned warehouse courses passing the timed aperture, optional cabinet, covered departure rack and final upright stop without obstacle contact",
+  "source": "Measured protected warehouse bootstrap and independently initialized warehouse reference spread.",
+  "preregistration": "review/scoring_protocol.md",
+  "reference_commit": "5561bc376e7fd86b75e82c69a1ece7107c1d147b",
+  "preregistration_sha256": "87c5b9bf63a40040f6eafb3253e14d7e43e931c9832eaa2f0075bd614f5ce117",
+  "measurement": "review/anchor_measurement.json",
+  "measurement_sha256": "5d09e059ec6a87489d21a4f9603199f4aac39cfe2b6b09f21fef3b8af1e8c87d"
+}

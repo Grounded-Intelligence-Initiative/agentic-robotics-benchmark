@@ -275,6 +275,12 @@ summary = "Program a 6-DoF arm to build a humanoid robot from five finished modu
 platforms = ["humanoid"]
 stages = ["assembly"]
 
+[g1_sonic_visual_navigation]
+title = "Steer a G1 through shutters and a low rack"
+summary = "Drive a G1 through moving shutters, follow a turn cue, fit its whole body beneath an offset service rack, and stand at an inspection station using RGB-D and SONIC motion tokens."
+platforms = ["humanoid"]
+stages = ["control"]
+
 [humanoid_leg_cad_design_from_photos]
 title = "Model a humanoid leg in CAD"
 summary = "Rebuild the lost CAD of the 19 made parts of a humanoid robot's right leg in FreeCAD from photos of its staged teardown, and assemble them with its given components and the leg's joints."

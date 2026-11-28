@@ -1,0 +1,238 @@
+{
+  "reference_commit": "5561bc376e7fd86b75e82c69a1ece7107c1d147b",
+  "engine": "bfb75050aca2c54b45c5ab23bae6028a834a468a",
+  "protected_image": {
+    "base_materials": [
+      "5c4aefc869ab625ed8d56bc59da404486e727cabcc3793f8d4cf28eed7cce744",
+      "pkg:docker/ghcr.io/agentslastexam/container-ubuntu22-base@0.1.1?platform=linux%2Famd64"
+    ],
+    "declaration": {
+      "build_timeout_sec": 3600.0,
+      "kind": "container",
+      "user": "user"
+    },
+    "image_source_identity": "sha256:2f5b793b38cddb2fe8cbb981db4b5e69fa49151eed168d0aa524a990d5749f93",
+    "input_identity": "sha256:3884ce8dc4ac71b1b5349c98a429c16593477ce068b52e1fa2b329ce8380459e",
+    "observed_identity": "sha256:7c2fef84ffe8111a43d329f4c2bb503c0d65907f9f359218c5edea00fa76e9b2",
+    "observed_ref": "sha256:7c2fef84ffe8111a43d329f4c2bb503c0d65907f9f359218c5edea00fa76e9b2",
+    "prepared_identity": "sha256:7c2fef84ffe8111a43d329f4c2bb503c0d65907f9f359218c5edea00fa76e9b2",
+    "provider": "docker",
+    "runtime_ref": "sha256:7c2fef84ffe8111a43d329f4c2bb503c0d65907f9f359218c5edea00fa76e9b2",
+    "source": "local"
+  },
+  "ale_verify": {
+    "content_hash": "sha256:69b6a1c160e8ce13267689d7069d21b83b3f267d11b45a8567546ba58f5c01f4",
+    "version": "0.1.1"
+  },
+  "protocol_sha256": "87c5b9bf63a40040f6eafb3253e14d7e43e931c9832eaa2f0075bd614f5ce117",
+  "numerical": {
+    "bootstrap": {
+      "episodes": 16,
+      "successes": 15,
+      "raw_fraction": 0.9375,
+      "verification_sha256": "d28cb2a7c4ed4727e53eac7375213e3e2edac00f5440144b6e3f5bb8c7d8d039"
+    },
+    "independent_spread": {
+      "episodes": 16,
+      "successes": 16,
+      "raw_fraction": 1.0,
+      "verification_sha256": "d87a0a530f39bf75f53e93b7c7cab30d493784b5495283de75538228cb2e9255"
+    },
+    "full_credit_count": 15,
+    "anchor_value": 0.9375,
+    "full_at": 1.0
+  },
+  "actual_panels": [
+    {
+      "stage": "WarehouseN0",
+      "source": "5561bc376e7fd86b75e82c69a1ece7107c1d147b",
+      "engine": "bfb75050aca2c54b45c5ab23bae6028a834a468a",
+      "exit": 2,
+      "start": "2026-11-27T08:51:32.336942+00:00",
+      "end": "2026-11-27T09:04:58.482982+00:00",
+      "wall_s": 806.1331108938903,
+      "oracle_path": "runs/validate-000fe380/grounded-intelligence-initiative.g1_sonic_visual_navigation-oracle-a8153287/verification.json",
+      "oracle_sha256": "d28cb2a7c4ed4727e53eac7375213e3e2edac00f5440144b6e3f5bb8c7d8d039",
+      "reward": 0.0,
+      "untouched": 0.0,
+      "raw": {
+        "episodes": 16,
+        "successes": 15,
+        "strict_course_fraction": 0.9375,
+        "required_gates": 24.0,
+        "passed_gates": 24.0,
+        "obstacle_contact_courses": 0.0,
+        "obstacle_contact_substeps": 0.0,
+        "boundary_violations": 0.0,
+        "applied_native_rows": 40437.0,
+        "fsq_scalar_codes": 2587968.0,
+        "actual_elapsed_sim_s": 808.740000000253,
+        "fork_staging_slow_s": 144.49800000001892,
+        "coordinate_change_fraction": 0.08366242176096583,
+        "joint_accel_samples": 1170817,
+        "joint_accel_rms_rad_s2": 6.128434308796529,
+        "low_rack_courses": 12.0,
+        "high_rack_courses": 4.0,
+        "low_rack_successes": 12.0,
+        "high_rack_successes": 3.0,
+        "left_rack_offset_courses": 8.0,
+        "right_rack_offset_courses": 8.0,
+        "left_rack_offset_successes": 7.0,
+        "right_rack_offset_successes": 8.0,
+        "rack_reached_departure": 15.0,
+        "rack_front_crossings": 15.0,
+        "rack_back_crossings": 15.0,
+        "rack_head_under_shelf": 15.0,
+        "rack_whole_body_exits": 15.0,
+        "first_contact_departure_rack_courses": 0.0,
+        "minimum_accepted_green_head_apex_m": 1.2782337168185365,
+        "minimum_measured_roof_separation_m": 0.03657043758552958,
+        "approach_stops": 16.0,
+        "pivot_stops": 15.0,
+        "departure_stops": 15.0,
+        "changed_fsq_coordinates": 216430.0,
+        "eligible_adjacent_scalar_pairs": 2586944.0,
+        "mean_actual_elapsed_sim_s": 50.54625000001581,
+        "mean_completed_sim_s": 51.42266666668355,
+        "episodes_completed": 16.0,
+        "episodes_unfinished": 0.0,
+        "episodes_aborted": 0.0
+      },
+      "reason_counts": {
+        "success": 15,
+        "time_limit": 1
+      },
+      "family_counts": {
+        "both": [
+          7,
+          8
+        ],
+        "left": [
+          4,
+          4
+        ],
+        "right": [
+          4,
+          4
+        ]
+      },
+      "first_shutter_contact_courses": 0.0,
+      "first_fixed_contact_courses": 0.0,
+      "native_ledger_sha256": "9a2d2e43c70260b9201dbba6b22c82a98705ba2b1857fd529f9d9cbe650a5b14",
+      "sampled_phases_qualified_passage": {
+        "left": 8.0,
+        "right": 8.0
+      },
+      "complete_course_motion": {
+        "applied_native_rows": 40437.0,
+        "fsq_scalar_codes": 2587968.0,
+        "actual_elapsed_sim_s": 808.740000000253,
+        "mean_actual_elapsed_sim_s": 50.54625000001581,
+        "joint_accel_rms_rad_s2": 6.128434308796529,
+        "coordinate_change_fraction": 0.08366242176096583
+      },
+      "validation_path": "runs/validate-000fe380/validation.json",
+      "engine_validation_passed": false,
+      "untouched_verification_path": "runs/validate-000fe380/grounded-intelligence-initiative.g1_sonic_visual_navigation-untouched-497d23a1/verification.json"
+    },
+    {
+      "stage": "WarehouseN1",
+      "source": "5561bc376e7fd86b75e82c69a1ece7107c1d147b",
+      "engine": "bfb75050aca2c54b45c5ab23bae6028a834a468a",
+      "exit": 0,
+      "start": "2026-11-27T08:51:32.337025+00:00",
+      "end": "2026-11-27T09:04:38.543084+00:00",
+      "wall_s": 786.154819726944,
+      "oracle_path": "runs/2d3cf59a/grounded-intelligence-initiative.g1_sonic_visual_navigation-f6dfcee4/verification.json",
+      "oracle_sha256": "d87a0a530f39bf75f53e93b7c7cab30d493784b5495283de75538228cb2e9255",
+      "reward": 0.0,
+      "untouched": null,
+      "raw": {
+        "episodes": 16,
+        "successes": 16,
+        "strict_course_fraction": 1.0,
+        "required_gates": 24.0,
+        "passed_gates": 24.0,
+        "obstacle_contact_courses": 0.0,
+        "obstacle_contact_substeps": 0.0,
+        "boundary_violations": 0.0,
+        "applied_native_rows": 41924.0,
+        "fsq_scalar_codes": 2683136.0,
+        "actual_elapsed_sim_s": 838.4800000002892,
+        "fork_staging_slow_s": 139.43400000001296,
+        "coordinate_change_fraction": 0.08338838944831536,
+        "joint_accel_samples": 1213940,
+        "joint_accel_rms_rad_s2": 6.052005821525937,
+        "low_rack_courses": 12.0,
+        "high_rack_courses": 4.0,
+        "low_rack_successes": 12.0,
+        "high_rack_successes": 4.0,
+        "left_rack_offset_courses": 8.0,
+        "right_rack_offset_courses": 8.0,
+        "left_rack_offset_successes": 8.0,
+        "right_rack_offset_successes": 8.0,
+        "rack_reached_departure": 16.0,
+        "rack_front_crossings": 16.0,
+        "rack_back_crossings": 16.0,
+        "rack_head_under_shelf": 16.0,
+        "rack_whole_body_exits": 16.0,
+        "first_contact_departure_rack_courses": 0.0,
+        "minimum_accepted_green_head_apex_m": 1.2741357689431814,
+        "minimum_measured_roof_separation_m": 0.039966746427489985,
+        "approach_stops": 16.0,
+        "pivot_stops": 16.0,
+        "departure_stops": 16.0,
+        "changed_fsq_coordinates": 223657.0,
+        "eligible_adjacent_scalar_pairs": 2682112.0,
+        "mean_actual_elapsed_sim_s": 52.40500000001808,
+        "mean_completed_sim_s": 52.40500000001808,
+        "episodes_completed": 16.0,
+        "episodes_unfinished": 0.0,
+        "episodes_aborted": 0.0
+      },
+      "reason_counts": {
+        "success": 16
+      },
+      "family_counts": {
+        "both": [
+          8,
+          8
+        ],
+        "left": [
+          4,
+          4
+        ],
+        "right": [
+          4,
+          4
+        ]
+      },
+      "first_shutter_contact_courses": 0.0,
+      "first_fixed_contact_courses": 0.0,
+      "native_ledger_sha256": "64d5bba149f57639f32df9c1254638810b249a7015b015c3b8244dd967829fdd",
+      "sampled_phases_qualified_passage": {
+        "left": 7.0,
+        "right": 9.0
+      },
+      "complete_course_motion": {
+        "applied_native_rows": 41924.0,
+        "fsq_scalar_codes": 2683136.0,
+        "actual_elapsed_sim_s": 838.4800000002892,
+        "mean_actual_elapsed_sim_s": 52.40500000001808,
+        "joint_accel_rms_rad_s2": 6.052005821525937,
+        "coordinate_change_fraction": 0.08338838944831536
+      },
+      "validation_path": null,
+      "engine_validation_passed": null,
+      "untouched_verification_path": null
+    }
+  ],
+  "prior_measured_panels": [],
+  "evidence_sha256": {
+    "bootstrap-oracle.json": "d28cb2a7c4ed4727e53eac7375213e3e2edac00f5440144b6e3f5bb8c7d8d039",
+    "bootstrap-validation.json": "b568409ce932292b2aa27dc8a8332cbc8d4bad6748f002773abae7069d0489bb",
+    "spread-oracle.json": "d87a0a530f39bf75f53e93b7c7cab30d493784b5495283de75538228cb2e9255",
+    "untouched.json": "c35db7e2ab7ca3fcb9024025e7bb34d5577ab9f6af3c19fe59d808cf6ed044e3"
+  },
+  "independent_native_sha256": "9f0c5fc64ee7c62473c881ad486fd1d158e124c1b0138937450f3424771e6f3a"
+}
