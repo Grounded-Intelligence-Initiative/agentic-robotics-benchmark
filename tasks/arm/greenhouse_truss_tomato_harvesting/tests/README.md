@@ -399,3 +399,54 @@ subscription auth, two hours), one episode. **reward 0.44** (unrounded 0.4352; `
   sessions, 2 of 27 trusses (0.09); five sessions, 11 of 27 (0.44). Each is a single episode, both agents stopped
   with more than three quarters of their time unused, and the difference between them is as much one agent's two
   extra sessions as it is chance: the spread of either version is not measured.
+
+**2026-11-27, 20:00 to 20:13: a video of the reference, for people** (not in the repository). The privileged
+reference on a review row of the graded cultivar (seed 7, outside both sets), natively: 6 of 6 ready trusses
+delivered in 318.9 s simulated without a protective stop, the frames read from the render products between control
+ticks (no frame asked through the wire). The repository's `pytest` passed on the tree of `bf7835a0`, with
+`tests/test_longtail_pause_and_close.py` left out (its two `PauseTest` cases fail on the author's host at the
+cleanup of a temporary directory on a network file system; the file tests another task's grader).
+
+## 7. Final report (2026-11-27)
+
+**What this is.** Version 1 of the task, built in one day on the author's validate host. The final version has
+five commissioning sessions: the task files of `910a7162`, plus this file's later entries. The contributor chose
+it over the three-session version (the tree of `7b57d4eb`) after one frontier episode on each; the two differ in
+the session count alone (`db948835`).
+
+**Verified.**
+
+- Static: `ale lint`, `scripts/lint_domain.py`, the task card (strict), task assets, GPU types, the kit's byte
+  comparison, `review/check_copies.py`, `check_numbers.py` (33 statements), `select_set.py`, `test_rules.py` (8
+  groups), `make_documents.py --check`, and the repository's `pytest` (one file of another task left out, above).
+- Natively (`tests/verify.py` as an ordinary account): no submission 0, the example program 0, the reference
+  `mean_row_yield` 1.00000 on the hidden set (27 of 27), a blind replay of the reference refused by the probe lock;
+  the commissioning path with its count (5, 4, 3, 2, 1, 0, a sixth refused) and its warm-up.
+- `ale validate`, four runs, each `ok` at the first attempt (untouched 0.0, oracle 1.0, the same steps):
+  `validate-bc3c4ffd` on `c32222a7`, `validate-75ad8c0a` on `9734d8af`, `validate-23b8f549` on `772f2003` (the image
+  rebuilt after the host's restart), `validate-63a08ee8` on `db948835` (the final task files).
+- Frontier model, Claude Opus 5.5, one episode a version: **reward 0.44** on the final version (`cdc52771`, 11 of 27
+  trusses), 0.09 on the three-session version (`4beb1baf`, 2 of 27). Two further episodes ended without a score
+  when the host's memory was taken by a job outside the task.
+
+**Not done, not exercised.**
+
+- No program without the privileged view has harvested a whole row section; the camera-only check (section 6) and
+  the two agents' programs (2 and 11 of 27 trusses) are what there is.
+- One host, one GPU model (RTX 3090 on driver 535 with the renderer's driver check off; rootless Docker without a
+  CPU quota; 30.9 GiB of memory against the declared 32 GB). No cloud GPU model, no supported driver, no host that
+  limits the CPUs by a quota, no second CPU.
+- `full_at` 0.9 is a margin for two lost trusses, not a measured spread: the reference repeats step for step on the
+  one machine it ran on.
+- One episode a version of one model. 0.44 is one episode, not far below the 0.5 that the contribution guide names;
+  the spread from episode to episode is unknown, and both agents stopped with more than three quarters of their two
+  hours unused.
+- Ten of the fourteen review rows were not re-run after the reference's lay-down was changed.
+
+**Open for the maintainers.**
+
+- The session count. Two more sessions took one agent's yield from 2 to 11 of 27 trusses (one episode each); the
+  three-session tree is kept (`7b57d4eb`), and `git revert db948835` restores it.
+- The thresholds' values (1.5 m/s, 25 N, the crush ratio 1.4, the mouth's size) are the author's.
+- Whether practice on another cultivar under other robot units is a fair commissioning picture (section 5).
+- `gpu_types` beyond the one model the task ran on.
