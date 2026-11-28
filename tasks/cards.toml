@@ -257,6 +257,12 @@ summary = "Program two Unitree G1 humanoids to build a flat-pack bookcase exactl
 platforms = ["humanoid"]
 stages = ["behavior"]
 
+[g1_sonic_visual_delivery]
+title = "Deliver an object to a lit pad with a G1"
+summary = "Use three RGB-D views to drive a G1 to a table, lift a box or cylinder and release it on the illuminated pad using SONIC body codes and two hand commands."
+platforms = ["humanoid"]
+stages = ["behavior"]
+
 [house_cleaning_with_tools]
 title = "Clean a studio apartment with a humanoid"
 summary = "Program a Unitree G1 humanoid to clean a studio apartment after a dinner: sort the trash, wash up, wipe a spill and sweep, from its cameras alone."

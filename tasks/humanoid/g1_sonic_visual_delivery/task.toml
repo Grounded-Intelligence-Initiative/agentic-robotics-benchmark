@@ -1,0 +1,27 @@
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/g1_sonic_visual_delivery"
+
+[metadata]
+platform = "humanoid"
+tags = ["unitree-g1", "mobile-manipulation", "locomotion", "token-control", "rgb-d", "visual-grounding", "mujoco"]
+
+[environment]
+cpus = 4
+memory_mb = 8192
+gpus = 0
+
+[agent]
+timeout_sec = 3600
+network_mode = "no-network"
+
+[verifier]
+timeout_sec = 7200
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 4
+memory_mb = 8192
+gpus = 0

@@ -1,0 +1,40 @@
+{
+  "layouts": [
+    {
+      "start": "near",
+      "shape": "box",
+      "eligible_seeds": [
+        5231543165336965472,
+        1273062132402630426
+      ]
+    },
+    {
+      "start": "near",
+      "shape": "cylinder",
+      "eligible_seeds": [
+        14975466332055351514,
+        18204830155825577378
+      ]
+    },
+    {
+      "start": "far",
+      "shape": "box",
+      "eligible_seeds": [
+        8613041459822232171,
+        5711952660209909588
+      ]
+    },
+    {
+      "start": "far",
+      "shape": "cylinder",
+      "eligible_seeds": [
+        12670073516093432886,
+        13863429524833005223
+      ]
+    }
+  ],
+  "horizon": 1100,
+  "step_timeout_s": 15,
+  "verifier_deadline_s": 6900,
+  "probes_per_episode": 4
+}
