@@ -436,3 +436,9 @@ title = "Calibrate a warehouse robot's sensors from logs"
 summary = "Write a program that recovers a warehouse robot's camera and IMU mounts, sensor clocks and IMU biases from its driving logs, and flags faulty stretches, on robots it has never seen."
 platforms = ["ground"]
 stages = ["robot-description"]
+
+[conveyor_precision_kitting]
+title = "Kit moving parts into tight pockets off a belt"
+summary = "A Franka Panda picks parts from a moving belt under command latency, turns over the ones lying upside down, and presses each into its keyed kit pocket by wrist force, on a station that never waits."
+platforms = ["arm"]
+stages = ["behavior"]
