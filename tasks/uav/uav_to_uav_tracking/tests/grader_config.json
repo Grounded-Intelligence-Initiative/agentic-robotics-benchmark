@@ -1,0 +1,8 @@
+{
+  "data_root": "/opt/uav-heldout/test",
+  "startup_timeout_s": 120,
+  "frame_timeout_s": 10,
+  "total_timeout_s": 6000,
+  "max_detections": 300,
+  "scoring_cap": 1.5
+}

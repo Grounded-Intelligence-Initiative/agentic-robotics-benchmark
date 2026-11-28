@@ -1,0 +1,29 @@
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/uav_to_uav_tracking"
+
+[metadata]
+platform = "uav"
+
+[environment]
+cpus = 8
+memory_mb = 32768
+storage_mb = 100000
+gpus = 1
+gpu_types = ["RTX-4090", "H200"]
+
+[agent]
+timeout_sec = 14400
+network_mode = "no-network"
+
+[verifier]
+timeout_sec = 7200
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 8
+memory_mb = 32768
+gpus = 1
+gpu_types = ["RTX-4090", "H200"]
