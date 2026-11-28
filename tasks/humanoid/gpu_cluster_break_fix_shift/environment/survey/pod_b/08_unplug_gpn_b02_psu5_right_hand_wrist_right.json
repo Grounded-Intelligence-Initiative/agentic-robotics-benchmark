@@ -1,0 +1,46 @@
+{
+ "camera": "wrist_right",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 376.72453850819767,
+  "fy": 376.72453850819767,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 65.0
+ },
+ "pose_in_room": {
+  "position": [
+   0.8304881395974613,
+   -1.763562229106202,
+   0.4883028426412622
+  ],
+  "rotation": [
+   [
+    0.00023581527041593498,
+    0.9837387790113953,
+    0.17960500845000751
+   ],
+   [
+    0.19865420876162512,
+    -0.17607150515546863,
+    0.9641241260406154
+   ],
+   [
+    0.9800696147378771,
+    0.035451935651764466,
+    -0.1954653691222367
+   ]
+  ]
+ },
+ "sim_time": 144.91,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "08_unplug_gpn_b02_psu5_right_hand_wrist_right_rgb.png",
+  "depth_mm": "08_unplug_gpn_b02_psu5_right_hand_wrist_right_depth_mm.png"
+ },
+ "what": "unplug gpn-b02/psu5 right hand"
+}

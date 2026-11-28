@@ -1,0 +1,8 @@
+{
+ "metric": "shift_score",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 0.98,
+ "source": "measured: the oracle's shift_score in ale validate's oracle pass validate-87236f3e (engine bfb7505, 2026-11-28 HKT): the privileged reference program (solution/, tests/dc_cell/reference.py) on the fixed hidden set (tests/hidden/seeds.json); the selection runs of tests/review/hidden_set.md scored 1.0 on each of the three shifts too",
+ "note": "shift_score is already on [0, 1]: the shift mean of the cell's stage score (the shift's points less the incident charges, over 10), a shift with a safety violation scoring 0. full_at 0.98: the oracle scored 1.0 on every kept shift in every run (the selection runs and the validate's oracle pass); a full reward needs a mean of 9.8 points over the three shifts, so 0.6 points lost in all (a closing item or two) still saturates and a missed ticket step does not."
+}

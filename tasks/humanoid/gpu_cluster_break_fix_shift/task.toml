@@ -1,0 +1,67 @@
+# gpu_cluster_break_fix_shift (Physical Execution, humanoid; built 2026-11-27/28 by Yuanfang Peng).
+#
+# A night shift in an AI training pod: one Unitree G1 humanoid (29 DoF, Dex3-1 hands) is the site's remote-hands
+# technician of a pod of two rows of five racks round a contained cold aisle (eight 8U 8-GPU servers, two network racks
+# with the rail-optimised InfiniBand leaves). The shift's tickets: a GPU fault (transient, an unseated module, a dead
+# module, failing HBM, or a baseboard fault that goes to the vendor), an optical link fault (a dirty MPO connector or
+# transceiver receptacle at either end, an aged transceiver at either end, or a scratched fibre that goes to cabling),
+# a hot swap (a failed power supply, with a loose PDU cord on another supply of the node at times, or a failed fan
+# module) and one ticket that comes in during the shift (a fan or a second link), worked by the vendor's service guide
+# and the site's SOPs with the site's services (NOC, DCIM, BMC, switched PDUs, fabric manager, scheduler, DCGM; each
+# costs simulated time: a boot, a diagnostic run, a soak), the robot's head and wrist RGB-D cameras, its belt tools (a
+# long-reach torque driver, a fibre probe, a one-click MPO cleaner) and the parts cart, while the training job on the
+# pod keeps running. The faults, the nodes and ports, the dirt on the end faces, the distractors and each pod's
+# installation tolerances differ every shift. The agent delivers shift.py (solve(cell): a program over the cell's
+# JSON-lines RPC, no truth on the wire), run as an unprivileged account on the 3 shifts of a fixed hidden set
+# (tests/hidden/seeds.json) of the grader's MuJoCo cell, in a separate verifier sandbox that holds the submission and
+# nothing else of the agent's. Score = the mean over the shifts of the shift's points (tickets really fixed or rightly
+# escalated, verified, recorded; the pod closed up) less the incident charges, / 10, a shift with a safety violation
+# scoring 0. There is no practice cell: the agent prepares the program from the site's documents, the vendor's guide,
+# the cell manual, the cell's describe() output, survey photos of two other pods and the robot's model. The oracle
+# submits the privileged reference program with a token, on the same hidden shifts. Grader knobs live in
+# tests/grader_config.json.
+
+schema_version = "1.4+ale.1"
+# Where the agent leaves its work (shift.py and its helper modules).
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/gpu_cluster_break_fix_shift"
+
+[metadata]
+# One of the benchmark's platform keys (tasks/platforms.json); the folder lives at tasks/humanoid/<name>/. The metric
+# (shift_score, higher) lives in tests/anchor.json.
+platform = "humanoid"
+tags = ["data-center", "gpu-cluster", "maintenance", "humanoid", "unitree-g1", "mobile-manipulation", "mujoco",
+        "code-as-policy", "camera-only", "rgbd", "diagnosis", "zero-shot", "hidden-set"]
+
+[environment]
+cpus = 8
+memory_mb = 16384
+
+# setup (no field: the engine bounds it at a fixed 1800 s): the agent's givens (seconds). [agent] timeout_sec: 6 h.
+# [verifier] timeout_sec: the import check, then 3 hidden shifts in turn, each a cell build plus the program within its
+# 3600 s program-time cap, which does not count the cell's simulation (7200 s simulated at most) and rendering (2000
+# frames at most). Measured 2026-11-28 on the development machine (8 CPUs, CPU rendering, the machine loaded): a cell
+# build 7 s, 0.42 to 0.51 s per camera frame, 0.27 to 0.30 s of wall clock per simulated second with the robot standing
+# or walking. A shift at the bounds: 3600 + 7200 x 0.30 + 2000 x 0.51 = about 6800 s; the three, about 20,500 s. The
+# oracle's shifts took 930 to 1360 s each. 43,200 s leaves twice that for a slower or loaded grading machine (a timeout
+# gives no score: an infrastructure failure, never the agent's 0).
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+# Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
+# touched, with only the declared artifact (the submission, restored root-owned) in it, so nothing else the agent left
+# (a file, a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there (no
+# ~/given): tests/test.sh builds the grader's root-owned copy of the givens (/opt/arb) itself, from
+# tests/setup_payload/ and the image's robot model and survey photos. The agent's program runs during verify, so the
+# verifier gets the agent's resources (CPU rendering: no GPU).
+[verifier]
+timeout_sec = 43200
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 8
+memory_mb = 16384
+gpus = 0

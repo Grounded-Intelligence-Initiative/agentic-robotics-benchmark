@@ -1,0 +1,46 @@
+{
+ "camera": "wrist_right",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 376.72453850819767,
+  "fy": 376.72453850819767,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 65.0
+ },
+ "pose_in_room": {
+  "position": [
+   0.6200384270302949,
+   2.41621168817089,
+   0.9786929779007498
+  ],
+  "rotation": [
+   [
+    0.058349240015723454,
+    0.8880876673301408,
+    0.4559557668521123
+   ],
+   [
+    0.9800199016653642,
+    0.036038002269181406,
+    -0.19560739948237466
+   ],
+   [
+    -0.19014825407927982,
+    0.45825926889541113,
+    -0.868240798363015
+   ]
+  ]
+ },
+ "sim_time": 1354.79,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "36_scope_mpo_leaf_a01_4_mpo2_right_hand_wrist_right_rgb.png",
+  "depth_mm": "36_scope_mpo_leaf_a01_4_mpo2_right_hand_wrist_right_depth_mm.png"
+ },
+ "what": "scope mpo:leaf-a01-4/mpo2 right hand"
+}

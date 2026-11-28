@@ -1,0 +1,46 @@
+{
+ "camera": "head",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 432.97146126514167,
+  "fy": 432.97146126514167,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 58.0
+ },
+ "pose_in_room": {
+  "position": [
+   0.023779093996218484,
+   -2.340976933924805,
+   1.2073875856272704
+  ],
+  "rotation": [
+   [
+    0.9999997213729704,
+    0.0006277656834932346,
+    -0.00040393592007663116
+   ],
+   [
+    0.0007435855125592185,
+    -0.7899508160990452,
+    0.6131697605272441
+   ],
+   [
+    6.583742409851489e-05,
+    -0.6131698900424735,
+    -0.7899510627948635
+   ]
+  ]
+ },
+ "sim_time": 1605.57,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "37_clean_mpo_leaf_b01_1_mpo4_right_hand_head_rgb.png",
+  "depth_mm": "37_clean_mpo_leaf_b01_1_mpo4_right_hand_head_depth_mm.png"
+ },
+ "what": "clean mpo:leaf-b01-1/mpo4 right hand"
+}

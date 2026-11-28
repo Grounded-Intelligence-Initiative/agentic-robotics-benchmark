@@ -1,0 +1,46 @@
+{
+ "camera": "wrist_left",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 376.72453850819767,
+  "fy": 376.72453850819767,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 65.0
+ },
+ "pose_in_room": {
+  "position": [
+   1.9303822403637887,
+   2.431842432692438,
+   1.0253394310754456
+  ],
+  "rotation": [
+   [
+    0.9688472260938975,
+    0.041770551215926925,
+    -0.24411119093822436
+   ],
+   [
+    -0.0025372082543553497,
+    -0.9839482464058836,
+    -0.17843601365492567
+   ],
+   [
+    -0.24764614889885658,
+    0.1734965977934565,
+    -0.953189548562961
+   ]
+  ]
+ },
+ "sim_time": 911.7,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "26_scope_mpo_gpn_a03_mpo4_left_hand_wrist_left_rgb.png",
+  "depth_mm": "26_scope_mpo_gpn_a03_mpo4_left_hand_wrist_left_depth_mm.png"
+ },
+ "what": "scope mpo:gpn-a03/mpo4 left hand"
+}

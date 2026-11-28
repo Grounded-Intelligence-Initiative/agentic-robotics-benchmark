@@ -1,0 +1,46 @@
+{
+ "camera": "wrist_left",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 376.72453850819767,
+  "fy": 376.72453850819767,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 65.0
+ },
+ "pose_in_room": {
+  "position": [
+   -1.3632096998827379,
+   -1.4724654543288382,
+   1.052619304882538
+  ],
+  "rotation": [
+   [
+    0.6653113837399626,
+    -0.13328341918305348,
+    0.734572183544197
+   ],
+   [
+    0.00032843348712344465,
+    -0.9838823648993411,
+    -0.17881662163099638
+   ],
+   [
+    0.7465659078724793,
+    0.1192099920768089,
+    -0.6545443628903898
+   ]
+  ]
+ },
+ "sim_time": 38.4,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "02_take_px_psu_0_left_hand_wrist_left_rgb.png",
+  "depth_mm": "02_take_px_psu_0_left_hand_wrist_left_depth_mm.png"
+ },
+ "what": "take px_psu_0 left hand"
+}

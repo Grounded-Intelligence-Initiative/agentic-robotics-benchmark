@@ -1,0 +1,46 @@
+{
+ "camera": "wrist_right",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 376.72453850819767,
+  "fy": 376.72453850819767,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 65.0
+ },
+ "pose_in_room": {
+  "position": [
+   0.786781511236335,
+   -0.20608632157540058,
+   0.7635947139358369
+  ],
+  "rotation": [
+   [
+    -0.9800957937302616,
+    -0.03321027208428124,
+    0.19572764991266803
+   ],
+   [
+    0.0022968742561881917,
+    0.9839456871977228,
+    0.17845338050496962
+   ],
+   [
+    -0.19851186231784537,
+    0.17535096941017525,
+    -0.9642847494625287
+   ]
+  ]
+ },
+ "sim_time": 382.93,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "13_module_out_gpn_b02_sxm8_right_hand_right_hand_wrist_right_rgb.png",
+  "depth_mm": "13_module_out_gpn_b02_sxm8_right_hand_right_hand_wrist_right_depth_mm.png"
+ },
+ "what": "module out gpn-b02/sxm8 (right hand) right hand"
+}

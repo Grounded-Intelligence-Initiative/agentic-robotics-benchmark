@@ -1,0 +1,46 @@
+{
+ "camera": "head",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 432.97146126514167,
+  "fy": 432.97146126514167,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 58.0
+ },
+ "pose_in_room": {
+  "position": [
+   2.645776805006664,
+   2.3469549519824167,
+   1.2073373153827553
+  ],
+  "rotation": [
+   [
+    -0.9999992596609842,
+    0.0009127599978615044,
+    -0.0008047028452615522
+   ],
+   [
+    0.0012144394774242008,
+    0.7900778451508904,
+    -0.613005321133904
+   ],
+   [
+    7.625115436376445e-05,
+    -0.613005844565051,
+    -0.7900783687172112
+   ]
+  ]
+ },
+ "sim_time": 1165.6,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "33_scope_rx_gpn_a05_osfp5_left_hand_head_rgb.png",
+  "depth_mm": "33_scope_rx_gpn_a05_osfp5_left_hand_head_depth_mm.png"
+ },
+ "what": "scope rx:gpn-a05/osfp5 left hand"
+}

@@ -1,0 +1,46 @@
+{
+ "camera": "wrist_left",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 376.72453850819767,
+  "fy": 376.72453850819767,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 65.0
+ },
+ "pose_in_room": {
+  "position": [
+   0.933859796837895,
+   -0.01957166699497262,
+   0.9068770896367673
+  ],
+  "rotation": [
+   [
+    0.97986106110999,
+    -0.042481397182576465,
+    0.195109281721349
+   ],
+   [
+    -0.006728797195296179,
+    -0.9835771472007127,
+    -0.1803627422524182
+   ],
+   [
+    0.19956709199842823,
+    0.17541757722053924,
+    -0.9640547958458416
+   ]
+  ]
+ },
+ "sim_time": 240.53,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "09_cover_open_gpn_b02_left_hand_wrist_left_rgb.png",
+  "depth_mm": "09_cover_open_gpn_b02_left_hand_wrist_left_depth_mm.png"
+ },
+ "what": "cover open gpn-b02 left hand"
+}
