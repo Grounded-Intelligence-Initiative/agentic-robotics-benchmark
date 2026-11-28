@@ -59,3 +59,30 @@ stay in the tote, so the tote fills over the shift. The shift ends early only if
   readings it was sent and the true ones on the idle left arm, so the match lock's probe changes its reply without
   changing what it does. Statements above about "every rod hangs at a different place"
   and a feeder height of 1.40 to 1.55 m describe the earlier version: the plate is now at 1.55 to 1.70 m.
+
+## Frontier-model measurement (2026-11-27, rack version)
+
+gpt-6-astra (codex CLI, high effort, no network, 3 h allowed, 2 h 20 min used) got what the task gives an agent and
+left a camera-only controller with friction-only grasping. Graded through `verify.py` on the six hidden shifts, one
+simulator each, on an otherwise idle host (author's cluster, H200):
+
+| shift seed | raw score | placed / 20 | held only | probes passed |
+|---|---|---|---|---|
+| 4418 | 0.725 | 13 | 3 | 1 / 30 |
+| 7093 | 0.675 | 11 | 5 | 0 / 39 |
+| 1256 | 0.750 | 14 | 2 | 1 / 29 |
+| 8830 | 0.800 | 15 | 2 | 1 / 33 |
+| 3607 | 0.650 | 12 | 2 | 0 / 29 |
+| 5971 | 0.825 | 14 | 5 | 0 / 40 |
+
+Mean raw score 0.7375 (the model's own estimate on three practice shifts: 0.758). The match lock failed on every
+shift, so the reward the grader wrote is 0.0. Without the lock the reward would be 0.7375 / 0.9583 / 0.90 = 0.855.
+
+Two open problems follow, neither resolved in this folder:
+
+- The lock zeroes an honest controller. Reading the submission found no file, process, seed or truth access: it
+  watches the rack with a wrist camera and commands joint targets that do not depend on the measured joints, so a
+  shifted joint reading does not change its reply. The lock as configured (`probe_pass_fraction` 0.1) treats that as a
+  replayed answer.
+- Without the lock the task is too easy for the benchmark's guide (reward under 0.5): the rack did not make the catch
+  hard for this model.
