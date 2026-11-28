@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "metric": "belt_acceptance",
+ "value": 1.0,
+ "full_at": 0.93,
+ "note": "Set by the pre-registered rule tests/review/full_at_rule.md (sha256 fb05a0e1..., registered 2026-11-10 11:08Z): one evaluation of the oracle on the sealed fresh set v2 (16 engines) + the 4 hidden v2 engines gave p = 20/20 = 1.00; full_at = floor_to_0.01(p - 1/16) = 0.93. ratio = score / value, reward = clamp(ratio / full_at, 0, 1).",
+ "source": "the oracle (solution/honest/: the honest program, public API, the given documents and the given Panda model only; graded like any submission; the version recorded in tests/hidden/selection.json's amendment of 2026-11-10T16:14:29Z) on cell belt-station/0.2.1 (repeated on the final package, cell 0.2.2, with identical simulated times on all 20 engines): single-episode verifies in the task image on 2026-11-10 gave belt_acceptance 1.0 on all 4 hidden engines and on all 16 fresh v2 engines (tests/review/oracle_record.md: per-engine results, episode walls 365-812 s on one CPU, and the oracle's out-of-sample record by version)."
+}
