@@ -85,8 +85,8 @@ z) within +-3 deg.
   toward -x).
 - **Spare fan**: in a low cradle on the left table near (0.27, 0.46) (+-6 mm), handle along y.
 - **Failed-parts bin**: on a stand at the front right, inner 150 (x) by 200 (y) mm, centred at (0.20, -0.12), floor
-  at z = 0.206, walls 0.12 high. A removed part counts as binned when its centre lies inside the bin's footprint below
-  its rim (+3 cm).
+  at z = 0.206, walls 0.12 high. A removed part counts as binned when its centre of mass lies inside the bin's
+  footprint, below its rim + 3 cm (z < 0.35).
 - **Calibration plates L and R**: checkerboards of 6 (along x) by 4 (along y) squares of 20 mm, surfaces at
   z = 0.204, centred at (0.26, 0.60) (left table) and (0.25, -0.62) (right table); square (i, j) is dark when i + j
   is even, i counted along +x and j along +y, both from 0.

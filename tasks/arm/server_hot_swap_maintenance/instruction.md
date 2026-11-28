@@ -25,7 +25,7 @@ Each episode is one work order on one server:
 
 The episode **ends at once and scores 0** on any of these (irreversible):
 - a healthy drive unseated (pulled more than 1.8 mm out of its connector);
-- a drive caddy or a fan module dropped (its centre below 0.12 m);
+- a drive caddy or a fan module dropped (its centre of mass below 0.12 m);
 - a lever broken: a lever carrying its caddy alone, off the rails, breaks;
 - the overheat: a fan bay without a seated fan for longer than the window;
 - a robot pressing on the server (chassis or stand) with more than 60 N for 20 ms.

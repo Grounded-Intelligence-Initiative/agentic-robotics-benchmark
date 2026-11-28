@@ -887,10 +887,10 @@ class World:
             if self.fan_empty_s[i] > self.unit["overheat_s"]:
                 self.lose("overheat: fan bay %d stayed empty too long" % i)
         for n in self.caddies:
-            if d.xpos[self.cb[n]][2] < DROP_Z:
+            if d.xipos[self.cb[n]][2] < DROP_Z:             # its centre of mass
                 self.lose("a drive caddy was dropped (%s)" % n)
         for n in self.fans:
-            if d.xpos[self.fb[n]][2] < DROP_Z:
+            if d.xipos[self.fb[n]][2] < DROP_Z:
                 self.lose("a fan module was dropped (%s)" % n)
 
     def unstable(self):
@@ -955,8 +955,8 @@ class World:
             occ = [n for n in self.fans if self.fan_where[n] == i and self.fan_seated[n]]
             good = len(occ) == 1 and (occ[0] == "fs" if i == E["failed_fan"] else occ[0] == "f%d" % i)
             fans_ok.append(bool(good))
-        binned = [self.in_bin(d.xpos[self.cb["c%d" % k]]) for k in sorted(failed)]
-        fan_binned = self.in_bin(d.xpos[self.fb["f%d" % E["failed_fan"]]])
+        binned = [self.in_bin(d.xipos[self.cb["c%d" % k]]) for k in sorted(failed)]      # centres of mass
+        fan_binned = self.in_bin(d.xipos[self.fb["f%d" % E["failed_fan"]]])
         return {"slots_ok": ok_slots, "fans_ok": fans_ok, "failed_in_bin": binned, "fan_in_bin": bool(fan_binned),
                 "lost": self.lost, "broken": [n for n, v in self.broken.items() if v]}
 
