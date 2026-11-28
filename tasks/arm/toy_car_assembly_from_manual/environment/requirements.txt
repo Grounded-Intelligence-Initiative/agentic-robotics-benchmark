@@ -1,0 +1,6 @@
+# The task image's Python dependencies (installed into the py3.12 /opt/venv by environment/Dockerfile).
+# robosuite 1.5.2 is installed separately with --no-deps: only its Panda model files are used, never its code.
+mujoco==3.16.0
+numpy==2.5.4
+scipy==1.18.1
+pillow==13.0.0
