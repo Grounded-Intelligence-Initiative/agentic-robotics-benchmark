@@ -1,0 +1,55 @@
+<mujoco model="qm24_robot">
+  <custom>
+    <numeric name="stance_height" data="0.135"/>
+    <numeric name="knee_front" data="-1"/>
+    <numeric name="knee_rear" data="-1"/>
+  </custom>
+  <worldbody>
+    <body name="torso" childclass="BODY_M">
+      <body name="FL_hip" childclass="ACT_S" pos="0.16 0.08 0">
+        <joint name="FL_hip" axis="0 1 0"/>
+        <body name="FL_thigh1" childclass="LINK_090" pos="0 0.034 0">
+          <body name="FL_knee" childclass="ACT_S" pos="0 0 -0.09">
+            <joint name="FL_knee" axis="0 1 0"/>
+            <body name="FL_shank1" childclass="LINK_090" pos="0 0 0">
+              <body name="FL_foot" childclass="FOOT_P" pos="0 0 -0.09"/>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="FR_hip" childclass="ACT_S" pos="0.16 -0.08 0">
+        <joint name="FR_hip" axis="0 1 0"/>
+        <body name="FR_thigh1" childclass="LINK_090" pos="0 -0.034 0">
+          <body name="FR_knee" childclass="ACT_S" pos="0 0 -0.09">
+            <joint name="FR_knee" axis="0 1 0"/>
+            <body name="FR_shank1" childclass="LINK_090" pos="0 0 0">
+              <body name="FR_foot" childclass="FOOT_P" pos="0 0 -0.09"/>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="RL_hip" childclass="ACT_S" pos="-0.16 0.08 0">
+        <joint name="RL_hip" axis="0 1 0"/>
+        <body name="RL_thigh1" childclass="LINK_090" pos="0 0.034 0">
+          <body name="RL_knee" childclass="ACT_S" pos="0 0 -0.09">
+            <joint name="RL_knee" axis="0 1 0"/>
+            <body name="RL_shank1" childclass="LINK_090" pos="0 0 0">
+              <body name="RL_foot" childclass="FOOT_P" pos="0 0 -0.09"/>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="RR_hip" childclass="ACT_S" pos="-0.16 -0.08 0">
+        <joint name="RR_hip" axis="0 1 0"/>
+        <body name="RR_thigh1" childclass="LINK_090" pos="0 -0.034 0">
+          <body name="RR_knee" childclass="ACT_S" pos="0 0 -0.09">
+            <joint name="RR_knee" axis="0 1 0"/>
+            <body name="RR_shank1" childclass="LINK_090" pos="0 0 0">
+              <body name="RR_foot" childclass="FOOT_P" pos="0 0 -0.09"/>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
