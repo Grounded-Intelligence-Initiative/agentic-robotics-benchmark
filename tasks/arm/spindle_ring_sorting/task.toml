@@ -1,0 +1,34 @@
+# spindle_ring_sorting: re-sort colour-coded spacer rings on a fixture of spindles with a Panda, from cameras and a
+# wrist force/torque sensor, on fixtures that are never exactly their drawing.
+schema_version = "1.4+ale.1"
+
+# The controller (run.sh and what it loads) the agent leaves; restored into the separate verifier.
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/spindle_ring_sorting"
+
+[metadata]
+platform = "arm"
+
+# The agent's machine: CPU only. The image holds the practice cell (1 practice episode, its own account; MuJoCo and the robot assets are not readable by the agent).
+[environment]
+cpus = 4
+memory_mb = 12288
+
+# 6 h for the whole job; no network.
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+# 6 graded episodes of up to 10000 control steps each (about 35 ms of simulation per step plus the images the
+# controller asks for), plus the controller's replies; the reference takes about 10-15 minutes on lab208. The grader ends the
+# episode under way with a verdict before this limit (tests/verify.py, Deadline).
+[verifier]
+timeout_sec = 10800
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 4
+memory_mb = 12288
+gpus = 0
