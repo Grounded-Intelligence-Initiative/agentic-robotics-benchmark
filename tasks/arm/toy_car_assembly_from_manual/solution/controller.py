@@ -219,15 +219,23 @@ PRESS_LIMIT = 20.0       # N: the most the reference pushes with (the parts brea
 PRESS_MAX_STEP = 0.014   # m per control step
 PRESS_TARGET = 16.0      # N
 PRESS_HOLD = 13.0        # N
+PRESS_OVERTRAVEL = 0.0035  # m past the detent's depth at which a press stops (the part is home)
+PRESS_CONTACT = 5.0        # N: the push that marks the part meeting its detent
+PRESS_FREE = 0.010         # m a press may travel before meeting anything (axles; wheels pass free=0.004)
+AXLE_GRIP_CLEAR = None     # m beyond the chassis side at which the reference holds an axle
+LOOK_CLEAR = 0.13           # m: a look pose closer than this to the stand, low down, is taken from the other side
+NEAR_STAND = 0.20           # m: moves that start or end this close to the stand are made high up
 
 
-def press_wp(pos, yaw, tilt, direction, travel, maxn=30, retry=()):
+def press_wp(pos, yaw, tilt, direction, travel, maxn=30, retry=(), free=None):
     """A force-guided insertion. When the push held but the hand did not go in by about the detent's depth (the part
     met the seat's shoulder off its axis), back off and try again from the next offset in `retry`."""
     w = wp(pos, yaw, tilt, 1.0, maxn=maxn)
     w["press"] = [float(v) for v in direction]
     w["travel"] = float(travel)
     w["retry"] = [list(map(float, r)) for r in retry]
+    if free is not None:
+        w["free"] = float(free)
     w["phase"] = "push"
     w["pos0"] = list(w["pos"])
     return w
@@ -338,10 +346,17 @@ class Oracle(object):
             w["start"] = ee.tolist()
             w["step"] = 0.002
         push = float((f - np.asarray(w["base"])) @ d)
+        prog = float((ee - np.asarray(w["start"])) @ d)
         if push >= PRESS_HOLD:
             w["ok"] += 1
+        if push >= PRESS_CONTACT and w.get("contact") is None:
+            w["contact"] = prog                       # where the part met the detent
+        # never go further than the detent's depth (plus a margin) past where the part met it, so that a seated part
+        # (which then offers no resistance) does not let the hand run on into the car
+        cap = (w["contact"] if w.get("contact") is not None else w.get("free", PRESS_FREE)) + w["travel"] + PRESS_OVERTRAVEL
+        if prog > cap:
+            return None
         if w["ok"] >= 4 or w["n"] >= w["maxn"]:
-            prog = float((ee - np.asarray(w["start"])) @ d)
             if prog < 0.6 * w["travel"] and w["retry"]:
                 off = np.asarray(w["retry"].pop(0))
                 w["pos"] = (np.asarray(w["pos0"]) + off).tolist()
@@ -360,6 +375,7 @@ class Oracle(object):
         integ = np.clip(integ + 0.3 * across, -0.015, 0.015)
         integ = integ - float(integ @ d) * d
         self.s["int"] = integ.tolist()
+        step = min(step, max(0.0, cap - prog))   # never command past home
         dp = d * step + np.clip(across, -0.003, 0.003) + integ
         return [float(dp[0]), float(dp[1]), float(dp[2]), float(np.clip(dyaw, -0.15, 0.15)), dtilt, w["grip"]]
 
@@ -400,8 +416,15 @@ class Oracle(object):
 
     def _look_wps(self, xy, cam_h, tag):
         g = self._grip_for_cam(xy, cam_h, row=LOOK_ROW)
-        return [wp([g[0], g[1], max(g[2], SAFE_Z)], 0.0, 0.0, -1.0, tol=0.015, maxn=60, ang_tol=0.1),
-                wp(g, 0.0, 0.0, -1.0, tol=0.003, dwell=2, maxn=40, ang_tol=0.02, tag=tag)]
+        lyaw = 0.0
+        st = self.s.get("stand")
+        if st is not None and np.hypot(g[0] - st[0], g[1] - st[1]) < LOOK_CLEAR and g[2] < STAND_TOP_Z + 0.10:
+            # a low look at a part beside the stand would put the hand into the car: look from the other side
+            g2 = self._grip_for_cam(xy, cam_h, yaw=math.pi, row=LOOK_ROW)
+            if np.hypot(g2[0] - st[0], g2[1] - st[1]) > np.hypot(g[0] - st[0], g[1] - st[1]):
+                g, lyaw = g2, math.pi
+        return [wp([g[0], g[1], max(g[2], SAFE_Z)], lyaw, 0.0, -1.0, tol=0.015, maxn=60, ang_tol=0.1),
+                wp(g, lyaw, 0.0, -1.0, tol=0.003, dwell=2, maxn=40, ang_tol=0.02, tag=tag)]
 
     # -- the plan
     def _act(self, obs):
@@ -541,6 +564,11 @@ class Oracle(object):
         det = job.get("det")
         if job["stage"] == "grasp":
             x, y = det["x"], det["y"]
+            if typ == "axle" and AXLE_GRIP_CLEAR is not None:
+                # hold an axle near one end, where the fingers stay clear of the chassis when it goes into its notch
+                u = np.array([math.cos(det["theta"]), math.sin(det["theta"])])
+                off = min(KIT["chassis"]["width"] / 2 + AXLE_GRIP_CLEAR, KIT["axle"]["length"] / 2 - 0.005)
+                x, y = x + off * u[0], y + off * u[1]
             # grip low on a wheel: thin wheels slip out of a high grasp when the hand tilts them upright
             gz = {"chassis": TABLE_Z + 0.010, "axle": TABLE_Z + 0.006, "wheel": TABLE_Z + 0.006,
                   "cabin": TABLE_Z + 0.014}[typ]
@@ -549,7 +577,14 @@ class Oracle(object):
             else:
                 g0 = wrap(det["theta"] + math.pi / 2)
                 gyaw = best_yaw([g0, wrap(g0 + math.pi)], yaw, q7)
-            s["wps"] = [wp([x, y, max(obs["ee_pos"][2], gz + 0.04)], gyaw, 0.0, -1.0, tol=0.006, maxn=40, ang_tol=0.06),
+            hop = []
+            st = s.get("stand")
+            ee0 = obs["ee_pos"]
+            if st is not None and min(np.hypot(ee0[0] - st[0], ee0[1] - st[1]), np.hypot(x - st[0], y - st[1])) < NEAR_STAND:
+                # near the car: turn and travel high, so that the hand does not sweep through it
+                hop = [wp([ee0[0], ee0[1], max(ee0[2], SAFE_Z + 0.05)], yaw, 0.0, -1.0, tol=0.01, maxn=30, ang_tol=0.5),
+                       wp([x, y, max(ee0[2], SAFE_Z + 0.05)], gyaw, 0.0, -1.0, tol=0.01, maxn=60, ang_tol=0.1)]
+            s["wps"] = hop + [wp([x, y, max(obs["ee_pos"][2], gz + 0.04)], gyaw, 0.0, -1.0, tol=0.006, maxn=40, ang_tol=0.06),
                         wp([x, y, gz + 0.03], gyaw, 0.0, -1.0, tol=0.004, maxn=40),
                         wp([x, y, gz], gyaw, 0.0, -1.0, tol=0.0015, dwell=1, maxn=30),
                         wp([x, y, gz], gyaw, 0.0, 1.0, tol=0.004, dwell=5, maxn=12, tag="grasped"),
@@ -595,9 +630,9 @@ class Oracle(object):
                 s["wps"] = [dict(wp(pre, pyaw, pt, 1.0, tol=0.0015, dwell=1, maxn=50, ang_tol=0.03), integ=True),
                             dict(wp(near, pyaw, pt, 1.0, tol=0.0015, dwell=1, maxn=20, ang_tol=0.03), vmax=0.006,
                                  integ=True),
-                            dict(wp(tgt, pyaw, pt, 1.0, tol=0.0015, dwell=1, maxn=20, ang_tol=0.03), vmax=0.0025,
+                            dict(wp(tgt + axle_dir * (side * 0.004), pyaw, pt, 1.0, tol=0.0015, dwell=1, maxn=20, ang_tol=0.03), vmax=0.0025,
                                  integ=True),
-                            press_wp(tgt, pyaw, pt, -axle_dir * side, 0.0022, retry=[[0.0, 0.0, -0.006],
+                            press_wp(tgt, pyaw, pt, -axle_dir * side, 0.0032, free=0.004, retry=[[0.0, 0.0, -0.006],
                                                                                   [0.0, 0.0, 0.004]]),
                             wp(tgt, pyaw, pt, -1.0, tol=0.004, dwell=3, maxn=8),
                             wp(out, pyaw, pt, -1.0, tol=0.01, maxn=20),
@@ -607,13 +642,19 @@ class Oracle(object):
                 pyaw = best_yaw(job["pyaw_cands"], yaw, q7)
                 tgt = self._place_target(job, s["rec"], pyaw)[0]
                 grip_open = -0.4 if typ == "cabin" else -1.0
-                s["wps"] = [wp(tgt + [0, 0, 0.03], pyaw, 0.0, 1.0, tol=0.003, maxn=40, ang_tol=0.03),
-                            dict(wp(tgt, pyaw, 0.0, 1.0, tol=0.0015, dwell=1, maxn=(18 if typ == "axle" else 30),
-                                    ang_tol=0.03), vmax=(0.006 if typ == "axle" else 0.02), integ=(typ == "axle"))]
                 if typ == "axle":
-                    s["wps"].append(press_wp(tgt, pyaw, 0.0, [0.0, 0.0, -1.0], 0.0030))
-                s["wps"] += [wp(tgt, pyaw, 0.0, grip_open, tol=0.004, dwell=3, maxn=8),
-                            wp(tgt + [0, 0, 0.07], pyaw, 0.0, grip_open, tol=0.015, maxn=25)]
+                    s["wps"] = [wp(tgt + [0, 0, 0.03], pyaw, 0.0, 1.0, tol=0.003, maxn=40, ang_tol=0.03),
+                                # line up 1 mm above the detent, to well under the lead-in's 1 mm, before pressing
+                                dict(wp(tgt + [0, 0, 0.005], pyaw, 0.0, 1.0, tol=0.0006, dwell=2, maxn=30, ang_tol=0.03),
+                                     vmax=0.006, integ=True),
+                                press_wp(tgt, pyaw, 0.0, [0.0, 0.0, -1.0], 0.0030),
+                                wp(tgt, pyaw, 0.0, -1.0, tol=0.004, dwell=3, maxn=8),
+                                wp(tgt + [0, 0, 0.07], pyaw, 0.0, -1.0, tol=0.015, maxn=25)]
+                else:
+                    s["wps"] = [wp(tgt + [0, 0, 0.03], pyaw, 0.0, 1.0, tol=0.003, maxn=40, ang_tol=0.03),
+                                wp(tgt, pyaw, 0.0, 1.0, tol=0.0015, dwell=1, maxn=30, ang_tol=0.03),
+                                wp(tgt, pyaw, 0.0, grip_open, tol=0.004, dwell=3, maxn=8),
+                                wp(tgt + [0, 0, 0.07], pyaw, 0.0, grip_open, tol=0.015, maxn=25)]
             job["stage"] = "placed"
             return
         if job["stage"] == "placed":

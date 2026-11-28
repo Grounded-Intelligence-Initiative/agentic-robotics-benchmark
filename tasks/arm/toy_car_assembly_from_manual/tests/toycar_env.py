@@ -88,6 +88,7 @@ LATCH_Z = 0.006                  # resting parts (chassis, cabin): centre at mos
 PRESS = {"axle": {"lip": 0.004, "top": 0.016, "lat": 0.001, "ang": math.radians(3.0)},
          "wheel": {"lip": 0.003, "lat": 0.003, "ang": math.radians(6.0)}}
 N_DETENT_BARS, N_DETENT_COLLARS = 2, 4
+BORE_R = 0.0056                  # visual radius of a wheel's bore (the axle is 10 mm thick)
 LATCHED_MASS_SCALE = float(os.environ.get("TC_LMS", "1"))   # >1 makes latched parts solid to the fingers (the reference then needs another axle press)
 AXLE_ALONG_TOL = 0.004           # how far off centre (along the notch) an axle may sit and still seat
 F_SEAT = 10.0                    # N
@@ -438,6 +439,9 @@ def part_geoms(typ, d, rgb, prefix, coll=""):
             p=prefix, r=r, h=t, c=rgba, f='friction="1.0 0.02 0.002"'))
         g.append('<geom name="{p}hub" type="cylinder" size="{r} {h}" rgba="{c} 1" contype="0" conaffinity="0" '
                  'mass="0"/>'.format(p=prefix, r=0.42 * r, h=t + 0.0006, c="%.3f %.3f %.3f" % HUB_RGB))
+        # the bore (visual only; the physics of the fit is the lead-in and detent model): a dark hole through the hub
+        g.append('<geom name="{p}bore" type="cylinder" size="{r} {h}" rgba="0.07 0.06 0.05 1" contype="0" '
+                 'conaffinity="0" mass="0"/>'.format(p=prefix, r=BORE_R, h=t + 0.0008))
         g.append('<geom name="{p}mark" type="box" pos="{x} 0 0" size="{s} 0.0025 {h}" rgba="0.85 0.85 0.85 1" '
                  'contype="0" conaffinity="0" mass="0"/>'.format(p=prefix, x=0.7 * r, s=0.12 * r, h=t + 0.0004))
     else:

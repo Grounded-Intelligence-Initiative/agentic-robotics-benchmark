@@ -99,7 +99,7 @@ pillow, mujoco), and has no network and no practice cell.
   |---|---|
   | chassis | red |
   | axles | natural birch |
-  | wheels | black with grey hubs |
+  | wheels | black with grey hubs, each with a dark 11 mm bore |
   | cabin | blue, with a white roof panel set 3 mm in from the roof's edges and dark windows |
 
   Each episode varies the light and each part's shade a little.
