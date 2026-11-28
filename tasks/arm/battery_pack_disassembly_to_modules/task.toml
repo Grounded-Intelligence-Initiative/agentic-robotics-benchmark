@@ -1,0 +1,81 @@
+# battery_pack_disassembly_to_modules (Physical Execution, robotic arm; NVIDIA Isaac Sim).
+#
+# A UR20 with a tool changer (a nutrunner with exchangeable bits, a parallel gripper) takes plug-in hybrid battery
+# packs apart to module level in a disassembly cell: the lid's bolts, the lid, the service disconnect, the low-voltage
+# plugs, the busbars, the module brackets, then every module to a rack and every other component to its bin. The agent
+# is the cell's automation engineer and gets what one would have: the pack series' workshop manual (drawings, nominal
+# positions, the torque table, the high-voltage isolation procedure), the tool catalog, the cell's interface document
+# with exact calibration, the robot's model, and a commissioning service that runs the cell on four development packs
+# for three sessions (never refunded), with no ground truth and no credit, in a two-hour session. It delivers a program (run.sh) that the grader drives step by
+# step over a stdio wire on a fixed hidden set of six packs. On the wire are the robot's joint readings, the wrench at
+# the flange, the nutrunner's torque, angle and stroke, the gripper's opening, and RGB-D frames of an overhead and a
+# wrist camera on request; never a part's pose or a fastener's state. Each pack differs in its variant (4, 5 or 6
+# modules), its placement on the fixture, every fastener's position within its tolerance, the head type of every
+# fastener (seen in the picture, or found by trying bits in an order that harms no head, at the cost of exchanges),
+# corroded, seized and missing fasteners (a seized one has to be worked loose under torque control: at a thread's
+# shear torque the shank twists off and its part stays held), sealant, foam pads that hide some fasteners, dirt and
+# the hall's light, a swollen module that must stay in its seat, and a harness remnant that may lie over fasteners.
+# Fasteners are rule-based constraints (the right bit, the axes aligned within 0.5 to 0.8 mm, enough axial force,
+# enough loosening turns; a bit one size off or a bad alignment strips the head the moment it is loaded; a weakened
+# shank's yield point is read from the torque-angle trace); everything else is rigid-body physics (PhysX on the CPU),
+# and the GPU renders the cameras. The metric, mean_pack_credit (tests/anchor.json), is the value-weighted
+# fraction of a pack's components that lie undamaged in the right rack, stand or bin at the end, read from the physics
+# engine's state and averaged over the packs. A safety event (a tool on a live busbar before isolation, a loose
+# fastener on a busbar, a dropped module, a swollen module moved off its seat) ends that pack and condemns it: it counts
+# 0, the facility's rule for a possible thermal event; the third protective stop ends a pack with the credit earned so
+# far; there is no other term. Design notes: tests/README.md.
+#
+# Needs one NVIDIA RTX GPU in the agent's sandbox (the commissioning service) and in the verifier (the graded cell).
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/battery_pack_disassembly_to_modules"
+
+[metadata]
+platform = "arm"
+
+# gpu_types: the cloud models on which the benchmark has validated this same Isaac Sim 6.2 RTX stack
+# (tasks/swarm/hazard_bay_build), cheapest first, then RTX-6000-Ada, the model this task was developed and measured on:
+# natively, outside the engine, on the author's server (tests/README.md, section 6), and RTX-3090, the model of the
+# author's validate run (driver 535, below Omniverse's R550 floor: the cell's driver check is off,
+# tests/packcell/server.py). The three cloud models follow hazard_bay_build's validation of the stack, not a run of
+# this task; they keep it off the H100 and H200, where RTX rendering of this stack is unproven. The canary
+# (tests/verify.py) fails a model that does not render as a task error, never as a 0; a maintainer confirms or
+# corrects the list with a validate per model (tests/README.md, section 5).
+[environment]
+cpus = 8
+memory_mb = 32768
+gpus = 1
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-6000-Ada", "RTX-3090"]
+
+# Setup (environment/setup/setup.sh: the givens into the agent home, the commissioning service started; under a
+# minute) has no field: the engine bounds it at 1800 s. [agent] timeout_sec: 2 h, a condition of the job since the
+# third hardening round (with three commissioning sessions, never refunded; tests/README.md, section 2); a session
+# takes at most 8 to 12 minutes of wall clock (1500 s of simulated time at 10 to 15 ms a control tick, plus the
+# cell's start). [verifier] timeout_sec: a canary cell (start and first render on a cold cache: a few minutes), then six
+# packs, each a fresh cell process (start and build: 1 to 4 min) with at most 1500 s of simulated time (30,000 control
+# ticks: 5 to 8 min of wall clock; the allowance since the third round, 1.31 times the reference's slowest hidden pack),
+# 400 frames (about 0.2 s each) and 1200 s of the controller's own time: about 2,000 s a pack at the bounds, 12,000 s
+# for the six, 12,500 s with the canary; 6 h leaves 9,100 s of margin. The
+# grader's own deadline (tests/grader_config.json verifier_deadline_s, 20,400 s) ends grading with a verdict 1,200 s
+# before the engine's limit, whatever runs then. The reference's packs take about 770 to 1080 s of simulated time
+# each since the third round; its whole verify took 18 to 34 minutes natively (1076 to 2031 s, tests/README.md,
+# section 6).
+[agent]
+timeout_sec = 7200
+network_mode = "no-network"
+
+[verifier]
+timeout_sec = 21600
+# Separate verification: a fresh verifier sandbox from the same image, which the agent never touched; only the
+# declared artifact (/home/user/submission) is restored into it. environment/setup/setup.sh does not run there (the
+# grader starts its own cell processes and needs none of the givens).
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 8
+memory_mb = 32768
+gpus = 1
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-6000-Ada", "RTX-3090"]

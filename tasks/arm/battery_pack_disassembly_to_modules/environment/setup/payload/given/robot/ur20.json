@@ -1,0 +1,137 @@
+{
+ "name": "Universal Robots UR20",
+ "joint_names": [
+  "shoulder_pan_joint",
+  "shoulder_lift_joint",
+  "elbow_joint",
+  "wrist_1_joint",
+  "wrist_2_joint",
+  "wrist_3_joint"
+ ],
+ "note": "every joint turns about the z axis of its own frame; `joints` gives each joint frame in its parent link (translation in m, quaternion w x y z), as in the USD description; the flange is wrist_3_link",
+ "joints": [
+  {
+   "name": "shoulder_pan_joint",
+   "translation": [
+    0.0,
+    0.0,
+    0.2363
+   ],
+   "quaternion_wxyz": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  {
+   "name": "shoulder_lift_joint",
+   "translation": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "quaternion_wxyz": [
+    0.70710678,
+    0.70710678,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "elbow_joint",
+   "translation": [
+    -0.862,
+    0.0,
+    0.0
+   ],
+   "quaternion_wxyz": [
+    1.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "wrist_1_joint",
+   "translation": [
+    -0.7287,
+    0.0,
+    0.201
+   ],
+   "quaternion_wxyz": [
+    1.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "wrist_2_joint",
+   "translation": [
+    0.0,
+    -0.1593,
+    0.0
+   ],
+   "quaternion_wxyz": [
+    0.70710678,
+    0.70710678,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "wrist_3_joint",
+   "translation": [
+    0.0,
+    0.1543,
+    0.0
+   ],
+   "quaternion_wxyz": [
+    0.70710678,
+    -0.70710678,
+    0.0,
+    0.0
+   ]
+  }
+ ],
+ "limits_rad": [
+  [
+   -6.283185307179586,
+   6.283185307179586
+  ],
+  [
+   -6.283185307179586,
+   6.283185307179586
+  ],
+  [
+   -3.141592653589793,
+   3.141592653589793
+  ],
+  [
+   -6.283185307179586,
+   6.283185307179586
+  ],
+  [
+   -6.283185307179586,
+   6.283185307179586
+  ],
+  [
+   -6.283185307179586,
+   6.283185307179586
+  ]
+ ],
+ "home_q": [
+  0.0,
+  -1.45,
+  1.85,
+  -1.97,
+  -1.5708,
+  0.0
+ ],
+ "tool_centre_point_z": {
+  "nutrunner": 0.3,
+  "gripper": 0.235,
+  "none": 0.0
+ }
+}

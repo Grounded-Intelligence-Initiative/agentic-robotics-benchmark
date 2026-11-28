@@ -17,6 +17,12 @@ summary = "A Franka Panda must open four wooden puzzle boxes whose lids are held
 platforms = ["arm"]
 stages = ["behavior"]
 
+[battery_pack_disassembly_to_modules]
+title = "Take a battery pack apart to module level"
+summary = "Program a UR20 cell with a nutrunner and a gripper to take hybrid battery packs apart to module level, reading every fastener's place, head and state from RGB-D cameras and the nutrunner's torque."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [bimanual_cad_design_from_photos]
 title = "Model a dual-arm unit in CAD"
 summary = "Rebuild the lost CAD of a student-modified dual-arm unit, a column carrying two seven-joint arms, in FreeCAD from a photo set."

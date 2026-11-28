@@ -1,0 +1,495 @@
+{
+ "key_hex": "fb40aca7b3a5996090fa15a8b3f20548161ed66662cd340753b157114d261862",
+ "rule": "tests/review/select_set.py (its docstring)",
+ "series_version": "0.1.0",
+ "summaries": [
+  {
+   "variant": "P4",
+   "fasteners": 28,
+   "missing": 1,
+   "corroded": 1,
+   "heads": {
+    "S10": 11,
+    "S13": 6,
+    "T30": 9,
+    "T40": 1
+   },
+   "sealed": 9,
+   "seized": [
+    "L01",
+    "L02"
+   ],
+   "swollen": [
+    "M4"
+   ],
+   "pads": [
+    "L09",
+    "L10"
+   ],
+   "weak": {
+    "L01": 15.338,
+    "L02": 15.392,
+    "L10": 14.769
+   },
+   "bumps_mm": {
+    "M1": 0.275,
+    "M2": 0.254,
+    "M3": 0.231,
+    "M4": 0.64
+   },
+   "harness": "lid",
+   "harness_covers": [
+    "L05",
+    "L06"
+   ],
+   "placement": {
+    "dx": 0.0,
+    "dy": 0.00765,
+    "yaw_deg": 1.087
+   },
+   "value": 74.5
+  },
+  {
+   "variant": "P4",
+   "fasteners": 28,
+   "missing": 2,
+   "corroded": 6,
+   "heads": {
+    "S10": 19,
+    "S13": 6,
+    "T30": 1,
+    "T40": 0
+   },
+   "sealed": 10,
+   "seized": [
+    "B02a",
+    "R3af"
+   ],
+   "swollen": [
+    "M4"
+   ],
+   "pads": [
+    "L09"
+   ],
+   "weak": {
+    "L02": 14.474,
+    "L03": 14.02,
+    "L07": 15.134,
+    "L08": 17.259,
+    "B02a": 19.852,
+    "R1af": 39.523,
+    "R3af": 43.252
+   },
+   "bumps_mm": {
+    "M1": 0.204,
+    "M2": 0.242,
+    "M3": 0.181,
+    "M4": 0.453
+   },
+   "harness": "busbars",
+   "harness_covers": [
+    "B01a",
+    "B01b",
+    "B02a"
+   ],
+   "placement": {
+    "dx": 0.00461,
+    "dy": 0.0102,
+    "yaw_deg": -0.7006
+   },
+   "value": 74.0
+  },
+  {
+   "variant": "P5",
+   "fasteners": 34,
+   "missing": 0,
+   "corroded": 4,
+   "heads": {
+    "S10": 19,
+    "S13": 2,
+    "T30": 5,
+    "T40": 8
+   },
+   "sealed": 8,
+   "seized": [
+    "L11",
+    "R1af",
+    "R4bf",
+    "R5bf"
+   ],
+   "swollen": [],
+   "pads": [
+    "B04a"
+   ],
+   "weak": {
+    "L06": 15.262,
+    "L07": 14.348,
+    "L11": 18.892,
+    "B05b": 16.449,
+    "R1af": 34.158,
+    "R4bf": 37.479,
+    "R5bf": 40.894
+   },
+   "bumps_mm": {
+    "M1": 0.238,
+    "M2": 0.11,
+    "M3": 0.106,
+    "M4": 0.16,
+    "M5": 0.124
+   },
+   "harness": "none",
+   "harness_covers": [],
+   "placement": {
+    "dx": 0.00528,
+    "dy": -0.00456,
+    "yaw_deg": 0.7378
+   },
+   "value": 89.0
+  },
+  {
+   "variant": "P5",
+   "fasteners": 34,
+   "missing": 2,
+   "corroded": 2,
+   "heads": {
+    "S10": 5,
+    "S13": 7,
+    "T30": 19,
+    "T40": 1
+   },
+   "sealed": 11,
+   "seized": [
+    "B04a",
+    "R2bf"
+   ],
+   "swollen": [
+    "M5"
+   ],
+   "pads": [
+    "L11",
+    "L04"
+   ],
+   "weak": {
+    "L03": 19.261,
+    "L04": 14.607,
+    "B04a": 19.85,
+    "R2bf": 33.181
+   },
+   "bumps_mm": {
+    "M1": 0.205,
+    "M2": 0.19,
+    "M3": 0.25,
+    "M4": 0.282,
+    "M5": 0.591
+   },
+   "harness": "lid",
+   "harness_covers": [
+    "L01",
+    "L02"
+   ],
+   "placement": {
+    "dx": -0.00824,
+    "dy": -0.00517,
+    "yaw_deg": 0.9233
+   },
+   "value": 89.0
+  },
+  {
+   "variant": "P6",
+   "fasteners": 40,
+   "missing": 3,
+   "corroded": 1,
+   "heads": {
+    "S10": 5,
+    "S13": 3,
+    "T30": 21,
+    "T40": 8
+   },
+   "sealed": 12,
+   "seized": [
+    "L12",
+    "R3af"
+   ],
+   "swollen": [
+    "M4"
+   ],
+   "pads": [],
+   "weak": {
+    "L12": 19.676,
+    "B03b": 18.031,
+    "R3af": 38.086
+   },
+   "bumps_mm": {
+    "M1": 0.142,
+    "M2": 0.26,
+    "M3": 0.253,
+    "M4": 0.462,
+    "M5": 0.252,
+    "M6": 0.268
+   },
+   "harness": "busbars",
+   "harness_covers": [
+    "B03a",
+    "B03b",
+    "B04a"
+   ],
+   "placement": {
+    "dx": -0.00906,
+    "dy": -0.00272,
+    "yaw_deg": -0.3323
+   },
+   "value": 103.5
+  },
+  {
+   "variant": "P6",
+   "fasteners": 40,
+   "missing": 0,
+   "corroded": 3,
+   "heads": {
+    "S10": 13,
+    "S13": 1,
+    "T30": 15,
+    "T40": 11
+   },
+   "sealed": 7,
+   "seized": [
+    "B01b",
+    "L07",
+    "R3af"
+   ],
+   "swollen": [],
+   "pads": [
+    "L10"
+   ],
+   "weak": {
+    "L01": 17.76,
+    "L07": 19.743,
+    "B01b": 19.653,
+    "B02a": 16.537,
+    "R3af": 42.358
+   },
+   "bumps_mm": {
+    "M1": 0.165,
+    "M2": 0.277,
+    "M3": 0.198,
+    "M4": 0.328,
+    "M5": 0.274,
+    "M6": 0.267
+   },
+   "harness": "none",
+   "harness_covers": [],
+   "placement": {
+    "dx": 0.00295,
+    "dy": -0.00315,
+    "yaw_deg": -0.0439
+   },
+   "value": 104.0
+  }
+ ],
+ "dev_summaries": [
+  {
+   "variant": "P4",
+   "fasteners": 28,
+   "missing": 1,
+   "corroded": 4,
+   "heads": {
+    "S10": 2,
+    "S13": 8,
+    "T30": 17,
+    "T40": 0
+   },
+   "sealed": 4,
+   "seized": [
+    "L06"
+   ],
+   "swollen": [],
+   "pads": [
+    "L03"
+   ],
+   "weak": {
+    "L02": 17.389,
+    "L06": 14.17,
+    "B01b": 15.762,
+    "B02b": 16.781
+   },
+   "bumps_mm": {
+    "M1": 0.105,
+    "M2": 0.236,
+    "M3": 0.275,
+    "M4": 0.323
+   },
+   "harness": "busbars",
+   "harness_covers": [
+    "B02a",
+    "B02b"
+   ],
+   "placement": {
+    "dx": -0.00104,
+    "dy": 0.01186,
+    "yaw_deg": -0.7528
+   },
+   "value": 74.5
+  },
+  {
+   "variant": "P5",
+   "fasteners": 34,
+   "missing": 4,
+   "corroded": 7,
+   "heads": {
+    "S10": 17,
+    "S13": 0,
+    "T30": 4,
+    "T40": 9
+   },
+   "sealed": 5,
+   "seized": [
+    "R5bf"
+   ],
+   "swollen": [
+    "M3"
+   ],
+   "pads": [],
+   "weak": {
+    "L07": 19.114,
+    "L11": 19.247,
+    "B03b": 15.602,
+    "R1bf": 34.98,
+    "R2af": 40.052,
+    "R2bf": 40.59,
+    "R3af": 36.262,
+    "R5bf": 41.775
+   },
+   "bumps_mm": {
+    "M1": 0.125,
+    "M2": 0.155,
+    "M3": 0.643,
+    "M4": 0.124,
+    "M5": 0.294
+   },
+   "harness": "lid",
+   "harness_covers": [
+    "L03"
+   ],
+   "placement": {
+    "dx": -0.01199,
+    "dy": -0.0016,
+    "yaw_deg": -1.0821
+   },
+   "value": 88.0
+  },
+  {
+   "variant": "P6",
+   "fasteners": 40,
+   "missing": 1,
+   "corroded": 6,
+   "heads": {
+    "S10": 5,
+    "S13": 10,
+    "T30": 23,
+    "T40": 1
+   },
+   "sealed": 9,
+   "seized": [
+    "R3bf"
+   ],
+   "swollen": [
+    "M5"
+   ],
+   "pads": [
+    "L03"
+   ],
+   "weak": {
+    "L02": 14.18,
+    "L03": 14.901,
+    "L04": 14.899,
+    "L12": 18.79,
+    "L14": 15.522,
+    "B05a": 19.93,
+    "R3bf": 32.647
+   },
+   "bumps_mm": {
+    "M1": 0.287,
+    "M2": 0.294,
+    "M3": 0.251,
+    "M4": 0.265,
+    "M5": 0.756,
+    "M6": 0.103
+   },
+   "harness": "none",
+   "harness_covers": [],
+   "placement": {
+    "dx": 0.0007,
+    "dy": 0.00121,
+    "yaw_deg": 1.1963
+   },
+   "value": 103.5
+  },
+  {
+   "variant": "P6",
+   "fasteners": 40,
+   "missing": 2,
+   "corroded": 6,
+   "heads": {
+    "S10": 5,
+    "S13": 10,
+    "T30": 22,
+    "T40": 1
+   },
+   "sealed": 11,
+   "seized": [
+    "B01b"
+   ],
+   "swollen": [],
+   "pads": [],
+   "weak": {
+    "L02": 14.551,
+    "L06": 19.632,
+    "L11": 19.731,
+    "L12": 14.29,
+    "L14": 16.692,
+    "B01b": 19.06,
+    "B04a": 16.895
+   },
+   "bumps_mm": {
+    "M1": 0.187,
+    "M2": 0.237,
+    "M3": 0.217,
+    "M4": 0.132,
+    "M5": 0.197,
+    "M6": 0.139
+   },
+   "harness": "lid",
+   "harness_covers": [
+    "L03",
+    "L04"
+   ],
+   "placement": {
+    "dx": -0.00977,
+    "dy": -0.00437,
+    "yaw_deg": 1.2752
+   },
+   "value": 104.0
+  }
+ ],
+ "cells_key_hex": "e02d9bc572e6ea794e22a4a7cdc5408efc854590dc640a99eddac6a8beae0deb",
+ "cells_rule": "tests/review/select_set.py (its docstring), rule 2",
+ "cells_drawn_utc": "2026-11-25T19:17:17Z",
+ "sealant_key_hex": "0b241455612e5e9f57538134bd5e43fc3afcef72b0c8cfbe9b9d5b4af43f9da3",
+ "sealant_rule": "tests/review/select_set.py (its docstring), rule 3",
+ "sealant_drawn_utc": "2026-11-25T20:37:35Z",
+ "appearance_key_hex": "588b5308fd0e5908a38de23de2487b83cab12d118322ed755feaa6caebfa4182",
+ "appearance_rule": "tests/review/select_set.py (its docstring), rule 4",
+ "appearance_drawn_utc": "2026-11-25T22:27:10Z",
+ "seized_key_hex": "05ea419a5be75ddf813e5a6f95838a7f0cb84562f1a9522f119cf6e1d40af55e",
+ "swollen_key_hex": "974f0c9f88161a199c45042763b5fae7ed4c5bc28c601605f349274e1016da2a",
+ "foam_key_hex": "6852b56cd38a1ec083d694c2a81b670538959eab730658527760bcc4a380649d",
+ "round2_rule": "tests/review/select_set.py (its docstring), rules 5 to 7",
+ "round2_drawn_utc": "2026-11-26T13:18:41Z",
+ "shank_key_hex": "65192eb916d48e8f7a98decb4c6ac73bd8c118340ea5dcad8a1d8ed9ff2d6adb",
+ "swollen3_key_hex": "a522d666ef3bb3ec5d3c650ee925d916341b89d231c6b6d7ad05063695ff870d",
+ "round3_rule": "tests/review/select_set.py (its docstring), rules 8 to 11",
+ "round3_drawn_utc": "2026-11-27T00:20:10Z",
+ "transducer_key_hex": "0df6ee8089fe6291f19129a46d95cfc26832f693c9d75adccc77ccbdafecba71",
+ "transducer_rule": "tests/review/select_set.py (its docstring), rule 12",
+ "transducer_drawn_utc": "2026-11-27T00:32:43Z"
+}

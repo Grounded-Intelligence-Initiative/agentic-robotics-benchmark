@@ -1,0 +1,886 @@
+#!/usr/bin/env python3
+"""Write the agent's documents from the cell's own numbers (maintainers' tool; nothing runs it at grading).
+
+    python3 make_documents.py [--photos DIR]
+
+It writes, under environment/setup/payload/given/: `service_manual.md` with its drawings (`manual/*.png`),
+`tool_catalog.md`, `cell/cell_interface.md`, `cell/cell.json` and `robot/ur20.json`, and the reference's copy of
+`cell.json` (solution/reference/). Every number comes from `tests/packcell/series.py`, `wire.py` and `kin.py`, so
+the documents cannot drift from the cell: after a change there, run this again and commit the result.
+`--photos DIR` copies the photographs made by `make_photos.py` (which needs Isaac Sim) into `manual/`; without it the
+photographs already in place are kept.
+"""
+
+import argparse
+import json
+import math
+import os
+import shutil
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+TASK = os.path.dirname(os.path.dirname(HERE))
+sys.path.insert(0, os.path.join(TASK, "tests"))
+
+from packcell import kin, wire  # noqa: E402
+from packcell import series as S  # noqa: E402
+
+GIVEN = os.path.join(TASK, "environment", "setup", "payload", "given")
+MANUAL = os.path.join(GIVEN, "manual")
+E = S.ENGAGE
+SZ, SW, FM = S.SEIZED, S.SWOLLEN, S.FOAM
+SH, SW3, MG = S.SHANK, S.SWOLLEN3, S.CONSEQUENCE["magnet"]
+D = wire.DEFAULTS
+NR, GR = S.TOOLS["nutrunner"], S.TOOLS["gripper"]
+
+
+def mm(v):
+    return "%g" % round(v * 1000.0, 1)
+
+
+def table(head, rows):
+    out = ["| " + " | ".join(head) + " |", "|" + "|".join("---" for _ in head) + "|"]
+    out += ["| " + " | ".join(str(c) for c in r) + " |" for r in rows]
+    return "\n".join(out)
+
+
+# ------------------------------------------------------------------------------------------------- drawings
+def draw_variant(variant, lid, path):
+    from PIL import Image, ImageDraw, ImageFont
+    nom = S.nominal(variant)
+    sc, m = 1100.0, 90                   # pixels per metre, margin
+    (sx, sy) = S.TRAY["size"]
+    W, H = int(sy * sc) + 2 * m, int(sx * sc) + 2 * m
+    img = Image.new("RGB", (W, H), "white")
+    d = ImageDraw.Draw(img)
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 15)
+        small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+    except OSError:
+        font = small = ImageFont.load_default()
+
+    def px(x, y):                        # as the overhead camera sees it: +x up, +y to the left
+        return (m + (sy / 2 - y) * sc, m + (sx / 2 - x) * sc)
+
+    def rect(x0, x1, y0, y1, **kw):
+        a, b = px(x1, y1), px(x0, y0)
+        d.rectangle([a[0], a[1], b[0], b[1]], **kw)
+
+    rect(-sx / 2, sx / 2, -sy / 2, sy / 2, outline="black", width=3, fill=(235, 235, 235) if lid else (250, 250, 250))
+    if lid:
+        for axis, c in nom["ribs"]:
+            if axis == "x":
+                rect(-0.25, 0.25, c - 0.015, c + 0.015, outline=(90, 90, 90), fill=(200, 200, 200))
+            else:
+                rect(c - 0.015, c + 0.015, -0.43, 0.43, outline=(90, 90, 90), fill=(200, 200, 200))
+        rect(-0.06, 0.06, -0.015, 0.015, outline="black", fill=(240, 220, 60))
+        d.text(px(0.0, -0.03), "handle", fill="black", font=small)
+        for f in nom["fasteners"]:
+            if f["group"] != "lid":
+                continue
+            u, v = px(*f["nominal"])
+            d.ellipse([u - 7, v - 7, u + 7, v + 7], outline="black", width=2, fill="white")
+            inward = (0.0 - f["nominal"][0], 0.0 - f["nominal"][1])
+            n = math.hypot(*inward)
+            tu, tv = px(f["nominal"][0] + 0.035 * inward[0] / n, f["nominal"][1] + 0.035 * inward[1] / n)
+            d.text((tu - 12, tv - 8), f["id"], fill="black", font=font)
+    else:
+        wall = S.TRAY["wall"]
+        rect(-sx / 2 + wall, sx / 2 - wall, -sy / 2 + wall, sy / 2 - wall, outline=(120, 120, 120), width=1)
+        ml, mw, _ = S.MODULE["size"]
+        for p in nom["parts"]:
+            x, y = p["pos"][0], p["pos"][1]
+            if p["kind"] == "module":
+                rect(x - ml / 2, x + ml / 2, y - mw / 2, y + mw / 2, outline="black", width=2, fill=(215, 220, 228))
+                rect(x - 0.05, x + 0.05, y - 0.015, y + 0.015, outline="black", fill=(240, 220, 60))
+                d.text(px(x + 0.11, y + 0.02), p["id"], fill="black", font=font)
+            elif p["kind"] == "busbar":
+                hx, hy = (p["length"] / 2, 0.011) if p["along"] == "x" else (0.011, p["length"] / 2)
+                rect(x - hx, x + hx, y - hy, y + hy, outline=(120, 60, 0), width=2, fill=(240, 150, 60))
+                tu, tv = px(x - 0.03, y + 0.012)
+                d.text((tu, tv), p["id"], fill=(120, 60, 0), font=small)
+            elif p["kind"] == "bracket":
+                rect(x - 0.015, x + 0.015, y - 0.03, y + 0.03, outline="black", fill=(210, 195, 120))
+                tu, tv = px(x + (0.012 if x > 0 else -0.02), y + 0.055)
+                d.text((tu, tv), p["id"], fill="black", font=small)
+            elif p["kind"] == "msd":
+                rect(x - 0.03, x + 0.03, y - 0.02, y + 0.02, outline="black", width=2, fill=(255, 120, 30))
+                d.text(px(x - 0.04, y + 0.02), "MSD", fill="black", font=font)
+            elif p["kind"] == "connector":
+                rect(x - 0.011, x + 0.011, y - 0.017, y + 0.017, outline="black", fill=(170, 170, 170))
+                d.text(px(x - 0.02, y + 0.012), p["id"], fill="black", font=small)
+        rect(S.SERVICE_X - 0.06, S.SERVICE_X + 0.06, nom["bms_y"] - 0.09, nom["bms_y"] + 0.09, outline="black", width=1)
+        d.text(px(S.SERVICE_X + 0.055, nom["bms_y"] + 0.085), "BMS", fill="black", font=small)
+        for f in nom["fasteners"]:
+            if f["group"] == "lid":
+                continue
+            u, v = px(*f["nominal"])
+            r = 4 if f["group"] == "busbar" else 5
+            d.ellipse([u - r, v - r, u + r, v + r], outline="black", width=1, fill="white")
+    # axes
+    o = px(0.0, 0.0)
+    d.line([o, px(0.08, 0.0)], fill=(200, 0, 0), width=3)
+    d.line([o, px(0.0, 0.08)], fill=(0, 140, 0), width=3)
+    d.text(px(0.10, 0.012), "x", fill=(200, 0, 0), font=font)
+    d.text(px(0.012, 0.10), "y", fill=(0, 140, 0), font=font)
+    d.text((m, 20), "HVB-%s  %s  (top view: the pack frame's +x up, +y to the left; the robot stands below the picture)"
+           % (variant, "lid on" if lid else "lid off"), fill="black", font=font)
+    d.text((m, H - 40), "tray %s x %s mm; drawing to scale, positions in the manual's tables" % (mm(sx), mm(sy)), fill="black", font=small)
+    img.save(path, optimize=True)
+
+
+# ------------------------------------------------------------------------------------------------- service manual
+def service_manual():
+    z0 = S.Z
+    t = []
+    t.append("""# HVB-P traction battery: workshop manual, removal of the modules
+
+Issue 3. Applies to the plug-in hybrid packs HVB-P4, HVB-P5 and HVB-P6 (4, 5 and 6 modules in one common housing).
+This manual describes the pack as built, what a pack returned from the field may look like, and the order in which it
+is taken apart to module level. Dimensions are nominal unless a tolerance is given.
+
+## 1. Safety: high voltage
+
+The busbars, the modules' terminal posts and the junction studs are live as long as the service disconnect (MSD) is
+in its socket: the modules are then connected in series (up to 320 V). **Nothing conductive may touch a busbar, a
+busbar bolt, a terminal post or a junction stud before the pack is isolated.** In the disassembly cell an insulation
+monitor trips when a tool touches (comes within %s mm of) one of them before isolation: the cell stops for good and
+the pack is condemned (section 9).
+
+Isolation procedure:
+
+1. Remove the lid (section 6, steps 1 and 2).
+2. Pull the service disconnect straight up out of its socket and take it away.
+3. Wait %g s: the pack's link capacitor discharges through its bleed resistor.
+
+After that the string is open and no part carries more than one module's voltage (below 60 V): busbars and their
+bolts may be touched and removed with the tools. The lid's bolts, the lid, the service disconnect, the low-voltage
+plugs, the brackets and their bolts and the modules' housings are never live.
+
+**A loose fastener is a short circuit.** A bolt or a sheared head that falls onto a busbar still in its seat (or
+comes within %s mm of it) bridges it to its neighbour or to the tray, before isolation and after it (each module
+keeps its own voltage on its terminals): the cell stops for good and the pack is condemned (section 9). A freed
+fastener rides out on the magnetic bit only as section 5 says.
+""" % (mm(S.HV_MARGIN), S.ISOLATION_WAIT_S, mm(S.HV_MARGIN)))
+    t.append("""## 2. The series
+
+All three variants use the same tray and the same lid outline; they differ in the number of modules, in where the
+service disconnect and the battery management unit (BMS) sit, and in the lid:
+
+""" + table(["variant", "modules", "lid bolts", "lid ribs (raised strips on the lid)", "MSD at y =", "BMS at y ="],
+            [["HVB-" + v, V["modules"], len(V["lid_bolts"]),
+              "; ".join("along %s at %s = %s mm" % ("y" if a == "y" else "x", "x" if a == "y" else "y", mm(c)) for a, c in V["ribs"]),
+              mm(V["msd_y"]) + " mm", mm(V["bms_y"]) + " mm"] for v, V in sorted(S.VARIANTS.items())]) + """
+
+The variant is not marked on the pack. The variants differ in their lid (rib pattern, number of lid bolts) and in
+their number of modules.
+
+Drawings: `manual/P4_lid.png`, `manual/P4_inside.png` (and P5, P6). Photographs of an example pack and of the
+fastener heads: `manual/photo_*.jpg` (section 8).
+""")
+    t.append("""## 3. The pack frame and the heights
+
+The pack frame P has its origin on the fixture's surface under the centre of the tray; x and y run along the tray's
+short and long sides, z is up. On the cell's fixture a pack is placed with its frame at the fixture's nominal
+position, x and y parallel to the cell's x and y (`cell/cell_interface.md`), within the placement tolerance of
+section 7. Every position in this manual is in the pack frame, in millimetres.
+
+The tray is %s x %s mm outside and %s mm high; its walls are %s mm thick, its floor %s mm.
+
+""" % (mm(S.TRAY["size"][0]), mm(S.TRAY["size"][1]), mm(S.TRAY["height"]), mm(S.TRAY["wall"]), mm(S.TRAY["bottom"]))
+             + table(["height z (mm)", "what"], [
+                 [mm(S.TRAY["height"]), "top of the tray's walls; underside of the lid"],
+                 [mm(z0["lid_seat"]), "top of the lid; seat of the lid bolts' heads"],
+                 [mm(z0["lid_center"] + S.LID["handle_z"]), "centre of the lid's handle bar (where the gripper takes it)"],
+                 [mm(S.TRAY["bottom"] + S.MODULE["size"][2]), "top of a module's housing"],
+                 [mm(z0["module_center"] + S.MODULE["handle_z"]), "centre of a module's handle bar (%s mm above it: the bar's top)" % mm(0.006)],
+                 [mm(z0["post_top"]), "top of the terminal posts and junction studs; underside of the busbars"],
+                 [mm(z0["busbar_center"]), "mid-height of a busbar (where the gripper takes it, on its orange sleeve)"],
+                 [mm(z0["busbar_seat"]), "top of a busbar; seat of the busbar bolts' heads"],
+                 [mm(z0["bracket_seat"]), "top of a bracket; seat of the bracket bolt's head"],
+                 [mm(z0["bracket_center"]), "mid-height of a bracket (where the gripper takes it)"],
+                 [mm(0.135), "centre of the service disconnect's handle bar"],
+                 [mm(0.077), "mid-height of the low-voltage plugs J1 and J2 (where the gripper takes them)"],
+             ]) + """
+
+A bolt's head stands above its seat by the head height of section 5.
+""")
+    # per-variant tables
+    t.append("## 4. Components and their nominal places\n")
+    t.append("""Grip features (the gripper closes on them from above; the closing direction is the direction the fingers
+move in, in the pack frame):
+
+""" + table(["component", "grip feature", "closing direction", "width (mm)", "mass (kg)"], [
+        ["lid", "handle bar at the lid's centre", "y", "30", "%g" % S.LID["mass"]],
+        ["module M1..", "handle bar on top, at the module's centre", "y", "30", "%g" % S.MODULE["mass"]],
+        ["service disconnect (MSD)", "handle bar on top", "y", "20", "0.35"],
+        ["plugs J1, J2", "the plug's body", "x", "22", "0.05"],
+        ["busbar between two modules (runs along y)", "the orange sleeve at its middle", "x", "26", "0.12"],
+        ["first and last busbar (run along x)", "the orange sleeve at its middle", "y", "26", "0.12"],
+        ["bracket", "the block itself", "x (30 mm) or y (60 mm)", "30 / 60", "0.15"],
+        ["harness remnant (section 7)", "the cable, anywhere along it", "across the cable", "12", "0.2"],
+    ]) + """
+
+What holds what:
+
+- the lid: all of its bolts;
+- a busbar: its two bolts (`a` and `b`);
+- a bracket: its one bolt;
+- a module: its two brackets (`a` at the far end, `b` at the service-bay end) and the two busbars on its terminal
+  posts; it comes free when all four have been taken off;
+- the service disconnect: its latch; it comes out when pulled straight up with more than 60 N;
+- a plug J1, J2: its latch; it comes out when pulled straight up with more than 30 N.
+
+A component that is still held does not come away; pulling harder only overloads the robot (the cell stops it).
+
+Appearance: the lid is dark grey with a yellow handle bar; the tray is bare aluminium; a module is grey with a
+lighter top plate, a yellow handle bar and two copper terminal posts at its service-bay end; busbars are copper
+with an orange sleeve; brackets are yellow-passivated steel blocks; the service disconnect is orange with a black
+handle on an orange base; the BMS is a black box, J1 a grey and J2 a white plug with a black latch; the junction
+blocks are red; fasteners are zinc-plated (bright) unless corroded.
+""")
+    for v in sorted(S.VARIANTS):
+        nom = S.nominal(v)
+        t.append("### HVB-%s\n" % v)
+        rows = [[f["id"], f["thread"], mm(f["nominal"][0]), mm(f["nominal"][1]), mm(f["seat_z"]), f["holds"]] for f in nom["fasteners"]]
+        t.append(table(["fastener", "thread", "x", "y", "seat z", "holds"], rows) + "\n")
+        rows = []
+        for p in nom["parts"]:
+            g = p["grasps"][0]
+            rows.append([p["id"], p["kind"], mm(p["pos"][0] + g["pos"][0]), mm(p["pos"][1] + g["pos"][1]), mm(p["pos"][2] + g["pos"][2])])
+        t.append(table(["component", "kind", "grip point x", "y", "z"], rows) + "\n")
+    t.append("""## 5. Fasteners
+
+Two thread sizes, each with two head types as built. A group (lid, busbars, brackets) is built with one head type, but
+which one differs from pack to pack, and single fasteners have been replaced in service by the other head of the same
+thread.
+
+""" + table(["head", "thread", "shape", "size", "head height (mm)"], [
+        [h, H["thread"], "hexagon on a round flange" if H["kind"] == "hex" else "round pan head with a six-lobe (Torx) recess",
+         ("%s mm across flats, flange dia. %s mm" % (mm(H["af"]), mm(2 * H["flange_r"]))) if H["kind"] == "hex"
+         else ("head dia. %s mm, recess %s mm across" % (mm(2 * H["head_r"]), mm(2 * H["recess_r"]))), mm(H["height"])]
+        for h, H in sorted(S.HEADS.items())]) + """
+
+Lid and busbar fasteners are M6, bracket fasteners M8.
+
+""" + table(["thread", "assembly torque (N m)", "breakaway, clean (N m)", "breakaway, corroded (N m)", "breakaway, seized (N m)",
+             "head's limit (N m)", "shear torque, clean (N m)", "shear torque, corroded or seized (N m)", "wind-up (degrees per N m)",
+             "turns to free"], [
+        [k, "%g" % T["tighten"], "%g" % (1.15 * T["tighten"]), "%g to %g" % (1.6 * T["tighten"], 1.9 * T["tighten"]),
+         "%g to %g" % (SZ["breakaway"][0] * T["shear"], SZ["breakaway"][1] * T["shear"]),
+         "%g" % T["head_limit"], "%g" % T["shear"], "%g to %g" % (SH["strength"][0] * T["shear"], SH["strength"][1] * T["shear"]),
+         "%g to %g" % SH["compliance"][k], "%g" % T["turns"]] for k, T in sorted(S.THREADS.items())]) + """
+
+- **Loosening.** A fastener breaks away at its breakaway torque over the first %g degrees and then runs out at about
+  %d %% of the assembly torque. After the number of turns in the table it is free; it stays on the bit (the bits are
+  magnetic) until it is ejected.
+- **Corroded fasteners** (rust-brown head, a rust stain around it) need the higher breakaway torque. A nutrunner
+  whose torque limit is below a fastener's breakaway torque stalls at the limit without turning it.
+- **The shank's strength.** A fully engaged bit that holds a fastener's shear torque, loosening or tightening, twists
+  its shank off: the head comes away on the bit (eject it like a fastener), the stub stays in the thread and holds
+  its part for good (the line's rework station drills it out; this cell cannot). A sheared fastener counts nothing,
+  and the part it holds cannot be taken off. A clean fastener's shank has its thread's shear torque. Corrosion eats
+  into the shank of a corroded or a seized fastener: its shear torque is anywhere in the range of the table, and
+  nothing on the outside shows how much. A corroded fastener's breakaway can lie above its own shear torque; it then
+  behaves as a seized one.
+- **The yield point and the wind-up.** Under the torque the bit holds, the shank and the drive twist: the
+  nutrunner's angle reading winds up by the wind-up of the table (degrees per N m, elastic, the same fastener's
+  wind-up each time; it springs back when the torque is let off). Every shank yields at %d to %d %% of its own shear
+  torque: above its yield point it twists %g times as fast, and that twist stays. At its shear torque it twists off.
+- **The head's limit** holds both ways: a spindle stalled at a limit above it, tightening or loosening, wears the
+  head through within half a second.
+- **Seized fasteners.** Up to %d fasteners of a pack, in any group (a bracket fastener twice as often as a lid or a
+  busbar fastener), are seized by corrosion or by thread-locker; a seized fastener may look clean or rusty. Its
+  breakaway is %g to %g times its thread's shear torque: no torque its shank survives turns it at first. Working
+  breaks a seized thread's bond: each time a fully driven bit has held the fastener against loosening at %d %% or
+  more of its own shear torque for %g s in all, and then against tightening at the assembly torque or more for %g s,
+  what its breakaway exceeds a clean one's falls by a factor of %g to %g (one factor per fastener). Held at a lower
+  torque, or tightened without the loosening before it, the bond does not change. A corroded fastener behaves the
+  same way.
+- **What the nutrunner reads.** Its torque transducer reads to within %g N m plus %g %% of the reading (one
+  standard deviation, every sample) about its own calibration line (`tool_catalog.md`, section 2), its angle encoder
+  to within %g degrees; the trace has one sample per control tick.
+- **Tightening by mistake.** A seated fastener does not turn further: the spindle stalls at its limit, which does no
+  harm below the head's limit and the fastener's yield point.
+- **The wrong bit, or a bit that is not square on the head, strips the head at once** (section 3 of
+  `tool_catalog.md` has the tolerances). A stripped head no longer takes its bit. The extractor bit EX removes a
+  fastener with a rounded hexagon; a reamed Torx recess is smooth, nothing grips it, and its part stays held for good.
+- **Carrying a freed fastener.** The bits are magnetic, but a freed fastener's shank is still in its hole: draw it out
+  straight along its axis, %d mm (M6) or %d mm (M8), before the bit moves sideways (by %g mm or more it catches the
+  hole's edge and falls off). On the way out the magnet holds it while the tool's centre point (as the robot's
+  joints put it) accelerates less than %g m/s^2 and the tool's axis stays within %d degrees of the fastener's axis;
+  otherwise it falls where it is (onto a busbar: section 1).
+- **Missing fasteners.** Field packs come back with fasteners missing (an empty, dark hole). There is nothing to
+  remove there; what the fastener held may already be loose.
+""" % (E["breakaway_deg"], round(100 * E["running_fraction"]), round(100 * SH["yield"][0]), round(100 * SH["yield"][1]),
+       SH["plastic"], SZ["max"], SZ["breakaway"][0], SZ["breakaway"][1],
+       round(100 * S.WORK["loosen"]), S.WORK["loosen_s"], S.WORK["tighten_s"], SZ["work"][0], SZ["work"][1],
+       S.TRANSDUCER["torque_sigma"], 100 * S.TRANSDUCER["torque_rel"], S.TRANSDUCER["angle_sigma_deg"],
+       round(1000 * MG["withdraw"]["M6"]), round(1000 * MG["withdraw"]["M8"]), 1000 * MG["side"], MG["accel"], MG["tilt_deg"]))
+    t.append("""## 6. Order of work
+
+1. Remove every bolt of the lid.
+2. Lift the lid off by its handle and put it on the lid stand.
+3. Pull the service disconnect; wait %g s (section 1).
+4. Pull the low-voltage plugs J1 and J2 from the BMS.
+5. Remove the busbar bolts, then the busbars.
+6. Remove the bracket bolts, then the brackets.
+7. Lift each module out by its handle and stand it in a bay of the module rack; a swollen module stays in its seat
+   (section 7).
+
+Steps 4 to 6 may be interleaved as long as nothing live is touched before step 3 is complete and every component is
+free before it is lifted. Sort everything that comes off (section 9).
+""" % S.ISOLATION_WAIT_S)
+    t.append("""## 7. What a field pack may look like
+
+- **Placement on the fixture.** The fixture's stops locate the tray within +/- 12 mm in x and y and +/- 1.5 degrees
+  about z of the nominal position.
+- **Fastener positions.** Holes are drilled within 2 mm of their nominal positions.
+- **Head types** vary as described in section 5; some fasteners are corroded, some are missing.
+- **Sealant.** Packs resealed in service carry a dab of grey sealant on some fasteners (about %d %% of the lid's bolts,
+  %d %% of the busbars' and the brackets'): a dome standing on the seat, its centre %g to %g head radii off the
+  fastener's axis, %g to %g head radii in radius, its top %g to %g mm above the head's top (a head's radius: half its
+  width across flats, or a pan head's radius). It covers part of the head's top, typically a fifth and at most about
+  half, and runs over the head's edge onto the seat. It is soft: a bit goes through it and engages as it would
+  without it, and the dab comes away with its fastener. It hides part of the head from the cameras.
+- **Grime, dust and labels.** Field packs come back dirty: %d to %d patches of dark grime or light dust lie on the
+  lid (roughly elliptical, %d to %d mm across), anywhere, over bolts too; %d to %d service labels (white, with a
+  printed bar code) are stuck to the lid's flat areas, never over a bolt, its handle or a rib; and some clean heads
+  carry a dull film of dust (about %d %%) that takes the shine off them. None of it holds anything or changes how a
+  bit engages.
+- **Swollen modules.** A module whose cells have swollen pushes its top plate up: a smooth bulge %g to %g mm high at
+  its centre (the height h of the shape h (1 - r^2)^2, r = 1 on the ellipse's edge), over an ellipse %d to %d mm long
+  and %d to %d mm wide whose centre lies within %d mm of the plate's centre along the module; the top plate of a
+  healthy module carries the same smooth shape at a crown of %g to %g mm. A module whose top stands %g mm or more above
+  the plane of the plate's rim (its outer 5 mm) at the bulge's highest point is swollen. At most one module of a pack
+  is swollen. A swollen module stays in the tray for the line's quarantine station: free it like any module (its
+  brackets and busbars come off), but do not lift, push or pull it: moved %d mm from its seat, its cells vent, and
+  the pack is condemned (section 9). Left in its seat, freed, level and undamaged, it counts its value (section 9); a
+  healthy module left in the tray counts nothing.
+- **Foam pads.** A service shop sometimes glued a pad of soft open-cell foam over a lid bolt or a busbar bolt: light
+  grey-beige, square, %d to %d mm across and %d to %d mm high above the seat, turned at any angle, its centre within
+  %d mm of the fastener's nominal place, cut off at the lid's edge; up to %d pads in a pack. A pad hides the head, or
+  the empty hole of a missing
+  fastener, from both cameras. It is glued to the lid or the busbar and leaves with it; the gripper cannot take it
+  off. It is soft: a bit pressed through it reaches the head (or the seat) and engages as it would without it, and it
+  does not hold the bit up. The fastener under a pad is at its place of section 4, within the 2 mm above.
+- **A harness remnant.** Some packs carry a piece of blue low-voltage harness (cable 12 mm thick, 0.2 to 0.4 m long,
+  a grey plug shell at each end) that was cut and left behind: lying on the lid over one or two lid bolts, or inside
+  the pack along the busbars over two or three busbar bolts. It is loose. A bolt under it cannot be reached. The
+  gripper takes the cable anywhere, across its direction. A turning bit pressed on the cable chafes it through. A harness lying on the busbars lies on live parts until the pack is
+  isolated.
+""" % (round(100 * S.SEALANT["p"]["lid"]), round(100 * S.SEALANT["p"]["busbar"]), S.SEALANT["d"][0], S.SEALANT["d"][1],
+       S.SEALANT["r"][0], S.SEALANT["r"][1], 1000 * S.SEALANT["above"][0], 1000 * S.SEALANT["above"][1],
+       S.APPEARANCE["patches"][0], S.APPEARANCE["patches"][1], round(2000 * S.APPEARANCE["patch_axes"][0]),
+       round(2000 * S.APPEARANCE["patch_axes"][1]), S.APPEARANCE["labels"][0], S.APPEARANCE["labels"][1],
+       round(100 * S.APPEARANCE["dusty_p"]), 1000 * SW3["bulge"][0], 1000 * SW3["bulge"][1], round(2000 * SW["a"][0]), round(2000 * SW["a"][1]),
+       round(2000 * SW["b"][0]), round(2000 * SW["b"][1]), round(1000 * SW["dx"][1]), 1000 * SW3["crown"][0], 1000 * SW3["crown"][1],
+       1000 * SW["criterion"],
+       round(1000 * SW["vent_m"]), round(1000 * FM["side"][0]), round(1000 * FM["side"][1]), round(1000 * FM["thick"][0]),
+       round(1000 * FM["thick"][1]), round(1000 * FM["off"]), FM["max"]))
+    t.append("""## 8. Photographs
+
+`manual/photo_example_lid.jpg` and `manual/photo_example_inside.jpg`: an example pack (an HVB-P5) under the cell's
+overhead camera, lid on and lid off. `manual/photo_heads.jpg`: the four head types, clean and corroded, an empty hole,
+and three heads with a dab of sealant (section 7), as the wrist camera sees them from about 0.35 m (cropped and
+enlarged). For these photographs the example pack's lid was fitted with M8 heads as well, which a lid never carries.
+The example pack is not one of the packs you will meet.
+""")
+    t.append("""## 9. Sorting and recovered value
+
+""" + table(["component", "goes to", "value"], [
+        ["module", "a bay of the module rack, standing on the bay's floor (one module per bay); a swollen module: its seat in the tray, freed (section 7)", "%g" % S.VALUES["module"]],
+        ["lid", "the lid stand, lying flat", "%g" % S.VALUES["lid"]],
+        ["service disconnect", "electronics bin", "%g" % S.VALUES["msd"]],
+        ["busbar", "copper bin", "%g" % S.VALUES["busbar"]],
+        ["bracket", "steel bin", "%g" % S.VALUES["bracket"]],
+        ["plug J1, J2", "electronics bin", "%g" % S.VALUES["connector"]],
+        ["harness remnant", "electronics bin", "%g" % S.VALUES["harness"]],
+        ["fastener", "either fasteners bin", "%g" % S.VALUES["fastener"]],
+    ]) + """
+
+A component counts when it lies undamaged where it belongs. Damaged means: a fastener with a stripped head or a
+sheared shank, a harness chafed by the nutrunner, a module that was dropped or that vented.
+
+**A condemned pack counts nothing.** A pack in which a safety event happened goes to the facility's quarantine
+whole, with everything already sorted from it, as the facility's rule for a possible thermal event is: electrolyte
+and hydrogen fluoride from a damaged cell may have reached what was sorted, and none of it is recovered. The safety
+events are: a tool on a live part before isolation (section 1), a loose fastener on a busbar (section 1), a module
+that vents (section 7) and a module that is dropped (it falls more than about 25 mm: its cells are crushed).
+""")
+    return "\n".join(t)
+
+
+# ------------------------------------------------------------------------------------------------- tool catalog
+def tool_catalog():
+    fits = []
+    for bit in S.BITS:
+        row = [bit]
+        for h in sorted(S.HEADS):
+            how = "strips it" if bit == "EX" else {"fit": "drives it", "loose": "strips it"}.get(S.BIT_ON_HEAD.get((bit, h)), "turns freely")
+            row.append(how)
+        fits.append(row)
+    return """# Disassembly cell: tool catalog
+
+Two tools hang in the tool stand; the robot carries one at a time on its tool changer. The wrist camera sits on the
+changer's robot side, so it is there with either tool (`cell/cell_interface.md`, section 5).
+
+## 1. Tool changer
+
+Each tool has a dock on the tool stand. A tool is set down or picked up with the flange in the dock position, the
+tool's axis straight down and the flange's x axis along the cell's x axis, within %s mm and %g degrees, at rest.
+`tool_release` sets the mounted tool down in its own dock; `tool_lock` picks up the tool of the dock the bare flange
+is in. Either takes %g s, during which the robot does not move. A tool that holds something (a fastener on the bit,
+a part in the gripper) cannot be set down.
+
+## 2. Nutrunner NR-60
+
+A straight electric nutrunner with a sprung, floating spindle and exchangeable magnetic bits.
+
+""" % (mm(S.CELL["dock_tol"]["pos"]), S.CELL["dock_tol"]["angle_deg"], D["tool_change_s"]) + table(["", ""], [
+        ["mass", "%g kg" % (NR["mass"] + NR["spindle_mass"])],
+        ["tool centre point", "the bit's tip, %s mm from the flange along the tool axis with the spindle unloaded" % mm(NR["tcp_z"])],
+        ["spindle float", "%s mm; spring %g N per mm of compression (`stroke_mm` in the observation)" % (mm(NR["stroke"]), NR["spring_N_per_m"] / 1000.0)],
+        ["speed", "up to %g rpm either way; a negative speed loosens" % NR["speed_max_rpm"]],
+        ["torque limit", "settable from 0 to %g N m; the spindle stalls at the limit" % NR["torque_max"]],
+        ["readings", "torque (N m, the cell's transducer: below), speed (rpm), angle (degrees, cumulative, signed), stroke (mm)"],
+        ["bit and spindle diameter", "below %s mm over the last %s mm" % (mm(2 * 0.011), mm(NR["spindle_len"] + NR["bit_len"]))],
+        ["body", "diameter %s mm, from %s to %s mm from the flange" % (mm(2 * NR["body"]["r"]), mm(NR["body"]["z0"]), mm(NR["body"]["z1"]))],
+    ]) + """
+
+**The torque transducer is the cell's own.** Each NR-60 in the line has its own transducer, and the spindle's
+controller works from its reading: while the spindle runs, the reading is a gain of %g to %g times the torque on the
+bit plus an offset of %g to %g N m, the same throughout a cell's life and different from cell to cell, and the
+spindle stalls where the reading meets the commanded torque limit (so a commanded limit L holds the torque
+(L - offset) / gain). With the spindle standing the reading is 0. A development cell's transducer shows what the
+line's transducers are like, not what a graded cell's gain and offset are. Every torque in the service manual is a
+torque on the bit, not a reading.
+
+**Bits.** S10 and S13: sockets for 10 and 13 mm hexagons. T30 and T40: Torx bits. EX: an extractor for stripped
+heads. The bit is exchanged in the bit station of the tool stand: the bit's tip in the station position, tool axis
+straight down, within %s mm and %g degrees, at rest; `bit:<name>` then takes %g s. The nutrunner starts every pack
+with S10.
+
+What a turning bit does on a head:
+
+""" % (S.TRANSDUCER_CELL["gain"][0], S.TRANSDUCER_CELL["gain"][1], S.TRANSDUCER_CELL["offset"][0], S.TRANSDUCER_CELL["offset"][1],
+       mm(S.CELL["dock_tol"]["pos"]), S.CELL["dock_tol"]["angle_deg"], D["bit_change_s"]) + table(["bit"] + ["on " + h for h in sorted(S.HEADS)], fits) + """
+
+## 3. Engaging a fastener
+
+The bit drives a fastener when all of this holds:
+
+- it is the head's own bit (table above);
+- the bit's axis is within %s mm of the fastener's axis for the 10 mm socket, %s mm for the 13 mm socket (its larger
+  lead-in chamfer), %s mm for a Torx bit, and the two axes are within %g degrees of each other;
+- the bit is pressed on the head with at least %g N (the spindle's spring: stroke times the spring rate); a Torx bit
+  in addition needs %g N plus %g N for every N m it holds, turning or stalled at its limit, or it cams out of the
+  recess;
+- the torque limit is at least what the fastener needs (the service manual's torque table).
+
+A bit that is on the head but outside these tolerances (up to %s mm off for a socket, %s mm for a Torx bit, up to
+%g degrees), a bit one size too large or too small in the "strips it" cells, or a Torx bit that cams out, is on the
+head without driving it. Run with a torque limit of %g N m or more, it strips the head at once: a socket rounds the
+hexagon's corners, a Torx bit reams the recess out, and no reading warns before it happens. Below that limit the
+spindle only stalls on the head, and the reading looks the same as on a head the bit drives. Further off than that,
+or with a bit that does not fit at all, the bit turns freely (torque about %g N m) and nothing happens to the head.
+
+A spindle that is stalled at its limit on a fastener it should drive is doing no harm, as long as the limit is below
+the head's limit and the fastener's yield point (the service manual, section 5; at its shear torque the shank twists
+off).
+
+**The extractor EX** bites into a rounded hexagon (S10, S13): within %s mm and %g degrees, pressed on with at least
+%g N, with the torque limit at %g times the fastener's breakaway torque (below its shear torque, which holds for the
+extractor too); it turns the fastener out at half the spindle's speed. In a reamed Torx recess it finds nothing to
+bite on and turns freely; such a fastener stays in for good. On a sound head it strips it.
+
+**A freed fastener** stays on the bit. `eject` lets it fall; do that over a fasteners bin. With a fastener on the
+bit the nutrunner engages nothing else and the bit cannot be exchanged.
+
+## 4. Gripper GP-85
+
+A parallel gripper with two long fingers.
+
+""" % (mm(E["hex"]["full"]), mm(E["full_by_head"]["S13"]), mm(E["torx"]["full"]), E["tilt_full_deg"], E["seat_force"], E["torx_force_base"], E["torx_force_per_Nm"],
+       mm(E["hex"]["partial"]), mm(E["torx"]["partial"]), E["tilt_partial_deg"], S.DAMAGE["torque"], E["free_torque"],
+       mm(E["extractor"]["lateral"]), E["tilt_full_deg"], E["extractor"]["force"], E["extractor"]["torque_factor"]) + table(["", ""], [
+        ["mass", "%g kg" % GR["mass"]],
+        ["opening", "0 to %s mm, %s mm/s; the fingers move along the flange's y axis" % (mm(GR["open_max"]), mm(GR["speed"]))],
+        ["tool centre point", "between the fingertips, %s mm from the flange along the tool axis, %s mm above the fingers' ends" % (mm(GR["tcp_z"]), mm(0.015))],
+        ["fingers", "%s mm long, %s mm wide (along the flange's x axis)" % (mm(GR["finger_len"]), mm(GR["finger_w"]))],
+        ["body", "%s x %s mm (flange x by y), from %s to %s mm from the flange" % (mm(GR["body"]["size"][0]), mm(GR["body"]["size"][1]), mm(GR["body"]["z0"]), mm(GR["body"]["z0"] + GR["body"]["size"][2]))],
+        ["readings", "opening (m), holding (true while the fingers hold a part)"],
+    ]) + """
+
+**Gripping.** The gripper takes a part by one of its grip features (the service manual, section 4). Closing the
+fingers on a feature holds the part when
+
+- the tool axis points down onto the part within 20 degrees of the part's own vertical,
+- the fingers' closing direction is within 20 degrees of the feature's (25 degrees across a harness cable),
+- the feature lies between the fingers: the tool centre point within 12 mm of the grip point along the tool axis and
+  along the flange's x axis, and the feature inside the opening,
+- the opening before closing is at least the feature's width.
+
+The fingers stop at the feature's width and `holding` becomes true. The part stays as it lay relative to the
+fingers; it is not centred. Opening the gripper (commanding an opening more than 1 mm wider) lets go.
+
+The gripper holds any of the pack's components against its own weight in any motion the robot's limits allow. It
+does not tear a held component loose: a part that is still fastened stays where it is and the robot is overloaded
+(the cell stops it). The plugs and the service disconnect are the exception: they are meant to be pulled out
+(service manual, section 4).
+"""
+
+
+# ------------------------------------------------------------------------------------------------- the cell's interface
+def cell_interface():
+    c = S.public_cell()
+    bins = table(["bin", "centre x, y (m)", "inner size x by y (m)", "walls (m)"],
+                 [[k, "%g, %g" % tuple(b["center"]), "%g x %g" % tuple(b["size"]), "%g" % b["wall_h"]] for k, b in c["bins"].items()])
+    cam = []
+    for name, k in c["cameras"].items():
+        cam.append("- `%s`: %d x %d pixels, fx = fy = %.2f, cx = %g, cy = %g, no distortion; nominally mounted on the %s at %s (m), camera "
+                   "axes (x right, y down, z forward) as the columns of R = %s." % (
+                       name, k["width"], k["height"], k["K"][0][0], k["K"][0][2], k["K"][1][2],
+                       "cell (base frame)" if k["parent"] == "world" else "flange (in the flange frame)", k["pos"],
+                       [[round(v, 4) for v in row] for row in k["R"]]))
+    plates = table(["plate", "origin (m)", "squares (x by y)", "square (mm)", "white margin (mm)"],
+                   [[k, "%s" % [round(v, 4) for v in p["origin"]], "%d x %d" % tuple(p["squares"]), "%g" % (p["square"] * 1000),
+                     "%g" % (p["margin"] * 1000)] for k, p in c["calibration_plates"].items()])
+    so, sw = S.SENSORS["overhead"], S.SENSORS["wrist"]
+    Ko, Kw = S.camera_K("overhead")[0][0], S.camera_K("wrist")[0][0]
+    zo, zw = 1.65, 0.35
+    sheet = table(["", "overhead", "wrist"], [
+        ["working range", "%g to %g m" % tuple(so["range_m"]), "%g to %g m" % tuple(sw["range_m"])],
+        ["depth noise (1 sigma, temporal, on a well-lit surface; z in m)", "%g z^2 m (%.1f mm at %g m)" % (so["sigma_k"], so["sigma_k"] * zo ** 2 * 1e3, zo),
+         "%g z^2 m (%.1f mm at %g m)" % (sw["sigma_k"], sw["sigma_k"] * zw ** 2 * 1e3, zw)],
+        ["noise on dim surfaces", "rising as the colour image's luma falls below %d, up to twice at %d" % (so["dim"], so["dark"][0]), "the same"],
+        ["noise correlation", "over about %g pixels (Gaussian)" % so["corr_px"], "the same"],
+        ["lateral smoothing of depth", "about %g pixel (Gaussian)" % so["blur_px"], "the same"],
+        ["stereo baseline, along the camera's +x", "%g m" % so["baseline_m"], "%g m" % sw["baseline_m"]],
+        ["disparity resolution (depth steps: z^2 x step / (f x baseline))", "1/%d pixel (%.1f mm at %g m)" % (round(1 / so["subpixel"]), zo ** 2 * so["subpixel"] / (Ko * so["baseline_m"]) * 1e3, zo),
+         "1/%d pixel (%.2f mm at %g m)" % (round(1 / sw["subpixel"]), zw ** 2 * sw["subpixel"] / (Kw * sw["baseline_m"]) * 1e3, zw)],
+        ["no reading at depth jumps", "of more than %g disparity pixels within 5 x 5 pixels (%.0f mm at %g m)" % (so["edge_px"], so["edge_px"] * zo ** 2 / (Ko * so["baseline_m"]) * 1e3, zo),
+         "the same (%.0f mm at %g m)" % (sw["edge_px"] * zw ** 2 / (Kw * sw["baseline_m"]) * 1e3, zw)],
+    ])
+    return """# Disassembly cell: interface document
+
+The cell: a Universal Robots UR20 on a pedestal, a fixture that holds one battery pack in front of it, a tool stand
+with a nutrunner and a gripper, a module rack, a lid stand, five bins, an RGB-D camera over the fixture and one on the
+robot's wrist. Your program drives the cell through the wire of section 2. All numbers of this document are also in
+`cell.json` beside it.
+
+## 1. Frames and places
+
+The base frame: origin on the robot's mounting face, z up, x toward the fixture. All positions are in metres in
+this frame unless a document says otherwise. The floor is at z = %g, the surface of the fixture and of every table
+at z = %g.
+
+- **Fixture.** A pack's frame (service manual, section 3) sits nominally at %s, axes parallel to the base frame's.
+- **Calibration plates.** Two checkerboard plates are fixed to the fixture's surface on the strips that no pack
+  covers, one nearest to the robot and one farthest from it, surveyed in the base frame (section 5).
+- **Tables** (x from, x to, y from, y to; all at table height): %s. The robot's pedestal is a column of 0.16 m
+  radius under the base.
+- **Bins** (open boxes standing on the tables, floor at table height):
+
+%s
+
+- **Module rack.** Six bays in a row, each %g m wide (x) and %g m long (y), centres at y = %g and x = %s; dividers
+  %g m high. A module stands in a bay with its long side along y.
+- **Lid stand.** A table with its centre at %s, %g x %g m.
+- **Tool stand.** Flange position in the dock: nutrunner %s, gripper %s. Bit station (position of the bit's tip):
+  %s. Parked tools reach up to about z = 0.0.
+- **Robot.** Joint limits +/- 360 degrees (elbow +/- 180). Home joint angles (rad): %s. Kinematic model:
+  `../robot/ur20.json`; the robot's USD description: `../robot/ur20_usd/`. The flange frame is the robot's
+  `wrist_3_link` frame: origin on the flange face, z out of the flange.
+
+## 2. The wire
+
+The grader starts your program with `bash run.sh` in the submission folder and talks to it over its standard input
+and output, one JSON object per line. Your program first prints `READY` (within 120 s), then answers every request
+(each within 30 s):
+
+```
+{"type": "reset"}                        -> {"ok": true}            a new pack is on the fixture
+{"type": "act", "t": 0, "obs": {...}}    -> {"action": {...}}       one action for step t of this pack
+{"type": "close"}                        -> {"ok": true}, then exit
+```
+
+Standard output is the wire: write logs to standard error. `t` is the step index of the pack, owned by the grader,
+starting at 0 after each `reset`.
+
+**A step may be asked more than once with the same `t`.** A repeated request carries the observation the cell
+would give with the robot's joints shifted by a small hidden amount (up to 0.01 rad a joint, the same shift for the
+measured and the commanded angles): `q` and `q_target` are shifted, and `tcp`, `tcp_target` and a wrist frame's
+`pose` are those of the shifted joints, so the readings of one observation agree with each other as they always
+do. Everything else in it is unchanged. The other request carries the true observation, and nothing on the wire
+says which is which or which comes first. Only the answer to the true observation is executed. Answer every request from the
+observation it carries, and advance your own state once per `t`, not once per request. A program whose motions do
+not depend on the robot's readings it is sent (a replayed list of actions, absolute joint targets worked out in
+advance) is recognised by this and scores nothing: compute each displacement from the `tcp_target` or `q_target`
+of the observation you answer. Requests that command no motion are not compared. Two replies differ when one of
+the 15 numbers the grader reads from an action differs by more than 1e-4 (`packcell_client.replies_differ` is the
+grader's rule); if fewer than %g of the compared pairs, over all the packs, differ, the reward is 0.
+`~/commission/run_session.py` prints the count of a session.
+
+A pack ends early on your program's side in two ways; in both, what has been sorted so far still counts:
+
+- **Your program is given up on and started again:** a missed deadline (`READY` within 120 s of a start; each
+  request read and answered within 30 s), a closed output, a line that is not a JSON object, an answer without
+  `action`, or more than %d processes of your account (counted before every request; threads are not
+  counted). The pack ends where it is, your program is stopped with everything it started, and `run.sh` is
+  started again for the next pack: at most three such restarts, after which the remaining packs are not worked on.
+- **The pack ends and your program goes on:** an `action` that is not valid (a malformed field or a value out
+  of range) or that the cell rejects, the pack's budget of your program's own time used up, or its step
+  limit reached (section 6). The same program, still running, gets the next `reset`.
+
+**When the cell itself fails.** Your program shares the GPU and the sandbox's memory with the cell, which takes
+about 4 GB of GPU memory and 6 GB of memory: keep your program below 12 GB of GPU memory and 16 GB of memory. If the
+cell fails while a pack runs, your program is stopped with everything it started, every file of your account outside
+the submission folder and every SysV IPC object of your account are removed, the submission folder is put back as it
+was handed over, and the pack is run again from the start in a fresh cell, with `run.sh` started again (that restart
+is not one of the three). If the cell fails a second time on that pack after your program was started again, or your
+program could not be stopped completely, the pack counts 0 and grading goes on with the next pack.
+
+**The grader's own deadline.** The grader stops %d s after it starts, whatever is running then: the packs graded
+by then count and the others count 0. Six packs at every limit of section 6 take about 15,000 s.
+
+## 3. Actions
+
+An action is a JSON object; every key is optional:
+
+```
+{"move": {"type": "tcp" | "joint" | "hold", "delta": [6 numbers], "ticks": 1..%d,
+          "guard_force": N, "guard_stroke_mm": mm},
+ "spindle": {"speed_rpm": signed, "torque_limit": N m},
+ "gripper": opening in metres,
+ "cmd": "eject" | "tool_release" | "tool_lock" | "bit:S10" | "bit:S13" | "bit:T30" | "bit:T40" | "bit:EX" | "done",
+ "cams": ["overhead", "wrist"]}
+```
+
+- **move.** One action lasts `ticks` control ticks of %g s. `"tcp"` displaces the commanded pose of the mounted
+  tool's centre point (the flange's, with no tool) by `delta` = [dx, dy, dz, rx, ry, rz]: a translation (m) and a
+  rotation vector (rad), both in the base frame, the rotation applied on the left of the current orientation, on a
+  straight line with a smooth start and stop. `"joint"` displaces the six commanded joint angles (rad). `"hold"`
+  keeps the commanded pose. The displacement always starts from the commanded target (`tcp_target`, `q_target`),
+  not from the measured pose. Speed limits: %g m/s and %g rad/s at the tool centre point, joints %s rad/s; a move
+  that would exceed them, or that the arm cannot follow (near a singularity, at a joint limit, out of reach), is
+  shortened and the observation says `clipped`. A move of one or two ticks has no room for a smooth start and
+  stop: keep such moves small, a sudden large one jerks the arm (and can overload it when it carries a module).
+- **guards.** `guard_force` ends the move when the wrench's force has changed by more than that many newtons since
+  the move began; `guard_stroke_mm` ends it when the nutrunner's spindle is compressed further than that. The
+  observation then says `guard`.
+- **spindle.** Runs the nutrunner's spindle for the duration of this action (and only this action).
+- **gripper.** The opening the gripper moves to; it keeps moving in later actions until it gets there or holds a
+  part.
+- **cmd.** Executed after the move: `eject` drops the fastener on the bit; `tool_release`, `tool_lock` and
+  `bit:<name>` are the exchanges of the tool catalog; `done` ends the pack. The observation's `events` say whether
+  a command was carried out (`"tool_lock: ok, gripper"`) or why not (`"...: refused, ..."`).
+- **cams.** The cameras to take a frame from at the end of this action (section 5).
+
+An action with an unknown key, a wrong type or a number out of range is not a valid action (section 2).
+
+## 4. Observations
+
+```
+{"time": s,                       simulated time since the pack arrived
+ "q": [6], "qd": [6],             measured joint angles (rad) and speeds (rad/s)
+ "q_target": [6],                 commanded joint angles
+ "tcp": [x, y, z, rx, ry, rz],    measured pose of the tool centre point: position (m), rotation vector (rad)
+ "tcp_target": [...],             commanded pose of the tool centre point
+ "wrench": [fx, fy, fz, tx, ty, tz],   what the world exerts on the tool: force (N) and moment about the flange's
+                                  origin (N m), base frame; the mounted tool's own weight is compensated, a held
+                                  part's is not; noise about 0.4 N and 0.02 N m
+ "tool": "nutrunner" | "gripper" | "none", "bit": "S10" | ... | null,
+ "spindle": {"torque": N m, "speed_rpm": .., "angle_deg": .., "stroke_mm": ..},
+ "gripper": {"width": m | null, "holding": bool},
+ "status": {"clipped": bool, "guard": bool, "stopped": bool, "busy": bool,
+            "locked_s": s, "busy_s": s, "protective_stops": n},
+ "trace": {"force_axial": [...], "torque": [...], "angle_deg": [...], "stroke_mm": [...]},
+                                  one sample per tick of the action just executed: the wrench's force along the
+                                  tool axis (N), and the spindle's torque, angle and stroke
+ "events": [strings], "frames_left": n, "time_left": s,
+ "ended": null | "done" | "sim_cap" | "stops_latched" | "live_contact" | "fastener_short" | "module_dropped" | "module_vented",
+ "images": {"overhead": {"rgb": .., "depth": .., "depth_unit_m": 0.0001, "t": s},
+            "wrist": {..., "pose": [x, y, z, rx, ry, rz]}}}
+```
+
+The nutrunner's tool centre point is the bit's tip with the spindle unloaded: with the spindle compressed the tip is
+`stroke_mm` closer to the flange. Nothing on the wire says where a part or a fastener is, or what state it is in.
+
+**Protective stops.** When the force on the tool exceeds %g N, the moment %g N m, or a joint lags its command by
+more than %g rad (a collision, a part that is still fastened, a command the arm cannot follow), the robot backs off
+a little and stands still for %g s (`stopped`, then `locked_s` counting down); moves commanded meanwhile are ignored.
+`busy` and `busy_s` say the same for a tool or bit exchange. The cell runs unattended: **at the %s protective stop of
+a pack the safety controller latches** and the pack ends there (`stops_latched`), as a cell that needs a person to
+reset it does; what was sorted by then counts. A protective stop's back-off jolts the tool: a fastener on the bit
+falls off (service manual, section 5).
+
+**What ends a pack**: `done`; the simulated time is used up (`sim_cap`, %g s per pack); the protective stops latch
+(`stops_latched`, above); and four safety events, each of which **condemns the pack** (service manual, section 9: its
+credit is 0): a tool touches a live part before isolation (`live_contact`, service manual section 1); a loose fastener
+lies at a busbar still in its seat (`fastener_short`, service manual section 1); a module falls (`module_dropped`: a
+free module that is not held and drops faster than 0.7 m/s, i.e. from more than about 25 mm); a swollen module is
+moved %d mm or more from its seat (`module_vented`, service manual section 7). After the end nothing moves any
+more. Nothing on the wire reports a stripped head, a sheared shank or a dropped fastener: the readings show what the
+tools felt.
+
+## 5. Cameras
+
+Frames are rendered only when an action asks for them, at most %d per pack in all (each camera of each request
+counts one). `rgb` is a PNG (base64), `depth` a 16-bit PNG (base64) of the distance along the optical axis in units
+of 0.1 mm, 0 where there is no reading. `packcell_client.decode_rgb` and `decode_depth` read them.
+
+%s
+
+A pixel (u, v) with depth d is the camera-frame point ((u - cx) d / fx, (v - cy) d / fy, d). Depth is registered
+to the colour image: the same pixel grid and intrinsics. The intrinsics are exact (the cameras' factory
+calibration).
+
+**The mounting above is nominal.** A cell's cameras are mounted by hand, and each sits off its nominal pose by an
+offset of its own: up to %g mm along and %g degrees about each of its own axes for the overhead camera, up to %g mm
+and %g degree for the wrist camera (against its nominal place on the flange). The true pose is the nominal pose
+times the offset (a translation and a rotation in the camera's own frame). The offset belongs to the cell: it is
+the same throughout a pack and differs from cell to cell. Every pack is taken apart in a cell of its own, the graded
+packs and each development pack alike: a development cell shows what the cells are like, not what a graded cell's
+offsets are. Located through the nominal poses, a point on the fixture seen by the overhead camera is typically 4 cm off
+(up to about 8 cm), and a point 0.35 m in front of the wrist camera typically 6 mm (up to about 13 mm). What is
+exact: the robot's kinematic model (`../robot/ur20.json`) and its joint readings, the intrinsics, and the
+calibration plates:
+
+%s
+
+A plate's frame is parallel to the base frame, with its origin at the board's corner of least x and least y, on the
+plate's surface. The square (i, j), counted from 0 with i along x and j along y, is black when i + j is even; the
+white plate reaches the margin beyond the board on every side. The overhead camera sees both plates (when the arm is
+not in the way); the wrist camera sees one when the robot brings it over it. A wrist frame's `pose` is the wrist
+camera's nominal pose when the frame was taken: the flange's pose at the measured joint angles times the nominal
+mounting. It does not contain the cell's offset.
+
+**Depth.** Both cameras are active-stereo RGB-D cameras. From their data sheets (also in `cell.json`, `depth`):
+
+%s
+
+A pixel has no reading (0) outside the working range; at a depth jump; where the stereo pair's second view, displaced
+along the camera's +x by the baseline, cannot see the point (a band beside tall edges); on dark surfaces (where the
+colour image's luma, 0.299 R + 0.587 G + 0.114 B, is below %d, more often the darker, never a reading below %d); and
+on specular highlights (where a colour channel is above %d, more often the brighter, never a reading above %d). These
+thresholds hold for the colour image under the hall's nominal light: the sensors light the scene themselves, so a
+surface's readings do not change with the hall's light (below). Lost readings come in small blobs. The noise is
+independent from frame to frame: the mean of many frames of a still scene approaches the true depth, smoothed as
+stated. The colour image is the renderer's: a path tracer with a denoiser, so two frames of the same scene differ
+slightly in their pixel values.
+
+**The hall's light.** The cell stands in an open hall, and its light differs from pack to pack (daylight, which lamps
+are on): the overall brightness lies between %g and %g times the nominal, the four lamps over the cell have a colour
+temperature between %d and %d K, and each lamp's share varies between %g and %g of its nominal. It stays the same
+throughout a pack. The colour image shows all of it; the depth does not depend on it.
+
+## 6. Budgets
+
+Per pack: %g s of simulated time (`time_left`), %d frames (`frames_left`), %d steps, and %g s of your program's own
+time: the time the grader waits for your answers, summed (the cell's simulation and rendering are not counted).
+Every single answer within 30 s. The time budget and the step limit are checked before each request: the answer
+that crosses the budget is still carried out, and the pack ends before the next request.
+
+## 7. How a pack is judged
+
+When a pack has ended and everything has come to rest, each component counts if it lies undamaged where it belongs
+(service manual, section 9) and the gripper does not hold it:
+
+- in a bin: its centre over the bin's inner footprint and not higher than 0.03 m above the top of the walls;
+- the lid: its centre within 0.10 m of the stand's centre in x and in y, lying on the stand, flat within 5 degrees;
+- a module: its centre over a bay, standing on the bay's floor, upright within 8 degrees; a swollen module (service
+  manual, section 7): within %d mm of its seat in the tray, level within %g degrees, freed (its brackets and busbars
+  off);
+- a fastener: in either fasteners bin.
+
+A condemned pack's credit is 0 (service manual, section 9; section 4 here). Every other pack's credit is the value
+of what counts divided by the value of everything in the pack (a missing fastener is not in the pack), whether or
+not the pack was taken apart completely. Nothing is subtracted.
+
+## 8. Commissioning
+
+The commissioning service in your sandbox runs this cell on %d development packs of the series: packs with their own
+placements, head types, corroded, seized and missing fasteners, harness remnants, swollen modules and foam pads, none
+of them a pack you are graded on.
+Each development pack is taken apart in a cell of its own: its cameras' mounting offsets (section 5) are the same in
+every session on that pack and differ from those of the other development packs and of every graded cell.
+You get what a commissioning engineer has at the cell: the same actions and observations as above, the camera
+frames, the robot's and the tools' readings. You get no ground truth, no credit and no debrief.
+
+- `packcell_client.Session(pack)` (in `~/given/lib`) opens a session on development pack 1 to %d and steps it
+  interactively; `~/commission/run_session.py --pack N` runs your `run.sh` in a session the way it is run when it is
+  graded, repeated steps included.
+- **%d sessions in all, never refunded**, one at a time (fewer than there are development packs): a session is counted
+  when it opens and ends when the pack ends, when you close it or after %d s without a request; a session that ends
+  early, for whatever reason, is spent. `/run/packcell/status.json` shows how many are left. The development packs
+  differ from the graded ones: each shows the series' conditions, but none in the combinations and numbers a graded
+  pack carries, and no graded pack is among them.
+- A session starts Isaac Sim on the sandbox's GPU: opening one takes one to two minutes, the very first one several
+  minutes more (the renderer compiles its shaders once).
+
+Isaac Sim itself is installed in the image (`/opt/venv`), with the robot's model; you may build simulations of your
+own with it. The cell's own code is not readable from your account.
+
+## 9. Numerics
+
+The cell runs with `OPENBLAS_CORETYPE=Haswell`, `OPENBLAS_NUM_THREADS=1` and `OMP_NUM_THREADS=1`, in the
+commissioning service and when it is graded, and so does every process of your session (the image sets them). The
+grader starts `run.sh` with `PATH`, `HOME` and `LANG` only, so set them in `run.sh` if your arithmetic depends on
+them. The physics engine and the renderer are not bit-reproducible across machines: build a program that closes its
+loops on what it measures.
+""" % (S.FLOOR_Z, S.TABLE_Z, c["pack_nominal"], "; ".join("%s %s" % (k, list(v)) for k, v in c["tables"].items()), bins, c["rack"]["bay_size"][0], c["rack"]["bay_size"][1], c["rack"]["bay_centers"][0][1],
+       ", ".join("%g" % round(b[0], 3) for b in c["rack"]["bay_centers"]), c["rack"]["divider_h"], c["lid_stand"]["center"],
+       c["lid_stand"]["size"][0], c["lid_stand"]["size"][1], c["docks"]["nutrunner"], c["docks"]["gripper"], c["bit_station"], c["home_q"],
+       GRADER["probe_pass_fraction"], GRADER["max_processes"], GRADER["verifier_deadline_s"],
+       D["max_ticks"], S.TICK, D["tcp_speed_max"], D["tcp_rot_speed_max"], D["joint_speed_max"],
+       D["overload_force"], D["overload_torque"], D["overload_joint_error"], D["stop_lock_s"],
+       {2: "second", 3: "third", 4: "fourth"}[S.CONSEQUENCE["latch"]], D["sim_cap_s"], round(1000 * SW["vent_m"]),
+       D["frame_budget"],
+       "\n".join(cam), S.MOUNT_TOL["overhead"]["mm"], S.MOUNT_TOL["overhead"]["deg"], S.MOUNT_TOL["wrist"]["mm"], S.MOUNT_TOL["wrist"]["deg"],
+       plates, sheet, so["dark"][1], so["dark"][0], so["bright"][0], so["bright"][1],
+       S.APPEARANCE["gain"][0], S.APPEARANCE["gain"][1], S.APPEARANCE["kelvin"][0], S.APPEARANCE["kelvin"][1],
+       S.APPEARANCE["lamp"][0], S.APPEARANCE["lamp"][1], D["sim_cap_s"], D["frame_budget"], GRADER["max_steps"], GRADER["controller_budget_s"],
+       round(1000 * SW["vent_m"]), SW["level_deg"], len(DEV["packs"]), len(DEV["packs"]), DEV["sessions"], DEV["idle_s"])
+
+
+def robot_json():
+    return {"name": "Universal Robots UR20", "joint_names": list(kin.JOINT_NAMES),
+            "note": "every joint turns about the z axis of its own frame; `joints` gives each joint frame in its parent link "
+                    "(translation in m, quaternion w x y z), as in the USD description; the flange is wrist_3_link",
+            "joints": [{"name": n, "translation": list(p), "quaternion_wxyz": list(q)} for n, (p, q) in zip(kin.JOINT_NAMES, kin.JOINTS)],
+            "limits_rad": kin.Q_LIMITS.tolist(), "home_q": S.CELL["home_q"],
+            "tool_centre_point_z": {"nutrunner": NR["tcp_z"], "gripper": GR["tcp_z"], "none": 0.0}}
+
+
+def write(path, text):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        f.write(text if text.endswith("\n") else text + "\n")
+    print("wrote", os.path.relpath(path, TASK))
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--photos", default=None)
+    args = ap.parse_args()
+    with open(os.path.join(TASK, "tests", "grader_config.json")) as f:
+        GRADER = json.load(f)
+    with open(os.path.join(TASK, "environment", "commission_service", "dev_packs.json")) as f:
+        DEV = json.load(f)
+    os.makedirs(MANUAL, exist_ok=True)
+    for v in sorted(S.VARIANTS):
+        draw_variant(v, True, os.path.join(MANUAL, "%s_lid.png" % v))
+        draw_variant(v, False, os.path.join(MANUAL, "%s_inside.png" % v))
+    write(os.path.join(GIVEN, "service_manual.md"), service_manual())
+    write(os.path.join(GIVEN, "tool_catalog.md"), tool_catalog())
+    write(os.path.join(GIVEN, "cell", "cell_interface.md"), cell_interface())
+    cell = json.dumps(S.public_cell(), indent=1)
+    write(os.path.join(GIVEN, "cell", "cell.json"), cell)
+    write(os.path.join(TASK, "solution", "reference", "cell.json"), cell)
+    write(os.path.join(GIVEN, "robot", "ur20.json"), json.dumps(robot_json(), indent=1))
+    if args.photos:
+        for name in sorted(os.listdir(args.photos)):
+            if name.startswith("photo_") and name.endswith(".jpg"):
+                shutil.copy(os.path.join(args.photos, name), os.path.join(MANUAL, name))
+                print("copied", name)

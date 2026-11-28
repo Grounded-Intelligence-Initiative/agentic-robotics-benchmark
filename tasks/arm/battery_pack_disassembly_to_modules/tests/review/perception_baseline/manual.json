@@ -1,0 +1,1559 @@
+{
+ "variants": {
+  "P4": {
+   "fasteners": [
+    {
+     "id": "L01",
+     "thread": "M6",
+     "x": -0.3,
+     "y": -0.36,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L02",
+     "thread": "M6",
+     "x": -0.3,
+     "y": -0.12,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L03",
+     "thread": "M6",
+     "x": -0.3,
+     "y": 0.12,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L04",
+     "thread": "M6",
+     "x": -0.3,
+     "y": 0.36,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L05",
+     "thread": "M6",
+     "x": 0.3,
+     "y": -0.36,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L06",
+     "thread": "M6",
+     "x": 0.3,
+     "y": -0.12,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L07",
+     "thread": "M6",
+     "x": 0.3,
+     "y": 0.12,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L08",
+     "thread": "M6",
+     "x": 0.3,
+     "y": 0.36,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L09",
+     "thread": "M6",
+     "x": 0.0,
+     "y": -0.49,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L10",
+     "thread": "M6",
+     "x": 0.0,
+     "y": 0.49,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "B00a",
+     "thread": "M6",
+     "x": -0.145,
+     "y": -0.26,
+     "seat_z": 0.136,
+     "holds": "B00"
+    },
+    {
+     "id": "B00b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.26,
+     "seat_z": 0.136,
+     "holds": "B00"
+    },
+    {
+     "id": "B01a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.19,
+     "seat_z": 0.136,
+     "holds": "B01"
+    },
+    {
+     "id": "B01b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.11,
+     "seat_z": 0.136,
+     "holds": "B01"
+    },
+    {
+     "id": "B02a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.04,
+     "seat_z": 0.136,
+     "holds": "B02"
+    },
+    {
+     "id": "B02b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.04,
+     "seat_z": 0.136,
+     "holds": "B02"
+    },
+    {
+     "id": "B03a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.11,
+     "seat_z": 0.136,
+     "holds": "B03"
+    },
+    {
+     "id": "B03b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.19,
+     "seat_z": 0.136,
+     "holds": "B03"
+    },
+    {
+     "id": "B04a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.26,
+     "seat_z": 0.136,
+     "holds": "B04"
+    },
+    {
+     "id": "B04b",
+     "thread": "M6",
+     "x": -0.145,
+     "y": 0.26,
+     "seat_z": 0.136,
+     "holds": "B04"
+    },
+    {
+     "id": "R1af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": -0.225,
+     "seat_z": 0.04,
+     "holds": "R1a"
+    },
+    {
+     "id": "R1bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": -0.225,
+     "seat_z": 0.04,
+     "holds": "R1b"
+    },
+    {
+     "id": "R2af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": -0.075,
+     "seat_z": 0.04,
+     "holds": "R2a"
+    },
+    {
+     "id": "R2bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": -0.075,
+     "seat_z": 0.04,
+     "holds": "R2b"
+    },
+    {
+     "id": "R3af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": 0.075,
+     "seat_z": 0.04,
+     "holds": "R3a"
+    },
+    {
+     "id": "R3bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": 0.075,
+     "seat_z": 0.04,
+     "holds": "R3b"
+    },
+    {
+     "id": "R4af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": 0.225,
+     "seat_z": 0.04,
+     "holds": "R4a"
+    },
+    {
+     "id": "R4bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": 0.225,
+     "seat_z": 0.04,
+     "holds": "R4b"
+    }
+   ],
+   "parts": [
+    {
+     "id": "lid",
+     "kind": "lid",
+     "x": 0.0,
+     "y": 0.0,
+     "z": 0.2
+    },
+    {
+     "id": "msd",
+     "kind": "msd",
+     "x": -0.2,
+     "y": 0.33,
+     "z": 0.135
+    },
+    {
+     "id": "J1",
+     "kind": "connector",
+     "x": -0.2,
+     "y": -0.295,
+     "z": 0.077
+    },
+    {
+     "id": "J2",
+     "kind": "connector",
+     "x": -0.2,
+     "y": -0.205,
+     "z": 0.077
+    },
+    {
+     "id": "B00",
+     "kind": "busbar",
+     "x": -0.095,
+     "y": -0.26,
+     "z": 0.134
+    },
+    {
+     "id": "B01",
+     "kind": "busbar",
+     "x": -0.045,
+     "y": -0.15,
+     "z": 0.134
+    },
+    {
+     "id": "B02",
+     "kind": "busbar",
+     "x": -0.045,
+     "y": 0.0,
+     "z": 0.134
+    },
+    {
+     "id": "B03",
+     "kind": "busbar",
+     "x": -0.045,
+     "y": 0.15,
+     "z": 0.134
+    },
+    {
+     "id": "B04",
+     "kind": "busbar",
+     "x": -0.095,
+     "y": 0.26,
+     "z": 0.134
+    },
+    {
+     "id": "R1a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": -0.225,
+     "z": 0.029
+    },
+    {
+     "id": "R1b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": -0.225,
+     "z": 0.029
+    },
+    {
+     "id": "M1",
+     "kind": "module",
+     "x": 0.09,
+     "y": -0.225,
+     "z": 0.144
+    },
+    {
+     "id": "R2a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": -0.075,
+     "z": 0.029
+    },
+    {
+     "id": "R2b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": -0.075,
+     "z": 0.029
+    },
+    {
+     "id": "M2",
+     "kind": "module",
+     "x": 0.09,
+     "y": -0.075,
+     "z": 0.144
+    },
+    {
+     "id": "R3a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": 0.075,
+     "z": 0.029
+    },
+    {
+     "id": "R3b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": 0.075,
+     "z": 0.029
+    },
+    {
+     "id": "M3",
+     "kind": "module",
+     "x": 0.09,
+     "y": 0.075,
+     "z": 0.144
+    },
+    {
+     "id": "R4a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": 0.225,
+     "z": 0.029
+    },
+    {
+     "id": "R4b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": 0.225,
+     "z": 0.029
+    },
+    {
+     "id": "M4",
+     "kind": "module",
+     "x": 0.09,
+     "y": 0.225,
+     "z": 0.144
+    }
+   ],
+   "modules": 4,
+   "lid_bolts": 10,
+   "ribs": [
+    {
+     "along": "y",
+     "at": "x",
+     "value": -0.14
+    },
+    {
+     "along": "y",
+     "at": "x",
+     "value": 0.14
+    }
+   ],
+   "msd_y": 0.33,
+   "bms_y": -0.25
+  },
+  "P5": {
+   "fasteners": [
+    {
+     "id": "L01",
+     "thread": "M6",
+     "x": -0.3,
+     "y": -0.4,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L02",
+     "thread": "M6",
+     "x": -0.3,
+     "y": -0.2,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L03",
+     "thread": "M6",
+     "x": -0.3,
+     "y": 0.0,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L04",
+     "thread": "M6",
+     "x": -0.3,
+     "y": 0.2,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L05",
+     "thread": "M6",
+     "x": -0.3,
+     "y": 0.4,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L06",
+     "thread": "M6",
+     "x": 0.3,
+     "y": -0.4,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L07",
+     "thread": "M6",
+     "x": 0.3,
+     "y": -0.2,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L08",
+     "thread": "M6",
+     "x": 0.3,
+     "y": 0.0,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L09",
+     "thread": "M6",
+     "x": 0.3,
+     "y": 0.2,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L10",
+     "thread": "M6",
+     "x": 0.3,
+     "y": 0.4,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L11",
+     "thread": "M6",
+     "x": 0.0,
+     "y": -0.49,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L12",
+     "thread": "M6",
+     "x": 0.0,
+     "y": 0.49,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "B00a",
+     "thread": "M6",
+     "x": -0.145,
+     "y": -0.335,
+     "seat_z": 0.136,
+     "holds": "B00"
+    },
+    {
+     "id": "B00b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.335,
+     "seat_z": 0.136,
+     "holds": "B00"
+    },
+    {
+     "id": "B01a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.265,
+     "seat_z": 0.136,
+     "holds": "B01"
+    },
+    {
+     "id": "B01b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.185,
+     "seat_z": 0.136,
+     "holds": "B01"
+    },
+    {
+     "id": "B02a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.115,
+     "seat_z": 0.136,
+     "holds": "B02"
+    },
+    {
+     "id": "B02b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.035,
+     "seat_z": 0.136,
+     "holds": "B02"
+    },
+    {
+     "id": "B03a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.035,
+     "seat_z": 0.136,
+     "holds": "B03"
+    },
+    {
+     "id": "B03b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.115,
+     "seat_z": 0.136,
+     "holds": "B03"
+    },
+    {
+     "id": "B04a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.185,
+     "seat_z": 0.136,
+     "holds": "B04"
+    },
+    {
+     "id": "B04b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.265,
+     "seat_z": 0.136,
+     "holds": "B04"
+    },
+    {
+     "id": "B05a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.335,
+     "seat_z": 0.136,
+     "holds": "B05"
+    },
+    {
+     "id": "B05b",
+     "thread": "M6",
+     "x": -0.145,
+     "y": 0.335,
+     "seat_z": 0.136,
+     "holds": "B05"
+    },
+    {
+     "id": "R1af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": -0.3,
+     "seat_z": 0.04,
+     "holds": "R1a"
+    },
+    {
+     "id": "R1bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": -0.3,
+     "seat_z": 0.04,
+     "holds": "R1b"
+    },
+    {
+     "id": "R2af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": -0.15,
+     "seat_z": 0.04,
+     "holds": "R2a"
+    },
+    {
+     "id": "R2bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": -0.15,
+     "seat_z": 0.04,
+     "holds": "R2b"
+    },
+    {
+     "id": "R3af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": 0.0,
+     "seat_z": 0.04,
+     "holds": "R3a"
+    },
+    {
+     "id": "R3bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": 0.0,
+     "seat_z": 0.04,
+     "holds": "R3b"
+    },
+    {
+     "id": "R4af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": 0.15,
+     "seat_z": 0.04,
+     "holds": "R4a"
+    },
+    {
+     "id": "R4bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": 0.15,
+     "seat_z": 0.04,
+     "holds": "R4b"
+    },
+    {
+     "id": "R5af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": 0.3,
+     "seat_z": 0.04,
+     "holds": "R5a"
+    },
+    {
+     "id": "R5bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": 0.3,
+     "seat_z": 0.04,
+     "holds": "R5b"
+    }
+   ],
+   "parts": [
+    {
+     "id": "lid",
+     "kind": "lid",
+     "x": 0.0,
+     "y": 0.0,
+     "z": 0.2
+    },
+    {
+     "id": "msd",
+     "kind": "msd",
+     "x": -0.2,
+     "y": -0.33,
+     "z": 0.135
+    },
+    {
+     "id": "J1",
+     "kind": "connector",
+     "x": -0.2,
+     "y": 0.175,
+     "z": 0.077
+    },
+    {
+     "id": "J2",
+     "kind": "connector",
+     "x": -0.2,
+     "y": 0.265,
+     "z": 0.077
+    },
+    {
+     "id": "B00",
+     "kind": "busbar",
+     "x": -0.095,
+     "y": -0.335,
+     "z": 0.134
+    },
+    {
+     "id": "B01",
+     "kind": "busbar",
+     "x": -0.045,
+     "y": -0.225,
+     "z": 0.134
+    },
+    {
+     "id": "B02",
+     "kind": "busbar",
+     "x": -0.045,
+     "y": -0.075,
+     "z": 0.134
+    },
+    {
+     "id": "B03",
+     "kind": "busbar",
+     "x": -0.045,
+     "y": 0.075,
+     "z": 0.134
+    },
+    {
+     "id": "B04",
+     "kind": "busbar",
+     "x": -0.045,
+     "y": 0.225,
+     "z": 0.134
+    },
+    {
+     "id": "B05",
+     "kind": "busbar",
+     "x": -0.095,
+     "y": 0.335,
+     "z": 0.134
+    },
+    {
+     "id": "R1a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": -0.3,
+     "z": 0.029
+    },
+    {
+     "id": "R1b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": -0.3,
+     "z": 0.029
+    },
+    {
+     "id": "M1",
+     "kind": "module",
+     "x": 0.09,
+     "y": -0.3,
+     "z": 0.144
+    },
+    {
+     "id": "R2a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": -0.15,
+     "z": 0.029
+    },
+    {
+     "id": "R2b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": -0.15,
+     "z": 0.029
+    },
+    {
+     "id": "M2",
+     "kind": "module",
+     "x": 0.09,
+     "y": -0.15,
+     "z": 0.144
+    },
+    {
+     "id": "R3a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": 0.0,
+     "z": 0.029
+    },
+    {
+     "id": "R3b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": 0.0,
+     "z": 0.029
+    },
+    {
+     "id": "M3",
+     "kind": "module",
+     "x": 0.09,
+     "y": 0.0,
+     "z": 0.144
+    },
+    {
+     "id": "R4a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": 0.15,
+     "z": 0.029
+    },
+    {
+     "id": "R4b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": 0.15,
+     "z": 0.029
+    },
+    {
+     "id": "M4",
+     "kind": "module",
+     "x": 0.09,
+     "y": 0.15,
+     "z": 0.144
+    },
+    {
+     "id": "R5a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": 0.3,
+     "z": 0.029
+    },
+    {
+     "id": "R5b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": 0.3,
+     "z": 0.029
+    },
+    {
+     "id": "M5",
+     "kind": "module",
+     "x": 0.09,
+     "y": 0.3,
+     "z": 0.144
+    }
+   ],
+   "modules": 5,
+   "lid_bolts": 12,
+   "ribs": [
+    {
+     "along": "x",
+     "at": "y",
+     "value": -0.35
+    },
+    {
+     "along": "x",
+     "at": "y",
+     "value": -0.15
+    },
+    {
+     "along": "x",
+     "at": "y",
+     "value": 0.15
+    },
+    {
+     "along": "x",
+     "at": "y",
+     "value": 0.35
+    }
+   ],
+   "msd_y": -0.33,
+   "bms_y": 0.22
+  },
+  "P6": {
+   "fasteners": [
+    {
+     "id": "L01",
+     "thread": "M6",
+     "x": -0.3,
+     "y": -0.4,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L02",
+     "thread": "M6",
+     "x": -0.3,
+     "y": -0.2,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L03",
+     "thread": "M6",
+     "x": -0.3,
+     "y": 0.0,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L04",
+     "thread": "M6",
+     "x": -0.3,
+     "y": 0.2,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L05",
+     "thread": "M6",
+     "x": -0.3,
+     "y": 0.4,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L06",
+     "thread": "M6",
+     "x": 0.3,
+     "y": -0.4,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L07",
+     "thread": "M6",
+     "x": 0.3,
+     "y": -0.2,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L08",
+     "thread": "M6",
+     "x": 0.3,
+     "y": 0.0,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L09",
+     "thread": "M6",
+     "x": 0.3,
+     "y": 0.2,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L10",
+     "thread": "M6",
+     "x": 0.3,
+     "y": 0.4,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L11",
+     "thread": "M6",
+     "x": -0.15,
+     "y": -0.49,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L12",
+     "thread": "M6",
+     "x": 0.15,
+     "y": -0.49,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L13",
+     "thread": "M6",
+     "x": -0.15,
+     "y": 0.49,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "L14",
+     "thread": "M6",
+     "x": 0.15,
+     "y": 0.49,
+     "seat_z": 0.164,
+     "holds": "lid"
+    },
+    {
+     "id": "B00a",
+     "thread": "M6",
+     "x": -0.145,
+     "y": -0.41,
+     "seat_z": 0.136,
+     "holds": "B00"
+    },
+    {
+     "id": "B00b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.41,
+     "seat_z": 0.136,
+     "holds": "B00"
+    },
+    {
+     "id": "B01a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.34,
+     "seat_z": 0.136,
+     "holds": "B01"
+    },
+    {
+     "id": "B01b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.26,
+     "seat_z": 0.136,
+     "holds": "B01"
+    },
+    {
+     "id": "B02a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.19,
+     "seat_z": 0.136,
+     "holds": "B02"
+    },
+    {
+     "id": "B02b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.11,
+     "seat_z": 0.136,
+     "holds": "B02"
+    },
+    {
+     "id": "B03a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": -0.04,
+     "seat_z": 0.136,
+     "holds": "B03"
+    },
+    {
+     "id": "B03b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.04,
+     "seat_z": 0.136,
+     "holds": "B03"
+    },
+    {
+     "id": "B04a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.11,
+     "seat_z": 0.136,
+     "holds": "B04"
+    },
+    {
+     "id": "B04b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.19,
+     "seat_z": 0.136,
+     "holds": "B04"
+    },
+    {
+     "id": "B05a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.26,
+     "seat_z": 0.136,
+     "holds": "B05"
+    },
+    {
+     "id": "B05b",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.34,
+     "seat_z": 0.136,
+     "holds": "B05"
+    },
+    {
+     "id": "B06a",
+     "thread": "M6",
+     "x": -0.045,
+     "y": 0.41,
+     "seat_z": 0.136,
+     "holds": "B06"
+    },
+    {
+     "id": "B06b",
+     "thread": "M6",
+     "x": -0.145,
+     "y": 0.41,
+     "seat_z": 0.136,
+     "holds": "B06"
+    },
+    {
+     "id": "R1af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": -0.375,
+     "seat_z": 0.04,
+     "holds": "R1a"
+    },
+    {
+     "id": "R1bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": -0.375,
+     "seat_z": 0.04,
+     "holds": "R1b"
+    },
+    {
+     "id": "R2af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": -0.225,
+     "seat_z": 0.04,
+     "holds": "R2a"
+    },
+    {
+     "id": "R2bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": -0.225,
+     "seat_z": 0.04,
+     "holds": "R2b"
+    },
+    {
+     "id": "R3af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": -0.075,
+     "seat_z": 0.04,
+     "holds": "R3a"
+    },
+    {
+     "id": "R3bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": -0.075,
+     "seat_z": 0.04,
+     "holds": "R3b"
+    },
+    {
+     "id": "R4af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": 0.075,
+     "seat_z": 0.04,
+     "holds": "R4a"
+    },
+    {
+     "id": "R4bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": 0.075,
+     "seat_z": 0.04,
+     "holds": "R4b"
+    },
+    {
+     "id": "R5af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": 0.225,
+     "seat_z": 0.04,
+     "holds": "R5a"
+    },
+    {
+     "id": "R5bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": 0.225,
+     "seat_z": 0.04,
+     "holds": "R5b"
+    },
+    {
+     "id": "R6af",
+     "thread": "M8",
+     "x": 0.258,
+     "y": 0.375,
+     "seat_z": 0.04,
+     "holds": "R6a"
+    },
+    {
+     "id": "R6bf",
+     "thread": "M8",
+     "x": -0.078,
+     "y": 0.375,
+     "seat_z": 0.04,
+     "holds": "R6b"
+    }
+   ],
+   "parts": [
+    {
+     "id": "lid",
+     "kind": "lid",
+     "x": 0.0,
+     "y": 0.0,
+     "z": 0.2
+    },
+    {
+     "id": "msd",
+     "kind": "msd",
+     "x": -0.2,
+     "y": 0.0,
+     "z": 0.135
+    },
+    {
+     "id": "J1",
+     "kind": "connector",
+     "x": -0.2,
+     "y": 0.225,
+     "z": 0.077
+    },
+    {
+     "id": "J2",
+     "kind": "connector",
+     "x": -0.2,
+     "y": 0.315,
+     "z": 0.077
+    },
+    {
+     "id": "B00",
+     "kind": "busbar",
+     "x": -0.095,
+     "y": -0.41,
+     "z": 0.134
+    },
+    {
+     "id": "B01",
+     "kind": "busbar",
+     "x": -0.045,
+     "y": -0.3,
+     "z": 0.134
+    },
+    {
+     "id": "B02",
+     "kind": "busbar",
+     "x": -0.045,
+     "y": -0.15,
+     "z": 0.134
+    },
+    {
+     "id": "B03",
+     "kind": "busbar",
+     "x": -0.045,
+     "y": 0.0,
+     "z": 0.134
+    },
+    {
+     "id": "B04",
+     "kind": "busbar",
+     "x": -0.045,
+     "y": 0.15,
+     "z": 0.134
+    },
+    {
+     "id": "B05",
+     "kind": "busbar",
+     "x": -0.045,
+     "y": 0.3,
+     "z": 0.134
+    },
+    {
+     "id": "B06",
+     "kind": "busbar",
+     "x": -0.095,
+     "y": 0.41,
+     "z": 0.134
+    },
+    {
+     "id": "R1a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": -0.375,
+     "z": 0.029
+    },
+    {
+     "id": "R1b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": -0.375,
+     "z": 0.029
+    },
+    {
+     "id": "M1",
+     "kind": "module",
+     "x": 0.09,
+     "y": -0.375,
+     "z": 0.144
+    },
+    {
+     "id": "R2a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": -0.225,
+     "z": 0.029
+    },
+    {
+     "id": "R2b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": -0.225,
+     "z": 0.029
+    },
+    {
+     "id": "M2",
+     "kind": "module",
+     "x": 0.09,
+     "y": -0.225,
+     "z": 0.144
+    },
+    {
+     "id": "R3a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": -0.075,
+     "z": 0.029
+    },
+    {
+     "id": "R3b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": -0.075,
+     "z": 0.029
+    },
+    {
+     "id": "M3",
+     "kind": "module",
+     "x": 0.09,
+     "y": -0.075,
+     "z": 0.144
+    },
+    {
+     "id": "R4a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": 0.075,
+     "z": 0.029
+    },
+    {
+     "id": "R4b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": 0.075,
+     "z": 0.029
+    },
+    {
+     "id": "M4",
+     "kind": "module",
+     "x": 0.09,
+     "y": 0.075,
+     "z": 0.144
+    },
+    {
+     "id": "R5a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": 0.225,
+     "z": 0.029
+    },
+    {
+     "id": "R5b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": 0.225,
+     "z": 0.029
+    },
+    {
+     "id": "M5",
+     "kind": "module",
+     "x": 0.09,
+     "y": 0.225,
+     "z": 0.144
+    },
+    {
+     "id": "R6a",
+     "kind": "bracket",
+     "x": 0.258,
+     "y": 0.375,
+     "z": 0.029
+    },
+    {
+     "id": "R6b",
+     "kind": "bracket",
+     "x": -0.078,
+     "y": 0.375,
+     "z": 0.029
+    },
+    {
+     "id": "M6",
+     "kind": "module",
+     "x": 0.09,
+     "y": 0.375,
+     "z": 0.144
+    }
+   ],
+   "modules": 6,
+   "lid_bolts": 14,
+   "ribs": [
+    {
+     "along": "y",
+     "at": "x",
+     "value": -0.14
+    },
+    {
+     "along": "y",
+     "at": "x",
+     "value": 0.14
+    },
+    {
+     "along": "x",
+     "at": "y",
+     "value": -0.3
+    },
+    {
+     "along": "x",
+     "at": "y",
+     "value": 0.3
+    }
+   ],
+   "msd_y": 0.0,
+   "bms_y": 0.27
+  }
+ },
+ "heads": {
+  "S10": {
+   "thread": "M6",
+   "height": 0.006
+  },
+  "S13": {
+   "thread": "M8",
+   "height": 0.008
+  },
+  "T30": {
+   "thread": "M6",
+   "height": 0.0045
+  },
+  "T40": {
+   "thread": "M8",
+   "height": 0.006
+  }
+ },
+ "torque": {
+  "M6": {
+   "assembly": 10.0,
+   "breakaway": 11.5,
+   "corroded": [
+    16.0,
+    19.0
+   ],
+   "never_exceed": 22.0,
+   "turns": 7.0,
+   "seized": [
+    23.0,
+    32.0
+   ],
+   "shear": 20.0
+  },
+  "M8": {
+   "assembly": 23.0,
+   "breakaway": 26.45,
+   "corroded": [
+    36.8,
+    43.7
+   ],
+   "never_exceed": 45.0,
+   "turns": 9.0,
+   "seized": [
+    52.9,
+    73.6
+   ],
+   "shear": 46.0
+  }
+ },
+ "grips": {
+  "lid": {
+   "feature": "handle bar at the lid's centre",
+   "closing": "y",
+   "width": "30",
+   "mass": "5"
+  },
+  "module M1..": {
+   "feature": "handle bar on top, at the module's centre",
+   "closing": "y",
+   "width": "30",
+   "mass": "11.5"
+  },
+  "service disconnect (MSD)": {
+   "feature": "handle bar on top",
+   "closing": "y",
+   "width": "20",
+   "mass": "0.35"
+  },
+  "plugs J1, J2": {
+   "feature": "the plug's body",
+   "closing": "x",
+   "width": "22",
+   "mass": "0.05"
+  },
+  "busbar between two modules (runs along y)": {
+   "feature": "the orange sleeve at its middle",
+   "closing": "x",
+   "width": "26",
+   "mass": "0.12"
+  },
+  "first and last busbar (run along x)": {
+   "feature": "the orange sleeve at its middle",
+   "closing": "y",
+   "width": "26",
+   "mass": "0.12"
+  },
+  "bracket": {
+   "feature": "the block itself",
+   "closing": "x (30 mm) or y (60 mm)",
+   "width": "30 / 60",
+   "mass": "0.15"
+  },
+  "harness remnant (section 7)": {
+   "feature": "the cable, anywhere along it",
+   "closing": "across the cable",
+   "width": "12",
+   "mass": "0.2"
+  }
+ },
+ "swollen": {
+  "criterion": 0.0004,
+  "rim": 0.005,
+  "plate": [
+   0.28,
+   0.11
+  ],
+  "a": [
+   0.09,
+   0.12
+  ],
+  "b": [
+   0.035,
+   0.05
+  ],
+  "dx": 0.015
+ },
+ "pads": {
+  "side": [
+   0.04,
+   0.06
+  ],
+  "thick": [
+   0.01,
+   0.014
+  ],
+  "off": 0.008
+ }
+}
