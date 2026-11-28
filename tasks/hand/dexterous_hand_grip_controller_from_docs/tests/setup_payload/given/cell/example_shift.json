@@ -1,0 +1,477 @@
+{
+ "format": "shift-sheet/1",
+ "jobs": [
+  {
+   "job": 1,
+   "phases": [
+    [
+     "await_clear",
+     3000,
+     3005
+    ],
+    [
+     "present",
+     3005,
+     4205
+    ],
+    [
+     "test_lift",
+     4205,
+     7205
+    ],
+    [
+     "transfer",
+     7205,
+     15646
+    ],
+    [
+     "set_down",
+     15646,
+     16146
+    ],
+    [
+     "release",
+     16146,
+     17146
+    ],
+    [
+     "rest",
+     17146,
+     19146
+    ]
+   ],
+   "ticket": {
+    "class": "brittle",
+    "code": "SH-1",
+    "finish": "rough",
+    "job": 1,
+    "profile": "P30"
+   }
+  },
+  {
+   "job": 2,
+   "phases": [
+    [
+     "await_clear",
+     19146,
+     19151
+    ],
+    [
+     "present",
+     19151,
+     20351
+    ],
+    [
+     "test_lift",
+     20351,
+     23351
+    ],
+    [
+     "transfer",
+     23351,
+     31792
+    ],
+    [
+     "set_down",
+     31792,
+     32292
+    ],
+    [
+     "release",
+     32292,
+     33292
+    ],
+    [
+     "rest",
+     33292,
+     35292
+    ]
+   ],
+   "ticket": {
+    "class": "full_load",
+    "code": "FL",
+    "finish": "rough",
+    "job": 2,
+    "profile": "R30"
+   }
+  },
+  {
+   "job": 3,
+   "phases": [
+    [
+     "await_clear",
+     35292,
+     35297
+    ],
+    [
+     "present",
+     35297,
+     36497
+    ],
+    [
+     "test_lift",
+     36497,
+     39497
+    ],
+    [
+     "transfer",
+     39497,
+     47938
+    ],
+    [
+     "set_down",
+     47938,
+     48438
+    ],
+    [
+     "release",
+     48438,
+     49438
+    ],
+    [
+     "rest",
+     49438,
+     51438
+    ]
+   ],
+   "ticket": {
+    "class": "full_load",
+    "code": "FL",
+    "finish": "rough",
+    "job": 3,
+    "profile": "R30"
+   }
+  },
+  {
+   "job": 4,
+   "phases": [
+    [
+     "await_clear",
+     51438,
+     51443
+    ],
+    [
+     "present",
+     51443,
+     52643
+    ],
+    [
+     "test_lift",
+     52643,
+     55643
+    ],
+    [
+     "transfer",
+     55643,
+     57684
+    ],
+    [
+     "set_down",
+     57684,
+     58184
+    ],
+    [
+     "release",
+     58184,
+     59184
+    ],
+    [
+     "rest",
+     59184,
+     61184
+    ]
+   ],
+   "ticket": {
+    "class": "brittle",
+    "code": "SH-1",
+    "finish": "matte",
+    "job": 4,
+    "profile": "T0"
+   }
+  },
+  {
+   "job": 5,
+   "phases": [
+    [
+     "await_clear",
+     61184,
+     61189
+    ],
+    [
+     "present",
+     61189,
+     62389
+    ],
+    [
+     "test_lift",
+     62389,
+     65389
+    ],
+    [
+     "transfer",
+     65389,
+     73830
+    ],
+    [
+     "set_down",
+     73830,
+     74330
+    ],
+    [
+     "release",
+     74330,
+     75330
+    ],
+    [
+     "rest",
+     75330,
+     77330
+    ]
+   ],
+   "ticket": {
+    "class": "soft",
+    "code": "SP",
+    "finish": "rough",
+    "job": 5,
+    "profile": "P30"
+   }
+  },
+  {
+   "job": 6,
+   "phases": [
+    [
+     "await_clear",
+     77330,
+     77335
+    ],
+    [
+     "present",
+     77335,
+     78535
+    ],
+    [
+     "test_lift",
+     78535,
+     81535
+    ],
+    [
+     "transfer",
+     81535,
+     89976
+    ],
+    [
+     "set_down",
+     89976,
+     90476
+    ],
+    [
+     "release",
+     90476,
+     91476
+    ],
+    [
+     "rest",
+     91476,
+     93476
+    ]
+   ],
+   "ticket": {
+    "class": "full_load",
+    "code": "FL",
+    "finish": "rough",
+    "job": 6,
+    "profile": "P30"
+   }
+  },
+  {
+   "job": 7,
+   "phases": [
+    [
+     "await_clear",
+     93476,
+     93481
+    ],
+    [
+     "present",
+     93481,
+     94681
+    ],
+    [
+     "test_lift",
+     94681,
+     97681
+    ],
+    [
+     "transfer",
+     97681,
+     106122
+    ],
+    [
+     "set_down",
+     106122,
+     106622
+    ],
+    [
+     "release",
+     106622,
+     107622
+    ],
+    [
+     "rest",
+     107622,
+     109622
+    ]
+   ],
+   "ticket": {
+    "class": "brittle",
+    "code": "SH-1",
+    "finish": "matte",
+    "job": 7,
+    "profile": "R30"
+   }
+  },
+  {
+   "job": 8,
+   "phases": [
+    [
+     "await_clear",
+     109622,
+     109627
+    ],
+    [
+     "present",
+     109627,
+     110827
+    ],
+    [
+     "test_lift",
+     110827,
+     113827
+    ],
+    [
+     "transfer",
+     113827,
+     115868
+    ],
+    [
+     "set_down",
+     115868,
+     116368
+    ],
+    [
+     "release",
+     116368,
+     117368
+    ],
+    [
+     "rest",
+     117368,
+     119368
+    ]
+   ],
+   "ticket": {
+    "class": "brittle",
+    "code": "SH-1",
+    "finish": "matte",
+    "job": 8,
+    "profile": "T0"
+   }
+  },
+  {
+   "job": 9,
+   "phases": [
+    [
+     "await_clear",
+     119368,
+     119373
+    ],
+    [
+     "present",
+     119373,
+     120573
+    ],
+    [
+     "test_lift",
+     120573,
+     123573
+    ],
+    [
+     "transfer",
+     123573,
+     132014
+    ],
+    [
+     "set_down",
+     132014,
+     132514
+    ],
+    [
+     "release",
+     132514,
+     133514
+    ],
+    [
+     "rest",
+     133514,
+     135514
+    ]
+   ],
+   "ticket": {
+    "class": "brittle",
+    "code": "SH-1",
+    "finish": "matte",
+    "job": 9,
+    "profile": "P30"
+   }
+  },
+  {
+   "job": 10,
+   "phases": [
+    [
+     "await_clear",
+     135514,
+     135519
+    ],
+    [
+     "present",
+     135519,
+     136719
+    ],
+    [
+     "test_lift",
+     136719,
+     139719
+    ],
+    [
+     "transfer",
+     139719,
+     148160
+    ],
+    [
+     "set_down",
+     148160,
+     148660
+    ],
+    [
+     "release",
+     148660,
+     149660
+    ],
+    [
+     "rest",
+     149660,
+     151660
+    ]
+   ],
+   "ticket": {
+    "class": "brittle",
+    "code": "SH-3",
+    "finish": "matte",
+    "job": 10,
+    "profile": "P30"
+   }
+  }
+ ],
+ "serial": "HU-DJWFZ",
+ "shift": 1
+}

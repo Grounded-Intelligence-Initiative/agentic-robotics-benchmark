@@ -1,0 +1,7 @@
+{
+ "format": "grip-grader-config/1",
+ "runner_account": "nobody",
+ "on_time_min": 0.9,
+ "socket_sample_s": 0.5,
+ "note": "every band, window, budget and count is a constant of the vendored contract package (tests/grip/contract/constants.py; the size cap and the on-time share there too, on_time_min equals it); tests/grip/CONTRACT.md is the runtime contract"
+}

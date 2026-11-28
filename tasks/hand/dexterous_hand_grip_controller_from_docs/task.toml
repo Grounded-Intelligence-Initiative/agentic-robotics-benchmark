@@ -1,0 +1,78 @@
+# dexterous_hand_grip_controller_from_docs: the control stage of the four-digit robot hand (an atomic task).
+#
+# The agent is the controls engineer of a lab that fits a sixteen-joint, four-digit robot hand (thirteen bus servos, a
+# crossed four-bar per finger that couples the last joint, four tactile modules; never named) on an arm in a kitting
+# cell. It receives what such a hand ships with: the kinematics sheet and the link meshes, the servo vendor's manual
+# and performance table, the bus and host notes, the tactile modules' interface note, parameter table and taxel maps,
+# the makers' hand-off and test documents, the unit-record format with another unit's record and the range sheet, the
+# cell's documentation (nests, taught grasp, transfer profiles, shift sheets), the specimen sheets and the lab's
+# acceptance specification; no simulation model, no practice hand, no time on the hand. It delivers
+# submission/controller/controller.py (class Controller: setup / step on the servo bus cycle) that grasps, tests,
+# carries or declines and releases each specimen of a shift.
+#
+# Grading (tests/verify.py; knobs in tests/grader_config.json; the runtime contract is tests/grip/CONTRACT.md): the
+# grader runs the controller, as an unprivileged account under a no-network filter, on the fixed hidden set
+# tests/hidden/scenarios: two hand units (each with its own servo, supply, friction, inertia, standby, temperature and
+# tactile state inside the range sheet), each with two back-to-back shifts of ten jobs on instrumented split specimens
+# (brittle shells with squeeze ceilings, soft packs with a travel limit, full-load blocks; carry or decline by mass).
+# A crush, a drop or a servo's protective stop ends the shift. A carry job = carried x L(slip) x L(rotation) x
+# released; a shift = the mean carry quality x (0.7 + 0.3 J), J the decline score; reward = the pass conditions x the
+# mean of the four shifts. The oracle submits the privileged reference controller with a 256-bit token: the grader
+# then runs its reference script with the truth and the controller echoes its commands.
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/dexterous_hand_grip_controller_from_docs"
+
+[metadata]
+platform = "hand"
+direction = "control"
+metric = {name = "acceptance_score", direction = "higher", hardware_invariant = true}
+mode = "atomic"
+stage = "control"
+stage_key = "control"
+info_tier = 1
+hidden_instance = "a fixed hidden set of two hand units, each with two back-to-back shifts of ten jobs"
+practice_instances = []
+given_from = {stage = "assembly", adapter = "the assembled hand's documents"}
+entry = "design-first"
+route = "code-as-policy"
+agent_role = ["controls engineer"]
+artifact_kind = ["program"]
+oracle_kind = "token-privileged"
+compute = "cpu"
+observation_tier = "proprioceptive"
+randomisation = ["unit (servo stall spread, supply, home-offset record error, friction, inertia, standby current, start temperature, tactile gain and zero)", "specimens (class, size code, mass, friction, stiffness, width, placement)", "jobs (labels, transfer profiles, the arm's tracking)"]
+expert_time_hours = 40
+tags = ["control", "grasping", "force-control", "tactile", "thermal", "servo", "mujoco", "code-as-policy", "info-tier", "oracle-token", "no-practice"]
+
+[environment]
+cpus = 4
+memory_mb = 8192
+
+# [agent] timeout_sec: 6 h; an episode cut by this limit is not graded.
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+# Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
+# touched, with only the declared artifact (the submission) restored into it. environment/setup/setup.sh does not run
+# there: tests/test.sh builds the grader's root-owned copy of the givens itself.
+# [verifier] timeout_sec, from the worst case: one run of the fixed hidden set (nothing is generated at verify). The two units
+# run one after the other, each at the worst case of every printed budget: 60 s for the import, 120 s for
+# the setup, 3,600 s of the controller's own reply time plus one more step of 5 s, the plant's own time over
+# the longest timeline (413 simulated s at 2 CPU s each, an allowance above the slowest measured unit:
+# 826 s) and 30 s to start and clean up the unit: 4,641 s per unit. The fixed steps: 11 s for the
+# verify-start lockdown, 600 s for the static checks of the sources, 60 s for the givens' hashes, the hidden
+# set, the records and the verdict: 671 s. 2 x 4,641 s + 671 s = 9,952 s; times 1.35 (the margin), rounded up
+# to 100 s: 13,500 s. A verify past the limit is the engine's TIMEOUT: no score, a task error.
+[verifier]
+timeout_sec = 13500
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 4
+memory_mb = 8192
+gpus = 0

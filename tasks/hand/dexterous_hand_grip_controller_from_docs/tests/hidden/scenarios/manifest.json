@@ -1,0 +1,28 @@
+{
+ "ceilings": {
+  "SH-1": 4.0,
+  "SH-2": 6.4,
+  "SH-3": 10.6,
+  "SP_travel_mm": 6.4
+ },
+ "code_digest": "34e37b4072f4bdf4ddc7bd5ed7a462a9f741e1653c6810d40af219fdc154a30a",
+ "format": "grip-hidden-set/1",
+ "kept": [
+  {
+   "candidate_index": 0,
+   "candidate_sha256": "5ea0637f3e25a0ebb6a68b89e4b17f323af034c88df743d69be49172f59ff616",
+   "file": "acc1.scenario",
+   "sha256": "26d8eeac761f323c2981b92027dbf33b8c3709d49744c48988094f59df3abbc7"
+  },
+  {
+   "candidate_index": 1,
+   "candidate_sha256": "577bfd140fe56876ab292b08f16fdefcf10abc6d34f7aaa12ed221ca26dee98f",
+   "file": "acc2.scenario",
+   "sha256": "a1bb4d3fff0e55cb5f6e3a6a605cd0c26c1cb8c9c5342f34fa4ba16853cc75ff"
+  }
+ ],
+ "kit_tree_sha256": "b2108be2bc6b8c3b4ded578946e69516fbc62c274f3c2c00cfcfb822cd4ba45b",
+ "oracle_token_sha256": "f4b5c81cdbb08fde2f4a05c12350ca7f6d34515da0c0e4c23bf0b4e39b944e3c",
+ "registration_sha256": "4fde2fca201948e6dbf20985f9145d199e3ea7763477937452fbbfd625bcdba4",
+ "rule_sha256": "64a246c54f7d4667ef35bd0b20999f08c2f18ec9c515028d1b85ae814a84bcd4"
+}

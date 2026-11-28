@@ -1,0 +1,374 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "supervisor view",
+ "description": "The read-only state the supervisor gives the reference script each cycle (grader only).",
+ "type": "object",
+ "required": [
+  "unit",
+  "shift",
+  "job",
+  "job_id",
+  "phase",
+  "t_ms",
+  "phase_t0_ms",
+  "ticket",
+  "label",
+  "spec",
+  "ceiling",
+  "plan_ms",
+  "peaks_ms",
+  "event"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "unit": {
+   "type": "integer",
+   "enum": [
+    1,
+    2
+   ]
+  },
+  "shift": {
+   "type": "integer",
+   "enum": [
+    1,
+    2
+   ]
+  },
+  "job": {
+   "oneOf": [
+    {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 10
+    },
+    {
+     "type": "null"
+    }
+   ]
+  },
+  "job_id": {
+   "oneOf": [
+    {
+     "type": "string",
+     "pattern": "^s[12]j(0[1-9]|10)$"
+    },
+    {
+     "type": "null"
+    }
+   ]
+  },
+  "phase": {
+   "type": "string",
+   "enum": [
+    "handover",
+    "rest",
+    "await_clear",
+    "present",
+    "test_lift",
+    "lower",
+    "transfer",
+    "set_down",
+    "release",
+    "pause",
+    "end"
+   ]
+  },
+  "t_ms": {
+   "type": "integer",
+   "minimum": 0
+  },
+  "phase_t0_ms": {
+   "type": "integer",
+   "minimum": 0
+  },
+  "ticket": {
+   "oneOf": [
+    {
+     "type": "object",
+     "required": [
+      "job",
+      "class",
+      "code",
+      "finish",
+      "profile"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "job": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 10
+      },
+      "class": {
+       "enum": [
+        "brittle",
+        "soft",
+        "full_load"
+       ]
+      },
+      "code": {
+       "enum": [
+        "SH-1",
+        "SH-2",
+        "SH-3",
+        "SP",
+        "FL"
+       ]
+      },
+      "finish": {
+       "enum": [
+        "matte",
+        "rough"
+       ]
+      },
+      "profile": {
+       "enum": [
+        "T0",
+        "R30",
+        "P30"
+       ]
+      }
+     },
+     "oneOf": [
+      {
+       "properties": {
+        "class": {
+         "const": "brittle"
+        },
+        "code": {
+         "enum": [
+          "SH-1",
+          "SH-2",
+          "SH-3"
+         ]
+        }
+       }
+      },
+      {
+       "properties": {
+        "class": {
+         "const": "soft"
+        },
+        "code": {
+         "enum": [
+          "SP"
+         ]
+        }
+       }
+      },
+      {
+       "properties": {
+        "class": {
+         "const": "full_load"
+        },
+        "code": {
+         "enum": [
+          "FL"
+         ]
+        }
+       }
+      }
+     ]
+    },
+    {
+     "type": "null"
+    }
+   ]
+  },
+  "label": {
+   "enum": [
+    "carry",
+    "decline",
+    null
+   ]
+  },
+  "spec": {
+   "oneOf": [
+    {
+     "type": "object",
+     "required": [
+      "class",
+      "code",
+      "mass_kg",
+      "mu",
+      "k_n_per_mm",
+      "w_mm",
+      "dx_mm",
+      "dy_mm",
+      "yaw_deg"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "class": {
+       "enum": [
+        "brittle",
+        "soft",
+        "full_load"
+       ]
+      },
+      "code": {
+       "enum": [
+        "SH-1",
+        "SH-2",
+        "SH-3",
+        "SP",
+        "FL"
+       ]
+      },
+      "mass_kg": {
+       "type": "number",
+       "minimum": 0
+      },
+      "mu": {
+       "type": "number",
+       "minimum": 0
+      },
+      "k_n_per_mm": {
+       "type": "number",
+       "minimum": 0
+      },
+      "w_mm": {
+       "type": "number",
+       "minimum": 0
+      },
+      "dx_mm": {
+       "type": "number"
+      },
+      "dy_mm": {
+       "type": "number"
+      },
+      "yaw_deg": {
+       "type": "number"
+      }
+     }
+    },
+    {
+     "type": "null"
+    }
+   ]
+  },
+  "ceiling": {
+   "type": [
+    "number",
+    "null"
+   ]
+  },
+  "plan_ms": {
+   "type": "object",
+   "propertyNames": {
+    "enum": [
+     "handover",
+     "rest",
+     "await_clear",
+     "present",
+     "test_lift",
+     "lower",
+     "transfer",
+     "set_down",
+     "release",
+     "pause",
+     "end"
+    ]
+   },
+   "additionalProperties": {
+    "type": "array",
+    "items": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "minItems": 2,
+    "maxItems": 2
+   }
+  },
+  "peaks_ms": {
+   "type": "array",
+   "items": {
+    "type": "integer",
+    "minimum": 0
+   }
+  },
+  "event": {
+   "oneOf": [
+    {
+     "type": "null"
+    },
+    {
+     "type": "object",
+     "required": [
+      "kind",
+      "shift",
+      "t_ms"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "enum": [
+        "crush",
+        "drop",
+        "shutdown"
+       ]
+      },
+      "shift": {
+       "type": "integer",
+       "enum": [
+        1,
+        2
+       ]
+      },
+      "t_ms": {
+       "type": "integer",
+       "minimum": 0
+      }
+     }
+    }
+   ]
+  }
+ },
+ "examples": [
+  {
+   "unit": 1,
+   "shift": 1,
+   "job": 3,
+   "job_id": "s1j03",
+   "phase": "transfer",
+   "t_ms": 31200,
+   "phase_t0_ms": 30500,
+   "ticket": {
+    "job": 3,
+    "class": "brittle",
+    "code": "SH-2",
+    "finish": "matte",
+    "profile": "R30"
+   },
+   "label": "carry",
+   "spec": {
+    "class": "full_load",
+    "code": "FL",
+    "mass_kg": 0.1,
+    "mu": 0.5,
+    "k_n_per_mm": 5.0,
+    "w_mm": 40.0,
+    "dx_mm": 0.5,
+    "dy_mm": -0.5,
+    "yaw_deg": 1.0
+   },
+   "ceiling": 8.0,
+   "plan_ms": {
+    "test_lift": [
+     27500,
+     30500
+    ],
+    "transfer": [
+     30500,
+     37700
+    ]
+   },
+   "peaks_ms": [
+    30600,
+    30900
+   ],
+   "event": null
+  }
+ ]
+}

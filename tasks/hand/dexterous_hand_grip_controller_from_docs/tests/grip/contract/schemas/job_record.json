@@ -1,0 +1,228 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "job record",
+ "description": "One job's outcome (development outputs and the grader's private record only).",
+ "type": "object",
+ "required": [
+  "unit",
+  "shift",
+  "job",
+  "label",
+  "phase_reached",
+  "placed_at_ms",
+  "grasped_at_ms",
+  "lifted",
+  "declined",
+  "carried",
+  "released",
+  "slip_mm",
+  "rot_deg",
+  "losses",
+  "events",
+  "peak_squeeze_n",
+  "peak_travel_mm",
+  "first_contact_ms",
+  "q",
+  "trace_sha256"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "unit": {
+   "type": "integer",
+   "enum": [
+    1,
+    2
+   ]
+  },
+  "shift": {
+   "type": "integer",
+   "enum": [
+    1,
+    2
+   ]
+  },
+  "job": {
+   "type": "integer",
+   "minimum": 1,
+   "maximum": 10
+  },
+  "label": {
+   "enum": [
+    "carry",
+    "decline"
+   ]
+  },
+  "phase_reached": {
+   "type": "string",
+   "enum": [
+    "handover",
+    "rest",
+    "await_clear",
+    "present",
+    "test_lift",
+    "lower",
+    "transfer",
+    "set_down",
+    "release",
+    "pause",
+    "end"
+   ]
+  },
+  "placed_at_ms": {
+   "type": [
+    "integer",
+    "null"
+   ]
+  },
+  "grasped_at_ms": {
+   "type": [
+    "integer",
+    "null"
+   ]
+  },
+  "lifted": {
+   "type": "boolean"
+  },
+  "declined": {
+   "type": "boolean"
+  },
+  "carried": {
+   "type": "boolean"
+  },
+  "released": {
+   "type": "boolean"
+  },
+  "slip_mm": {
+   "type": [
+    "number",
+    "null"
+   ]
+  },
+  "rot_deg": {
+   "type": [
+    "number",
+    "null"
+   ]
+  },
+  "losses": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "enum": [
+     "crush_static",
+     "crush_impact",
+     "drop_slip",
+     "drop_contact",
+     "shutdown_overheat",
+     "shutdown_overload",
+     "not_presented",
+     "not_grasped",
+     "not_lifted",
+     "not_seated",
+     "release_late",
+     "release_push",
+     "decline_missed",
+     "decline_wrong",
+     "voided",
+     "band_slip",
+     "band_rot",
+     "controller_ended",
+     "late_cycles"
+    ]
+   }
+  },
+  "events": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "kind",
+     "t_ms",
+     "detail"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "kind": {
+      "enum": [
+       "crush_static",
+       "crush_impact",
+       "drop_slip",
+       "drop_contact",
+       "shutdown_overheat",
+       "shutdown_overload"
+      ]
+     },
+     "t_ms": {
+      "type": "integer",
+      "minimum": 0
+     },
+     "detail": {
+      "type": [
+       "string",
+       "object",
+       "null"
+      ]
+     }
+    }
+   }
+  },
+  "peak_squeeze_n": {
+   "type": [
+    "number",
+    "null"
+   ]
+  },
+  "peak_travel_mm": {
+   "type": [
+    "number",
+    "null"
+   ]
+  },
+  "first_contact_ms": {
+   "type": [
+    "integer",
+    "null"
+   ]
+  },
+  "q": {
+   "oneOf": [
+    {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 1
+    },
+    {
+     "type": "null"
+    }
+   ]
+  },
+  "trace_sha256": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  }
+ },
+ "examples": [
+  {
+   "unit": 1,
+   "shift": 1,
+   "job": 1,
+   "label": "carry",
+   "phase_reached": "rest",
+   "placed_at_ms": 4100,
+   "grasped_at_ms": 5300,
+   "lifted": true,
+   "declined": false,
+   "carried": true,
+   "released": true,
+   "slip_mm": 0.2,
+   "rot_deg": 0.3,
+   "losses": [],
+   "events": [],
+   "peak_squeeze_n": 3.0,
+   "peak_travel_mm": null,
+   "first_contact_ms": 5100,
+   "q": 1.0,
+   "trace_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+  }
+ ]
+}

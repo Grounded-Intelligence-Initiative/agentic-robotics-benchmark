@@ -1,0 +1,242 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "step reply",
+ "description": "The controller's reply to one step. null = no command. Each write field is a list of 13 entries (servo id order), an integer inside the register's printed range or null (not written); a write key outside this list is a protocol error. Keys other than these four are ignored.",
+ "type": [
+  "object",
+  "null"
+ ],
+ "properties": {
+  "write": {
+   "type": [
+    "object",
+    "null"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "torque_enable": {
+     "type": "array",
+     "items": {
+      "oneOf": [
+       {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "operating_mode": {
+     "type": "array",
+     "items": {
+      "oneOf": [
+       {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 16
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "position_d_gain": {
+     "type": "array",
+     "items": {
+      "oneOf": [
+       {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 16383
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "position_i_gain": {
+     "type": "array",
+     "items": {
+      "oneOf": [
+       {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 16383
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "position_p_gain": {
+     "type": "array",
+     "items": {
+      "oneOf": [
+       {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 16383
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "goal_current": {
+     "type": "array",
+     "items": {
+      "oneOf": [
+       {
+        "type": "integer",
+        "minimum": -910,
+        "maximum": 910
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "profile_acceleration": {
+     "type": "array",
+     "items": {
+      "oneOf": [
+       {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 32767
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "profile_velocity": {
+     "type": "array",
+     "items": {
+      "oneOf": [
+       {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 32767
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "goal_position": {
+     "type": "array",
+     "items": {
+      "oneOf": [
+       {
+        "type": "integer",
+        "minimum": -1048575,
+        "maximum": 1048575
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "minItems": 13,
+     "maxItems": 13
+    }
+   }
+  },
+  "tactile_zero": {
+   "type": [
+    "array",
+    "null"
+   ],
+   "items": {
+    "type": "string",
+    "enum": [
+     "thumb",
+     "index",
+     "middle",
+     "ring"
+    ]
+   },
+   "uniqueItems": true
+  },
+  "grasped": {
+   "type": [
+    "boolean",
+    "null"
+   ]
+  },
+  "decline": {
+   "type": [
+    "boolean",
+    "null"
+   ]
+  }
+ },
+ "examples": [
+  {
+   "write": {
+    "goal_position": [
+     2048,
+     1810,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "goal_current": [
+     600,
+     600,
+     600,
+     600,
+     600,
+     600,
+     600,
+     600,
+     600,
+     600,
+     600,
+     600,
+     600
+    ]
+   },
+   "tactile_zero": [
+    "thumb"
+   ],
+   "grasped": false,
+   "decline": false
+  }
+ ]
+}

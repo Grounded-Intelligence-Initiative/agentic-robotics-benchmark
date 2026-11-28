@@ -1,0 +1,874 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "observation",
+ "description": "What a step receives: the declared registers, the newest tactile frame, the cell's state, the previous reply's refused writes and the kind of an event that ended a shift.",
+ "type": "object",
+ "required": [
+  "cycle",
+  "t_ms",
+  "period_ms",
+  "late",
+  "regs",
+  "tactile",
+  "cell",
+  "refused",
+  "event"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "cycle": {
+   "type": "integer",
+   "minimum": 0
+  },
+  "t_ms": {
+   "type": "integer",
+   "minimum": 0
+  },
+  "period_ms": {
+   "type": "integer",
+   "minimum": 5,
+   "maximum": 20
+  },
+  "late": {
+   "type": "integer",
+   "minimum": 0
+  },
+  "regs": {
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "torque_enable": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "led": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "status_return_level": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "registered_instruction": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "hardware_error_status": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "velocity_i_gain": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "velocity_p_gain": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "position_d_gain": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "position_i_gain": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "position_p_gain": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "feedforward_2nd_gain": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "feedforward_1st_gain": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "bus_watchdog": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "goal_pwm": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "goal_current": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "goal_velocity": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "profile_acceleration": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "profile_velocity": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "goal_position": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "realtime_tick": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "moving": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "moving_status": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "present_pwm": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "present_current": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "present_velocity": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "present_position": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "velocity_trajectory": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "position_trajectory": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "present_input_voltage": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "present_temperature": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "backup_ready": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    }
+   }
+  },
+  "tactile": {
+   "oneOf": [
+    {
+     "type": "null"
+    },
+    {
+     "type": "object",
+     "required": [
+      "seq",
+      "t_capture_ms",
+      "t_arrival_ms",
+      "modules"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "seq": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "t_capture_ms": {
+       "type": "number",
+       "minimum": 0
+      },
+      "t_arrival_ms": {
+       "type": "number",
+       "minimum": 0
+      },
+      "modules": {
+       "type": "object",
+       "required": [
+        "thumb",
+        "index",
+        "middle",
+        "ring"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "thumb": {
+         "type": "string",
+         "pattern": "^[0-9a-f]{774}$"
+        },
+        "index": {
+         "type": "string",
+         "pattern": "^[0-9a-f]{324}$"
+        },
+        "middle": {
+         "type": "string",
+         "pattern": "^[0-9a-f]{324}$"
+        },
+        "ring": {
+         "type": "string",
+         "pattern": "^[0-9a-f]{324}$"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  "cell": {
+   "type": "object",
+   "required": [
+    "shift",
+    "job",
+    "phase",
+    "t_phase_ms",
+    "ticket"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "shift": {
+     "type": "integer",
+     "enum": [
+      1,
+      2
+     ]
+    },
+    "job": {
+     "oneOf": [
+      {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 10
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "phase": {
+     "type": "string",
+     "enum": [
+      "handover",
+      "rest",
+      "await_clear",
+      "present",
+      "test_lift",
+      "lower",
+      "transfer",
+      "set_down",
+      "release",
+      "pause",
+      "end"
+     ]
+    },
+    "t_phase_ms": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "ticket": {
+     "oneOf": [
+      {
+       "type": "object",
+       "required": [
+        "job",
+        "class",
+        "code",
+        "finish",
+        "profile"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "job": {
+         "type": "integer",
+         "minimum": 1,
+         "maximum": 10
+        },
+        "class": {
+         "enum": [
+          "brittle",
+          "soft",
+          "full_load"
+         ]
+        },
+        "code": {
+         "enum": [
+          "SH-1",
+          "SH-2",
+          "SH-3",
+          "SP",
+          "FL"
+         ]
+        },
+        "finish": {
+         "enum": [
+          "matte",
+          "rough"
+         ]
+        },
+        "profile": {
+         "enum": [
+          "T0",
+          "R30",
+          "P30"
+         ]
+        }
+       },
+       "oneOf": [
+        {
+         "properties": {
+          "class": {
+           "const": "brittle"
+          },
+          "code": {
+           "enum": [
+            "SH-1",
+            "SH-2",
+            "SH-3"
+           ]
+          }
+         }
+        },
+        {
+         "properties": {
+          "class": {
+           "const": "soft"
+          },
+          "code": {
+           "enum": [
+            "SP"
+           ]
+          }
+         }
+        },
+        {
+         "properties": {
+          "class": {
+           "const": "full_load"
+          },
+          "code": {
+           "enum": [
+            "FL"
+           ]
+          }
+         }
+        }
+       ]
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   }
+  },
+  "refused": {
+   "type": "array",
+   "items": {
+    "type": "array",
+    "prefixItems": [
+     {
+      "enum": [
+       "torque_enable",
+       "operating_mode",
+       "position_d_gain",
+       "position_i_gain",
+       "position_p_gain",
+       "goal_current",
+       "profile_acceleration",
+       "profile_velocity",
+       "goal_position"
+      ]
+     },
+     {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 12
+     }
+    ],
+    "items": false,
+    "minItems": 2
+   }
+  },
+  "event": {
+   "oneOf": [
+    {
+     "type": "null"
+    },
+    {
+     "type": "object",
+     "required": [
+      "kind",
+      "shift",
+      "t_ms"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "enum": [
+        "crush",
+        "drop",
+        "shutdown"
+       ]
+      },
+      "shift": {
+       "type": "integer",
+       "enum": [
+        1,
+        2
+       ]
+      },
+      "t_ms": {
+       "type": "integer",
+       "minimum": 0
+      }
+     }
+    }
+   ]
+  },
+  "truth_cmd": {
+   "type": [
+    "object",
+    "null"
+   ],
+   "properties": {
+    "write": {
+     "type": [
+      "object",
+      "null"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "torque_enable": {
+       "type": "array",
+       "items": {
+        "oneOf": [
+         {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "minItems": 13,
+       "maxItems": 13
+      },
+      "operating_mode": {
+       "type": "array",
+       "items": {
+        "oneOf": [
+         {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "minItems": 13,
+       "maxItems": 13
+      },
+      "position_d_gain": {
+       "type": "array",
+       "items": {
+        "oneOf": [
+         {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16383
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "minItems": 13,
+       "maxItems": 13
+      },
+      "position_i_gain": {
+       "type": "array",
+       "items": {
+        "oneOf": [
+         {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16383
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "minItems": 13,
+       "maxItems": 13
+      },
+      "position_p_gain": {
+       "type": "array",
+       "items": {
+        "oneOf": [
+         {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16383
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "minItems": 13,
+       "maxItems": 13
+      },
+      "goal_current": {
+       "type": "array",
+       "items": {
+        "oneOf": [
+         {
+          "type": "integer",
+          "minimum": -910,
+          "maximum": 910
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "minItems": 13,
+       "maxItems": 13
+      },
+      "profile_acceleration": {
+       "type": "array",
+       "items": {
+        "oneOf": [
+         {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32767
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "minItems": 13,
+       "maxItems": 13
+      },
+      "profile_velocity": {
+       "type": "array",
+       "items": {
+        "oneOf": [
+         {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32767
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "minItems": 13,
+       "maxItems": 13
+      },
+      "goal_position": {
+       "type": "array",
+       "items": {
+        "oneOf": [
+         {
+          "type": "integer",
+          "minimum": -1048575,
+          "maximum": 1048575
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "minItems": 13,
+       "maxItems": 13
+      }
+     }
+    },
+    "tactile_zero": {
+     "type": [
+      "array",
+      "null"
+     ],
+     "items": {
+      "type": "string",
+      "enum": [
+       "thumb",
+       "index",
+       "middle",
+       "ring"
+      ]
+     },
+     "uniqueItems": true
+    },
+    "grasped": {
+     "type": [
+      "boolean",
+      "null"
+     ]
+    },
+    "decline": {
+     "type": [
+      "boolean",
+      "null"
+     ]
+    }
+   }
+  }
+ },
+ "examples": [
+  {
+   "cycle": 1234,
+   "t_ms": 6172,
+   "period_ms": 5,
+   "late": 0,
+   "regs": {
+    "present_pwm": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "present_current": [
+     15,
+     15,
+     15,
+     15,
+     15,
+     15,
+     15,
+     15,
+     15,
+     15,
+     15,
+     15,
+     15
+    ],
+    "present_velocity": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "present_position": [
+     2048,
+     2048,
+     2048,
+     2048,
+     2048,
+     2048,
+     2048,
+     2048,
+     2048,
+     2048,
+     2048,
+     2048,
+     2048
+    ],
+    "present_temperature": [
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44,
+     44
+    ]
+   },
+   "tactile": {
+    "seq": 512,
+    "t_capture_ms": 6160.4,
+    "t_arrival_ms": 6170.0,
+    "modules": {
+     "thumb": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+     "index": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+     "middle": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+     "ring": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    }
+   },
+   "cell": {
+    "shift": 1,
+    "job": 3,
+    "phase": "present",
+    "t_phase_ms": 420,
+    "ticket": {
+     "job": 3,
+     "class": "brittle",
+     "code": "SH-2",
+     "finish": "matte",
+     "profile": "R30"
+    }
+   },
+   "refused": [
+    [
+     "operating_mode",
+     4
+    ]
+   ],
+   "event": null
+  }
+ ]
+}

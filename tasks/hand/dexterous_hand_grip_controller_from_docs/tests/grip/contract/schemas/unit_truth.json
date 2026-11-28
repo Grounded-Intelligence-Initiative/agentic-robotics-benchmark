@@ -1,0 +1,660 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "unit truth",
+ "description": "A hidden unit's drawn state (grader only).",
+ "type": "object",
+ "required": [
+  "serial",
+  "vs",
+  "t_start_c",
+  "frame_hz",
+  "frame_phase_ms",
+  "servos",
+  "tactile",
+  "residuals",
+  "seeds"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "serial": {
+   "type": "string",
+   "pattern": "^HU-[0-9A-HJ-NP-Z]{5}$"
+  },
+  "vs": {
+   "type": "number",
+   "minimum": 0
+  },
+  "t_start_c": {
+   "type": "number"
+  },
+  "frame_hz": {
+   "type": "number",
+   "minimum": 0
+  },
+  "frame_phase_ms": {
+   "type": "number",
+   "minimum": 0
+  },
+  "servos": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "home_true",
+     "record_error_counts",
+     "friction_nm",
+     "armature",
+     "dev",
+     "i0_ma"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "id": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 12
+     },
+     "home_true": {
+      "type": "integer"
+     },
+     "record_error_counts": {
+      "type": "integer"
+     },
+     "friction_nm": {
+      "type": "number",
+      "minimum": 0
+     },
+     "armature": {
+      "type": "number",
+      "minimum": 0
+     },
+     "dev": {
+      "type": "number"
+     },
+     "i0_ma": {
+      "type": "number",
+      "minimum": 0
+     }
+    }
+   },
+   "minItems": 13,
+   "maxItems": 13
+  },
+  "tactile": {
+   "type": "object",
+   "required": [
+    "thumb",
+    "index",
+    "middle",
+    "ring"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "thumb": {
+     "type": "object",
+     "required": [
+      "gain"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "gain": {
+       "type": "number",
+       "minimum": 0
+      }
+     }
+    },
+    "index": {
+     "type": "object",
+     "required": [
+      "gain"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "gain": {
+       "type": "number",
+       "minimum": 0
+      }
+     }
+    },
+    "middle": {
+     "type": "object",
+     "required": [
+      "gain"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "gain": {
+       "type": "number",
+       "minimum": 0
+      }
+     }
+    },
+    "ring": {
+     "type": "object",
+     "required": [
+      "gain"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "gain": {
+       "type": "number",
+       "minimum": 0
+      }
+     }
+    }
+   }
+  },
+  "residuals": {
+   "type": "object",
+   "required": [
+    "thumb",
+    "index",
+    "middle",
+    "ring"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "thumb": {
+     "type": "array",
+     "items": {
+      "type": "integer",
+      "minimum": -1,
+      "maximum": 1
+     },
+     "minItems": 127,
+     "maxItems": 127
+    },
+    "index": {
+     "type": "array",
+     "items": {
+      "type": "integer",
+      "minimum": -1,
+      "maximum": 1
+     },
+     "minItems": 52,
+     "maxItems": 52
+    },
+    "middle": {
+     "type": "array",
+     "items": {
+      "type": "integer",
+      "minimum": -1,
+      "maximum": 1
+     },
+     "minItems": 52,
+     "maxItems": 52
+    },
+    "ring": {
+     "type": "array",
+     "items": {
+      "type": "integer",
+      "minimum": -1,
+      "maximum": 1
+     },
+     "minItems": 52,
+     "maxItems": 52
+    }
+   }
+  },
+  "seeds": {
+   "type": "object",
+   "required": [
+    "encoder",
+    "drift"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "encoder": {
+     "type": "integer",
+     "minimum": 0,
+     "maximum": 18446744073709551615
+    },
+    "drift": {
+     "type": "integer",
+     "minimum": 0,
+     "maximum": 18446744073709551615
+    }
+   }
+  }
+ },
+ "examples": [
+  {
+   "serial": "HU-7Q2KD",
+   "vs": 12.0,
+   "t_start_c": 44.0,
+   "frame_hz": 88.0,
+   "frame_phase_ms": 3.0,
+   "servos": [
+    {
+     "id": 0,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    },
+    {
+     "id": 1,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    },
+    {
+     "id": 2,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    },
+    {
+     "id": 3,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    },
+    {
+     "id": 4,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    },
+    {
+     "id": 5,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    },
+    {
+     "id": 6,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    },
+    {
+     "id": 7,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    },
+    {
+     "id": 8,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    },
+    {
+     "id": 9,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    },
+    {
+     "id": 10,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    },
+    {
+     "id": 11,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    },
+    {
+     "id": 12,
+     "home_true": 2050,
+     "record_error_counts": 3,
+     "friction_nm": 0.02,
+     "armature": 0.004,
+     "dev": 0.0,
+     "i0_ma": 15.0
+    }
+   ],
+   "tactile": {
+    "thumb": {
+     "gain": 2.0
+    },
+    "index": {
+     "gain": 2.0
+    },
+    "middle": {
+     "gain": 2.0
+    },
+    "ring": {
+     "gain": 2.0
+    }
+   },
+   "residuals": {
+    "thumb": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "index": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "middle": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "ring": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "seeds": {
+    "encoder": 1,
+    "drift": 2
+   }
+  }
+ ]
+}

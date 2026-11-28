@@ -1,0 +1,1441 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "plant truth",
+ "description": "Session.truth(): the plant's state for the reference script and the maintainers' checks (grader only). jac: m per rad, the pad contact point's velocity per servo angle rate, the four-bar coupling included.",
+ "type": "object",
+ "required": [
+  "t_ms",
+  "field",
+  "specimen",
+  "contacts",
+  "jac",
+  "joints",
+  "servos",
+  "unit"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "t_ms": {
+   "type": "integer",
+   "minimum": 0
+  },
+  "field": {
+   "type": "object",
+   "required": [
+    "g_hand_mps2"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "g_hand_mps2": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    }
+   }
+  },
+  "specimen": {
+   "oneOf": [
+    {
+     "type": "null"
+    },
+    {
+     "type": "object",
+     "required": [
+      "com_m",
+      "quat_wxyz",
+      "mass_kg",
+      "mu",
+      "gamma_m",
+      "squeeze_axis",
+      "spring_force_n",
+      "spring_travel_m"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "com_m": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "quat_wxyz": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 4,
+       "maxItems": 4
+      },
+      "mass_kg": {
+       "type": "number",
+       "minimum": 0
+      },
+      "mu": {
+       "type": "number",
+       "minimum": 0
+      },
+      "gamma_m": {
+       "type": "number",
+       "minimum": 0
+      },
+      "squeeze_axis": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "spring_force_n": {
+       "type": "number"
+      },
+      "spring_travel_m": {
+       "type": "number"
+      }
+     }
+    }
+   ]
+  },
+  "contacts": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "module",
+     "pos_m",
+     "normal",
+     "frame",
+     "force_n"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "module": {
+      "type": "string",
+      "enum": [
+       "thumb",
+       "index",
+       "middle",
+       "ring"
+      ]
+     },
+     "pos_m": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+     },
+     "normal": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+     },
+     "frame": {
+      "type": "array",
+      "items": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "minItems": 3,
+      "maxItems": 3
+     },
+     "force_n": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+     }
+    }
+   }
+  },
+  "jac": {
+   "type": "object",
+   "required": [
+    "thumb",
+    "index",
+    "middle",
+    "ring"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "thumb": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 13,
+      "maxItems": 13
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "index": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 13,
+      "maxItems": 13
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "middle": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 13,
+      "maxItems": 13
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "ring": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 13,
+      "maxItems": 13
+     },
+     "minItems": 3,
+     "maxItems": 3
+    }
+   }
+  },
+  "joints": {
+   "type": "object",
+   "required": [
+    "names",
+    "q_rad",
+    "qd_rad_s"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "names": {
+     "type": "array",
+     "items": {
+      "enum": [
+       "thumb ip",
+       "thumb mp",
+       "thumb side",
+       "thumb roll",
+       "index pip",
+       "index mcp",
+       "index abad",
+       "middle pip",
+       "middle mcp",
+       "middle abad",
+       "ring pip",
+       "ring mcp",
+       "ring abad",
+       "index dip",
+       "index rocker",
+       "middle dip",
+       "middle rocker",
+       "ring dip",
+       "ring rocker"
+      ]
+     }
+    },
+    "q_rad": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "qd_rad_s": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    }
+   }
+  },
+  "servos": {
+   "type": "object",
+   "required": [
+    "winding_c",
+    "case_c",
+    "i_motor_a",
+    "i_input_ma",
+    "duty",
+    "demand_ma",
+    "bias_nm"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "winding_c": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "case_c": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "i_motor_a": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "i_input_ma": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "duty": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "demand_ma": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "bias_nm": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 13,
+     "maxItems": 13,
+     "description": "the hand's own bias torque at the servo joints (N m): gravity in the arm's field and the velocity terms"
+    }
+   }
+  },
+  "unit": {
+   "type": "object",
+   "required": [
+    "serial",
+    "vs",
+    "t_start_c",
+    "frame_hz",
+    "frame_phase_ms",
+    "servos",
+    "tactile",
+    "residuals",
+    "seeds"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "serial": {
+     "type": "string",
+     "pattern": "^HU-[0-9A-HJ-NP-Z]{5}$"
+    },
+    "vs": {
+     "type": "number",
+     "minimum": 0
+    },
+    "t_start_c": {
+     "type": "number"
+    },
+    "frame_hz": {
+     "type": "number",
+     "minimum": 0
+    },
+    "frame_phase_ms": {
+     "type": "number",
+     "minimum": 0
+    },
+    "servos": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "id",
+       "home_true",
+       "record_error_counts",
+       "friction_nm",
+       "armature",
+       "dev",
+       "i0_ma"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "id": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 12
+       },
+       "home_true": {
+        "type": "integer"
+       },
+       "record_error_counts": {
+        "type": "integer"
+       },
+       "friction_nm": {
+        "type": "number",
+        "minimum": 0
+       },
+       "armature": {
+        "type": "number",
+        "minimum": 0
+       },
+       "dev": {
+        "type": "number"
+       },
+       "i0_ma": {
+        "type": "number",
+        "minimum": 0
+       }
+      }
+     },
+     "minItems": 13,
+     "maxItems": 13
+    },
+    "tactile": {
+     "type": "object",
+     "required": [
+      "thumb",
+      "index",
+      "middle",
+      "ring"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "thumb": {
+       "type": "object",
+       "required": [
+        "gain"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "gain": {
+         "type": "number",
+         "minimum": 0
+        }
+       }
+      },
+      "index": {
+       "type": "object",
+       "required": [
+        "gain"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "gain": {
+         "type": "number",
+         "minimum": 0
+        }
+       }
+      },
+      "middle": {
+       "type": "object",
+       "required": [
+        "gain"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "gain": {
+         "type": "number",
+         "minimum": 0
+        }
+       }
+      },
+      "ring": {
+       "type": "object",
+       "required": [
+        "gain"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "gain": {
+         "type": "number",
+         "minimum": 0
+        }
+       }
+      }
+     }
+    },
+    "residuals": {
+     "type": "object",
+     "required": [
+      "thumb",
+      "index",
+      "middle",
+      "ring"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "thumb": {
+       "type": "array",
+       "items": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "minItems": 127,
+       "maxItems": 127
+      },
+      "index": {
+       "type": "array",
+       "items": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "minItems": 52,
+       "maxItems": 52
+      },
+      "middle": {
+       "type": "array",
+       "items": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "minItems": 52,
+       "maxItems": 52
+      },
+      "ring": {
+       "type": "array",
+       "items": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "minItems": 52,
+       "maxItems": 52
+      }
+     }
+    },
+    "seeds": {
+     "type": "object",
+     "required": [
+      "encoder",
+      "drift"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "encoder": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 18446744073709551615
+      },
+      "drift": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 18446744073709551615
+      }
+     }
+    }
+   }
+  }
+ },
+ "examples": [
+  {
+   "t_ms": 6172,
+   "field": {
+    "g_hand_mps2": [
+     0.0,
+     0.0,
+     -9.81
+    ]
+   },
+   "specimen": {
+    "com_m": [
+     0.0,
+     0.1,
+     -0.05
+    ],
+    "quat_wxyz": [
+     1.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mass_kg": 0.1,
+    "mu": 0.5,
+    "gamma_m": 0.002,
+    "squeeze_axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spring_force_n": 2.0,
+    "spring_travel_m": 0.0004
+   },
+   "contacts": [
+    {
+     "module": "thumb",
+     "pos_m": [
+      -0.02,
+      0.1,
+      -0.05
+     ],
+     "normal": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      [
+       1.0,
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       1.0,
+       0.0
+      ],
+      [
+       0.0,
+       0.0,
+       1.0
+      ]
+     ],
+     "force_n": [
+      2.0,
+      0.0,
+      0.5
+     ]
+    }
+   ],
+   "jac": {
+    "thumb": [
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    ],
+    "index": [
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    ],
+    "middle": [
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    ],
+    "ring": [
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    ]
+   },
+   "joints": {
+    "names": [
+     "thumb ip",
+     "thumb mp",
+     "thumb side",
+     "thumb roll",
+     "index pip",
+     "index mcp",
+     "index abad",
+     "middle pip",
+     "middle mcp",
+     "middle abad",
+     "ring pip",
+     "ring mcp",
+     "ring abad",
+     "index dip",
+     "index rocker",
+     "middle dip",
+     "middle rocker",
+     "ring dip",
+     "ring rocker"
+    ],
+    "q_rad": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "qd_rad_s": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "servos": {
+    "winding_c": [
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0,
+     44.0
+    ],
+    "case_c": [
+     43.0,
+     43.0,
+     43.0,
+     43.0,
+     43.0,
+     43.0,
+     43.0,
+     43.0,
+     43.0,
+     43.0,
+     43.0,
+     43.0,
+     43.0
+    ],
+    "i_motor_a": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "i_input_ma": [
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0
+    ],
+    "duty": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "demand_ma": [
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0,
+     15.0
+    ],
+    "bias_nm": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "unit": {
+    "serial": "HU-7Q2KD",
+    "vs": 12.0,
+    "t_start_c": 44.0,
+    "frame_hz": 88.0,
+    "frame_phase_ms": 3.0,
+    "servos": [
+     {
+      "id": 0,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 1,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 2,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 3,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 4,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 5,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 6,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 7,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 8,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 9,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 10,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 11,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     },
+     {
+      "id": 12,
+      "home_true": 2050,
+      "record_error_counts": 3,
+      "friction_nm": 0.02,
+      "armature": 0.004,
+      "dev": 0.0,
+      "i0_ma": 15.0
+     }
+    ],
+    "tactile": {
+     "thumb": {
+      "gain": 2.0
+     },
+     "index": {
+      "gain": 2.0
+     },
+     "middle": {
+      "gain": 2.0
+     },
+     "ring": {
+      "gain": 2.0
+     }
+    },
+    "residuals": {
+     "thumb": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "index": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "middle": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "ring": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "seeds": {
+     "encoder": 1,
+     "drift": 2
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,99 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "job ticket",
+ "description": "A job's ticket, shown from the job's await_clear to its rest.",
+ "type": "object",
+ "required": [
+  "job",
+  "class",
+  "code",
+  "finish",
+  "profile"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "job": {
+   "type": "integer",
+   "minimum": 1,
+   "maximum": 10
+  },
+  "class": {
+   "enum": [
+    "brittle",
+    "soft",
+    "full_load"
+   ]
+  },
+  "code": {
+   "enum": [
+    "SH-1",
+    "SH-2",
+    "SH-3",
+    "SP",
+    "FL"
+   ]
+  },
+  "finish": {
+   "enum": [
+    "matte",
+    "rough"
+   ]
+  },
+  "profile": {
+   "enum": [
+    "T0",
+    "R30",
+    "P30"
+   ]
+  }
+ },
+ "oneOf": [
+  {
+   "properties": {
+    "class": {
+     "const": "brittle"
+    },
+    "code": {
+     "enum": [
+      "SH-1",
+      "SH-2",
+      "SH-3"
+     ]
+    }
+   }
+  },
+  {
+   "properties": {
+    "class": {
+     "const": "soft"
+    },
+    "code": {
+     "enum": [
+      "SP"
+     ]
+    }
+   }
+  },
+  {
+   "properties": {
+    "class": {
+     "const": "full_load"
+    },
+    "code": {
+     "enum": [
+      "FL"
+     ]
+    }
+   }
+  }
+ ],
+ "examples": [
+  {
+   "job": 3,
+   "class": "brittle",
+   "code": "SH-2",
+   "finish": "matte",
+   "profile": "R30"
+  }
+ ]
+}

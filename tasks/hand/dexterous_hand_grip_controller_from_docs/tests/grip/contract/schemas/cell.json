@@ -1,0 +1,1640 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "cell data",
+ "description": "The cell's data (setup argument 2): nests, the taught grasp, the arm's motion, the profiles, the specimen sheets, placement and the timeline. No ticket: each arrives in its own job's observations.",
+ "type": "object",
+ "required": [
+  "format",
+  "nests",
+  "nest_geometry",
+  "taught",
+  "test_lift",
+  "motion",
+  "profiles",
+  "specimens",
+  "placement",
+  "timeline",
+  "shifts",
+  "jobs_per_shift"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "format": {
+   "const": "cell/1"
+  },
+  "nests": {
+   "type": "object",
+   "required": [
+    "pick",
+    "place"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "pick": {
+     "type": "object",
+     "required": [
+      "pos_m",
+      "quat_wxyz"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "pos_m": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "quat_wxyz": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 4,
+       "maxItems": 4
+      }
+     }
+    },
+    "place": {
+     "type": "object",
+     "required": [
+      "pos_m",
+      "quat_wxyz"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "pos_m": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "quat_wxyz": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 4,
+       "maxItems": 4
+      }
+     }
+    }
+   }
+  },
+  "nest_geometry": {
+   "type": "object",
+   "required": [
+    "wall_height_mm"
+   ],
+   "additionalProperties": false,
+   "description": "Each nest is a plate under the specimen and four walls of this height round its pocket.",
+   "properties": {
+    "wall_height_mm": {
+     "type": "number",
+     "exclusiveMinimum": 0
+    }
+   }
+  },
+  "taught": {
+   "type": "object",
+   "required": [
+    "open",
+    "contact",
+    "ring_park"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "open": {
+     "type": "object",
+     "required": [
+      "thumb ip",
+      "thumb mp",
+      "thumb side",
+      "thumb roll",
+      "index pip",
+      "index mcp",
+      "index abad",
+      "middle pip",
+      "middle mcp",
+      "middle abad",
+      "ring pip",
+      "ring mcp",
+      "ring abad"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "thumb ip": {
+       "type": "number"
+      },
+      "thumb mp": {
+       "type": "number"
+      },
+      "thumb side": {
+       "type": "number"
+      },
+      "thumb roll": {
+       "type": "number"
+      },
+      "index pip": {
+       "type": "number"
+      },
+      "index mcp": {
+       "type": "number"
+      },
+      "index abad": {
+       "type": "number"
+      },
+      "middle pip": {
+       "type": "number"
+      },
+      "middle mcp": {
+       "type": "number"
+      },
+      "middle abad": {
+       "type": "number"
+      },
+      "ring pip": {
+       "type": "number"
+      },
+      "ring mcp": {
+       "type": "number"
+      },
+      "ring abad": {
+       "type": "number"
+      }
+     }
+    },
+    "contact": {
+     "type": "object",
+     "required": [
+      "35",
+      "40",
+      "45"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "35": {
+       "type": "object",
+       "required": [
+        "thumb ip",
+        "thumb mp",
+        "thumb side",
+        "thumb roll",
+        "index pip",
+        "index mcp",
+        "index abad",
+        "middle pip",
+        "middle mcp",
+        "middle abad",
+        "ring pip",
+        "ring mcp",
+        "ring abad"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "thumb ip": {
+         "type": "number"
+        },
+        "thumb mp": {
+         "type": "number"
+        },
+        "thumb side": {
+         "type": "number"
+        },
+        "thumb roll": {
+         "type": "number"
+        },
+        "index pip": {
+         "type": "number"
+        },
+        "index mcp": {
+         "type": "number"
+        },
+        "index abad": {
+         "type": "number"
+        },
+        "middle pip": {
+         "type": "number"
+        },
+        "middle mcp": {
+         "type": "number"
+        },
+        "middle abad": {
+         "type": "number"
+        },
+        "ring pip": {
+         "type": "number"
+        },
+        "ring mcp": {
+         "type": "number"
+        },
+        "ring abad": {
+         "type": "number"
+        }
+       }
+      },
+      "40": {
+       "type": "object",
+       "required": [
+        "thumb ip",
+        "thumb mp",
+        "thumb side",
+        "thumb roll",
+        "index pip",
+        "index mcp",
+        "index abad",
+        "middle pip",
+        "middle mcp",
+        "middle abad",
+        "ring pip",
+        "ring mcp",
+        "ring abad"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "thumb ip": {
+         "type": "number"
+        },
+        "thumb mp": {
+         "type": "number"
+        },
+        "thumb side": {
+         "type": "number"
+        },
+        "thumb roll": {
+         "type": "number"
+        },
+        "index pip": {
+         "type": "number"
+        },
+        "index mcp": {
+         "type": "number"
+        },
+        "index abad": {
+         "type": "number"
+        },
+        "middle pip": {
+         "type": "number"
+        },
+        "middle mcp": {
+         "type": "number"
+        },
+        "middle abad": {
+         "type": "number"
+        },
+        "ring pip": {
+         "type": "number"
+        },
+        "ring mcp": {
+         "type": "number"
+        },
+        "ring abad": {
+         "type": "number"
+        }
+       }
+      },
+      "45": {
+       "type": "object",
+       "required": [
+        "thumb ip",
+        "thumb mp",
+        "thumb side",
+        "thumb roll",
+        "index pip",
+        "index mcp",
+        "index abad",
+        "middle pip",
+        "middle mcp",
+        "middle abad",
+        "ring pip",
+        "ring mcp",
+        "ring abad"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "thumb ip": {
+         "type": "number"
+        },
+        "thumb mp": {
+         "type": "number"
+        },
+        "thumb side": {
+         "type": "number"
+        },
+        "thumb roll": {
+         "type": "number"
+        },
+        "index pip": {
+         "type": "number"
+        },
+        "index mcp": {
+         "type": "number"
+        },
+        "index abad": {
+         "type": "number"
+        },
+        "middle pip": {
+         "type": "number"
+        },
+        "middle mcp": {
+         "type": "number"
+        },
+        "middle abad": {
+         "type": "number"
+        },
+        "ring pip": {
+         "type": "number"
+        },
+        "ring mcp": {
+         "type": "number"
+        },
+        "ring abad": {
+         "type": "number"
+        }
+       }
+      }
+     }
+    },
+    "ring_park": {
+     "type": "object",
+     "required": [
+      "ring abad",
+      "ring mcp",
+      "ring pip"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "ring abad": {
+       "type": "number"
+      },
+      "ring mcp": {
+       "type": "number"
+      },
+      "ring pip": {
+       "type": "number"
+      }
+     }
+    }
+   }
+  },
+  "test_lift": {
+   "type": "object",
+   "required": [
+    "rise_mm",
+    "rise_s",
+    "hold_s"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "rise_mm": {
+     "type": "number",
+     "minimum": 0
+    },
+    "rise_s": {
+     "type": "number",
+     "minimum": 0
+    },
+    "hold_s": {
+     "type": "number",
+     "minimum": 0
+    }
+   }
+  },
+  "motion": {
+   "type": "object",
+   "required": [
+    "translation_law",
+    "translation_peak_mps2",
+    "tilt_rate_deg_s",
+    "tilt_ramp_s",
+    "tracking_scale",
+    "lower",
+    "set_down"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "translation_law": {
+     "const": "minimum-jerk"
+    },
+    "translation_peak_mps2": {
+     "type": "number",
+     "minimum": 0
+    },
+    "tilt_rate_deg_s": {
+     "type": "number",
+     "minimum": 0
+    },
+    "tilt_ramp_s": {
+     "type": "number",
+     "minimum": 0
+    },
+    "tracking_scale": {
+     "type": "array",
+     "items": {
+      "type": "number",
+      "minimum": 0
+     },
+     "minItems": 2,
+     "maxItems": 2
+    },
+    "lower": {
+     "type": "object",
+     "required": [
+      "drop_mm",
+      "s"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "drop_mm": {
+       "type": "number",
+       "minimum": 0
+      },
+      "s": {
+       "type": "number",
+       "minimum": 0
+      }
+     }
+    },
+    "set_down": {
+     "type": "object",
+     "required": [
+      "drop_mm",
+      "s"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "drop_mm": {
+       "type": "number",
+       "minimum": 0
+      },
+      "s": {
+       "type": "number",
+       "minimum": 0
+      }
+     }
+    }
+   }
+  },
+  "profiles": {
+   "type": "object",
+   "required": [
+    "T0",
+    "R30",
+    "P30"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "T0": {
+     "type": "object",
+     "required": [
+      "tilt",
+      "sequence"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "tilt": {
+       "oneOf": [
+        {
+         "type": "null"
+        },
+        {
+         "type": "object",
+         "required": [
+          "axis",
+          "deg"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "axis": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           },
+           "minItems": 3,
+           "maxItems": 3
+          },
+          "deg": {
+           "type": "number",
+           "minimum": 0
+          }
+         }
+        }
+       ]
+      },
+      "sequence": {
+       "type": "array",
+       "items": {
+        "oneOf": [
+         {
+          "type": "object",
+          "required": [
+           "kind",
+           "delta_m"
+          ],
+          "additionalProperties": false,
+          "properties": {
+           "kind": {
+            "const": "move"
+           },
+           "delta_m": {
+            "type": "array",
+            "items": {
+             "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+           }
+          }
+         },
+         {
+          "type": "object",
+          "required": [
+           "kind",
+           "sign"
+          ],
+          "additionalProperties": false,
+          "properties": {
+           "kind": {
+            "const": "tilt"
+           },
+           "sign": {
+            "enum": [
+             1,
+             -1
+            ]
+           }
+          }
+         },
+         {
+          "type": "object",
+          "required": [
+           "kind",
+           "s"
+          ],
+          "additionalProperties": false,
+          "properties": {
+           "kind": {
+            "const": "dwell"
+           },
+           "s": {
+            "type": "number",
+            "minimum": 0
+           }
+          }
+         }
+        ]
+       },
+       "minItems": 1
+      }
+     }
+    },
+    "R30": {
+     "type": "object",
+     "required": [
+      "tilt",
+      "sequence"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "tilt": {
+       "oneOf": [
+        {
+         "type": "null"
+        },
+        {
+         "type": "object",
+         "required": [
+          "axis",
+          "deg"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "axis": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           },
+           "minItems": 3,
+           "maxItems": 3
+          },
+          "deg": {
+           "type": "number",
+           "minimum": 0
+          }
+         }
+        }
+       ]
+      },
+      "sequence": {
+       "type": "array",
+       "items": {
+        "oneOf": [
+         {
+          "type": "object",
+          "required": [
+           "kind",
+           "delta_m"
+          ],
+          "additionalProperties": false,
+          "properties": {
+           "kind": {
+            "const": "move"
+           },
+           "delta_m": {
+            "type": "array",
+            "items": {
+             "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+           }
+          }
+         },
+         {
+          "type": "object",
+          "required": [
+           "kind",
+           "sign"
+          ],
+          "additionalProperties": false,
+          "properties": {
+           "kind": {
+            "const": "tilt"
+           },
+           "sign": {
+            "enum": [
+             1,
+             -1
+            ]
+           }
+          }
+         },
+         {
+          "type": "object",
+          "required": [
+           "kind",
+           "s"
+          ],
+          "additionalProperties": false,
+          "properties": {
+           "kind": {
+            "const": "dwell"
+           },
+           "s": {
+            "type": "number",
+            "minimum": 0
+           }
+          }
+         }
+        ]
+       },
+       "minItems": 1
+      }
+     }
+    },
+    "P30": {
+     "type": "object",
+     "required": [
+      "tilt",
+      "sequence"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "tilt": {
+       "oneOf": [
+        {
+         "type": "null"
+        },
+        {
+         "type": "object",
+         "required": [
+          "axis",
+          "deg"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "axis": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           },
+           "minItems": 3,
+           "maxItems": 3
+          },
+          "deg": {
+           "type": "number",
+           "minimum": 0
+          }
+         }
+        }
+       ]
+      },
+      "sequence": {
+       "type": "array",
+       "items": {
+        "oneOf": [
+         {
+          "type": "object",
+          "required": [
+           "kind",
+           "delta_m"
+          ],
+          "additionalProperties": false,
+          "properties": {
+           "kind": {
+            "const": "move"
+           },
+           "delta_m": {
+            "type": "array",
+            "items": {
+             "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+           }
+          }
+         },
+         {
+          "type": "object",
+          "required": [
+           "kind",
+           "sign"
+          ],
+          "additionalProperties": false,
+          "properties": {
+           "kind": {
+            "const": "tilt"
+           },
+           "sign": {
+            "enum": [
+             1,
+             -1
+            ]
+           }
+          }
+         },
+         {
+          "type": "object",
+          "required": [
+           "kind",
+           "s"
+          ],
+          "additionalProperties": false,
+          "properties": {
+           "kind": {
+            "const": "dwell"
+           },
+           "s": {
+            "type": "number",
+            "minimum": 0
+           }
+          }
+         }
+        ]
+       },
+       "minItems": 1
+      }
+     }
+    }
+   }
+  },
+  "specimens": {
+   "type": "object",
+   "required": [
+    "format",
+    "classes",
+    "codes",
+    "width_mm",
+    "lateral_mm",
+    "height_mm",
+    "pad_line_below_top_mm",
+    "soft_k_n_per_mm",
+    "finishes",
+    "label_rule"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "format": {
+     "const": "specimen-sheets/1"
+    },
+    "classes": {
+     "type": "object",
+     "required": [
+      "brittle",
+      "soft",
+      "full_load"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "brittle": {
+       "type": "object",
+       "required": [
+        "name",
+        "codes"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "name": {
+         "const": "brittle shell"
+        },
+        "codes": {
+         "const": [
+          "SH-1",
+          "SH-2",
+          "SH-3"
+         ]
+        }
+       }
+      },
+      "soft": {
+       "type": "object",
+       "required": [
+        "name",
+        "codes"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "name": {
+         "const": "soft pack"
+        },
+        "codes": {
+         "const": [
+          "SP"
+         ]
+        }
+       }
+      },
+      "full_load": {
+       "type": "object",
+       "required": [
+        "name",
+        "codes"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "name": {
+         "const": "full-load block"
+        },
+        "codes": {
+         "const": [
+          "FL"
+         ]
+        }
+       }
+      }
+     }
+    },
+    "codes": {
+     "type": "object",
+     "required": [
+      "SH-1",
+      "SH-2",
+      "SH-3",
+      "SP",
+      "FL"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "SH-1": {
+       "type": "object",
+       "required": [
+        "class",
+        "mass_range_kg",
+        "ceiling_n",
+        "travel_limit_mm"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "class": {
+         "const": "brittle"
+        },
+        "mass_range_kg": {
+         "type": "array",
+         "items": {
+          "type": "number",
+          "minimum": 0
+         },
+         "minItems": 2,
+         "maxItems": 2
+        },
+        "ceiling_n": {
+         "type": "number"
+        },
+        "travel_limit_mm": {
+         "type": "null"
+        }
+       }
+      },
+      "SH-2": {
+       "type": "object",
+       "required": [
+        "class",
+        "mass_range_kg",
+        "ceiling_n",
+        "travel_limit_mm"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "class": {
+         "const": "brittle"
+        },
+        "mass_range_kg": {
+         "type": "array",
+         "items": {
+          "type": "number",
+          "minimum": 0
+         },
+         "minItems": 2,
+         "maxItems": 2
+        },
+        "ceiling_n": {
+         "type": "number"
+        },
+        "travel_limit_mm": {
+         "type": "null"
+        }
+       }
+      },
+      "SH-3": {
+       "type": "object",
+       "required": [
+        "class",
+        "mass_range_kg",
+        "ceiling_n",
+        "travel_limit_mm"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "class": {
+         "const": "brittle"
+        },
+        "mass_range_kg": {
+         "type": "array",
+         "items": {
+          "type": "number",
+          "minimum": 0
+         },
+         "minItems": 2,
+         "maxItems": 2
+        },
+        "ceiling_n": {
+         "type": "number"
+        },
+        "travel_limit_mm": {
+         "type": "null"
+        }
+       }
+      },
+      "SP": {
+       "type": "object",
+       "required": [
+        "class",
+        "mass_range_kg",
+        "ceiling_n",
+        "travel_limit_mm"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "class": {
+         "const": "soft"
+        },
+        "mass_range_kg": {
+         "type": "array",
+         "items": {
+          "type": "number",
+          "minimum": 0
+         },
+         "minItems": 2,
+         "maxItems": 2
+        },
+        "ceiling_n": {
+         "type": "null"
+        },
+        "travel_limit_mm": {
+         "type": "number"
+        }
+       }
+      },
+      "FL": {
+       "type": "object",
+       "required": [
+        "class",
+        "mass_range_kg",
+        "ceiling_n",
+        "travel_limit_mm"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "class": {
+         "const": "full_load"
+        },
+        "mass_range_kg": {
+         "type": "array",
+         "items": {
+          "type": "number",
+          "minimum": 0
+         },
+         "minItems": 2,
+         "maxItems": 2
+        },
+        "ceiling_n": {
+         "type": "null"
+        },
+        "travel_limit_mm": {
+         "type": "null"
+        }
+       }
+      }
+     }
+    },
+    "width_mm": {
+     "type": "array",
+     "items": {
+      "type": "number",
+      "minimum": 0
+     },
+     "minItems": 2,
+     "maxItems": 2
+    },
+    "lateral_mm": {
+     "type": "number",
+     "minimum": 0
+    },
+    "height_mm": {
+     "type": "number",
+     "minimum": 0
+    },
+    "pad_line_below_top_mm": {
+     "type": "number",
+     "minimum": 0
+    },
+    "soft_k_n_per_mm": {
+     "type": "array",
+     "items": {
+      "type": "number",
+      "minimum": 0
+     },
+     "minItems": 2,
+     "maxItems": 2
+    },
+    "finishes": {
+     "type": "object",
+     "required": [
+      "matte",
+      "rough"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "matte": {
+       "type": "object",
+       "required": [
+        "mu"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "mu": {
+         "type": "array",
+         "items": {
+          "type": "number",
+          "minimum": 0
+         },
+         "minItems": 2,
+         "maxItems": 2
+        }
+       }
+      },
+      "rough": {
+       "type": "object",
+       "required": [
+        "mu"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "mu": {
+         "type": "array",
+         "items": {
+          "type": "number",
+          "minimum": 0
+         },
+         "minItems": 2,
+         "maxItems": 2
+        }
+       }
+      }
+     }
+    },
+    "label_rule": {
+     "type": "object",
+     "required": [
+      "carry_max_kg",
+      "decline_min_kg"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "carry_max_kg": {
+       "type": "number",
+       "minimum": 0
+      },
+      "decline_min_kg": {
+       "type": "number",
+       "minimum": 0
+      }
+     }
+    }
+   }
+  },
+  "placement": {
+   "type": "object",
+   "required": [
+    "offset_radius_mm",
+    "yaw_deg",
+    "clearance_mm"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "offset_radius_mm": {
+     "type": "number",
+     "minimum": 0
+    },
+    "yaw_deg": {
+     "type": "number",
+     "minimum": 0
+    },
+    "clearance_mm": {
+     "type": "number",
+     "minimum": 0
+    }
+   }
+  },
+  "timeline": {
+   "type": "object",
+   "required": [
+    "shift1_opens_s",
+    "clear_window_s",
+    "grasp_window_s",
+    "test_lift_s",
+    "lower_s",
+    "set_down_s",
+    "release_window_s",
+    "rest_s",
+    "pause_s",
+    "end_s"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "shift1_opens_s": {
+     "type": "number",
+     "minimum": 0
+    },
+    "clear_window_s": {
+     "type": "number",
+     "minimum": 0
+    },
+    "grasp_window_s": {
+     "type": "number",
+     "minimum": 0
+    },
+    "test_lift_s": {
+     "type": "number",
+     "minimum": 0
+    },
+    "lower_s": {
+     "type": "number",
+     "minimum": 0
+    },
+    "set_down_s": {
+     "type": "number",
+     "minimum": 0
+    },
+    "release_window_s": {
+     "type": "number",
+     "minimum": 0
+    },
+    "rest_s": {
+     "type": "number",
+     "minimum": 0
+    },
+    "pause_s": {
+     "type": "number",
+     "minimum": 0
+    },
+    "end_s": {
+     "type": "number",
+     "minimum": 0
+    }
+   }
+  },
+  "shifts": {
+   "const": 2
+  },
+  "jobs_per_shift": {
+   "const": 10
+  }
+ },
+ "examples": [
+  {
+   "format": "cell/1",
+   "nests": {
+    "pick": {
+     "pos_m": [
+      0.0,
+      0.1,
+      -0.05
+     ],
+     "quat_wxyz": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "place": {
+     "pos_m": [
+      0.0,
+      0.1,
+      -0.05
+     ],
+     "quat_wxyz": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "nest_geometry": {
+    "wall_height_mm": 3.5
+   },
+   "taught": {
+    "open": {
+     "thumb ip": 0.0,
+     "thumb mp": 0.0,
+     "thumb side": 0.0,
+     "thumb roll": 0.0,
+     "index pip": 0.0,
+     "index mcp": 0.0,
+     "index abad": 0.0,
+     "middle pip": 0.0,
+     "middle mcp": 0.0,
+     "middle abad": 0.0,
+     "ring pip": 0.0,
+     "ring mcp": 0.0,
+     "ring abad": 0.0
+    },
+    "contact": {
+     "35": {
+      "thumb ip": -10.0,
+      "thumb mp": -10.0,
+      "thumb side": -10.0,
+      "thumb roll": -10.0,
+      "index pip": -10.0,
+      "index mcp": -10.0,
+      "index abad": -10.0,
+      "middle pip": -10.0,
+      "middle mcp": -10.0,
+      "middle abad": -10.0,
+      "ring pip": -10.0,
+      "ring mcp": -10.0,
+      "ring abad": -10.0
+     },
+     "40": {
+      "thumb ip": -10.0,
+      "thumb mp": -10.0,
+      "thumb side": -10.0,
+      "thumb roll": -10.0,
+      "index pip": -10.0,
+      "index mcp": -10.0,
+      "index abad": -10.0,
+      "middle pip": -10.0,
+      "middle mcp": -10.0,
+      "middle abad": -10.0,
+      "ring pip": -10.0,
+      "ring mcp": -10.0,
+      "ring abad": -10.0
+     },
+     "45": {
+      "thumb ip": -10.0,
+      "thumb mp": -10.0,
+      "thumb side": -10.0,
+      "thumb roll": -10.0,
+      "index pip": -10.0,
+      "index mcp": -10.0,
+      "index abad": -10.0,
+      "middle pip": -10.0,
+      "middle mcp": -10.0,
+      "middle abad": -10.0,
+      "ring pip": -10.0,
+      "ring mcp": -10.0,
+      "ring abad": -10.0
+     }
+    },
+    "ring_park": {
+     "ring abad": 0.0,
+     "ring mcp": -60.0,
+     "ring pip": -60.0
+    }
+   },
+   "test_lift": {
+    "rise_mm": 8,
+    "rise_s": 0.5,
+    "hold_s": 2.5
+   },
+   "motion": {
+    "translation_law": "minimum-jerk",
+    "translation_peak_mps2": 6.0,
+    "tilt_rate_deg_s": 10,
+    "tilt_ramp_s": 0.1,
+    "tracking_scale": [
+     0.9,
+     1.1
+    ],
+    "lower": {
+     "drop_mm": 8,
+     "s": 0.5
+    },
+    "set_down": {
+     "drop_mm": 8,
+     "s": 0.5
+    }
+   },
+   "profiles": {
+    "T0": {
+     "tilt": null,
+     "sequence": [
+      {
+       "kind": "move",
+       "delta_m": [
+        0.0,
+        0.0,
+        0.15
+       ]
+      },
+      {
+       "kind": "move",
+       "delta_m": [
+        0.25,
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "kind": "move",
+       "delta_m": [
+        0.0,
+        0.25,
+        0.0
+       ]
+      },
+      {
+       "kind": "dwell",
+       "s": 0.3
+      },
+      {
+       "kind": "move",
+       "delta_m": [
+        0.0,
+        0.0,
+        -0.15
+       ]
+      }
+     ]
+    },
+    "R30": {
+     "tilt": {
+      "axis": [
+       1,
+       0,
+       0
+      ],
+      "deg": 30
+     },
+     "sequence": [
+      {
+       "kind": "move",
+       "delta_m": [
+        0.0,
+        0.0,
+        0.15
+       ]
+      },
+      {
+       "kind": "tilt",
+       "sign": 1
+      },
+      {
+       "kind": "move",
+       "delta_m": [
+        0.25,
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "kind": "move",
+       "delta_m": [
+        0.0,
+        0.25,
+        0.0
+       ]
+      },
+      {
+       "kind": "dwell",
+       "s": 0.3
+      },
+      {
+       "kind": "tilt",
+       "sign": -1
+      },
+      {
+       "kind": "move",
+       "delta_m": [
+        0.0,
+        0.0,
+        -0.15
+       ]
+      }
+     ]
+    },
+    "P30": {
+     "tilt": {
+      "axis": [
+       0,
+       1,
+       0
+      ],
+      "deg": 30
+     },
+     "sequence": [
+      {
+       "kind": "move",
+       "delta_m": [
+        0.0,
+        0.0,
+        0.15
+       ]
+      },
+      {
+       "kind": "tilt",
+       "sign": 1
+      },
+      {
+       "kind": "move",
+       "delta_m": [
+        0.25,
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "kind": "move",
+       "delta_m": [
+        0.0,
+        0.25,
+        0.0
+       ]
+      },
+      {
+       "kind": "dwell",
+       "s": 0.3
+      },
+      {
+       "kind": "tilt",
+       "sign": -1
+      },
+      {
+       "kind": "move",
+       "delta_m": [
+        0.0,
+        0.0,
+        -0.15
+       ]
+      }
+     ]
+    }
+   },
+   "specimens": {
+    "format": "specimen-sheets/1",
+    "classes": {
+     "brittle": {
+      "name": "brittle shell",
+      "codes": [
+       "SH-1",
+       "SH-2",
+       "SH-3"
+      ]
+     },
+     "soft": {
+      "name": "soft pack",
+      "codes": [
+       "SP"
+      ]
+     },
+     "full_load": {
+      "name": "full-load block",
+      "codes": [
+       "FL"
+      ]
+     }
+    },
+    "codes": {
+     "SH-1": {
+      "class": "brittle",
+      "mass_range_kg": [
+       0.04,
+       0.7
+      ],
+      "ceiling_n": 5.0,
+      "travel_limit_mm": null
+     },
+     "SH-2": {
+      "class": "brittle",
+      "mass_range_kg": [
+       0.068,
+       0.7
+      ],
+      "ceiling_n": 8.0,
+      "travel_limit_mm": null
+     },
+     "SH-3": {
+      "class": "brittle",
+      "mass_range_kg": [
+       0.117,
+       0.7
+      ],
+      "ceiling_n": 12.0,
+      "travel_limit_mm": null
+     },
+     "SP": {
+      "class": "soft",
+      "mass_range_kg": [
+       0.03,
+       0.7
+      ],
+      "ceiling_n": null,
+      "travel_limit_mm": 3.0
+     },
+     "FL": {
+      "class": "full_load",
+      "mass_range_kg": [
+       0.15,
+       0.7
+      ],
+      "ceiling_n": null,
+      "travel_limit_mm": null
+     }
+    },
+    "width_mm": [
+     35,
+     45
+    ],
+    "lateral_mm": 50,
+    "height_mm": 50,
+    "pad_line_below_top_mm": 10,
+    "soft_k_n_per_mm": [
+     1,
+     10
+    ],
+    "finishes": {
+     "matte": {
+      "mu": [
+       0.4,
+       0.55
+      ]
+     },
+     "rough": {
+      "mu": [
+       0.55,
+       0.7
+      ]
+     }
+    },
+    "label_rule": {
+     "carry_max_kg": 0.2,
+     "decline_min_kg": 0.5
+    }
+   },
+   "placement": {
+    "offset_radius_mm": 2.0,
+    "yaw_deg": 3.0,
+    "clearance_mm": 2.0
+   },
+   "timeline": {
+    "shift1_opens_s": 3.0,
+    "clear_window_s": 2.0,
+    "grasp_window_s": 3.0,
+    "test_lift_s": 3.0,
+    "lower_s": 0.5,
+    "set_down_s": 0.5,
+    "release_window_s": 1.0,
+    "rest_s": 2.0,
+    "pause_s": 10.0,
+    "end_s": 1.0
+   },
+   "shifts": 2,
+   "jobs_per_shift": 10
+  }
+ ]
+}

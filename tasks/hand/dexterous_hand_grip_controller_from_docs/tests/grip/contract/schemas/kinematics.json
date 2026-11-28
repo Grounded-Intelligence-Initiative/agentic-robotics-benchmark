@@ -1,0 +1,1246 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "kinematics",
+ "description": "The hand's kinematics in the hand frame H, with neutral names.",
+ "type": "object",
+ "required": [
+  "format",
+  "frame",
+  "joints",
+  "fourbar",
+  "pads",
+  "links"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "format": {
+   "const": "grip-kinematics/1"
+  },
+  "frame": {
+   "const": "H"
+  },
+  "joints": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "name",
+     "servo",
+     "parent",
+     "child",
+     "axis",
+     "origin_m",
+     "limits_deg"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "name": {
+      "enum": [
+       "thumb ip",
+       "thumb mp",
+       "thumb side",
+       "thumb roll",
+       "index pip",
+       "index mcp",
+       "index abad",
+       "middle pip",
+       "middle mcp",
+       "middle abad",
+       "ring pip",
+       "ring mcp",
+       "ring abad",
+       "index dip",
+       "index rocker",
+       "middle dip",
+       "middle rocker",
+       "ring dip",
+       "ring rocker"
+      ]
+     },
+     "servo": {
+      "oneOf": [
+       {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 12
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "parent": {
+      "enum": [
+       "palm",
+       "index_abad",
+       "index_pitch",
+       "index_pip",
+       "index_dip",
+       "index_rocker",
+       "middle_abad",
+       "middle_pitch",
+       "middle_pip",
+       "middle_dip",
+       "middle_rocker",
+       "ring_abad",
+       "ring_pitch",
+       "ring_pip",
+       "ring_dip",
+       "ring_rocker",
+       "thumb_roll",
+       "thumb_side",
+       "thumb_mp",
+       "thumb_ip"
+      ]
+     },
+     "child": {
+      "enum": [
+       "palm",
+       "index_abad",
+       "index_pitch",
+       "index_pip",
+       "index_dip",
+       "index_rocker",
+       "middle_abad",
+       "middle_pitch",
+       "middle_pip",
+       "middle_dip",
+       "middle_rocker",
+       "ring_abad",
+       "ring_pitch",
+       "ring_pip",
+       "ring_dip",
+       "ring_rocker",
+       "thumb_roll",
+       "thumb_side",
+       "thumb_mp",
+       "thumb_ip"
+      ]
+     },
+     "axis": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+     },
+     "origin_m": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+     },
+     "limits_deg": {
+      "oneOf": [
+       {
+        "type": "array",
+        "items": {
+         "type": "number"
+        },
+        "minItems": 2,
+        "maxItems": 2
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    }
+   },
+   "minItems": 19,
+   "maxItems": 19
+  },
+  "fourbar": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "digit",
+     "lengths_mm",
+     "law"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "digit": {
+      "enum": [
+       "index",
+       "middle",
+       "ring"
+      ]
+     },
+     "lengths_mm": {
+      "type": "object",
+      "required": [
+       "pitch",
+       "pip",
+       "dip",
+       "rocker"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "pitch": {
+        "type": "number",
+        "minimum": 0
+       },
+       "pip": {
+        "type": "number",
+        "minimum": 0
+       },
+       "dip": {
+        "type": "number",
+        "minimum": 0
+       },
+       "rocker": {
+        "type": "number",
+        "minimum": 0
+       }
+      }
+     },
+     "law": {
+      "type": "array",
+      "items": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 2,
+       "maxItems": 2
+      },
+      "minItems": 2
+     }
+    }
+   },
+   "minItems": 3,
+   "maxItems": 3
+  },
+  "pads": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "module",
+     "link",
+     "origin_m",
+     "normal",
+     "x_axis"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "module": {
+      "type": "string",
+      "enum": [
+       "thumb",
+       "index",
+       "middle",
+       "ring"
+      ]
+     },
+     "link": {
+      "enum": [
+       "thumb_ip",
+       "index_dip",
+       "middle_dip",
+       "ring_dip"
+      ]
+     },
+     "origin_m": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+     },
+     "normal": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+     },
+     "x_axis": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+     }
+    }
+   },
+   "minItems": 4,
+   "maxItems": 4
+  },
+  "links": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "name",
+     "mass_kg",
+     "com_m",
+     "inertia_kg_m2",
+     "mesh"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "name": {
+      "enum": [
+       "palm",
+       "index_abad",
+       "index_pitch",
+       "index_pip",
+       "index_dip",
+       "index_rocker",
+       "middle_abad",
+       "middle_pitch",
+       "middle_pip",
+       "middle_dip",
+       "middle_rocker",
+       "ring_abad",
+       "ring_pitch",
+       "ring_pip",
+       "ring_dip",
+       "ring_rocker",
+       "thumb_roll",
+       "thumb_side",
+       "thumb_mp",
+       "thumb_ip"
+      ]
+     },
+     "mass_kg": {
+      "type": "number",
+      "minimum": 0
+     },
+     "com_m": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+     },
+     "inertia_kg_m2": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      },
+      "minItems": 6,
+      "maxItems": 6
+     },
+     "mesh": {
+      "enum": [
+       "index_abad.stl",
+       "index_dip.stl",
+       "index_pip.stl",
+       "index_pitch.stl",
+       "index_rocker.stl",
+       "middle_abad.stl",
+       "middle_dip.stl",
+       "middle_pip.stl",
+       "middle_pitch.stl",
+       "middle_rocker.stl",
+       "palm.stl",
+       "ring_abad.stl",
+       "ring_dip.stl",
+       "ring_pip.stl",
+       "ring_pitch.stl",
+       "ring_rocker.stl",
+       "thumb_ip.stl",
+       "thumb_mp.stl",
+       "thumb_roll.stl",
+       "thumb_side.stl"
+      ]
+     }
+    }
+   },
+   "minItems": 20,
+   "maxItems": 20
+  }
+ },
+ "examples": [
+  {
+   "format": "grip-kinematics/1",
+   "frame": "H",
+   "joints": [
+    {
+     "name": "thumb ip",
+     "servo": 0,
+     "parent": "thumb_mp",
+     "child": "thumb_ip",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "thumb mp",
+     "servo": 1,
+     "parent": "thumb_side",
+     "child": "thumb_mp",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "thumb side",
+     "servo": 2,
+     "parent": "thumb_roll",
+     "child": "thumb_side",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "thumb roll",
+     "servo": 3,
+     "parent": "palm",
+     "child": "thumb_roll",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "index pip",
+     "servo": 4,
+     "parent": "index_pitch",
+     "child": "index_pip",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "index mcp",
+     "servo": 5,
+     "parent": "index_abad",
+     "child": "index_pitch",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "index abad",
+     "servo": 6,
+     "parent": "palm",
+     "child": "index_abad",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "middle pip",
+     "servo": 7,
+     "parent": "middle_pitch",
+     "child": "middle_pip",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "middle mcp",
+     "servo": 8,
+     "parent": "middle_abad",
+     "child": "middle_pitch",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "middle abad",
+     "servo": 9,
+     "parent": "palm",
+     "child": "middle_abad",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "ring pip",
+     "servo": 10,
+     "parent": "ring_pitch",
+     "child": "ring_pip",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "ring mcp",
+     "servo": 11,
+     "parent": "ring_abad",
+     "child": "ring_pitch",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "ring abad",
+     "servo": 12,
+     "parent": "palm",
+     "child": "ring_abad",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": [
+      -90.0,
+      0.0
+     ]
+    },
+    {
+     "name": "index dip",
+     "servo": null,
+     "parent": "index_pip",
+     "child": "index_dip",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": null
+    },
+    {
+     "name": "index rocker",
+     "servo": null,
+     "parent": "index_pitch",
+     "child": "index_rocker",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": null
+    },
+    {
+     "name": "middle dip",
+     "servo": null,
+     "parent": "middle_pip",
+     "child": "middle_dip",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": null
+    },
+    {
+     "name": "middle rocker",
+     "servo": null,
+     "parent": "middle_pitch",
+     "child": "middle_rocker",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": null
+    },
+    {
+     "name": "ring dip",
+     "servo": null,
+     "parent": "ring_pip",
+     "child": "ring_dip",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": null
+    },
+    {
+     "name": "ring rocker",
+     "servo": null,
+     "parent": "ring_pitch",
+     "child": "ring_rocker",
+     "axis": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "limits_deg": null
+    }
+   ],
+   "fourbar": [
+    {
+     "digit": "index",
+     "lengths_mm": {
+      "pitch": 10.0,
+      "pip": 10.0,
+      "dip": 10.0,
+      "rocker": 10.0
+     },
+     "law": [
+      [
+       0.0,
+       0.0
+      ],
+      [
+       -40.0,
+       -30.0
+      ],
+      [
+       -80.0,
+       -60.0
+      ]
+     ]
+    },
+    {
+     "digit": "middle",
+     "lengths_mm": {
+      "pitch": 10.0,
+      "pip": 10.0,
+      "dip": 10.0,
+      "rocker": 10.0
+     },
+     "law": [
+      [
+       0.0,
+       0.0
+      ],
+      [
+       -40.0,
+       -30.0
+      ],
+      [
+       -80.0,
+       -60.0
+      ]
+     ]
+    },
+    {
+     "digit": "ring",
+     "lengths_mm": {
+      "pitch": 10.0,
+      "pip": 10.0,
+      "dip": 10.0,
+      "rocker": 10.0
+     },
+     "law": [
+      [
+       0.0,
+       0.0
+      ],
+      [
+       -40.0,
+       -30.0
+      ],
+      [
+       -80.0,
+       -60.0
+      ]
+     ]
+    }
+   ],
+   "pads": [
+    {
+     "module": "thumb",
+     "link": "thumb_ip",
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "normal": [
+      0.0,
+      0.0,
+      -1.0
+     ],
+     "x_axis": [
+      1.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "module": "index",
+     "link": "index_dip",
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "normal": [
+      0.0,
+      0.0,
+      -1.0
+     ],
+     "x_axis": [
+      1.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "module": "middle",
+     "link": "middle_dip",
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "normal": [
+      0.0,
+      0.0,
+      -1.0
+     ],
+     "x_axis": [
+      1.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "module": "ring",
+     "link": "ring_dip",
+     "origin_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "normal": [
+      0.0,
+      0.0,
+      -1.0
+     ],
+     "x_axis": [
+      1.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "links": [
+    {
+     "name": "palm",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "palm.stl"
+    },
+    {
+     "name": "index_abad",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "index_abad.stl"
+    },
+    {
+     "name": "index_pitch",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "index_pitch.stl"
+    },
+    {
+     "name": "index_pip",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "index_pip.stl"
+    },
+    {
+     "name": "index_dip",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "index_dip.stl"
+    },
+    {
+     "name": "index_rocker",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "index_rocker.stl"
+    },
+    {
+     "name": "middle_abad",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "middle_abad.stl"
+    },
+    {
+     "name": "middle_pitch",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "middle_pitch.stl"
+    },
+    {
+     "name": "middle_pip",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "middle_pip.stl"
+    },
+    {
+     "name": "middle_dip",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "middle_dip.stl"
+    },
+    {
+     "name": "middle_rocker",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "middle_rocker.stl"
+    },
+    {
+     "name": "ring_abad",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "ring_abad.stl"
+    },
+    {
+     "name": "ring_pitch",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "ring_pitch.stl"
+    },
+    {
+     "name": "ring_pip",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "ring_pip.stl"
+    },
+    {
+     "name": "ring_dip",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "ring_dip.stl"
+    },
+    {
+     "name": "ring_rocker",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "ring_rocker.stl"
+    },
+    {
+     "name": "thumb_roll",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "thumb_roll.stl"
+    },
+    {
+     "name": "thumb_side",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "thumb_side.stl"
+    },
+    {
+     "name": "thumb_mp",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "thumb_mp.stl"
+    },
+    {
+     "name": "thumb_ip",
+     "mass_kg": 0.01,
+     "com_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "inertia_kg_m2": [
+      1e-06,
+      1e-06,
+      1e-06,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mesh": "thumb_ip.stl"
+    }
+   ]
+  }
+ ]
+}

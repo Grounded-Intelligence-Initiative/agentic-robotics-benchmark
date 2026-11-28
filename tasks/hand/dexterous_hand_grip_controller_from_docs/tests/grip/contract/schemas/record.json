@@ -1,0 +1,1477 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "unit record",
+ "description": "The hand unit's own record (setup argument 1).",
+ "type": "object",
+ "required": [
+  "format",
+  "serial",
+  "servos",
+  "homing_spread_deg",
+  "supply_v_at_delivery",
+  "tactile"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "format": {
+   "const": "unit-record/1"
+  },
+  "serial": {
+   "type": "string",
+   "pattern": "^HU-[0-9A-HJ-NP-Z]{5}$"
+  },
+  "servos": {
+   "type": "array",
+   "prefixItems": [
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 0
+      },
+      "joint": {
+       "const": "thumb ip"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    },
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 1
+      },
+      "joint": {
+       "const": "thumb mp"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    },
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 2
+      },
+      "joint": {
+       "const": "thumb side"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    },
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 3
+      },
+      "joint": {
+       "const": "thumb roll"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    },
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 4
+      },
+      "joint": {
+       "const": "index pip"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    },
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 5
+      },
+      "joint": {
+       "const": "index mcp"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    },
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 6
+      },
+      "joint": {
+       "const": "index abad"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    },
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 7
+      },
+      "joint": {
+       "const": "middle pip"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    },
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 8
+      },
+      "joint": {
+       "const": "middle mcp"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    },
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 9
+      },
+      "joint": {
+       "const": "middle abad"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    },
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 10
+      },
+      "joint": {
+       "const": "ring pip"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    },
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 11
+      },
+      "joint": {
+       "const": "ring mcp"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    },
+    {
+     "type": "object",
+     "required": [
+      "id",
+      "joint",
+      "direction",
+      "home_offset",
+      "eeprom"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "const": 12
+      },
+      "joint": {
+       "const": "ring abad"
+      },
+      "direction": {
+       "enum": [
+        1,
+        -1
+       ]
+      },
+      "home_offset": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4095
+      },
+      "eeprom": {
+       "type": "object",
+       "required": [
+        "operating_mode",
+        "current_limit",
+        "temperature_limit",
+        "shutdown",
+        "return_delay",
+        "pwm_limit"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "operating_mode": {
+         "type": "integer",
+         "const": 5
+        },
+        "current_limit": {
+         "type": "integer",
+         "const": 910
+        },
+        "temperature_limit": {
+         "type": "integer",
+         "const": 70
+        },
+        "shutdown": {
+         "type": "integer",
+         "const": 52
+        },
+        "return_delay": {
+         "type": "integer",
+         "const": 0
+        },
+        "pwm_limit": {
+         "type": "integer",
+         "const": 885
+        }
+       }
+      }
+     }
+    }
+   ],
+   "items": false,
+   "minItems": 13
+  },
+  "homing_spread_deg": {
+   "type": "number",
+   "minimum": 0
+  },
+  "supply_v_at_delivery": {
+   "type": "number",
+   "minimum": 0
+  },
+  "tactile": {
+   "type": "object",
+   "required": [
+    "frame_hz",
+    "zero_residual_steps"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "frame_hz": {
+     "type": "number",
+     "minimum": 0
+    },
+    "zero_residual_steps": {
+     "type": "object",
+     "required": [
+      "thumb",
+      "index",
+      "middle",
+      "ring"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "thumb": {
+       "type": "array",
+       "items": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "minItems": 127,
+       "maxItems": 127
+      },
+      "index": {
+       "type": "array",
+       "items": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "minItems": 52,
+       "maxItems": 52
+      },
+      "middle": {
+       "type": "array",
+       "items": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "minItems": 52,
+       "maxItems": 52
+      },
+      "ring": {
+       "type": "array",
+       "items": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "minItems": 52,
+       "maxItems": 52
+      }
+     }
+    }
+   }
+  }
+ },
+ "examples": [
+  {
+   "format": "unit-record/1",
+   "serial": "HU-7Q2KD",
+   "servos": [
+    {
+     "id": 0,
+     "joint": "thumb ip",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    },
+    {
+     "id": 1,
+     "joint": "thumb mp",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    },
+    {
+     "id": 2,
+     "joint": "thumb side",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    },
+    {
+     "id": 3,
+     "joint": "thumb roll",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    },
+    {
+     "id": 4,
+     "joint": "index pip",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    },
+    {
+     "id": 5,
+     "joint": "index mcp",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    },
+    {
+     "id": 6,
+     "joint": "index abad",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    },
+    {
+     "id": 7,
+     "joint": "middle pip",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    },
+    {
+     "id": 8,
+     "joint": "middle mcp",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    },
+    {
+     "id": 9,
+     "joint": "middle abad",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    },
+    {
+     "id": 10,
+     "joint": "ring pip",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    },
+    {
+     "id": 11,
+     "joint": "ring mcp",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    },
+    {
+     "id": 12,
+     "joint": "ring abad",
+     "direction": 1,
+     "home_offset": 2047,
+     "eeprom": {
+      "operating_mode": 5,
+      "current_limit": 910,
+      "temperature_limit": 70,
+      "shutdown": 52,
+      "return_delay": 0,
+      "pwm_limit": 885
+     }
+    }
+   ],
+   "homing_spread_deg": 0.7,
+   "supply_v_at_delivery": 12.3,
+   "tactile": {
+    "frame_hz": 88.0,
+    "zero_residual_steps": {
+     "thumb": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "index": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "middle": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "ring": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  }
+ ]
+}

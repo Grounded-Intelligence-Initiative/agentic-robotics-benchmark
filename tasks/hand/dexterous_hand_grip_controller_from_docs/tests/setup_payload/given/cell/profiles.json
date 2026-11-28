@@ -1,0 +1,155 @@
+{
+ "T0": {
+  "tilt": null,
+  "sequence": [
+   {
+    "kind": "move",
+    "delta_m": [
+     0.0,
+     0.0,
+     0.15
+    ]
+   },
+   {
+    "kind": "move",
+    "delta_m": [
+     0.25,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "kind": "move",
+    "delta_m": [
+     0.0,
+     0.25,
+     0.0
+    ]
+   },
+   {
+    "kind": "dwell",
+    "s": 0.3
+   },
+   {
+    "kind": "move",
+    "delta_m": [
+     0.0,
+     0.0,
+     -0.15
+    ]
+   }
+  ]
+ },
+ "R30": {
+  "tilt": {
+   "axis": [
+    1,
+    0,
+    0
+   ],
+   "deg": 30
+  },
+  "sequence": [
+   {
+    "kind": "move",
+    "delta_m": [
+     0.0,
+     0.0,
+     0.15
+    ]
+   },
+   {
+    "kind": "tilt",
+    "sign": 1
+   },
+   {
+    "kind": "move",
+    "delta_m": [
+     0.25,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "kind": "move",
+    "delta_m": [
+     0.0,
+     0.25,
+     0.0
+    ]
+   },
+   {
+    "kind": "dwell",
+    "s": 0.3
+   },
+   {
+    "kind": "tilt",
+    "sign": -1
+   },
+   {
+    "kind": "move",
+    "delta_m": [
+     0.0,
+     0.0,
+     -0.15
+    ]
+   }
+  ]
+ },
+ "P30": {
+  "tilt": {
+   "axis": [
+    0,
+    1,
+    0
+   ],
+   "deg": 30
+  },
+  "sequence": [
+   {
+    "kind": "move",
+    "delta_m": [
+     0.0,
+     0.0,
+     0.15
+    ]
+   },
+   {
+    "kind": "tilt",
+    "sign": 1
+   },
+   {
+    "kind": "move",
+    "delta_m": [
+     0.25,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "kind": "move",
+    "delta_m": [
+     0.0,
+     0.25,
+     0.0
+    ]
+   },
+   {
+    "kind": "dwell",
+    "s": 0.3
+   },
+   {
+    "kind": "tilt",
+    "sign": -1
+   },
+   {
+    "kind": "move",
+    "delta_m": [
+     0.0,
+     0.0,
+     -0.15
+    ]
+   }
+  ]
+ }
+}

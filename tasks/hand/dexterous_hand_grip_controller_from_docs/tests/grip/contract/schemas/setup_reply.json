@@ -1,0 +1,55 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "setup reply",
+ "description": "The controller's reply to setup: its cycle period and the register blocks read every cycle. A block [address, length] lies inside the RAM area (address >= 64, address + length <= 148; the sum is checked by the grader).",
+ "type": "object",
+ "required": [
+  "period_ms",
+  "reads"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "period_ms": {
+   "type": "integer",
+   "minimum": 5,
+   "maximum": 20
+  },
+  "reads": {
+   "type": "array",
+   "items": {
+    "type": "array",
+    "prefixItems": [
+     {
+      "type": "integer",
+      "minimum": 64,
+      "maximum": 147
+     },
+     {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 84
+     }
+    ],
+    "items": false,
+    "minItems": 2
+   },
+   "minItems": 1,
+   "maxItems": 4
+  }
+ },
+ "examples": [
+  {
+   "period_ms": 5,
+   "reads": [
+    [
+     124,
+     12
+    ],
+    [
+     146,
+     1
+    ]
+   ]
+  }
+ ]
+}
