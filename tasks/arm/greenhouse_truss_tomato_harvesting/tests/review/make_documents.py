@@ -129,7 +129,7 @@ def conditions():
     in for it; `pending` lists what stands on such a value."""
     c = {"step_timeout_s": 30.0, "ready_factor": 4, "restarts": 3, "controller_budget_s": 1200, "max_steps": 20000,
          "max_processes": 64, "max_submission_mb": 200, "max_submission_files": 5000, "probe_pass_fraction": 0.1,
-         "pair_tolerance": 1e-4, "verifier_deadline_s": None, "graded_rows": 6, "practice_rows": 4, "sessions": 5,
+         "pair_tolerance": 1e-4, "verifier_deadline_s": None, "graded_rows": 6, "practice_rows": 4, "sessions": 3,
          "idle_s": 900, "agent_timeout_s": 7200, "graded_cultivar": "Rossa", "practice_cultivar": "Ambra"}
     pending = []
 

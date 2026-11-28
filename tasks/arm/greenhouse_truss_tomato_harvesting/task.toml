@@ -6,7 +6,7 @@
 # plant is built, the cultivars' colour charts and readiness rules, the greenhouse's rules), the tool's data sheet, the
 # cart's interface document (cameras with exact intrinsics and nominal mounting, the depth sensor's data sheet, a
 # calibration plate, a colour reference card, row markers), the robot's model, and a commissioning service that runs
-# the cart on practice row sections of another cultivar worked by other robots for five sessions (never refunded),
+# the cart on practice row sections of another cultivar worked by other robots for three sessions (never refunded),
 # with nothing of where anything is and no yield, in a two-hour session. It delivers a program (run.sh) that the
 # grader drives step by step over a stdio wire on a fixed hidden set of six row sections. On the wire are the robot's
 # joint readings, the wrench at the flange, the cart's odometer, the jaws' opening and force, and frames of an overview
@@ -50,7 +50,7 @@ gpus = 1
 gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-3090"]
 
 # Setup (environment/setup/setup.sh: the givens into the agent home, the commissioning service started; under a
-# minute) has no field: the engine bounds it at 1800 s. [agent] timeout_sec: 2 h, a condition of the job (with five
+# minute) has no field: the engine bounds it at 1800 s. [agent] timeout_sec: 2 h, a condition of the job (with three
 # commissioning sessions, never refunded; tests/README.md, section 2). [verifier] timeout_sec: a canary cell (start
 # and first render on a cold cache: a few minutes), then six row sections, each a fresh cell process (start and build:
 # 1 to 3 min) with at most the simulated-time allowance (tests/grader_config.json cell.sim_cap_s; about a quarter of
