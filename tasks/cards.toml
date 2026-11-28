@@ -41,6 +41,12 @@ summary = "Two fixed Franka Pandas replace a cabinet door on loose-pin hinges: a
 platforms = ["arm"]
 stages = ["behavior"]
 
+[grommet_curtain_threading_and_installation]
+title = "Hang a curtain with a Mobile FR3 Duo"
+summary = "A Mobile FR3 Duo threads a rod through six alternating curtain eyelets on the floor, then lifts the assembly onto two window brackets using RGB-D cameras and robot state."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [pipe_spool_push_fit_assembly]
 title = "Build a push-fit pipe spool with two Pandas"
 summary = "Two Pandas build a copper pipe spool in free space from loose pipes and push-fit elbows: one hand holds while the other pushes each joint home past a hidden O-ring, from cameras and wrist force."
