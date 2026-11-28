@@ -1,9 +1,9 @@
 {
   "metric": "parts_seated_fraction",
   "direction": "higher",
-  "value": 0.9583333333333334,
-  "full_at": 0.75,
-  "source": "ale validate (validate-f29804bd on lab208, 2026-11-27, task v4: no simulator for the agent, hidden per-shift variation of latency, arm response, belt, lamps, friction and tray pose; 2 practice shifts): the reference (solution/controller/) seated 69/72 pockets on 12 hidden shifts; late replies 0, slowest reply 23 ms",
+  "value": 0.9444444444444444,
+  "full_at": 0.85,
+  "source": "ale validate (validate-c0fc9e90 on lab208, 2026-11-27, task v4b: the v4 cell, docs and variation; reference with the robust fiducial search): the reference (solution/controller/) seated 68/72 pockets on 12 hidden shifts; late replies 0, slowest reply 43 ms",
   "reference_commit": "local task folder of 2026-11-27 (pre-PR)",
-  "note": "parts_seated_fraction = pockets the kit inspection finds seated (right part, right side up, key aligned, fully down, undamaged) over all pockets of the 12 graded shifts (6 per shift). The reference is solution/controller/. full_at 0.75: the reference averages 0.921 per pocket over 72 v4 shifts (dev harness and wire) and its four v4 validates seated 69, 57, 67 and 71 of 72: the hidden per-shift variation gives it a heavy low tail (a fast belt with latency 3 or a soft arm can cost it 2-4 parts in one shift). 0.75 x anchor = 51.75, so a run passes at 52/72: 5 pockets below the worst validate, 15 below the median (bootstrap probability of a reference run below it about 0.3 %)."
+  "note": "parts_seated_fraction = pockets the kit inspection finds seated (right part, right side up, key aligned, fully down, undamaged) over all pockets of the 12 graded shifts (6 per shift). The reference is solution/controller/ (v4b: the v4 reference with the robust fiducial search). Its four v4b grader runs seated 68, 64, 68 and 70 of 72; over 48 v4 shifts on the dev harness it averages 0.920 per pocket (12-shift median 66/72, 0.5 % quantile 58). full_at 0.85: 0.85 x anchor = 57.8, so a run passes at 58/72, 6 pockets below the worst grader run (bootstrap probability of a reference run below it about 0.3 %)."
 }

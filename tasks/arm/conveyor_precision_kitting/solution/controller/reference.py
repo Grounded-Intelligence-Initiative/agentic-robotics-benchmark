@@ -176,11 +176,36 @@ def locate_kit(w):
     kx, ky, kyaw = KIT_NOMINAL
     pts = []
     looks_by = {}
+    # the tray is set within +-12 mm and +-5 deg: aim each look where the fiducials found so far put the next one
+    # (one found: shift by it; two or more: a rigid fit), so far dots stay in view and the gate can stay tight
+    found = {}
+
+    def nominal(fi):
+        fx0, fy0 = FIDUCIALS[fi]
+        return np.array([kx + math.cos(kyaw) * fx0 - math.sin(kyaw) * fy0, ky + math.sin(kyaw) * fx0 + math.cos(kyaw) * fy0])
+
+    def predict(fi):
+        keys = sorted(found)
+        if not keys:
+            return nominal(fi), 0.030
+        if len(keys) == 1:
+            k = keys[0]
+            return nominal(fi) + (np.mean(found[k], axis=0) - nominal(k)), 0.030
+        src = np.array([nominal(k) for k in keys])
+        dst = np.array([np.mean(found[k], axis=0) for k in keys])
+        sc, dc = src.mean(0), dst.mean(0)
+        U, _s, Vt = np.linalg.svd((src - sc).T @ (dst - dc))
+        Rm = Vt.T @ U.T
+        if np.linalg.det(Rm) < 0:
+            Vt[1] *= -1
+            Rm = Vt.T @ U.T
+        return Rm @ (nominal(fi) - sc) + dc, 0.008
+
     for LY, order in ((0.0, (0, 1, 2)), (math.pi, (2, 1, 0))):   # all looks at one yaw, then all at the other
       for fi in order:
         fx0, fy0 = FIDUCIALS[fi]
-        fx = math.cos(kyaw) * fx0 - math.sin(kyaw) * fy0       # the fiducial's offset in the world, nominal kit
-        fy = math.sin(kyaw) * fx0 + math.cos(kyaw) * fy0
+        pred, gate = predict(fi)
+        fx, fy = pred[0] - kx, pred[1] - ky
         looks = looks_by.setdefault(fi, [])
         if True:
             # put the wrist camera (offset from the grip axis) above the nominal fiducial; a second look with the hand
@@ -206,13 +231,18 @@ def locate_kit(w):
                     continue
                 vs, us = np.nonzero(lab == k)
                 Pw = cam.to_plane(us, vs, KIT_FLOOR)
+                ext = max(np.ptp(Pw[:, 0]), np.ptp(Pw[:, 1]))
+                if not (0.008 < ext < 0.017):          # a 12 mm dot, not a pocket corner, a boss or a wall shadow
+                    continue
                 c = (Pw[:, 0].mean(), Pw[:, 1].mean())
                 d = math.hypot(c[0] - kx - fx, c[1] - ky - fy)
-                if d < 0.025:
+                if d < gate:
                     cand.append((d, c))
             w.log.append(("fid-look", len(cand), round(float(np.percentile(val, 75)), 1)))
             if cand:
-                looks.append(min(cand)[1])
+                c = min(cand)[1]
+                looks.append(c)
+                found.setdefault(fi, []).append(np.array(c))
             w.fid_img = img
     for fi in range(len(FIDUCIALS)):
         looks = looks_by.get(fi, [])
