@@ -1,9 +1,9 @@
 {
   "metric": "terrain_progress",
   "direction": "higher",
-  "value": 0.9306824191528991,
-  "full_at": 0.90,
-  "source": "the reference design (solution/robot.xml: found by the task author with random searches over legal designs and local searches in a development copy of the walkway simulator) measured by `ale validate` run validate-b5d1207a with a null anchor, on lab hardware (lab208, Ubuntu 24.04, engine vendor/ale @ bfb7505): 89 of 100 hidden walkway sections reached the goal, 11 fell",
-  "reference_commit": "local task folder of 2026-11-27 (pre-PR), tuning round 1",
-  "note": "terrain_progress = mean over 100 hidden walkway sections of min(forward progress of the body / 3.0 m, 1); a fall keeps the progress made 0.5 s before it, a simulation fault scores the section 0; an unbuildable design scores 0. full_at 0.90: six oracle runs of this reference (validate-024425f5, -77e631ae, -55ef95ec, -3439ae54, -20255267, -b5d1207a) measured 0.895 to 0.931 (mean 0.912, per-run standard error about 0.025); the worst ratio was 0.962; 0.90 keeps an oracle passing down to 0.834, about three standard errors below its mean."
+  "value": 0.8850696285684327,
+  "full_at": 0.86,
+  "source": "v3 reference design (solution/robot.xml: found by the task author with random searches over legal designs and local searches in a development copy of the walkway simulator with leg-terrain contact) measured by `ale validate` run validate-fc3d5e58 with a null anchor, on lab hardware (lab208, Ubuntu 24.04, engine vendor/ale @ bfb7505): 72 of 100 hidden walkway sections reached the goal, 24 fell, 0 faults",
+  "reference_commit": "local task folder of 2026-11-27 (pre-PR), v3",
+  "note": "v3: leg links and actuators collide with the terrain. terrain_progress = mean over 100 hidden walkway sections of min(forward progress of the body / 3.0 m, 1); a fall keeps the progress made 0.5 s before it, a simulation fault scores the section 0; an unbuildable design scores 0. full_at 0.86: the reference's per-section spread is about 0.29 (standard error of a 100-section mean about 0.029); dev test on 100 other sections 0.852; 0.86 keeps an oracle passing down to 0.757, more than three standard errors below."
 }

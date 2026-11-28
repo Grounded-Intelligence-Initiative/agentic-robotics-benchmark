@@ -49,8 +49,10 @@ we measured here by more than a centimetre or two, but we only measured four."
   their mount and their flange; a knee actuator is centred on its axis), link segments capsules, feet spheres, each
   with the catalog mass spread uniformly over its shape; the pod is a 0.9 kg box on top of the body. No other
   parameter of the robot exists, and none can be set from robot.xml.
-- Contacts: only the **feet** touch the ground (friction: the foot's, from the catalog). Leg links and actuators pass
-  through the ground and steps but **do hit pipes** (a fall). The body module and the pod touch everything (a fall).
+- Contacts: every part is solid. The **feet** walk on the ground (friction: the foot's, from the catalog). **Leg links
+  and actuators also collide with the ground, the steps and the walls** (friction 1.0): a knee or shank that meets a
+  step edge or the floor is stopped or drags there, as on the real robot; that by itself is not a fall. A leg part
+  touching a **pipe** is a fall. The body module and the pod touching anything is a fall.
 - Actuators: each joint has a servo `tau = kp (q_target - q) + kd (qd_target - qd)` (kp, kd from the catalog; the
   target is interpolated over the control period), clipped to the actuator's torque, which falls linearly to zero
   at its rated speed in the direction of motion (torque-speed line); joint ranges from the catalog; each actuator
