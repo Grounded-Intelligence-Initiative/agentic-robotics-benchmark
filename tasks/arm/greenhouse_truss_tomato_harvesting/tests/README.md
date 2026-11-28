@@ -356,3 +356,20 @@ WebFetch off, subscription auth), the task's two-hour budget, one episode. **rew
 `772f2003`, to confirm the image built again after the host's restart: `ok`, untouched 0.0, oracle 1.0
 (`mean_row_yield` 1.00000 in the same steps, 27 of 27, probe lock 39 of 40, the margins unchanged, verify 416 s).
 `tests/anchor.json` is unchanged.
+
+**2026-11-27, 19:03 to 19:18: five commissioning sessions (were three), and `ale validate` on that tree.** The
+contributor's decision after the episode above: its agent lost two of three sessions to one motion mistake, so its
+final program never ran on the cell, and a score near zero for that reason says little. Only the count changed
+(`db948835`: `review/select_set.py` `service()`, `dev_rows.json` with the same keys and rows, the instruction, the
+interface document, `task.toml`'s comments, section 2 above); sessions stay never refunded, one at a time, without a
+yield or a debrief; the cell, the rules, both sets, the reference, the grader and every threshold are as they were.
+The tree before it, `7b57d4eb`, is the three-session version. Natively the count went 5, 4, 3, 2, 1, 0 over five
+sessions of the example program and a sixth was refused ("no commissioning sessions left"); the warm-up counted
+nothing. Run `validate-63a08ee8` on the tree of `db948835`, the pinned engine `bfb7505`:
+
+```
+ok    grounded-intelligence-initiative/greenhouse_truss_tomato_harvesting: untouched={'reward': 0.0}, oracle={'reward': 1.0}
+```
+
+Untouched 0.0; oracle `mean_row_yield` 1.00000 in the same steps, 27 of 27, probe lock 39 of 40, verify 415 s.
+`tests/anchor.json`: the value stays 1.0; its `source` names this run and the three before it.
