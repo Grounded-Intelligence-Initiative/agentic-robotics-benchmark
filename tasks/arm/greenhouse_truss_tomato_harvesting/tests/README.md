@@ -373,3 +373,29 @@ ok    grounded-intelligence-initiative/greenhouse_truss_tomato_harvesting: untou
 
 Untouched 0.0; oracle `mean_row_yield` 1.00000 in the same steps, 27 of 27, probe lock 39 of 40, verify 415 s.
 `tests/anchor.json`: the value stays 1.0; its `source` names this run and the three before it.
+
+**2026-11-27, 19:19 to 19:56: the frontier episode on five sessions.** Run `cdc52771` on the tree of `910a7162`,
+the same configuration (Claude Opus 5.5, claude-code CLI 2.1.309, effort high, WebSearch and WebFetch off,
+subscription auth, two hours), one episode. **reward 0.44** (unrounded 0.4352; `mean_row_yield` 0.3917).
+
+- *The verdict.* 11 of the 27 ready trusses delivered: 2 of 4, 2 of 4, 1 of 4, 3 of 6, 0 of 4 and 3 of 5. Every row
+  section ended by the program's own `done` after 260 to 398 s simulated (430 allowed) and 467 to 664 steps; 3
+  protective stops over the six rows (none latched); 4 trusses damaged; 4 trusses cut that were not ready (they earn
+  nothing and take a bay); no plant lost, no leaf cut; 163 frames in all; the program's own time 20 s; probe lock 64
+  of 64 (25 idle pairs not counted); the canary passed; verify 572 s. Its distance from the cliffs, where it cut: up
+  to 5.1 mm off the mouth's mid-plane and 6.1 mm along the tool axis, the closing force up to 1.24 times a
+  peduncle's cutting force.
+- *The agent.* It ended by itself 1623 s (27 min) into the two hours with all five sessions spent. Session 1,
+  interactive: calibration, colour, a peduncle probed with the jaws, the closing force raised until the cut, a carry.
+  Sessions 2 and 3: protective stops again from poses with the wrist over the robot's base axis (the mistake of the
+  three-session episode's agent as well). Session 4: the motion mended, no truss judged ready; it then ranked
+  trusses by ripeness and took the best four to six. Session 5, a whole run on a practice row: no protective stop,
+  296 s simulated, three trusses cut, held and laid down in six attempts. What it added after that ran only against
+  a mock of its own; its closing message says so, and says it cannot tell its yield.
+- *The transport.* 58 model calls, all forwarded, none stopped at `max_tokens`, the longest 133 s, no cut stream.
+- *The host.* Memory sampled every 30 s (71 samples): the sandbox at most 13.7 GiB (the service's warm-up); never
+  less than 13.8 GB available on the host; memory pressure at most 0.4 %; no job outside the task.
+- *Read with the episode before it.* Two episodes of one model on two versions that differ in one number: three
+  sessions, 2 of 27 trusses (0.09); five sessions, 11 of 27 (0.44). Each is a single episode, both agents stopped
+  with more than three quarters of their time unused, and the difference between them is as much one agent's two
+  extra sessions as it is chance: the spread of either version is not measured.
