@@ -239,6 +239,12 @@ summary = "Program a Franka Panda to build a four-digit robot hand from its nine
 platforms = ["hand"]
 stages = ["assembly"]
 
+[dexterous_hand_robot_description_from_photos]
+title = "Write the MuJoCo model of a four-digit hand"
+summary = "Write the MJCF and calibration file of one as-built four-digit robot hand from eleven photographs and its servo read-outs, so that pinches planned on the model land on the real hand."
+platforms = ["hand"]
+stages = ["robot-description"]
+
 [hot3d_sharpa_retarget]
 title = "Retarget human hand motion to robot hands"
 summary = "Turn clips of people moving objects with both hands into joint targets that make a pair of Sharpa robot hands move the objects the same way."

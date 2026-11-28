@@ -1,0 +1,13 @@
+Bus read-out export of the photo session
+
+Date of the session: 2026-11-10
+Tool: Vakrell Bus Studio; one read-out of every servo on the bus with each posed photograph
+Servo IDs on the bus: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+Read-out n was taken with the photograph whose entry in photos/photos.json gives readout n (read-outs 1 to 10).
+
+Columns of readouts.csv
+  readout     read-out number
+  time        clock time of the read-out, hh:mm:ss
+  pos_<id>    Present Position (132), signed 4 bytes, unit 1 [pulse]
+  temp_<id>   Present Temperature (146), 1 byte, unit 1 [deg C]
+  volt_<id>   Present Input Voltage (144), 2 bytes, unit 0.1 [V]
