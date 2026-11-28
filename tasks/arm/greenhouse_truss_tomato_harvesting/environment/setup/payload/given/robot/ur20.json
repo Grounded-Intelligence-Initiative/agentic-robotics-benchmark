@@ -1,0 +1,160 @@
+{
+ "name": "Universal Robots UR20",
+ "joint_names": [
+  "shoulder_pan_joint",
+  "shoulder_lift_joint",
+  "elbow_joint",
+  "wrist_1_joint",
+  "wrist_2_joint",
+  "wrist_3_joint"
+ ],
+ "note": "every joint turns about the z axis of its own frame; `joints` gives each joint frame in its parent link (translation in m, quaternion w x y z), as in the robot's USD description; the flange is wrist_3_link; the base frame is the cart frame",
+ "joints": [
+  {
+   "name": "shoulder_pan_joint",
+   "translation": [
+    0.0,
+    0.0,
+    0.2363
+   ],
+   "quaternion_wxyz": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  {
+   "name": "shoulder_lift_joint",
+   "translation": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "quaternion_wxyz": [
+    0.70710678,
+    0.70710678,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "elbow_joint",
+   "translation": [
+    -0.862,
+    0.0,
+    0.0
+   ],
+   "quaternion_wxyz": [
+    1.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "wrist_1_joint",
+   "translation": [
+    -0.7287,
+    0.0,
+    0.201
+   ],
+   "quaternion_wxyz": [
+    1.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "wrist_2_joint",
+   "translation": [
+    0.0,
+    -0.1593,
+    0.0
+   ],
+   "quaternion_wxyz": [
+    0.70710678,
+    0.70710678,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "wrist_3_joint",
+   "translation": [
+    0.0,
+    0.1543,
+    0.0
+   ],
+   "quaternion_wxyz": [
+    0.70710678,
+    -0.70710678,
+    0.0,
+    0.0
+   ]
+  }
+ ],
+ "limits_rad": [
+  [
+   -6.283185307179586,
+   6.283185307179586
+  ],
+  [
+   -6.283185307179586,
+   6.283185307179586
+  ],
+  [
+   -3.141592653589793,
+   3.141592653589793
+  ],
+  [
+   -6.283185307179586,
+   6.283185307179586
+  ],
+  [
+   -6.283185307179586,
+   6.283185307179586
+  ],
+  [
+   -6.283185307179586,
+   6.283185307179586
+  ]
+ ],
+ "home_q": [
+  -0.7804,
+  -2.1304,
+  2.5661,
+  -0.4356,
+  0.7904,
+  1.5708
+ ],
+ "tool_centre_point_z": 0.36,
+ "tool_centre_point": {
+  "parent": "flange",
+  "translation": [
+   0.0,
+   0.0,
+   0.36
+  ],
+  "note": "the tool frame has the flange frame's axes; `tcp` on the wire is the flange's pose times this"
+ },
+ "rail_joint": {
+  "name": "cart_joint",
+  "type": "prismatic",
+  "parent": "rail (row frame)",
+  "child": "base (cart frame)",
+  "axis": [
+   0.0,
+   1.0,
+   0.0
+  ],
+  "position_at_start": 0.0,
+  "travel": [
+   -0.2,
+   2.6
+  ],
+  "speed_max": 0.25,
+  "note": "the cart's place along the rail; it is not on the wire (the odometer is: site_interface.md, section 5)"
+ }
+}

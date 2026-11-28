@@ -47,6 +47,12 @@ summary = "Two Pandas build a copper pipe spool in free space from loose pipes a
 platforms = ["arm"]
 stages = ["behavior"]
 
+[greenhouse_truss_tomato_harvesting]
+title = "Harvest truss tomatoes from a greenhouse row"
+summary = "A UR20 on a rail cart finds the ripe trusses of a greenhouse tomato row behind leaves, cuts each thin peduncle with a narrow cutter-gripper and lays them in crates, from cameras and gripper readings."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [cloth_material_id_from_video]
 title = "Identify fabric materials from video"
 summary = "Choose the simulator material of ten fabrics from multi-view video of a robot arm handling them, so that a planner using it hits its targets on new slide and overhang handling of the real fabrics."
