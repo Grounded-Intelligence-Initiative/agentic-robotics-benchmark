@@ -1,0 +1,46 @@
+{
+ "camera": "wrist_left",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 376.72453850819767,
+  "fy": 376.72453850819767,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 65.0
+ },
+ "pose_in_room": {
+  "position": [
+   2.3723293484019354,
+   0.17628592429224324,
+   0.7910790351545631
+  ],
+  "rotation": [
+   [
+    -0.9807051456828829,
+    0.03516326214992354,
+    -0.19230434791260181
+   ],
+   [
+    0.19549216516042991,
+    0.17398250902027904,
+    -0.9651491594131427
+   ],
+   [
+    -0.0004801999608795571,
+    -0.9841207403311772,
+    -0.17749968410679867
+   ]
+  ]
+ },
+ "sim_time": 736.18,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "25_tray_home_gpn_b04_left_hand_wrist_left_rgb.png",
+  "depth_mm": "25_tray_home_gpn_b04_left_hand_wrist_left_depth_mm.png"
+ },
+ "what": "tray home gpn-b04 left hand"
+}

@@ -1,0 +1,46 @@
+{
+ "camera": "head",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 432.97146126514167,
+  "fy": 432.97146126514167,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 58.0
+ },
+ "pose_in_room": {
+  "position": [
+   1.7484873415893765,
+   2.119320014115039,
+   1.2499719807400833
+  ],
+  "rotation": [
+   [
+    -0.999999246205217,
+    -0.0009232901182686716,
+    0.0008093975260836545
+   ],
+   [
+    -0.001227284800957015,
+    0.771429958486474,
+    -0.6363130620390988
+   ],
+   [
+    -3.6891937639788264e-05,
+    -0.6363135757509141,
+    -0.7714305101265249
+   ]
+  ]
+ },
+ "sim_time": 848.53,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "21_rear_door_open_a03_right_hand_head_rgb.png",
+  "depth_mm": "21_rear_door_open_a03_right_hand_head_depth_mm.png"
+ },
+ "what": "rear door open A03 right hand"
+}

@@ -1,0 +1,46 @@
+{
+ "camera": "wrist_left",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 376.72453850819767,
+  "fy": 376.72453850819767,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 65.0
+ },
+ "pose_in_room": {
+  "position": [
+   0.40783242972903955,
+   1.8801763720753342,
+   0.9599072098285996
+  ],
+  "rotation": [
+   [
+    0.9787047166247753,
+    -0.03676354163070269,
+    0.20195425141151402
+   ],
+   [
+    0.2052731777172258,
+    0.1752199922731539,
+    -0.9628919341326252
+   ],
+   [
+    1.2895334496540456e-05,
+    0.9838426684762981,
+    0.17903520189936636
+   ]
+  ]
+ },
+ "sim_time": 1336.62,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "35_unplug_leaf_a01_4_mpo2_left_hand_wrist_left_rgb.png",
+  "depth_mm": "35_unplug_leaf_a01_4_mpo2_left_hand_wrist_left_depth_mm.png"
+ },
+ "what": "unplug leaf-a01-4/mpo2 left hand"
+}

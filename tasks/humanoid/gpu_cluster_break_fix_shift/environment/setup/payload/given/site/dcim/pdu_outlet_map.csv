@@ -1,0 +1,121 @@
+rack,role,outlet,feed,load
+A01,network,A1,A,leaf-a01-1 PSU1
+A01,network,A2,A,leaf-a01-2 PSU1
+A01,network,A3,A,leaf-a01-3 PSU1
+A01,network,A4,A,leaf-a01-4 PSU1
+A01,network,A5,A,spare (nothing plugged)
+A01,network,A6,A,spare (nothing plugged)
+A01,network,B1,B,leaf-a01-1 PSU2
+A01,network,B2,B,leaf-a01-2 PSU2
+A01,network,B3,B,leaf-a01-3 PSU2
+A01,network,B4,B,leaf-a01-4 PSU2
+A01,network,B5,B,spare (nothing plugged)
+A01,network,B6,B,spare (nothing plugged)
+A02,gpu,A1,A,gpn-a02 PSU1
+A02,gpu,A2,A,gpn-a02 PSU3
+A02,gpu,A3,A,gpn-a02 PSU5
+A02,gpu,A4,A,stor-a02-1 PSU1
+A02,gpu,A5,A,stor-a02-2 PSU1
+A02,gpu,A6,A,mgmt-a02 PSU
+A02,gpu,B1,B,gpn-a02 PSU2
+A02,gpu,B2,B,gpn-a02 PSU4
+A02,gpu,B3,B,gpn-a02 PSU6
+A02,gpu,B4,B,stor-a02-1 PSU2
+A02,gpu,B5,B,stor-a02-2 PSU2
+A02,gpu,B6,B,spare (nothing plugged)
+A03,gpu,A1,A,gpn-a03 PSU1
+A03,gpu,A2,A,gpn-a03 PSU3
+A03,gpu,A3,A,gpn-a03 PSU5
+A03,gpu,A4,A,stor-a03-1 PSU1
+A03,gpu,A5,A,stor-a03-2 PSU1
+A03,gpu,A6,A,mgmt-a03 PSU
+A03,gpu,B1,B,gpn-a03 PSU2
+A03,gpu,B2,B,gpn-a03 PSU4
+A03,gpu,B3,B,gpn-a03 PSU6
+A03,gpu,B4,B,stor-a03-1 PSU2
+A03,gpu,B5,B,stor-a03-2 PSU2
+A03,gpu,B6,B,spare (nothing plugged)
+A04,gpu,A1,A,gpn-a04 PSU1
+A04,gpu,A2,A,gpn-a04 PSU3
+A04,gpu,A3,A,gpn-a04 PSU5
+A04,gpu,A4,A,stor-a04-1 PSU1
+A04,gpu,A5,A,stor-a04-2 PSU1
+A04,gpu,A6,A,mgmt-a04 PSU
+A04,gpu,B1,B,gpn-a04 PSU2
+A04,gpu,B2,B,gpn-a04 PSU4
+A04,gpu,B3,B,gpn-a04 PSU6
+A04,gpu,B4,B,stor-a04-1 PSU2
+A04,gpu,B5,B,stor-a04-2 PSU2
+A04,gpu,B6,B,spare (nothing plugged)
+A05,gpu,A1,A,gpn-a05 PSU1
+A05,gpu,A2,A,gpn-a05 PSU3
+A05,gpu,A3,A,gpn-a05 PSU5
+A05,gpu,A4,A,stor-a05-1 PSU1
+A05,gpu,A5,A,stor-a05-2 PSU1
+A05,gpu,A6,A,mgmt-a05 PSU
+A05,gpu,B1,B,gpn-a05 PSU2
+A05,gpu,B2,B,gpn-a05 PSU4
+A05,gpu,B3,B,gpn-a05 PSU6
+A05,gpu,B4,B,stor-a05-1 PSU2
+A05,gpu,B5,B,stor-a05-2 PSU2
+A05,gpu,B6,B,spare (nothing plugged)
+B01,network,A1,A,leaf-b01-1 PSU1
+B01,network,A2,A,leaf-b01-2 PSU1
+B01,network,A3,A,leaf-b01-3 PSU1
+B01,network,A4,A,leaf-b01-4 PSU1
+B01,network,A5,A,spare (nothing plugged)
+B01,network,A6,A,spare (nothing plugged)
+B01,network,B1,B,leaf-b01-1 PSU2
+B01,network,B2,B,leaf-b01-2 PSU2
+B01,network,B3,B,leaf-b01-3 PSU2
+B01,network,B4,B,leaf-b01-4 PSU2
+B01,network,B5,B,spare (nothing plugged)
+B01,network,B6,B,spare (nothing plugged)
+B02,gpu,A1,A,gpn-b02 PSU1
+B02,gpu,A2,A,gpn-b02 PSU3
+B02,gpu,A3,A,gpn-b02 PSU5
+B02,gpu,A4,A,stor-b02-1 PSU1
+B02,gpu,A5,A,stor-b02-2 PSU1
+B02,gpu,A6,A,mgmt-b02 PSU
+B02,gpu,B1,B,gpn-b02 PSU2
+B02,gpu,B2,B,gpn-b02 PSU4
+B02,gpu,B3,B,gpn-b02 PSU6
+B02,gpu,B4,B,stor-b02-1 PSU2
+B02,gpu,B5,B,stor-b02-2 PSU2
+B02,gpu,B6,B,spare (nothing plugged)
+B03,gpu,A1,A,gpn-b03 PSU1
+B03,gpu,A2,A,gpn-b03 PSU3
+B03,gpu,A3,A,gpn-b03 PSU5
+B03,gpu,A4,A,stor-b03-1 PSU1
+B03,gpu,A5,A,stor-b03-2 PSU1
+B03,gpu,A6,A,mgmt-b03 PSU
+B03,gpu,B1,B,gpn-b03 PSU2
+B03,gpu,B2,B,gpn-b03 PSU4
+B03,gpu,B3,B,gpn-b03 PSU6
+B03,gpu,B4,B,stor-b03-1 PSU2
+B03,gpu,B5,B,stor-b03-2 PSU2
+B03,gpu,B6,B,spare (nothing plugged)
+B04,gpu,A1,A,gpn-b04 PSU1
+B04,gpu,A2,A,gpn-b04 PSU3
+B04,gpu,A3,A,gpn-b04 PSU5
+B04,gpu,A4,A,stor-b04-1 PSU1
+B04,gpu,A5,A,stor-b04-2 PSU1
+B04,gpu,A6,A,mgmt-b04 PSU
+B04,gpu,B1,B,gpn-b04 PSU2
+B04,gpu,B2,B,gpn-b04 PSU4
+B04,gpu,B3,B,gpn-b04 PSU6
+B04,gpu,B4,B,stor-b04-1 PSU2
+B04,gpu,B5,B,stor-b04-2 PSU2
+B04,gpu,B6,B,spare (nothing plugged)
+B05,gpu,A1,A,gpn-b05 PSU1
+B05,gpu,A2,A,gpn-b05 PSU3
+B05,gpu,A3,A,gpn-b05 PSU5
+B05,gpu,A4,A,stor-b05-1 PSU1
+B05,gpu,A5,A,stor-b05-2 PSU1
+B05,gpu,A6,A,mgmt-b05 PSU
+B05,gpu,B1,B,gpn-b05 PSU2
+B05,gpu,B2,B,gpn-b05 PSU4
+B05,gpu,B3,B,gpn-b05 PSU6
+B05,gpu,B4,B,stor-b05-1 PSU2
+B05,gpu,B5,B,stor-b05-2 PSU2
+B05,gpu,B6,B,spare (nothing plugged)

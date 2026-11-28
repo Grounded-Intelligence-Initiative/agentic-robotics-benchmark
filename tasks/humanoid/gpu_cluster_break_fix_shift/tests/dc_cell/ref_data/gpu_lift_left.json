@@ -1,0 +1,221 @@
+{
+ "note": "stances measured offline (tools/gpu_stance.py: collision-aware IK with a 2 cm clearance on the drawing's nominal pod, gpn-a03), in the rack frame (x along the row from the rack's middle, y from the rack's front into the rack, yaw from the rack's x axis); angles (driver_yaw, hand_quat) relative to the rack frame",
+ "slots": {
+  "sxm1": {
+   "arm": "left",
+   "arm_q0": [
+    -1.2073,
+    1.3986,
+    -0.8505,
+    0.6528,
+    1.0516,
+    -0.7159,
+    -0.5599
+   ],
+   "hand_quat": [
+    0.35416,
+    0.612022,
+    0.612022,
+    -0.35416
+   ],
+   "lx": -0.079,
+   "ly": -0.9,
+   "lyaw": 1.2708,
+   "pitch": 0.52,
+   "port_lx": -0.159,
+   "port_ly": -0.32,
+   "stand": 0.66,
+   "waist_yaw": -0.35,
+   "worst_ik_m": 0.0007
+  },
+  "sxm2": {
+   "arm": "left",
+   "arm_q0": [
+    -1.9064,
+    0.5309,
+    -1.4322,
+    0.7016,
+    0.7266,
+    -0.6301,
+    -0.9378
+   ],
+   "hand_quat": [
+    0.35416,
+    0.612022,
+    0.612022,
+    -0.35416
+   ],
+   "lx": 0.239,
+   "ly": -0.82,
+   "lyaw": 1.5708,
+   "pitch": 0.42,
+   "port_lx": 0.159,
+   "port_ly": -0.32,
+   "stand": 0.6,
+   "waist_yaw": 0.0,
+   "worst_ik_m": 0.00035
+  },
+  "sxm3": {
+   "arm": "left",
+   "arm_q0": [
+    -1.9064,
+    0.5309,
+    -1.4322,
+    0.7016,
+    0.7266,
+    -0.6301,
+    -0.9378
+   ],
+   "hand_quat": [
+    0.35416,
+    0.612022,
+    0.612022,
+    -0.35416
+   ],
+   "lx": 0.027,
+   "ly": -0.82,
+   "lyaw": 1.5708,
+   "pitch": 0.42,
+   "port_lx": -0.053,
+   "port_ly": -0.32,
+   "stand": 0.6,
+   "waist_yaw": 0.0,
+   "worst_ik_m": 0.00035
+  },
+  "sxm4": {
+   "arm": "left",
+   "arm_q0": [
+    -1.9064,
+    0.5309,
+    -1.4322,
+    0.7016,
+    0.7266,
+    -0.6301,
+    -0.9378
+   ],
+   "hand_quat": [
+    0.35416,
+    0.612022,
+    0.612022,
+    -0.35416
+   ],
+   "lx": 0.133,
+   "ly": -0.82,
+   "lyaw": 1.5708,
+   "pitch": 0.42,
+   "port_lx": 0.053,
+   "port_ly": -0.32,
+   "stand": 0.6,
+   "waist_yaw": 0.0,
+   "worst_ik_m": 0.00035
+  },
+  "sxm5": {
+   "arm": "left",
+   "arm_q0": [
+    -0.6537,
+    1.1828,
+    -0.5613,
+    0.3912,
+    0.8659,
+    -0.7517,
+    -0.791
+   ],
+   "hand_quat": [
+    -0.5,
+    -0.5,
+    -0.5,
+    0.5
+   ],
+   "lx": -0.079,
+   "ly": -0.9,
+   "lyaw": 1.2708,
+   "pitch": 0.52,
+   "port_lx": -0.159,
+   "port_ly": -0.475,
+   "stand": 0.78,
+   "waist_yaw": -0.35,
+   "worst_ik_m": 0.00028
+  },
+  "sxm6": {
+   "arm": "left",
+   "arm_q0": [
+    -1.0343,
+    -0.0759,
+    0.7063,
+    0.3933,
+    0.8309,
+    1.6124,
+    -0.4342
+   ],
+   "hand_quat": [
+    0.5,
+    -0.5,
+    0.5,
+    0.5
+   ],
+   "lx": 0.159,
+   "ly": -0.86,
+   "lyaw": 1.5708,
+   "pitch": 0.42,
+   "port_lx": 0.159,
+   "port_ly": -0.475,
+   "stand": 0.78,
+   "waist_yaw": -0.35,
+   "worst_ik_m": 0.00074
+  },
+  "sxm7": {
+   "arm": "left",
+   "arm_q0": [
+    -1.0343,
+    -0.0759,
+    0.7063,
+    0.3933,
+    0.8309,
+    1.6124,
+    -0.4342
+   ],
+   "hand_quat": [
+    0.5,
+    -0.5,
+    0.5,
+    0.5
+   ],
+   "lx": -0.053,
+   "ly": -0.86,
+   "lyaw": 1.5708,
+   "pitch": 0.42,
+   "port_lx": -0.053,
+   "port_ly": -0.475,
+   "stand": 0.78,
+   "waist_yaw": -0.35,
+   "worst_ik_m": 0.00074
+  },
+  "sxm8": {
+   "arm": "left",
+   "arm_q0": [
+    -1.0343,
+    -0.0759,
+    0.7063,
+    0.3933,
+    0.8309,
+    1.6124,
+    -0.4342
+   ],
+   "hand_quat": [
+    0.5,
+    -0.5,
+    0.5,
+    0.5
+   ],
+   "lx": 0.053,
+   "ly": -0.86,
+   "lyaw": 1.5708,
+   "pitch": 0.42,
+   "port_lx": 0.053,
+   "port_ly": -0.475,
+   "stand": 0.78,
+   "waist_yaw": -0.35,
+   "worst_ik_m": 0.00074
+  }
+ }
+}

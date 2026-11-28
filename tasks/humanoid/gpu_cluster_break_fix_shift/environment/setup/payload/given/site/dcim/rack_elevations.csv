@@ -1,0 +1,45 @@
+rack,units,device,model,mounted,rail
+A01,U16,leaf-a01-1,KX-L32R (32-port 400G leaf),rear (ports to hot aisle),0
+A01,U18,leaf-a01-2,KX-L32R (32-port 400G leaf),rear (ports to hot aisle),1
+A01,U20,leaf-a01-3,KX-L32R (32-port 400G leaf),rear (ports to hot aisle),2
+A01,U22,leaf-a01-4,KX-L32R (32-port 400G leaf),rear (ports to hot aisle),3
+A01,U40,patch-a01-40,1U MPO patch panel,front,
+A01,U42,patch-a01-42,1U MPO patch panel,front,
+A02,U8-U15,gpn-a02,KX-8H (8x SXM-H8-80G),front,
+A02,U28-U29,stor-a02-1,KX-2S storage node,front,
+A02,U32-U33,stor-a02-2,KX-2S storage node,front,
+A02,U40,mgmt-a02,KX-M48 1G management switch,front,
+A03,U8-U15,gpn-a03,KX-8H (8x SXM-H8-80G),front,
+A03,U28-U29,stor-a03-1,KX-2S storage node,front,
+A03,U32-U33,stor-a03-2,KX-2S storage node,front,
+A03,U40,mgmt-a03,KX-M48 1G management switch,front,
+A04,U8-U15,gpn-a04,KX-8H (8x SXM-H8-80G),front,
+A04,U28-U29,stor-a04-1,KX-2S storage node,front,
+A04,U32-U33,stor-a04-2,KX-2S storage node,front,
+A04,U40,mgmt-a04,KX-M48 1G management switch,front,
+A05,U8-U15,gpn-a05,KX-8H (8x SXM-H8-80G),front,
+A05,U28-U29,stor-a05-1,KX-2S storage node,front,
+A05,U32-U33,stor-a05-2,KX-2S storage node,front,
+A05,U40,mgmt-a05,KX-M48 1G management switch,front,
+B01,U16,leaf-b01-1,KX-L32R (32-port 400G leaf),rear (ports to hot aisle),4
+B01,U18,leaf-b01-2,KX-L32R (32-port 400G leaf),rear (ports to hot aisle),5
+B01,U20,leaf-b01-3,KX-L32R (32-port 400G leaf),rear (ports to hot aisle),6
+B01,U22,leaf-b01-4,KX-L32R (32-port 400G leaf),rear (ports to hot aisle),7
+B01,U40,patch-b01-40,1U MPO patch panel,front,
+B01,U42,patch-b01-42,1U MPO patch panel,front,
+B02,U8-U15,gpn-b02,KX-8H (8x SXM-H8-80G),front,
+B02,U28-U29,stor-b02-1,KX-2S storage node,front,
+B02,U32-U33,stor-b02-2,KX-2S storage node,front,
+B02,U40,mgmt-b02,KX-M48 1G management switch,front,
+B03,U8-U15,gpn-b03,KX-8H (8x SXM-H8-80G),front,
+B03,U28-U29,stor-b03-1,KX-2S storage node,front,
+B03,U32-U33,stor-b03-2,KX-2S storage node,front,
+B03,U40,mgmt-b03,KX-M48 1G management switch,front,
+B04,U8-U15,gpn-b04,KX-8H (8x SXM-H8-80G),front,
+B04,U28-U29,stor-b04-1,KX-2S storage node,front,
+B04,U32-U33,stor-b04-2,KX-2S storage node,front,
+B04,U40,mgmt-b04,KX-M48 1G management switch,front,
+B05,U8-U15,gpn-b05,KX-8H (8x SXM-H8-80G),front,
+B05,U28-U29,stor-b05-1,KX-2S storage node,front,
+B05,U32-U33,stor-b05-2,KX-2S storage node,front,
+B05,U40,mgmt-b05,KX-M48 1G management switch,front,

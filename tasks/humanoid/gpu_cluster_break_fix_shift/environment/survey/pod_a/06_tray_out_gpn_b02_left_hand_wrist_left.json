@@ -1,0 +1,46 @@
+{
+ "camera": "wrist_left",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 376.72453850819767,
+  "fy": 376.72453850819767,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 65.0
+ },
+ "pose_in_room": {
+  "position": [
+   1.174201122475596,
+   -0.5527495310862314,
+   0.7910399674767876
+  ],
+  "rotation": [
+   [
+    -0.9790799670305311,
+    0.03657986003162416,
+    -0.20016076538513505
+   ],
+   [
+    0.20347531003467728,
+    0.17376481290979834,
+    -0.9635370195279043
+   ],
+   [
+    -0.00046515136058901396,
+    -0.9841075671055942,
+    -0.17757274565575143
+   ]
+  ]
+ },
+ "sim_time": 187.33,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "06_tray_out_gpn_b02_left_hand_wrist_left_rgb.png",
+  "depth_mm": "06_tray_out_gpn_b02_left_hand_wrist_left_depth_mm.png"
+ },
+ "what": "tray out gpn-b02 left hand"
+}

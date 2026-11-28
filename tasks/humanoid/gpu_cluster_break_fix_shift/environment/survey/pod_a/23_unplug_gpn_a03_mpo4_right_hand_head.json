@@ -1,0 +1,46 @@
+{
+ "camera": "head",
+ "width": 640,
+ "height": 480,
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 432.97146126514167,
+  "fy": 432.97146126514167,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 58.0
+ },
+ "pose_in_room": {
+  "position": [
+   1.6110613211031306,
+   1.8887443163381916,
+   1.240033110811011
+  ],
+  "rotation": [
+   [
+    -0.9999988263471778,
+    0.0012053320825950453,
+    -0.0009457689136470387
+   ],
+   [
+    0.001527757011550739,
+    0.8308982681047028,
+    -0.5564222623324119
+   ],
+   [
+    0.00011516414811721802,
+    -0.5564230541909424,
+    -0.8308991343731458
+   ]
+  ]
+ },
+ "sim_time": 891.93,
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "files": {
+  "rgb": "23_unplug_gpn_a03_mpo4_right_hand_head_rgb.png",
+  "depth_mm": "23_unplug_gpn_a03_mpo4_right_hand_head_depth_mm.png"
+ },
+ "what": "unplug gpn-a03/mpo4 right hand"
+}

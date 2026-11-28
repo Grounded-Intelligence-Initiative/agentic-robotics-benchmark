@@ -1,0 +1,276 @@
+{
+ "note": "stances measured offline (tools/gpu_stance.py: collision-aware IK with a 2 cm clearance on the drawing's nominal pod, gpn-a03), in the rack frame (x along the row from the rack's middle, y from the rack's front into the rack, yaw from the rack's x axis); angles (driver_yaw, hand_quat) relative to the rack frame",
+ "slots": {
+  "sxm1": {
+   "groups": [
+    {
+     "arm_q0": [
+      -2.7896,
+      0.1026,
+      -1.9474,
+      -0.2782,
+      -0.9464,
+      1.5789,
+      -0.995
+     ],
+     "driver_yaw": 0.7854,
+     "lx": -0.159,
+     "ly": -0.82,
+     "lyaw": 1.5708,
+     "pitch": 0.52,
+     "port_lx": -0.159,
+     "port_ly": -0.32,
+     "screws": [
+      0,
+      2
+     ],
+     "stand": 0.78,
+     "waist_yaw": 0.35,
+     "worst_ik_m": 0.00186
+    },
+    {
+     "arm_q0": [
+      -2.4166,
+      -0.2995,
+      -1.7196,
+      -0.3521,
+      -0.4807,
+      1.0846,
+      -1.3493
+     ],
+     "driver_yaw": 0.0,
+     "lx": -0.159,
+     "ly": -0.86,
+     "lyaw": 1.8708,
+     "pitch": 0.42,
+     "port_lx": -0.159,
+     "port_ly": -0.32,
+     "screws": [
+      1,
+      3
+     ],
+     "stand": 0.78,
+     "waist_yaw": 0.35,
+     "worst_ik_m": 0.00082
+    }
+   ]
+  },
+  "sxm2": {
+   "groups": [
+    {
+     "arm_q0": [
+      -2.5796,
+      -0.3338,
+      -1.6174,
+      -0.4406,
+      -0.5993,
+      1.1936,
+      -1.3207
+     ],
+     "driver_yaw": 0.0,
+     "lx": 0.079,
+     "ly": -0.86,
+     "lyaw": 1.8708,
+     "pitch": 0.52,
+     "port_lx": 0.159,
+     "port_ly": -0.32,
+     "screws": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "stand": 0.78,
+     "waist_yaw": 0.35,
+     "worst_ik_m": 0.00078
+    }
+   ]
+  },
+  "sxm3": {
+   "groups": [
+    {
+     "arm_q0": [
+      -2.5796,
+      -0.3338,
+      -1.6174,
+      -0.4406,
+      -0.5993,
+      1.1936,
+      -1.3207
+     ],
+     "driver_yaw": 0.0,
+     "lx": -0.133,
+     "ly": -0.86,
+     "lyaw": 1.8708,
+     "pitch": 0.52,
+     "port_lx": -0.053,
+     "port_ly": -0.32,
+     "screws": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "stand": 0.78,
+     "waist_yaw": 0.35,
+     "worst_ik_m": 0.00078
+    }
+   ]
+  },
+  "sxm4": {
+   "groups": [
+    {
+     "arm_q0": [
+      -2.5796,
+      -0.3338,
+      -1.6174,
+      -0.4406,
+      -0.5993,
+      1.1936,
+      -1.3207
+     ],
+     "driver_yaw": 0.0,
+     "lx": -0.027,
+     "ly": -0.86,
+     "lyaw": 1.8708,
+     "pitch": 0.52,
+     "port_lx": 0.053,
+     "port_ly": -0.32,
+     "screws": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "stand": 0.78,
+     "waist_yaw": 0.35,
+     "worst_ik_m": 0.00078
+    }
+   ]
+  },
+  "sxm5": {
+   "groups": [
+    {
+     "arm_q0": [
+      -2.2516,
+      0.1294,
+      -1.9078,
+      -0.5953,
+      -0.5876,
+      1.2599,
+      -1.1872
+     ],
+     "driver_yaw": 0.0,
+     "lx": -0.319,
+     "ly": -0.9,
+     "lyaw": 1.8708,
+     "pitch": 0.15,
+     "port_lx": -0.159,
+     "port_ly": -0.475,
+     "screws": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "stand": 0.78,
+     "waist_yaw": 0.0,
+     "worst_ik_m": 0.00103
+    }
+   ]
+  },
+  "sxm6": {
+   "groups": [
+    {
+     "arm_q0": [
+      -2.617,
+      -0.0316,
+      -2.0677,
+      -0.1687,
+      1.1163,
+      -1.4978,
+      0.2901
+     ],
+     "driver_yaw": -2.3562,
+     "lx": -0.001,
+     "ly": -0.82,
+     "lyaw": 1.5708,
+     "pitch": 0.3,
+     "port_lx": 0.159,
+     "port_ly": -0.475,
+     "screws": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "stand": 0.78,
+     "waist_yaw": 0.35,
+     "worst_ik_m": 0.00077
+    }
+   ]
+  },
+  "sxm7": {
+   "groups": [
+    {
+     "arm_q0": [
+      -2.617,
+      -0.0316,
+      -2.0677,
+      -0.1687,
+      1.1163,
+      -1.4978,
+      0.2901
+     ],
+     "driver_yaw": -2.3562,
+     "lx": -0.213,
+     "ly": -0.82,
+     "lyaw": 1.5708,
+     "pitch": 0.3,
+     "port_lx": -0.053,
+     "port_ly": -0.475,
+     "screws": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "stand": 0.78,
+     "waist_yaw": 0.35,
+     "worst_ik_m": 0.00077
+    }
+   ]
+  },
+  "sxm8": {
+   "groups": [
+    {
+     "arm_q0": [
+      -2.617,
+      -0.0316,
+      -2.0677,
+      -0.1687,
+      1.1163,
+      -1.4978,
+      0.2901
+     ],
+     "driver_yaw": -2.3562,
+     "lx": -0.107,
+     "ly": -0.82,
+     "lyaw": 1.5708,
+     "pitch": 0.3,
+     "port_lx": 0.053,
+     "port_ly": -0.475,
+     "screws": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "stand": 0.78,
+     "waist_yaw": 0.35,
+     "worst_ik_m": 0.00077
+    }
+   ]
+  }
+ }
+}
