@@ -351,7 +351,7 @@ debrief.
 - `rowcell_client.Session(row)` (in `~/given/lib`) opens a session on practice row 1 to 4 and steps it interactively
   (the service listens on `/run/rowcell/commission.sock`); `/opt/venv/bin/python3 ~/commission/run_session.py --row N`
   runs your `run.sh` in a session the way it is run when it is graded, repeated steps included.
-- **3 sessions in all, never refunded**, one at a time: a session is counted when it opens and ends when the row
+- **5 sessions in all, never refunded**, one at a time: a session is counted when it opens and ends when the row
   section ends, when you close it or after 900 s without a request; a session that ends early, for whatever reason, is
   spent. `/run/rowcell/status.json` shows how many are left.
 - A session starts Isaac Sim on the sandbox's GPU: opening one takes up to a minute. The service warms up for the

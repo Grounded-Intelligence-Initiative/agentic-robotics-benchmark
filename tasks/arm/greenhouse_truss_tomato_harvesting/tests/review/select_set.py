@@ -60,7 +60,7 @@ KEYS = ("key_hex", "cameras_key_hex", "light_key_hex", "mech_key_hex")
 
 
 def service():
-    return {"sessions": 3, "idle_s": 900, "start_timeout_s": 900, "busy_wait_s": 120,
+    return {"sessions": 5, "idle_s": 900, "start_timeout_s": 900, "busy_wait_s": 120,
             "cell": {"sim_cap_s": wire.DEFAULTS["sim_cap_s"], "frame_budget": wire.DEFAULTS["frame_budget"]}}
 
 

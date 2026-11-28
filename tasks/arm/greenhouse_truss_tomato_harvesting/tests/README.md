@@ -110,7 +110,7 @@ leaf or a truss aside (which is what makes a target move), the wrench, the prote
   the wire; the pad on the plant's side drops the truss; a truss dropped, struck or pressed is waste; a crate takes
   one layer.
 - *Conditions of the job* (the merged arm tasks' own: `kitchen_appliance_tending`, `lab_sample_handling`): a two-hour
-  session; three commissioning sessions in all, never refunded, on four practice rows of another cultivar (another
+  session; five commissioning sessions in all, never refunded, on four practice rows of another cultivar (another
   chart, another readiness rule, smaller fruits and thinner peduncles, softer plants) worked by other robots (other
   camera mountings); documents that state facts and no procedures; a simulated-time allowance per row section of
   about 1.3 times the reference's slowest hidden row.
@@ -118,7 +118,7 @@ leaf or a truss aside (which is what makes a target move), the wrench, the prote
 **The commissioning service (`environment/commission_service/`).** `commissiond.py` runs as `rowcell`, started by
 `environment/setup/setup.sh`, on `/run/rowcell/commission.sock`: one session at a time, a session is one of four
 practice row sections in a fresh cell process started without the grader's switch (the process then refuses `truth`
-and `score`), three sessions in all, counted in the account's own state folder. The practice rows are drawn by
+and `score`), five sessions in all (three until `7b57d4eb`; section 6), counted in the account's own state folder. The practice rows are drawn by
 `review/select_set.py` under another tag and another cultivar; none is a graded row. The agent gets
 `given/lib/rowcell_client.py` (the connection) and `~/commission/run_session.py` (runs `run.sh` in a session with the
 grader's deadlines and repeated steps, and prints what the program saw).
