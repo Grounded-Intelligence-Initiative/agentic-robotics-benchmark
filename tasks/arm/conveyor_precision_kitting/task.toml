@@ -1,0 +1,33 @@
+# conveyor_precision_kitting: commission a conveyor-fed precision kitting station (dynamic picking with command
+# latency, turnover of upside-down parts, force-guided keyed insertion with 1.2 mm clearance, seat verification).
+schema_version = "1.4+ale.1"
+
+# The controller (run.sh and its code) the agent leaves; restored into the separate verifier.
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/conveyor_precision_kitting"
+
+[metadata]
+platform = "arm"
+
+# The agent's machine: CPU only. The image holds the practice cell (2 practice shifts, its own account).
+[environment]
+cpus = 4
+memory_mb = 12288
+
+# 6 h for the whole job; no network.
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+# 12 graded shifts of about 4,400 control steps each, physics and the requested images rendered on the CPU, plus the
+# controller's replies (at most 0.1 s each before the cell moves on); about 30 minutes for the reference.
+[verifier]
+timeout_sec = 7200
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 4
+memory_mb = 12288
+gpus = 0
