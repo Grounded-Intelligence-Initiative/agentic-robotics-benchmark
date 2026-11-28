@@ -1,0 +1,38 @@
+{
+ "episodes": 4,
+ "sim_cap_s": 1500.0,
+ "program_time_cap_s": 2400.0,
+ "episode_wall_cap_s": 4800.0,
+ "episode_wall_cap_note": "grader safety net, not a budget (amendment 1): 2400 s program time + 1500 s simulated at up to 1.4 s of the cell's wall each (measured 0.72-0.85 on one CPU) + 600 frames at up to 0.5 s each (measured 0.25-0.27); an episode inside every documented budget does not reach it",
+ "silence_s": 120.0,
+ "cpu_cap_factor": 4.0,
+ "max_ticks_per_step": 1000,
+ "camera_budget_frames": 600,
+ "ft_noise": {
+  "force_N": 0.3,
+  "torque_Nm": 0.02
+ },
+ "settle_s": 1.0,
+ "runner_account": "nobody",
+ "socket_sample_s": 0.5,
+ "route_gate": {
+  "forbidden_calls": [
+   "torch.optim",
+   ".backward(",
+   "jax.grad"
+  ],
+  "forbidden_extensions": [
+   ".pt",
+   ".pth",
+   ".onnx",
+   ".safetensors",
+   ".ckpt",
+   ".h5",
+   ".pb",
+   ".pkl",
+   ".npz"
+  ],
+  "max_submission_mb": 60
+ },
+ "note": "the grader's cell configuration; cell_config.json in the payload is this file minus the grader-only keys (runner_account, socket_sample_s). program_time_cap_s caps the program's own time per episode: the wall clock minus the cell's simulation (step) and rendering (get_camera), which the sim cap and the frame budget bound (cellkit.wire); cpu_cap_factor x program_time_cap_s = the program's CPU seconds"
+}
