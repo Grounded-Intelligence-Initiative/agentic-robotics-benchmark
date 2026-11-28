@@ -1,0 +1,68 @@
+[
+ {
+  "file": "photo_01.jpg",
+  "posture": "A",
+  "view": "palm side",
+  "readout": 1
+ },
+ {
+  "file": "photo_02.jpg",
+  "posture": "A",
+  "view": "back side",
+  "readout": 2
+ },
+ {
+  "file": "photo_03.jpg",
+  "posture": "B",
+  "view": "palm side",
+  "readout": 3
+ },
+ {
+  "file": "photo_04.jpg",
+  "posture": "B",
+  "view": "back side",
+  "readout": 4
+ },
+ {
+  "file": "photo_05.jpg",
+  "posture": "C",
+  "view": "palm side",
+  "readout": 5
+ },
+ {
+  "file": "photo_06.jpg",
+  "posture": "C",
+  "view": "back side",
+  "readout": 6
+ },
+ {
+  "file": "photo_07.jpg",
+  "posture": "D",
+  "view": "palm side",
+  "readout": 7
+ },
+ {
+  "file": "photo_08.jpg",
+  "posture": "D",
+  "view": "back side",
+  "readout": 8
+ },
+ {
+  "file": "photo_09.jpg",
+  "posture": "E",
+  "view": "palm side",
+  "readout": 9
+ },
+ {
+  "file": "photo_10.jpg",
+  "posture": "E",
+  "view": "back side",
+  "readout": 10
+ },
+ {
+  "file": "photo_11.jpg",
+  "posture": "packed",
+  "view": "from above, power off",
+  "readout": null
+ }
+]

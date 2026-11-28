@@ -1,0 +1,49 @@
+# dexterous_hand_robot_description_from_photos: the robot-description stage of the four-digit hand (an atomic task). A lab built one hand from its
+# designers' public files (16 hinges, 13 servo actuators, a crossed four-bar per finger, four tactile modules) and
+# shipped it. The engineer has eleven photographs of the unit (ten posed, each with a bus read-out of the 13 servos, and
+# one of the hand packed in its box), the part files, the servo's manual pages, the designers' design table, assembly
+# guide and host-software excerpts, the lab's bench record, handover note and weigh slip, and the contract; the
+# calibration of the unit is lost and homing is not accepted. The engineer writes the MJCF of THIS unit and its
+# calibration file in the host software's format.
+#
+# Grading (tests/verify.py; knobs in tests/grader_config.json; static, no agent code runs, the model is never
+# stepped): gate model_loads (the contract's gate, incl. the late-write rule) x (pinch 0.55, single 0.15,
+# pose 0.10, travrej 0.10, force_load 0.10). Requests and readings are fixed in tests/gt; the grader's IK runs on the submitted
+# model, its solution goes through the submitted calibration file to the real unit, which executes it.
+# description_score = the weighted mean; reward = description_score (tests/anchor.json).
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/dexterous_hand_robot_description_from_photos"
+
+[metadata]
+platform = "hand"
+
+[environment]
+cpus = 8
+memory_mb = 16384
+
+# setup: stage the payload (photographs, part files, documents, the gate) into the agent home. agent: reading the
+# documents and records, fitting the part files and the cameras to the photographs, the MJCF and calibration writer.
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+# Separate verification: after the agent phase the engine releases the agent's sandbox and scores in a fresh verifier
+# sandbox started from this task's image, into which it restores only the declared artifact /home/user/submission.
+# The verifier has everything the grader reads: tests/ (gt/ with the unit, the fixed requests and readings,
+# grader_config.json, anchor.json, the grading modules, the kit), the image's /opt/venv and the restored submission.
+# setup.sh does not run there and verify reads nothing it stages. 2 CPUs, 8 GB, no GPU.
+# timeout_sec is sized from the grader's own limits: (300 s of CPU for the grader's work after the gate + 120 s
+# for the compile + 30 s for the rest) x 4 for a busy host x 1.3 = 2340 s, rounded up to
+# 2400 s.
+[verifier]
+timeout_sec = 2400
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 2
+memory_mb = 8192
+gpus = 0

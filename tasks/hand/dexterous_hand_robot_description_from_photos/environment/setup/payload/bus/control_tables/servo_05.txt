@@ -1,0 +1,18 @@
+Control table export (Vakrell Bus Studio), servo ID 5 (servo actuator VKR-4LBA)
+
+Address  Name                Value  Unit
+0        Model Number        2604   -
+7        ID                  5      -
+8        Baud Rate           6      4 Mbps
+10       Drive Mode          0      -
+11       Operating Mode      5      -
+20       Homing Offset       0      1 [pulse]
+31       Temperature Limit   70     1 [deg C]
+38       Current Limit       910    1.0 [mA]
+48       Max Position Limit  3072   1 [pulse]
+52       Min Position Limit  1024   1 [pulse]
+64       Torque Enable       1      -
+80       Position D Gain     500    -
+82       Position I Gain     0      -
+84       Position P Gain     800    -
+102      Goal Current        600    1.0 [mA]
