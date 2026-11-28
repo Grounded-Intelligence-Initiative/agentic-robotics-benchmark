@@ -34,7 +34,12 @@ def main():
         out.flush()
 
     def log(*a):
-        print("[rowcell %7.1f]" % (time.time() - t0), *a, file=sys.stderr, flush=True)
+        # Straight to the process's own stderr (the cell's log file), never through sys.stderr: Kit puts an interceptor
+        # of its own there, and a line through it can raise (below). A log line must not be what ends a cell.
+        try:
+            os.write(2, ("[rowcell %7.1f] %s\n" % (time.time() - t0, " ".join(str(x) for x in a))).encode("utf-8", "replace"))
+        except OSError:
+            pass
 
     t0 = time.time()
     try:
@@ -56,6 +61,12 @@ def main():
         from rowcell import farm as F
         from rowcell import wire
         from rowcell.cell import Cell
+        # Kit routes sys.stdout and sys.stderr through interceptors that push every line onto a message queue of its
+        # scripting layer. Once, in a grading sandbox, Kit came up without that queue (and took 125 s to start instead
+        # of 13 s): every print then raised. A simulator in that state is not used: this line goes through the
+        # interceptor on purpose, and when it raises the process says that it did not start and ends, for whoever
+        # started it to start another (the grader does, once; the commissioning service does not count the session).
+        print("[rowcell] the simulator's scripting layer answers", file=sys.stderr, flush=True)
         log("app up")
     except Exception:  # noqa: BLE001
         reply({"fatal": "the simulator did not start: " + traceback.format_exc()[-1500:]})

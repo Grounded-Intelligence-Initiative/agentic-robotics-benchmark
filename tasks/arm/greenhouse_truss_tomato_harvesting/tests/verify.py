@@ -22,7 +22,8 @@ the GPU renders the two cameras). The process runs as the image's unprivileged a
 controller, another account, can read neither the cell's code nor its memory, and gets observations only through
 this grader. Before the first row a canary cell is started on a row outside the set and both cameras are checked
 (shape, not flat, sane brightness): a simulator or renderer that does not work is the grading environment's fault
-(robotics_grader.stage.fail: no reward written), never a 0 for the submission.
+(robotics_grader.stage.fail: no reward written), never a 0 for the submission. A canary cell whose process does not
+come up or fails is started once more first (`canary`).
 
 Rows: the fixed hidden set tests/hidden/rows.json, the same for every submission: per row section a 64-bit seed, its
 cultivar, the camera offsets of the robot that works it and the seeds of its light and of its mechanics
@@ -466,15 +467,36 @@ class CellHost(object):
         shutil.rmtree(self.work, ignore_errors=True)
 
 
-def canary(host, config):
-    """Start a cell on a row outside the set and check both cameras. Returns the cell's start and reset seconds."""
+class CanaryCellFailed(Exception):
+    """The canary's cell did not start, or its process failed during the check: worth one fresh start."""
+
+
+def canary(host, config, log=lambda *a: None):
+    """A cell on a row outside the set, both cameras and a small move checked. Returns the cell's start and reset
+    seconds and how many fresh starts it took beyond the first (0 or 1).
+
+    A cell whose process does not come up, or fails during the check, is started once more in a fresh process: a
+    simulator's start can fail by itself (seen once in a grading sandbox: Kit came up without its scripting layer's
+    message queue). What fails twice, and a cell that runs but does not render or move, is a task error."""
+    try:
+        return canary_once(host, config) + (0,)
+    except CanaryCellFailed as exc:
+        log("the canary's cell failed ({}); a fresh cell is started, once".format(str(exc)[:700]))
+    try:
+        return canary_once(host, config) + (1,)
+    except CanaryCellFailed as exc:
+        fail(str(exc))
+
+
+def canary_once(host, config):
     import cv2
     import numpy as np
     t0 = time.monotonic()
     try:
         cell = host.start(float(config.get("cell_start_timeout_s", 900)))
     except (cellproc.CellError, OSError) as exc:
-        fail("the cell did not start in the grading environment: {} | {}".format(str(exc)[:600], host.log_tail()[-900:]))
+        raise CanaryCellFailed("the cell did not start in the grading environment: {} | {}".format(
+            str(exc)[:600], host.log_tail()[-900:]))
     t1 = time.monotonic()
     try:
         row = F.draw_row(CANARY["seed"], CANARY["cultivar"])
@@ -495,7 +517,7 @@ def canary(host, config):
         if "obs" not in step or abs(step["obs"]["tcp"][2] - obs["tcp"][2] + 0.02) > 0.004:
             fail("the cell's robot does not move as commanded in the grading environment: {}".format(str(step)[:300]))
     except cellproc.CellError as exc:
-        fail("the cell failed its canary: {} | {}".format(str(exc)[:600], host.log_tail()[-900:]))
+        raise CanaryCellFailed("the cell failed its canary: {} | {}".format(str(exc)[:600], host.log_tail()[-900:]))
     finally:
         cell.close()
     return round(t1 - t0, 1), round(time.monotonic() - t1, 1)
@@ -551,7 +573,7 @@ def main():
                          rows_stops_latched=float(sum(1 for r in records if r["ended"] == "stops_latched")),
                          rows_given_up=float(sum(1 for r in records if r["ended"] == "given_up")),
                          rows_cell_failed=float(sum(1 for r in records if r["ended"] == "cell_failed")),
-                         cell_retries=float(sum(1 for r in records if r.get("cell_retried"))),
+                         cell_retries=float(sum(1 for r in records if r.get("cell_retried")) + run.get("canary_retries", 0)),
                          protective_stops=float(sum(r.get("protective_stops", 0) for r in records)),
                          trusses_ready=float(sum(r.get("ready", 0) for r in records)),
                          trusses_delivered=float(sum(r.get("delivered", 0) for r in records)),
@@ -670,8 +692,9 @@ def main():
         return stopped
 
     try:
-        start_s, reset_s = canary(host, config)
-        log("canary passed: the cell started in {} s, built and rendered a row in {} s".format(start_s, reset_s))
+        start_s, reset_s, run["canary_retries"] = canary(host, config, log)
+        log("canary passed{}: the cell started in {} s, built and rendered a row in {} s".format(
+            " on a second, fresh cell" if run["canary_retries"] else "", start_s, reset_s))
         secured["cell_canary"] = 1.0
 
         def watch(_index):

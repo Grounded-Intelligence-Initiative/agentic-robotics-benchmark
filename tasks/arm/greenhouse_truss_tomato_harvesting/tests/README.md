@@ -407,6 +407,37 @@ ticks (no frame asked through the wire). The repository's `pytest` passed on the
 `tests/test_longtail_pause_and_close.py` left out (its two `PauseTest` cases fail on the author's host at the
 cleanup of a temporary directory on a network file system; the file tests another task's grader).
 
+**2026-11-28: a cell that came up broken, once, and the canary's fresh start.** In a frontier episode of a trial
+variant with four commissioning sessions (run `416d048a`), the verify stage ended as a task error 127 s in, with no
+score: "the cell did not start in the grading environment". The canary's cell had taken 124.9 s to bring Isaac Sim
+up (12 to 15 s in every other start) and then failed at its first log line: Kit replaces `sys.stderr` by an
+interceptor that pushes every line onto a message queue of its scripting layer, the interceptor had no queue
+(`AttributeError` in `omni/kit/app/_impl/__init__.py`, `self._mq.push`; Kit takes the queue once, when its scripting
+layer starts), and Kit's own log said "carb.variant.plugin: Requested type py::object not known" at that moment. So
+Kit's scripting layer had come up incomplete. Why is not established: the sandbox and Kit's log went with the
+episode, and it was one of about sixty cell starts in grading sandboxes. The same image and tree graded the same
+submission without incident afterwards (below). The grader already ran a row once more in a fresh cell when a cell
+failed; the canary did not, and a cell that fails there ended the grading. Changed, in the cell and the grader and
+in nothing an agent sees or is judged by:
+
+- `rowcell/server.py`: the cell's own log lines go straight to the process's standard error and cannot raise; one
+  line is sent through Kit's interceptor on purpose when the simulator is up, so that a Kit in that state is
+  reported as a cell that did not start, and is not used.
+- `verify.py`: a canary cell that does not start, or whose process fails during the check, is started once more in
+  a fresh process and counted in `cell_retries`; twice is a task error, as is a cell that runs but does not render
+  or move (no second start for that). `review/test_canary.py` checks this with stand-in cells.
+
+*The submission of `416d048a`, graded afterwards.* The engine keeps a submission only while it verifies it, so the
+agent's files were rebuilt from the episode's trajectory: its own file operations on `~/submission` replayed in
+order (eighteen calls). The result has the sizes of the agent's last listing, to the byte (`controller.py` 20,796,
+`percep.py` 9,952), and holds every line the agent printed from it. `tests/verify.py` of the trial tree then ran on
+it as root in a fresh container of that tree's image, without the engine: the canary passed (15.3 s to start),
+`mean_row_yield` 0.475 (13 of 27 ready trusses: 0 of 4, 1 of 4, 2 of 4, 3 of 6, 4 of 4, 3 of 5; one truss damaged,
+nothing unready cut, one row section ended at its third protective stop), probe lock 27 of 27, which is reward
+0.53. It is a grading of that agent's program, not an engine episode's score: the kit's clearing of the agent's
+account did not run outside the engine, and the renderer does not repeat a frame, so a second grading of the same
+program can differ by a truss or two.
+
 ## 7. Final report (2026-11-27)
 
 **What this is.** Version 1 of the task, built in one day on the author's validate host. The final version has
