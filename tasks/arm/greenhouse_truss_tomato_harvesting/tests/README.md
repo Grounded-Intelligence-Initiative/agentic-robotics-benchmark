@@ -118,7 +118,8 @@ leaf or a truss aside (which is what makes a target move), the wrench, the prote
 **The commissioning service (`environment/commission_service/`).** `commissiond.py` runs as `rowcell`, started by
 `environment/setup/setup.sh`, on `/run/rowcell/commission.sock`: one session at a time, a session is one of four
 practice row sections in a fresh cell process started without the grader's switch (the process then refuses `truth`
-and `score`), three sessions in all, counted in the account's own state folder. The practice rows are drawn by
+and `score`), three sessions in all (five between `db948835` and its revert `eb96f7ed`; section 6), counted in the
+account's own state folder. The practice rows are drawn by
 `review/select_set.py` under another tag and another cultivar; none is a graded row. The agent gets
 `given/lib/rowcell_client.py` (the connection) and `~/commission/run_session.py` (runs `run.sh` in a session with the
 grader's deadlines and repeated steps, and prints what the program saw).
@@ -186,9 +187,9 @@ The anchor: `tests/anchor.json` (the status log gives the runs).
   both is in the verdict.
 - **No non-privileged baseline yet.** What was checked instead is the camera-only check (section 6;
   `review/camera_check/`): seven of nine peduncles located to under a millimetre from colour frames alone, two not
-  found behind fruit. A perception program that harvests whole rows is open work. The frontier episode's program
-  (section 6) delivered 2 of 27 trusses from the cameras alone: the job can be started from what the agent is
-  given, and nothing yet shows it can be finished.
+  found behind fruit. A perception program that harvests whole rows is open work. The frontier agents' programs
+  (section 6) delivered 2, 11 and 13 of 27 trusses from the cameras alone, one of them every truss of one row
+  section: the job can be done from what the agent is given, and nothing yet shows a whole set done.
 - **A probe's copy keeps the true observation's pictures**, as in the battery task.
 - **Reproducibility.** PhysX on the CPU repeats a run on one machine; across CPUs it is not expected to be
   bit-identical, and the renderer is not repeatable even on one GPU. The yield reads where bodies lie and what
@@ -438,46 +439,84 @@ nothing unready cut, one row section ended at its third protective stop), probe 
 account did not run outside the engine, and the renderer does not repeat a frame, so a second grading of the same
 program can differ by a truss or two.
 
-## 7. Final report (2026-11-27)
+**2026-11-28: four sessions tried, three kept.** The contributor asked for one episode on four commissioning
+sessions, on a local branch that was never published. `ale validate` passed on it (`validate-4d5b4a06` on the tree
+of `be10046e`: untouched 0.0, oracle 1.0, the same steps). The episode (`416d048a`, the same configuration) is the
+one of the entry above: its agent stopped after 35 minutes with its four sessions spent (by its own count its
+program had cut and laid down five trusses on each of two practice rows), the verify stage ended on the broken cell,
+and its rebuilt submission was graded afterwards: `mean_row_yield` 0.475, reward 0.53. With that the three session
+counts stood at three: 0.09 (`4beb1baf`, an episode's score), five: 0.44 (`cdc52771`, an episode's score), four:
+0.53 (a grading of a rebuilt submission). The order is not that of the counts. One episode's score swings widely
+here: the agents lost or kept sessions on single mistakes, and a program that reads the cameras does not repeat.
+When the five-session program was run twice on one review row for example videos (natively, with the video's extra
+renders), it delivered 1 of 6 trusses the first time and 4 of 6 the second.
 
-**What this is.** Version 1 of the task, built in one day on the author's validate host. The final version has
-five commissioning sessions: the task files of `910a7162`, plus this file's later entries. The contributor chose
-it over the three-session version (the tree of `7b57d4eb`) after one frontier episode on each; the two differ in
-the session count alone (`db948835`).
+The contributor chose three sessions, the hardest of the three as measured, and the fix. On the pull request's
+branch: `eb96f7ed` reverts `db948835` (with it the instruction, `environment/`, `task.toml`, both sets, the cell,
+the grader and the reference were byte for byte those of `772f2003`, the tree of the 0.09 episode); `1e1ea475` is
+the fix of the entry above (the cell's start-up, in `rowcell/server.py` and its copy in the commissioning service,
+and the canary's fresh start in `verify.py`); `f8d381e9` merges upstream main (`52d7ba05`), without a conflict. On
+that tree: every static gate; the repository's `pytest`; natively the reference through `tests/verify.py` on two
+hidden rows (the canary passed, 4 of 4 and 6 of 6, the cell's log shows both kinds of line) and the commissioning
+count 3, 2, 1, 0 with a fourth session refused; and `ale validate`, run `validate-33625857`, the pinned engine
+`bfb7505`:
+
+```
+ok    grounded-intelligence-initiative/greenhouse_truss_tomato_harvesting: untouched={'reward': 0.0}, oracle={'reward': 1.0}
+```
+
+Untouched 0.0; oracle `mean_row_yield` 1.00000 in the same steps, 27 of 27, probe lock 39 of 40, no cell started
+twice, verify 419 s. `tests/anchor.json`: the value stays 1.0; its `source` names this run and the five before it.
+No frontier episode was run on this tree: what an agent is given and how it is judged are those of `772f2003`.
+
+## 7. Final report (2026-11-28)
+
+**What this is.** Version 1 of the task, built on the author's validate host on 2026-11-27 and 28. The final
+version has **three commissioning sessions** and the cell-start fix: the tree of `f8d381e9`, plus the anchor's
+`source` and this file's later entries. Five sessions (`db948835`, the tree of `ac0d8c2a`) and four (a local trial)
+were tried in between, one frontier episode each; the versions differ in the session count alone, and the final one
+adds the fix of 2026-11-28, which changes nothing an agent sees or is judged by.
 
 **Verified.**
 
 - Static: `ale lint`, `scripts/lint_domain.py`, the task card (strict), task assets, GPU types, the kit's byte
   comparison, `review/check_copies.py`, `check_numbers.py` (33 statements), `select_set.py`, `test_rules.py` (8
-  groups), `make_documents.py --check`, and the repository's `pytest` (one file of another task left out, above).
+  groups), `test_canary.py`, `make_documents.py --check`, and the repository's `pytest` (one file of another task
+  left out, section 6).
 - Natively (`tests/verify.py` as an ordinary account): no submission 0, the example program 0, the reference
   `mean_row_yield` 1.00000 on the hidden set (27 of 27), a blind replay of the reference refused by the probe lock;
-  the commissioning path with its count (5, 4, 3, 2, 1, 0, a sixth refused) and its warm-up.
-- `ale validate`, four runs, each `ok` at the first attempt (untouched 0.0, oracle 1.0, the same steps):
-  `validate-bc3c4ffd` on `c32222a7`, `validate-75ad8c0a` on `9734d8af`, `validate-23b8f549` on `772f2003` (the image
-  rebuilt after the host's restart), `validate-63a08ee8` on `db948835` (the final task files).
-- Frontier model, Claude Opus 5.5, one episode a version: **reward 0.44** on the final version (`cdc52771`, 11 of 27
-  trusses), 0.09 on the three-session version (`4beb1baf`, 2 of 27). Two further episodes ended without a score
-  when the host's memory was taken by a job outside the task.
+  the commissioning path with its count (3, 2, 1, 0, a fourth refused) and its warm-up.
+- `ale validate`, six runs, each `ok` at the first attempt (untouched 0.0, oracle 1.0, the same steps):
+  `validate-bc3c4ffd` on `c32222a7`, `validate-75ad8c0a` on `9734d8af`, `validate-23b8f549` on `772f2003`,
+  `validate-63a08ee8` on `db948835` (five sessions), `validate-4d5b4a06` on `be10046e` (four), and
+  `validate-33625857` on `f8d381e9`, the final tree.
+- Frontier model, Claude Opus 5.5, one episode a session count: **reward 0.09** on three sessions (`4beb1baf` on
+  `772f2003`, 2 of 27 trusses), the measurement of record for this version: the instruction, the documents, the
+  practice rows, the session count and the judging of `772f2003` are the final tree's, byte for byte. On five
+  sessions 0.44 (`cdc52771`, 11 of 27). On four sessions no engine score: the verify stage ended on the fault
+  that the fix removes, and the episode's rebuilt submission graded 0.53 (13 of 27). Two further episodes ended
+  without a score when the host's memory was taken by a job outside the task.
 
 **Not done, not exercised.**
 
-- No program without the privileged view has harvested a whole row section; the camera-only check (section 6) and
-  the two agents' programs (2 and 11 of 27 trusses) are what there is.
+- No frontier episode on the final tree itself, and none in which the fix's fresh start was needed: the retry is
+  checked with stand-in cells (`review/test_canary.py`), the cell's changed start-up natively and in a validate.
+- No program without the privileged view has harvested a whole set; the camera-only check (section 6) and the
+  three agents' programs (2, 11 and 13 of 27 trusses) are what there is.
 - One host, one GPU model (RTX 3090 on driver 535 with the renderer's driver check off; rootless Docker without a
   CPU quota; 30.9 GiB of memory against the declared 32 GB). No cloud GPU model, no supported driver, no host that
   limits the CPUs by a quota, no second CPU.
 - `full_at` 0.9 is a margin for two lost trusses, not a measured spread: the reference repeats step for step on the
   one machine it ran on.
-- One episode a version of one model. 0.44 is one episode, not far below the 0.5 that the contribution guide names;
-  the spread from episode to episode is unknown, and both agents stopped with more than three quarters of their two
-  hours unused.
+- One episode a session count of one model, and single episodes swing widely (section 6: 0.09, 0.53 and 0.44 on
+  three, four and five sessions; one program 1 of 6 and 4 of 6 on one row). The spread of the final version is not
+  measured.
+- Why Kit came up without its scripting queue that once is not established.
 - Ten of the fourteen review rows were not re-run after the reference's lay-down was changed.
 
 **Open for the maintainers.**
 
-- The session count. Two more sessions took one agent's yield from 2 to 11 of 27 trusses (one episode each); the
-  three-session tree is kept (`7b57d4eb`), and `git revert db948835` restores it.
+- The session count: three is the contributor's choice; `db948835` shows the one-number change to five.
 - The thresholds' values (1.5 m/s, 25 N, the crush ratio 1.4, the mouth's size) are the author's.
 - Whether practice on another cultivar under other robot units is a fair commissioning picture (section 5).
 - `gpu_types` beyond the one model the task ran on.
