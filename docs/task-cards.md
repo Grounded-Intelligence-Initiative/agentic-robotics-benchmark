@@ -25,7 +25,7 @@ stages = ["behavior"]
 | `title` | Required. A readable name in sentence case, at most 48 characters, no closing period, unique across the cards. It leads with what the agent does and names the robot: "Assemble a desktop arm with a Panda", "Fly a gate course by camera alone". |
 | `summary` | One sentence, at most 200 characters, a capital letter first and a period last. Displays fall back to the brief's first paragraph without it. |
 | `platforms` | Required. A list of exactly one entry: the key in [`tasks/platforms.json`](../tasks/platforms.json) of the platform the task is filed under, which is its folder's (`[metadata].platform`). A task is filed under one platform, also when it involves another kind of robot. |
-| `stages` | Required. A list of exactly one entry, the stage the task is filed under: `requirements`, `hardware-design`, `assembly`, `robot-description`, `control`, `environment` or `behavior`, the stages of the workflow in order, or `end-to-end`, the category of a task that runs the whole chain. "Which stage" below says which one. |
+| `stages` | Required. A list of exactly one entry, the stage the task is filed under: `requirements`, `hardware-design`, `assembly`, `control`, `environment` or `behavior`, the six stages of the workflow in order, or `end-to-end`, the category of a task that runs the whole chain. "Which stage" below says which one. |
 
 ## Conventions
 
@@ -37,10 +37,14 @@ stages = ["behavior"]
   `assembly` means building the robot's own body; assembling furniture or parts with a robot is
   `behavior`.
 - **Control or behavior.** A task is `control` when its core is a feedback control law for the
-  robot's own dynamics (docking a spacecraft, holding a quadrotor on a gate course). It is
-  `behavior` when its core is deciding what to do and how to move to get a job done, even when
-  what it emits are low-level commands (a supervisor that takes over a car, retargeting human
-  hand motion to robot hands).
+  robot's own dynamics (docking a spacecraft, holding a quadrotor on a gate course), or the
+  robot's own model or calibration (a URDF or MJCF written from photos, sensor calibration from
+  logs). It is `behavior` when its core is deciding what to do and how to move to get a job
+  done, even when what it emits are low-level commands (a supervisor that takes over a car,
+  retargeting human hand motion to robot hands).
+- **No `robot-description` stage.** There was one, between `assembly` and `control`, until
+  2026-11-27. Its tasks are `control` now, and the check refuses a card that still names the
+  key.
 - **Which platform.** The most specific one wins. A legged robot is `quadruped` or `humanoid`.
   `ground` ("Ground vehicle") is any wheeled or tracked ground vehicle or robot: a car at any
   scale on a road or a track (autonomous driving, racecars), an AMR, AGV or UGV, a rover. A task

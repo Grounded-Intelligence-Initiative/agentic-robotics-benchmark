@@ -31,10 +31,13 @@ ROOT = Path(__file__).resolve().parent.parent
 CARDS = Path("tasks") / "cards.toml"
 PLATFORMS = Path("tasks") / "platforms.json"
 
-#: The stages of the workflow, in order, and "end-to-end", the category of a task that runs the whole chain. A card
-#: files its task under exactly one of them (owner, 2026-11-17).
-STAGES = ("requirements", "hardware-design", "assembly", "robot-description", "control", "environment", "behavior")
+#: The six stages of the workflow, in order, and "end-to-end", the category of a task that runs the whole chain. A
+#: card files its task under exactly one of them (owner, 2026-11-17).
+STAGES = ("requirements", "hardware-design", "assembly", "control", "environment", "behavior")
 END_TO_END = "end-to-end"
+#: Stage keys that left the vocabulary, each with the stage its tasks are filed under now. "robot-description" was a
+#: stage between assembly and control until 2026-11-27 (owner): a robot's own model or calibration is a control task.
+RETIRED_STAGES = {"robot-description": "control"}
 FIELDS = {"title", "summary", "platforms", "stages"}
 REQUIRED = ("title", "platforms", "stages")
 TITLE_MAX = 48
@@ -122,6 +125,9 @@ def card_problems(slug: str, card: object, tasks: dict[str, str], platforms: tup
         elif len(stages) != 1:
             problems.append(f"{where}: stages holds exactly one stage, not {len(stages)} (a task is filed under the "
                             f"last stage of the workflow that its score depends on)")
+        elif stages[0] in RETIRED_STAGES:
+            problems.append(f"{where}: stage {stages[0]!r} is retired: file the task under "
+                            f"{RETIRED_STAGES[stages[0]]!r} (docs/task-cards.md)")
         elif stages[0] not in STAGES + (END_TO_END,):
             problems.append(f"{where}: stage {stages[0]!r} is not one of {', '.join(STAGES)} or {END_TO_END!r}")
     return problems

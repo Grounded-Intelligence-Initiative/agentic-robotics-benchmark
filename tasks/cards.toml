@@ -165,7 +165,7 @@ stages = ["requirements"]
 title = "Write the MuJoCo model of a desktop arm"
 summary = "Write the MJCF of a customised six-servo desktop arm from one photo session and its servo log, so that its kinematics match the real arm."
 platforms = ["arm"]
-stages = ["robot-description"]
+stages = ["control"]
 
 [shoe_lacing_and_boxing]
 title = "Lace and box sneakers with two arms"
@@ -441,4 +441,4 @@ stages = ["behavior"]
 title = "Calibrate a warehouse robot's sensors from logs"
 summary = "Write a program that recovers a warehouse robot's camera and IMU mounts, sensor clocks and IMU biases from its driving logs, and flags faulty stretches, on robots it has never seen."
 platforms = ["ground"]
-stages = ["robot-description"]
+stages = ["control"]

@@ -112,6 +112,37 @@ def test_one_stage_and_end_to_end_pass(tmp_path):
     assert tc.check(root, strict=True) == ([], [])
 
 
+def test_the_stage_vocabulary_is_six_stages_and_end_to_end():
+    assert tc.STAGES == ("requirements", "hardware-design", "assembly", "control", "environment", "behavior")
+    assert tc.END_TO_END == "end-to-end"
+    schema = json.loads((ROOT / "schemas" / "task-cards.schema.json").read_text(encoding="utf-8"))
+    assert schema["additionalProperties"]["properties"]["stages"]["items"]["enum"] == [*tc.STAGES, tc.END_TO_END]
+    # A retired key is in neither list, and the stage that took its tasks is one of the six.
+    assert tc.RETIRED_STAGES == {"robot-description": "control"}
+    assert not set(tc.RETIRED_STAGES) & {*tc.STAGES, tc.END_TO_END}
+    assert set(tc.RETIRED_STAGES.values()) <= set(tc.STAGES)
+
+
+def test_a_card_filed_robot_description_is_refused_and_told_control(tmp_path, capsys):
+    """`robot-description` left the stage vocabulary (owner, 2026-11-27): a robot's own model or calibration is
+    `control`, and a card that still names the old key is an error that says where to file it."""
+    card = '[box]\ntitle = "Write the model of a desktop arm"\nplatforms = ["arm"]\nstages = ["{stage}"]\n'
+    schema = json.loads((ROOT / "schemas" / "task-cards.schema.json").read_text(encoding="utf-8"))
+    root = _tree(tmp_path, {"box": "arm"}, card.format(stage="robot-description"))
+    message = "tasks/cards.toml [box]: stage 'robot-description' is retired: file the task under 'control'"
+    errors, warnings = tc.check(root, strict=True)
+    assert len(errors) == 1 and errors[0].startswith(message) and warnings == [], errors
+    assert tc.main(["--root", str(root), "check"]) == 1
+    assert message in capsys.readouterr().out
+    with pytest.raises(jsonschema.ValidationError, match="'robot-description' is not one of"):
+        jsonschema.validate(tomllib.loads(card.format(stage="robot-description")), schema)
+    # The same card filed under `control` passes the check and the schema.
+    (root / "tasks" / "cards.toml").write_text(card.format(stage="control"), encoding="utf-8")
+    assert tc.check(root, strict=True) == ([], [])
+    assert tc.main(["--root", str(root), "check", "--strict"]) == 0
+    jsonschema.validate(tomllib.loads(card.format(stage="control")), schema)
+
+
 def test_todo_and_context(tmp_path, capsys):
     root = _tree(tmp_path, {"box": "arm", "robotic_arm_cad_design_from_photos": "arm",
                             "uav_cad_design_from_photos": "uav"},

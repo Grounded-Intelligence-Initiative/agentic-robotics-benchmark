@@ -18,7 +18,7 @@
       },
       "stages": {
         "type": "array", "minItems": 1, "maxItems": 1,
-        "items": {"enum": ["requirements", "hardware-design", "assembly", "robot-description", "control", "environment", "behavior", "end-to-end"]}
+        "items": {"enum": ["requirements", "hardware-design", "assembly", "control", "environment", "behavior", "end-to-end"]}
       }
     }
   }
