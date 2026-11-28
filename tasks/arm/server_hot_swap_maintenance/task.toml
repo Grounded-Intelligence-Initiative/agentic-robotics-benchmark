@@ -1,0 +1,45 @@
+# server_hot_swap_maintenance: two fixed Franka Pandas (MuJoCo Menagerie, parallel grippers, wrist force/torque sensors,
+# operational-space control at 10 Hz) replace a top-loading storage server's failed hot-swap drive caddy (or two) and
+# its failed fan module. The failed parts show only by small amber status LEDs under visors (seen from in front, not
+# from the overhead camera); the server's pose and every camera's mount are hidden per unit and must be identified
+# from calibration plates and the arms' kinematics; RGB-D with an active-stereo depth model. Caddies and fans are free
+# bodies on contact rails; release buttons, sprung levers with detents and latches, connectors with insertion and
+# retention forces. Irreversible failures end an episode at 0: a healthy drive unseated, a part dropped, a lever made
+# to carry its caddy alone (it breaks), a fan bay empty past the hidden overheat window, a robot pressing on the
+# server. The agent leaves a closed_loop controller (run.sh) that the grader drives over the kit's stdio wire, with
+# probe pairs, on a fixed hidden set of 10 episodes (10 hidden units); credit all or nothing per episode. A
+# commissioning service gives 5 sessions on 4 development units (no credit, no ground truth). tests/README.md.
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/server_hot_swap_maintenance"
+
+[metadata]
+platform = "arm"
+tags = ["bimanual", "hot-swap", "datacenter", "closed-loop", "camera-calibration", "rgbd", "contact-mechanics",
+        "irreversible-failure", "panda", "mujoco", "commissioning", "oracle-token"]
+
+[environment]
+cpus = 8
+memory_mb = 16384
+
+# 3 h; five commissioning sessions on development units (a session runs at simulation speed, a few minutes).
+[agent]
+timeout_sec = 10800
+network_mode = "no-network"
+
+# 10 episodes, each at most 6000 control steps. The controller's own time is budgeted at 9000 s (grader_config.json:
+# its replies plus 0.05 s per frame asked for); the simulation and drawing come on top: 60000 steps at 30 ms
+# (measured, 8 CPUs, lightly loaded) are 1800 s, at 90 ms (a loaded host) 5400 s; frames are drawn by OSMesa on the
+# CPU, 0.03-0.08 s each: a controller that spends its whole budget on frames asks for 180000, at most 14400 s beyond
+# their price. Self-tests (numerics, render) 120 s. (5400 + 9000 + 14400 + 120 + 360) x 1.35 = 39650 s.
+[verifier]
+timeout_sec = 39700
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 8
+memory_mb = 16384
+gpus = 0

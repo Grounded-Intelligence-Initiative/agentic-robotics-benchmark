@@ -1,0 +1,8 @@
+{
+  "metric": "mean_episode_credit",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1.0,
+  "source": "Own measurement, 2026-11-27, on the fixed hidden set (tests/hidden/episodes.json: 10 episodes, one per hidden unit) with this build's grader loop (srv_grade.run_episodes over the real wire, review/run_local.py, as an ordinary account): the privileged reference (solution/solve.sh, token truth) completed every episode, credit 1.0 in each (2092-3055 steps, 'done'), probe pairs differing in 240 of 241 counted, its own time about 2 s an episode. The simulation part of the numerics fingerprint is the task image's (tests/numerics.json, written in the image).",
+  "note": "Measured, not drawn. The set holds only work orders the reference completed when it was selected (review/select_set.py, tests/hidden/episode_selection.json: 24 candidates run, 16 completed, the first 10 kept). The reference plans from the truth alone, so its run does not depend on which copy of a probe pair comes first; its candidate runs and the set's run gave the same steps."
+}
