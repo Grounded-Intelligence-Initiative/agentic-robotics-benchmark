@@ -360,6 +360,12 @@
     "spec_hash": "sha256:fedb403f8cc264040ce0e936390e2ce988f81611126d199cb1f97ddd3ec1b1b7"
   },
   {
+    "content_digest": "sha256:6faf9f7ca2f1cf082b7becc8d15946717157edf24ca717afabb59ed43b88ee4e",
+    "since": "2026-11-28T06:07:34Z",
+    "slug": "dexterous_hand_robot_description_from_photos",
+    "spec_hash": "sha256:176aff8c9b6bb2b7048d9483a4ebf54cbb338353101e6ded6ef12a4ddd9b9b63"
+  },
+  {
     "content_digest": "sha256:e244e7627ca27ad01a7f12458421a2957103a347e4aa1a60f3e74b2446d8462b",
     "since": "2026-11-24T14:22:28Z",
     "slug": "driving_safety_supervisor",
