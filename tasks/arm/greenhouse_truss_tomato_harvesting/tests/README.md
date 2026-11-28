@@ -186,8 +186,9 @@ The anchor: `tests/anchor.json` (the status log gives the runs).
   both is in the verdict.
 - **No non-privileged baseline yet.** What was checked instead is the camera-only check (section 6;
   `review/camera_check/`): seven of nine peduncles located to under a millimetre from colour frames alone, two not
-  found behind fruit. A perception program that harvests whole rows is open work, and whether the job fits the two
-  hours is what the frontier episode measures.
+  found behind fruit. A perception program that harvests whole rows is open work. The frontier episode's program
+  (section 6) delivered 2 of 27 trusses from the cameras alone: the job can be started from what the agent is
+  given, and nothing yet shows it can be finished.
 - **A probe's copy keeps the true observation's pictures**, as in the battery task.
 - **Reproducibility.** PhysX on the CPU repeats a run on one machine; across CPUs it is not expected to be
   bit-identical, and the renderer is not repeatable even on one GPU. The yield reads where bodies lie and what
@@ -303,3 +304,55 @@ Untouched 0.0 (no submission). Oracle: verify 426 s (the canary 127 s, the six r
 `mean_row_yield` 1.00000 in the steps of every earlier run (218, 241, 270, 356, 251, 300), 27 of 27, probe lock 39 of
 40, no protective stop, the margins unchanged. `tests/anchor.json`: the value stays 1.0; its `source` now names this
 run (and the first one).
+
+**2026-11-27, 17:05 to 17:19: a second frontier episode that did not finish (no score), and what ended both.** Run
+`c11a3b0b` on the tree of `772f2003`, the same configuration: `env_error`, "guest session closed", 816 s into the
+agent phase; 42 model calls, none cut. This time the host's memory was sampled every 30 s. The warm-up did what it
+was made for: the sandbox peaked at 13.1 GiB during the service's warm-up and then stayed at 4.9 to 5.1 GiB while
+the agent worked in a session (13.3 GiB and held, in the first episode). What ended the episode was outside the
+sandbox: between 17:15:47 and 17:17:24 the host's use went from 13.4 to 22.8 GB with the sandbox unchanged at
+5.0 GiB, a job of another project on the same machine standing at 9 to 10 GB resident and growing; the memory
+pressure's 10-second average went from 0 to 8.9 % and on to 28.5 %, and the sandbox was ended at 17:19:09. So the
+first episode's entry above names a real cost (a first session's cell at 14.4 GB, since removed) but probably not
+the whole cause: its last two minutes saw no new activity in the sandbox either, and no sample was taken then.
+Neither episode says anything about the task's difficulty. In its 13 minutes the second agent had identified the
+wrist camera's mounting, graded colour, located peduncles from three views, read a peduncle's diameter with the
+jaws, found its cutting force by raising the closing force in steps, laid a truss down by the wrench, and written a
+whole controller, all in one interactive session.
+
+**2026-11-27, 17:35: the validate host restarted** (a kernel update). Its Docker images, kept under `/tmp`, were
+lost with it; the run records were restored from a copy. The task's image was built again from the tree of
+`772f2003` with `ale prepare`; `ale validate` was not run a third time (`772f2003` differs from the validated
+`9734d8af` in the anchor's `source` text and this file only).
+
+**2026-11-27, 18:09 to 18:54: the frontier episode that scored (three commissioning sessions).** Run `4beb1baf` on
+the tree of `772f2003`: Claude Opus 5.5 through the claude-code harness (CLI 2.1.309, effort high, WebSearch and
+WebFetch off, subscription auth), the task's two-hour budget, one episode. **reward 0.09** (unrounded 0.0926;
+`mean_row_yield` 0.0833).
+
+- *The verdict.* 2 of the 27 ready trusses delivered: 2 of 4 on row 0, none on rows 1 to 5. Every row section ended
+  by the program's own `done` after 260 to 361 s simulated (430 allowed) and 301 to 453 steps; no protective stop, no
+  truss damaged, nothing cut that was not ready, no plant lost, no leaf cut; 156 frames in all; the program's own
+  time 26 s; probe lock 38 of 39 (22 idle pairs not counted); the canary passed; verify 534 s. The yield was lost by
+  not cutting, not by damage: 25 ready trusses were still on their plants at the end.
+- *The agent.* It ended by itself 2175 s (36 min) into the two hours, with all three sessions spent. Session 1
+  (interactive) and session 2 (a whole run of its program) both ended at the third protective stop, from one cause:
+  a parking pose that brought the wrist over the robot's base. Session 3 (a whole run on a practice row) cut two
+  trusses and held them (it read their weight, 2 and 3.5 N, and the same toughness from both cuts), missed a third
+  five times (nothing in the jaws) and pressed a fourth onto a crate's floor into a protective stop. What it changed
+  afterwards (the peduncle's estimate, the lay-down, the cart's centring) it could check only against a mock of its
+  own and the frames it had saved: its final program never ran on the cell, and its closing message says so. Its
+  method was sound throughout: the mounting from the plate (0.2 px), the light from the card, fruits and stems from
+  wrist RGB-D frames, the diameter from a gentle closing, the cutting force found by raising the closing force in
+  steps of 8 %, a guarded lay-down.
+- *The transport.* 119 model calls, all forwarded, none stopped at `max_tokens`, the longest 174 s, no cut stream.
+- *The host.* Memory sampled every 30 s (87 samples): the sandbox at most 12.2 GiB (the service's warm-up), 4.4 to
+  5.5 GiB afterwards; never less than 14 GB available on the host; memory pressure at most 0.8 %; no job outside the
+  task.
+- *What it does and does not show.* One episode of one model. The agent used 36 of its 120 minutes and lost two of
+  its three sessions to one motion mistake; another episode may go differently.
+
+**2026-11-27, 18:55 to 19:03: `ale validate` on the rebuilt image.** Run `validate-23b8f549` on the tree of
+`772f2003`, to confirm the image built again after the host's restart: `ok`, untouched 0.0, oracle 1.0
+(`mean_row_yield` 1.00000 in the same steps, 27 of 27, probe lock 39 of 40, the margins unchanged, verify 416 s).
+`tests/anchor.json` is unchanged.
