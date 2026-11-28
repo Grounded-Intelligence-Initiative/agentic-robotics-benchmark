@@ -436,3 +436,9 @@ title = "Calibrate a warehouse robot's sensors from logs"
 summary = "Write a program that recovers a warehouse robot's camera and IMU mounts, sensor clocks and IMU biases from its driving logs, and flags faulty stretches, on robots it has never seen."
 platforms = ["ground"]
 stages = ["robot-description"]
+
+[toy_car_assembly_from_manual]
+title = "Build a toy car from its picture manual"
+summary = "A Franka Panda builds a wooden toy car that differs every episode from its wordless picture manual, telling look-alike parts apart by size and pressing axles and wheels home by wrist force."
+platforms = ["arm"]
+stages = ["behavior"]
