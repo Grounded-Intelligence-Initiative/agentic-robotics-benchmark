@@ -1,0 +1,35 @@
+# dexterous_tool_catch_and_regrasp: catch tossed tools with a dexterous hand, then regrasp them in the hand to a
+# functional grip.
+schema_version = "1.4+ale.1"
+
+# The controller (run.sh and everything it loads) the agent leaves; restored into the separate verifier.
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/dexterous_tool_catch_and_regrasp"
+
+[metadata]
+platform = "hand"
+
+# The agent's machine: CPU only, no network. The image holds the cell's documents and the practice cell (its own
+# account; a small budget of practice throws).
+[environment]
+cpus = 8
+memory_mb = 16384
+
+# 4 h for the whole job.
+[agent]
+timeout_sec = 14400
+network_mode = "no-network"
+
+# 432 graded throws (36 runs of 12) of up to 450 control steps each at 50 Hz, two cameras rendered per step on the
+# CPU, plus the controller's replies: 154 s for the reference (validate-0fef4f3b), at most about 260 s if every
+# throw runs its full 9 s; about 3x that.
+[verifier]
+timeout_sec = 7200
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 4
+memory_mb = 12288
+gpus = 0

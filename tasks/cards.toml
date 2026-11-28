@@ -436,3 +436,9 @@ title = "Calibrate a warehouse robot's sensors from logs"
 summary = "Write a program that recovers a warehouse robot's camera and IMU mounts, sensor clocks and IMU biases from its driving logs, and flags faulty stretches, on robots it has never seen."
 platforms = ["ground"]
 stages = ["robot-description"]
+
+[dexterous_tool_catch_and_regrasp]
+title = "Catch thrown tools and regrasp by the handle"
+summary = "A four-finger hand on a fast wrist catches tools thrown at it and shifts each in hand to a working grip on its handle, from two cameras, touch and wrist force, with the world never pausing."
+platforms = ["hand"]
+stages = ["behavior"]

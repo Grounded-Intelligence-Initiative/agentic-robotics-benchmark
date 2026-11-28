@@ -1,0 +1,8 @@
+{
+  "metric": "mean_throw_credit",
+  "direction": "higher",
+  "value": 0.5265,
+  "full_at": 0.85,
+  "source": "the reference controller (solution/) measured by `ale validate` with a null anchor: validate-7511736b (432 throws, 36 runs of 12; mean_throw_credit 0.52649)",
+  "note": "mean_throw_credit = mean over all graded throws of the throw's credit: 0 for a dropped or not-held tool; otherwise catch_credit (0.1) + (1 - catch_credit) * handle * axis * palm * steady (tests/cell.py, ThrowJudge)."
+}
